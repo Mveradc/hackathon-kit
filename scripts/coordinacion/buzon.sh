@@ -67,7 +67,7 @@ confirmado() { # confirmado <n>: comentario exacto del dueño, sin cabecera, pos
   local n=$1 a dueno ultimo
   a=$(apertura "$n") || exit 1
   dueno=$(campo "$a" dueno); [ -z "$dueno" ] && dueno=$(campo "$a" para)
-  ultimo=$(comentarios "$n" | awk -F'\t' '$3 != "" && $3 != "escalado"' | tail -1 | cut -f1)
+  ultimo=$(comentarios "$n" | awk -F'\t' '$3 == "respuesta" || $3 == "propuesta"' | tail -1 | cut -f1)
   comentarios "$n" | awk -F'\t' -v d="$dueno" -v u="$ultimo" -v c="$HK_CONFIRMO" \
     '$2 == d && $3 == "" && tolower($5) == c && $1 > u { print "Confirmado por @" d " el " $1; ok=1; exit } END { exit !ok }'
 }
@@ -149,6 +149,7 @@ case $cmd in
     a=$(apertura "$n") || exit 1
     de=$(campo "$a" de); para=$(campo "$a" para); nivel=$(campo "$a" nivel); url=$(campo "$a" url)
     case $HK_YO in "$de"|"$para") ;; *) echo "No eres parte de #$n." >&2; exit 2 ;; esac
+    [ "$(campo "$a" estado)" = open ] || { echo "#$n ya está cerrado: no hay nada que acordar (mira .hackathon/decisiones.md)."; exit 0; }
     if [ "$nivel" != agente ] || [ "$(campo "$a" escalado)" = true ]; then
       confirmado "$n" || { echo "#$n necesita «$HK_CONFIRMO» del dueño, escrito por él desde su usuario de GitHub. No se cierra." >&2; exit 4; }
     fi
