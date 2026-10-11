@@ -28,9 +28,9 @@ Repo sandbox privado `Mveradc/hk-sandbox` con la cadena del reto 03 (M5, equipo 
 | 1 | Sí | #5 creado 17:33:34 UTC; aviso en B 17:34:26 (52 s); B respondió 17:34:45. A siguió con `motor/ficha.py` | El #4 no cuenta para el tiempo: B no tenía acceso (token fine-grained) |
 | 2 | Sí | #4: B se despertó sola (17:21:58), respondió y cerró en 50 s; entrada en `decisiones.md` con enlace | Destapó un fallo: A no recibió la respuesta porque el monitor solo miraba issues abiertos (corregido en `7893ce8`; tras reanudar, A la recibió a las 17:32:28) |
 | 3 | Sí | #5: `hk confirmo` de hk-persona-b (17:36:25) no cierra (los dos agentes lo rechazan); el de Mveradc (17:37:18) sí, cerrado a las 17:37:42 | B intentó acordar a la vez y recibió 4 en vez de «ya cerrado» (corregido en `f49f724`) |
-| 4 | | | |
+| 4 | Sí | Desacuerdo (#7): contrapropuesta de B 18:00:55, insistencia de A 18:02:26; al tercer intento (B, 18:03:11) el script escala. Bucle (#8, `max_saltos: 2`): apertura de B, respuesta-pregunta de A (salto 2) y, al siguiente, escalado por `max_saltos` (18:08:17) | El #7 llegó tarde a B: un monitor huérfano de una sesión cerrada se quedó el aviso (corregido en `7e0a4a7`: el monitor termina si su sesión ha muerto) |
 | 5 | | | |
-| 6 | En parte | Al reanudar A con el monitor nuevo, recibió la respuesta perdida del #4 y la atendió sola | Falta la prueba de matar B con una pregunta pendiente |
+| 6 | Sí | B cerrada; A crea el #6 (17:43:17); al reanudar B, aviso a los 19 s y respuesta y cierre sin intervención. Antes, A había recuperado la respuesta perdida del #4 al reanudar | |
 | 7 | | | |
 | 8 | | | |
 | 9 | Sí | En A, `SendMessage` no existe en la sesión (denegada por `settings.local.json`) | |
