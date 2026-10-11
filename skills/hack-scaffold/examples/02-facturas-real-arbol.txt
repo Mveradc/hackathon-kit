@@ -1,0 +1,15 @@
+# Árbol generado por /hack-scaffold python con uv (reto 02, enfoque A). Arranque: uv run albertitos → hola mundo
+./.claude/rules/convenciones.md
+./.claude/rules/fuentes-externas.md
+./.claude/rules/salida-y-reglas.md
+./.claude/skills/ensayo-defensa/SKILL.md
+./.claude/skills/entrega/SKILL.md
+./.claude/skills/lote-2/SKILL.md
+./.env.example
+./.gitignore
+./CLAUDE.md
+./README.md
+./docs/contratos.md
+./pyproject.toml
+./src/albertitos/__init__.py
+./uv.lock

@@ -1,0 +1,21 @@
+# Árbol generado por /hack-scaffold "motor python uv fastapi, web vite react" (reto 03, enfoque A). Arranque: uv run arranca.py → motor en :8000/api/hola, web en :5173 mostrando la respuesta del motor
+./.claude/rules/convenciones.md
+./.claude/rules/datos-y-score.md
+./.claude/rules/ficha-y-acciones.md
+./.claude/skills/ensayo-demo/SKILL.md
+./.claude/skills/entrega/SKILL.md
+./.gitignore
+./CLAUDE.md
+./README.md
+./arranca.py
+./docs/contratos.md
+./motor/pyproject.toml
+./motor/src/motor/__init__.py
+./motor/src/motor/main.py
+./motor/uv.lock
+./web/index.html
+./web/package-lock.json
+./web/package.json
+./web/src/App.jsx
+./web/src/main.jsx
+./web/vite.config.js

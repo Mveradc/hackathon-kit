@@ -1,0 +1,14 @@
+{
+  "name": "hackathon-kit",
+  "description": "Marketplace for the hackathon-kit plugin",
+  "owner": {
+    "name": "Mveradc"
+  },
+  "plugins": [
+    {
+      "name": "hackathon-kit",
+      "source": "./",
+      "description": "From a hackathon challenge statement to a team ready to code."
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+# Enunciados de terceros: se guardan solo en local. El repo publica la lista de fuentes
+# (evals/retos/fuentes.md) y el reto sintético, que es propio.
+evals/retos/*
+!evals/retos/fuentes.md
+!evals/retos/01-movilidad-sintetico.md
+
+# Artefactos y secretos locales
+__pycache__/
+*.pyc
+.env
+.env.*
+.m4/
+
+# Notas de trabajo del desarrollo (solo el de la raíz; la plantilla de hack-scaffold sí se publica)
+/CLAUDE.md
+
+# Vídeo promocional (composición HTML, script de render y MP4): solo en local
+/video/

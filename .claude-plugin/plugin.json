@@ -1,0 +1,12 @@
+{
+  "name": "hackathon-kit",
+  "version": "0.1.0",
+  "description": "From a hackathon challenge statement to a team ready to code: analysis, approaches to choose from, repo scaffolding, a per-person plan, a pitch outline and a check against the source.",
+  "author": {
+    "name": "Mveradc"
+  },
+  "homepage": "https://github.com/Mveradc/hackathon-kit",
+  "repository": "https://github.com/Mveradc/hackathon-kit",
+  "license": "MIT",
+  "keywords": ["hackathon", "scaffolding", "planning", "pitch"]
+}
