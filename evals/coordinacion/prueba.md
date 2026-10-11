@@ -32,5 +32,5 @@ Repo sandbox privado `Mveradc/hk-sandbox` con la cadena del reto 03 (M5, equipo 
 | 5 | | | |
 | 6 | Sí | B cerrada; A crea el #6 (17:43:17); al reanudar B, aviso a los 19 s y respuesta y cierre sin intervención. Antes, A había recuperado la respuesta perdida del #4 al reanudar | |
 | 7 | | | |
-| 8 | | | |
+| 8 | Sí | `../prueba-m6a-08`: `/hack-scaffold` (0,96 USD) y `/hack-plan` (0,65 USD) sin coordinación, con las entradas del reto 03 de M5. Ni `coordinacion.md`, ni `autoridad.md`, ni `.github/`, ni `.gitattributes`, ni ninguna mención. `comprobar.py`: A2 y A5 fallan igual que en M5 (404 en la raíz y cabecera común del evento); A3 y A4 pasan | A1 falla: dos contratos con «Ejemplo mínimo válido: TODO» en lugar de un ejemplo. El cambio en el scaffold solo añade el paso 3b condicionado, así que es variación del modelo; aislado, a «Pendiente» |
 | 9 | Sí | En A, `SendMessage` no existe en la sesión (denegada por `settings.local.json`) | |
