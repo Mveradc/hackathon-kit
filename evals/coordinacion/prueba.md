@@ -25,12 +25,12 @@ Repo sandbox privado `Mveradc/hk-sandbox` con la cadena del reto 03 (M5, equipo 
 ## Resultados
 | # | Resultado | Hora y evidencia | Notas |
 |---|---|---|---|
-| 1 | | | |
-| 2 | | | |
-| 3 | | | |
+| 1 | Sí | #5 creado 17:33:34 UTC; aviso en B 17:34:26 (52 s); B respondió 17:34:45. A siguió con `motor/ficha.py` | El #4 no cuenta para el tiempo: B no tenía acceso (token fine-grained) |
+| 2 | Sí | #4: B se despertó sola (17:21:58), respondió y cerró en 50 s; entrada en `decisiones.md` con enlace | Destapó un fallo: A no recibió la respuesta porque el monitor solo miraba issues abiertos (corregido en `7893ce8`; tras reanudar, A la recibió a las 17:32:28) |
+| 3 | Sí | #5: `hk confirmo` de hk-persona-b (17:36:25) no cierra (los dos agentes lo rechazan); el de Mveradc (17:37:18) sí, cerrado a las 17:37:42 | B intentó acordar a la vez y recibió 4 en vez de «ya cerrado» (corregido en `f49f724`) |
 | 4 | | | |
 | 5 | | | |
-| 6 | | | |
+| 6 | En parte | Al reanudar A con el monitor nuevo, recibió la respuesta perdida del #4 y la atendió sola | Falta la prueba de matar B con una pregunta pendiente |
 | 7 | | | |
 | 8 | | | |
-| 9 | | | |
+| 9 | Sí | En A, `SendMessage` no existe en la sesión (denegada por `settings.local.json`) | |
