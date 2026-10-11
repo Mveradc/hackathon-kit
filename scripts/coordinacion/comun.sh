@@ -35,7 +35,7 @@ hk_conf() { hk_leer "$HK_CONF" | sed -n "s/^$1:[[:space:]]*//p" | head -1 | sed 
 hk_personas() {
   hk_leer "$HK_CONF" | grep '^|' | awk -F'|' '{
     p=$2; h=$3; gsub(/^[ \t]+|[ \t]+$/, "", p); gsub(/^[ \t@]+|[ \t]+$/, "", h)
-    if (p == "" || p == "Persona" || p ~ /^-+$/ || h ~ /^-+$/) next
+    if (p == "" || p == "Persona" || p ~ /^-+$/ || h ~ /^-+$/ || h == "—") next   # «—»: no usa la coordinación
     print p "\t" tolower(h) }'
 }
 

@@ -50,7 +50,7 @@ Eres quien organiza al equipo para todo el hackathon. Con el enfoque ya elegido 
 
 ## Guardar
 
-1. Escribe el plan en `.hackathon/plan.md` siguiendo la plantilla. Si ya existe, pregunta con AskUserQuestion si sobrescribirlo (el equipo puede haberlo editado). Si no puedes preguntar, no lo sobrescribas: di cómo seguir y para.
+1. Escribe el plan en `.hackathon/plan.md` siguiendo la plantilla. Si ya existe, pregunta con AskUserQuestion si sobrescribirlo (el equipo puede haberlo editado). Si no puedes preguntar, no lo sobrescribas: di cómo seguir y para (salvo la autoridad: ver abajo).
 2. Si existe el `CLAUDE.md` del proyecto, **enseña la sección `## Dueños` que vas a añadir y pregunta con AskUserQuestion antes de modificarlo** ("Añadirla al CLAUDE.md" / "No tocar el CLAUDE.md"). Es una tabla "Carpeta | Dueño", con la raíz y el arranque incluidos, más la línea "Plan completo: `.hackathon/plan.md`", y va antes de `## Contexto` (si ya hay una sección `## Dueños`, se sustituye). Solo si el usuario acepta, aplícala con Edit, sin tocar nada más del fichero ni meter el calendario. Si no puedes preguntar o el usuario no acepta, no modifiques el `CLAUDE.md`: deja la sección en el resumen para que la pegue a mano.
 
 ## Autoridad (solo con la coordinación activa)
@@ -60,6 +60,7 @@ Si existe `.hackathon/coordinacion.md` con `activa: sí`, genera también `.hack
 - Sus filas salen de sus carpetas (implementación interna: agente solo), de los bloques de `docs/contratos.md` que produce (agentes + confirmación) y de lo que el plan deja a su cargo que afecte a otros. Nada que no esté en el plan, los dueños o los contratos.
 - Lo de «Siempre solo humano» se queda como en la plantilla; añade solo los repliegues del plan que haya.
 - Si ya existe, pregunta antes de sobrescribirlo, como con `plan.md`.
+- Si `plan.md` ya existía y no se ha sobrescrito, genera igualmente `autoridad.md` (si no existe) a partir del plan y el CLAUDE.md que hay: así un equipo que activa la coordinación después de planificar no tiene que rehacer el plan.
 
 ## Resumen
 
