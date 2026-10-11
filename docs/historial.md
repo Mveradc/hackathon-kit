@@ -56,7 +56,7 @@ Registro de lo que se hizo y se aprendió en cada hito, tal como estaba en la se
 - Ejemplos de los retos 02 (anonimizado) y 03 guardados.
 - Prueba interactiva del usuario en `prueba-m3a`: genera `pitch.md` y pregunta antes de sobrescribirlo.
 
-## M4 — Validación con `evals/` (en curso)
+## M4 — Validación con `evals/` (parte automática cerrada el 2026-10-10; falta la pasada interactiva cronometrada)
 - 2026-10-04/05:
   - rúbrica A1–A6 y C1–C6 y `evals/comprobar.py`;
   - retos nuevos 04 (hardware), 05 (sin datos) y 06 (mal especificado);
@@ -74,12 +74,18 @@ Registro de lo que se hizo y se aprendió en cada hito, tal como estaba en la se
   - Última ronda (03, 04, 05 y 06; 14,47 USD): 0 bloqueantes salvo en el 05, donde el consentimiento queda a la hora del inicio y el kit genera código antes del evento aunque las bases lo prohíben. El cierre **no se cumple**.
   - Decisiones del usuario: con trabajo previo prohibido, el scaffold para y solo genera con el evento empezado; los plazos «antes del inicio» sin fecha van antes del primer acto de la agenda; A1 mide el plan por persona. Al repetir el 05, el scaffold paró sin confirmación, y con ella A1–A7 pasan. Pero quedan un bloqueante que se sostiene y otro a medias, que el check detecta sin proponer la fila del plan: el cierre sigue sin cumplirse.
   - Después, el check propone siempre una fila del plan (con una ausencia, el plan B) y exige que la fecha de generación caiga dentro del evento. Además, una fecha simulada solo en el arnés. Al repetir el check y el revisor del 05, queda 1 bloqueante a medias (el plan B de C, con el plan contradiciéndose). El usuario lo reclasifica como leve (el riesgo queda cubierto por la fila del plan y la pregunta; lo que queda es una incoherencia interna). **Parte automática del cierre de M4 cumplida**; limitaciones conocidas en el README. Falta la pasada interactiva con una persona real.
+- Detalle (antes en el CLAUDE.md):
+  - `evals/comprobar.py`, probado sobre `prueba-m3a` y con controles positivos (frase copiada, peso cambiado, cifra sin fila y `.gitignore` en UTF-16). A6 (`--relanzar`) cuesta unos 1,4 USD.
+  - Retos 04 (hardware, Edge AI BIO-06), 05 (sin datos, UTP Journey Vocacional) y 06 (mal especificado, COMMA_HACK 7; texto facilitado por el usuario porque el agregador corta el TLS), con la cadena completa en `../prueba-m4-04`, `../prueba-m4-05` y `../prueba-m4-06` (equipos ficticios). Primera pasada automática (`evals/resultados/`): el 05 y el 06 pasan todo; el 04 falla en A1 y A4.
+  - Segunda pasada en `../prueba-m4-02-v2` y `../prueba-m4-06-v2`. Tercera, con los cinco retos en `../prueba-m4-0X-v2`, y `../prueba-m4-02-check` y `../prueba-m4-06-check` para comparar antes y después del check. Cuarta (03 solo check, 04–06 desde el scaffold) en `../prueba-m4-0X-v3`, 14,47 USD. Quinta, solo el 05, en `../prueba-m4-05-v4`, 5,29 USD. Sexta, solo el check y el revisor del 05, 1,94 USD; la fecha simulada está en `evals/fecha_simulada.py`.
 
-## M5 — Publicación (en curso)
+## M5 — Publicación (cerrado el 2026-10-11 con el commit de la v0.1.0)
 - 2026-10-10: hito abierto; la pasada interactiva de M4 queda pendiente y la hace el usuario en paralelo.
   - Ejemplos regenerados con el kit actual: retos 02 y 03, equipo ficticio desde el principio (Persona A–E y A–C) y enfoque A en los dos, elegido por el usuario. Nuevo ejemplo de `/hack-check`. Las citas de dos frases se recortaron a mano.
   - README en inglés y en español, limitaciones completas en `docs/limitaciones.md`, licencia MIT, `CHANGELOG.md` y versión 0.1.0. El marketplace pasa a llamarse `hackathon-kit` (`Mveradc/hackathon-kit`).
   - Auditoría de lo publicable: sin enunciados de terceros (una cita de dos frases parafraseada), sin nombres reales y sin secretos; `.gitignore` ampliado. El proyecto no es un repo git: no hay historial que auditar.
+  - Detalle (antes en el CLAUDE.md): cadenas en `../prueba-m5-02` y `../prueba-m5-03`; 4,7 USD por cadena sin el scaffold, que se cortó por el límite de gasto, y unos 15 minutos de comandos. `comprobar.py`: A1, A3 y A4 pasan en los dos y A2 en el 02; A2 falla en el 03 (raíz 404, repetido), A5 por la cabecera común del evento y A7 por las filas sin cita. Auditoría de 72 ficheros (lista con `git add --dry-run` en una copia): `.gitignore` con `__pycache__`, `.env` y `.m4/`; la cita parafraseada está en `criterio/05-v6.md`. Los ejemplos anteriores quedaron en el scratchpad de aquella sesión.
+- 2026-10-11: repo git creado y commit inicial de la v0.1.0 (remoto `Mveradc/hackathon-kit`).
 
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
