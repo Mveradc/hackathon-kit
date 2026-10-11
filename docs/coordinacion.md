@@ -13,6 +13,8 @@
 - M6b: criterios.md (solo lo escriben humanos; fuente, qué dijeron y a qué afecta) + /hack-note, que avisa a todos por issue; /hack-pitch y /hack-check comprueban la cobertura.
 - M7: orquestador por persona con Opus 5.5, sin editar código (hook PreToolUse); workers Sonnet 5.5 en worktrees (máximo 2); revisor independiente que vuelve a ejecutar los tests; scout Haiku 5.5; modos construcción/iteración; reinicio en frío desde ficheros; compuerta SubagentStop sobre el resumen con evidencias.
 
+- Hallazgos de la prueba de M6a (2026-10-11): en Windows, al cerrar una sesión, Claude Code mata el `bash -c` que lanzó el monitor pero no al monitor (queda huérfano), así que el script comprueba en cada vuelta que su padre vive; Claude Code genera por su cuenta un `away_summary` unos 3 min después del último turno, ajeno al plugin; los tokens fine-grained no llegan a repos personales de otra cuenta.
+
 ## Criterios de validación de M6a
 - Una pregunta llega a la otra sesión en ≤ 3 min sin intervención humana; quien pregunta sigue trabajando.
 - Una pregunta de implementación se resuelve entre agentes y queda en decisiones.md.

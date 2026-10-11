@@ -87,6 +87,20 @@ Registro de lo que se hizo y se aprendió en cada hito, tal como estaba en la se
   - Detalle (antes en el CLAUDE.md): cadenas en `../prueba-m5-02` y `../prueba-m5-03`; 4,7 USD por cadena sin el scaffold, que se cortó por el límite de gasto, y unos 15 minutos de comandos. `comprobar.py`: A1, A3 y A4 pasan en los dos y A2 en el 02; A2 falla en el 03 (raíz 404, repetido), A5 por la cabecera común del evento y A7 por las filas sin cita. Auditoría de 72 ficheros (lista con `git add --dry-run` en una copia): `.gitignore` con `__pycache__`, `.env` y `.m4/`; la cita parafraseada está en `criterio/05-v6.md`. Los ejemplos anteriores quedaron en el scratchpad de aquella sesión.
 - 2026-10-11: repo git creado y commit inicial de la v0.1.0 (remoto `Mveradc/hackathon-kit`).
 
+## M6a — Canal entre agentes (cerrado el 2026-10-11, v0.2.0)
+- Verificación previa en la documentación oficial: hooks de plugin, Monitor, asyncRewake y userConfig (detalle en `docs/coordinacion.md`). Paso 0 con un plugin de juguete: un monitor que termina, aunque sea sin imprimir, cuesta un turno, así que el monitor del buzón no termina nunca mientras viva su sesión.
+- Scripts en bash + `gh` (`scripts/coordinacion/`), monitor y hook de plugin, `/hack-ask`, `/hack-inbox` y `/hack-decide` (invocables por el modelo), paso 3b de `/hack-scaffold` y `autoridad.md` en `/hack-plan`.
+- Prueba en `Mveradc/hk-sandbox` (privado) con la cadena del reto 03, dos worktrees (`../hk-sandbox` y `../hk-sandbox-B`) y dos cuentas (`Mveradc` y `hk-persona-b`): los 9 criterios de `docs/coordinacion.md` se cumplen (`evals/coordinacion/prueba.md`). Coste en headless: 0,44 + 0,35 USD (scaffold y plan con coordinación) y 1,61 USD (criterio 8).
+- Fallos encontrados y corregidos durante la prueba:
+  - `/hk confirmo` llegaba a GitHub como `C:/Program Files/Git/hk confirmo` (Git Bash convierte los argumentos que empiezan por «/»): la marca pasa a `hk confirmo`;
+  - el listado de GitHub tarda unos segundos en incluir un issue nuevo: la deduplicación usa también un registro local;
+  - `read` con tabulador junta los campos vacíos: separador «unit separator» (0x1F);
+  - el monitor solo miraba issues abiertos y A perdió una respuesta que B cerró en 16 s: ahora mira también los cerrados;
+  - en Windows, cerrar la sesión no mata al monitor: los huérfanos seguían consultando y uno se quedó un aviso. Ahora el monitor termina si su proceso padre ha muerto;
+  - un token fine-grained de una colaboradora da 404 en un repo personal ajeno: la sesión B usa `gh auth login` con `GH_CONFIG_DIR`;
+  - errores de acceso repetidos en stderr cada minuto: un solo aviso;
+  - `/hack-plan` no generaba la autoridad si el plan ya existía.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.
