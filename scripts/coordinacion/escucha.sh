@@ -7,6 +7,20 @@
 . "$(dirname "$0")/comun.sh"
 
 en_backoff=0
+en_error=0
+
+# Error que no es de límite (sin acceso al repo, token sin permisos…): un solo aviso hasta que se arregle.
+aviso_error() {
+  [ $en_error -eq 1 ] && return
+  en_error=1
+  echo "hk · buzón: no puedo leer $HK_REPO como @$HK_YO ($(head -1 "$HK_ESTADO/ultimo-error" | tr -d '\r')). ¿Tiene acceso esa cuenta? Sigo reintentando sin más avisos."
+}
+
+fin_error() {
+  [ $en_error -eq 0 ] && return
+  en_error=0
+  echo "hk · buzón: ya puedo leer $HK_REPO"
+}
 
 sondear() {
   local desde ahora vistos lineas rc
@@ -18,10 +32,10 @@ sondear() {
   lineas=$(hk_gh api "repos/$HK_REPO/issues?labels=hk&state=open&since=$desde&per_page=100" --jq "$HK_JQ"'
     .[] | select(.pull_request | not)
     | [.number, cab("de"), para, (([.labels[].name | select(startswith("hk:tipo-")) | ltrimstr("hk:tipo-")] | first) // ""),
-       (.title | ltrimstr("[hk] ") | gsub("[\t\r\n«»]"; " ") | .[0:70]), .created_at] | fila'); rc=$?
+       (.title | ltrimstr("[hk] ") | gsub("[\t\r\n«»]"; " ") | .[0:70]), .created_at] | fila' 2>"$HK_ESTADO/ultimo-error"); rc=$?
   [ $rc -eq 75 ] && { aviso_backoff; return; }
-  [ $rc -ne 0 ] && return
-  fin_backoff
+  if [ $rc -ne 0 ]; then aviso_error; return; fi
+  fin_backoff; fin_error
 
   local n de para tipo titulo creado comentarios fallo=0
   while IFS="$HK_SEP" read -r n de para tipo titulo creado; do
@@ -33,7 +47,7 @@ sondear() {
     fi
     comentarios=$(hk_gh api "repos/$HK_REPO/issues/$n/comments?since=$desde&per_page=100" --jq "$HK_JQ"'
       .[] | [.id, (.user.login | ascii_downcase), cab("tipo"), cab("de"),
-             ((.body // "") | gsub("[\r\n\t]+"; " ") | gsub("^ +| +$"; "") | ascii_downcase)] | fila') || { fallo=1; continue; }
+             ((.body // "") | gsub("[\r\n\t]+"; " ") | gsub("^ +| +$"; "") | ascii_downcase)] | fila' 2>/dev/null) || { fallo=1; continue; }
     local id autor ctipo cde cuerpo que
     while IFS="$HK_SEP" read -r id autor ctipo cde cuerpo; do
       [ -n "$id" ] || continue
