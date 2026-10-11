@@ -55,10 +55,10 @@ hk_conf_activa() {
   hk_estado_dir
 }
 
-# Quién soy: el usuario de la sesión de gh (GH_TOKEN o keyring), en caché por token.
+# Quién soy: el usuario de la sesión de gh (GH_TOKEN, o la cuenta de GH_CONFIG_DIR), en caché por esa combinación.
 hk_yo() {
   local clave cache
-  clave=$(printf '%s' "${GH_TOKEN:-keyring}" | cksum | cut -d' ' -f1)
+  clave=$(printf '%s|%s' "${GH_TOKEN:-keyring}" "${GH_CONFIG_DIR:-}" | cksum | cut -d' ' -f1)
   cache="$HK_ESTADO/yo-$clave"
   if [ ! -s "$cache" ]; then
     hk_gh api user --jq .login > "$cache.tmp" 2>/dev/null && mv "$cache.tmp" "$cache" || { rm -f "$cache.tmp"; return 1; }

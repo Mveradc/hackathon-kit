@@ -6,7 +6,7 @@ Repo sandbox privado `Mveradc/hk-sandbox` con la cadena del reto 03 (M5, equipo 
 - `../hk-sandbox` (rama `main`, sesión A) y `../hk-sandbox-B` (worktree, rama `hk-sandbox-B`, sesión B).
 - En cada worktree, `.claude/settings.local.json` con `crossSessionInbound: refuse` y `deny: [SendMessage, ListAgents]`, para que la mensajería nativa no falsee la prueba.
 - Sesión A, en PowerShell: `cd ..\hk-sandbox; claude --plugin-dir <kit> --name sesion-A`.
-- Sesión B: `cd ..\hk-sandbox-B; $env:GH_TOKEN="<token de hk-persona-b>"; claude --plugin-dir <kit> --name sesion-B`.
+- Sesión B: `cd ..\hk-sandbox-B; $env:GH_CONFIG_DIR="$HOME\.config\gh-persona-b"; claude --plugin-dir <kit> --name sesion-B`, con `gh auth login` hecho antes en esa carpeta como `hk-persona-b`. Un token fine-grained no sirve: solo llega a repos cuyo propietario es esa cuenta o una organización (404 en el primer intento).
 - Comprobación previa en cada una: `/hack` muestra 9 comandos; `! gh api user --jq .login` da su usuario; el contexto de inicio dice «Eres el agente de @…».
 
 ## Criterios y cómo se provocan
