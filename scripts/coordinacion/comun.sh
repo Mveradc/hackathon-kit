@@ -107,7 +107,7 @@ hk_cabecera() {
 # Los agentes nunca publican la confirmación de una persona (una línea que sea solo la marca).
 # Además, todo lo que publica buzon.sh lleva cabecera, y una confirmación válida no la lleva.
 hk_sin_confirmo() {
-  if hk_leer "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -qixF "$HK_CONFIRMO"; then
+  if hk_leer "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' | grep -ixF "$HK_CONFIRMO" >/dev/null; then   # sin -q: leer todo evita «Broken pipe»
     echo "Rechazado: «$HK_CONFIRMO» solo lo escribe el dueño, desde su usuario de GitHub." >&2
     return 2
   fi

@@ -28,20 +28,20 @@ sondear() {
   desde=$(cat "$HK_ESTADO/cursor" 2>/dev/null || date -u -d '-1 day' +%Y-%m-%dT%H:%M:%SZ)
   ahora=$(date -u -d '-90 seconds' +%Y-%m-%dT%H:%M:%SZ)   # solape: lo repetido lo quita «vistos»
 
-  # Issues abiertos tocados desde el cursor: «n<TAB>de<TAB>para<TAB>tipo-etiqueta<TAB>título<TAB>creado».
-  lineas=$(hk_gh api "repos/$HK_REPO/issues?labels=hk&state=open&since=$desde&per_page=100" --jq "$HK_JQ"'
+  # Issues tocados desde el cursor, también cerrados (una respuesta y un cierre pueden caer entre dos sondeos).
+  lineas=$(hk_gh api "repos/$HK_REPO/issues?labels=hk&state=all&since=$desde&per_page=100" --jq "$HK_JQ"'
     .[] | select(.pull_request | not)
     | [.number, cab("de"), para, (([.labels[].name | select(startswith("hk:tipo-")) | ltrimstr("hk:tipo-")] | first) // ""),
-       (.title | ltrimstr("[hk] ") | gsub("[\t\r\n«»]"; " ") | .[0:70]), .created_at] | fila' 2>"$HK_ESTADO/ultimo-error"); rc=$?
+       (.title | ltrimstr("[hk] ") | gsub("[\t\r\n«»]"; " ") | .[0:70]), .state] | fila' 2>"$HK_ESTADO/ultimo-error"); rc=$?
   [ $rc -eq 75 ] && { aviso_backoff; return; }
   if [ $rc -ne 0 ]; then aviso_error; return; fi
   fin_backoff; fin_error
 
-  local n de para tipo titulo creado comentarios fallo=0
-  while IFS="$HK_SEP" read -r n de para tipo titulo creado; do
+  local n de para tipo titulo estado comentarios fallo=0
+  while IFS="$HK_SEP" read -r n de para tipo titulo estado; do
     [ -n "$n" ] || continue
     [ "$para" = "$HK_YO" ] || [ "$de" = "$HK_YO" ] || continue
-    if [ "$para" = "$HK_YO" ] && ! grep -qx "i:$n" "$vistos"; then
+    if [ "$para" = "$HK_YO" ] && [ "$estado" = open ] && ! grep -qx "i:$n" "$vistos"; then
       echo "i:$n" >> "$vistos"
       echo "hk #$n · pregunta de @$de ($tipo) · «$titulo» · atiende con /hack-inbox"
     fi

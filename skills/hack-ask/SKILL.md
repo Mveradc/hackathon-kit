@@ -24,7 +24,7 @@ Petición: $ARGUMENTS
 - Si devuelve 75, GitHub limita: dilo y reintenta más tarde, sin insistir en bucle.
 
 ## Seguir trabajando
-- Anota en `.hackathon/estado/<tu usuario>.md` (créalo si no existe; solo lo escribes tú), en «Suposiciones provisionales»: `#<n> (esperando a @<usuario>): asumo <X>; si responde otra cosa, <qué habría que cambiar>`.
+- Anota en `.hackathon/estado/<tu usuario de GitHub, en minúsculas>.md` (créalo si no existe; solo lo escribes tú), en «Suposiciones provisionales»: `#<n> (esperando a @<usuario>): asumo <X>; si responde otra cosa, <qué habría que cambiar>`.
 - Continúa con tu tarea según esa suposición. Cuando llegue la respuesta, el monitor del buzón te avisará («hk #…»): atiéndela con `/hack-inbox`.
 - A tu persona, solo una línea: qué has preguntado, a quién y qué has supuesto mientras tanto.
 
