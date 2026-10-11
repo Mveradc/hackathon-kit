@@ -1,0 +1,7 @@
+[
+  {
+    "name": "buzon",
+    "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/coordinacion/escucha.sh\"",
+    "description": "Buzón del equipo (coordinación entre agentes, GitHub Issues)"
+  }
+]

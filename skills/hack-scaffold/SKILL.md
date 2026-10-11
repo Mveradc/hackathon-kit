@@ -90,6 +90,20 @@ Sigue `templates/README.md`: qué es, requisitos, comando de arranque con la sal
 - **`.gitignore`**: lo propio del stack, secretos (`.env`, `.env.*`, salvo `.env.example`), datos del reto y artefactos generados. **No** ignores `.hackathon/`: es el registro de decisiones del equipo.
 - **`.env.example`** solo si el enfoque usa claves (por ejemplo, de un LLM), con nombres y sin valores.
 
+## Paso 3b — Coordinación entre agentes (opcional)
+
+Con ella, el agente de cada persona puede preguntar al de otra por GitHub Issues sin pasar por las personas (ver `/hack-ask`). Es opcional: sin ella, el kit funciona igual.
+- Pregunta con AskUserQuestion: «No, gracias» o «Activar la coordinación entre agentes (GitHub Issues)». No la recomiendes ni la actives por tu cuenta.
+- Si no puedes preguntar, actívala solo si los argumentos dicen «coordinación»; si no, sigue sin ella y no la menciones más.
+- Si no se activa, no crees nada de este paso.
+- Si se activa:
+  1. `.hackathon/coordinacion.md` desde `${CLAUDE_SKILL_DIR}/templates/coordinacion.md`. Es la única excepción a «`.hackathon/` no se toca». `repo`: el `propietario/repo` de `git remote get-url origin`; si no hay remoto, deja el marcador. Tabla: una fila por persona de `.hackathon/equipo.md` si existe; si no, deja el marcador. Pide los usuarios de GitHub en una sola pregunta (el usuario los escribe en «Other»); lo que no te den, se queda como marcador. Nunca inventes un usuario.
+  2. `.github/ISSUE_TEMPLATE/hk.md` desde `${CLAUDE_SKILL_DIR}/templates/issue-hk.md`.
+  3. En `.gitattributes`, la línea `.hackathon/decisiones.md merge=union` (es un registro al que solo se añade; así dos añadidos a la vez no chocan al fusionar).
+  4. Si no queda ningún `< >` en `coordinacion.md`, ejecuta `bash "${CLAUDE_PLUGIN_ROOT}/scripts/coordinacion/buzon.sh" preparar` (crea las etiquetas en el repo con `gh`). Si falla o quedan marcadores, di qué falta.
+  5. En «Contexto» del CLAUDE.md, la línea «Coordinación entre agentes: `.hackathon/coordinacion.md` y `.hackathon/autoridad.md` (la genera `/hack-plan`)».
+- En el resumen, di que cada persona necesita `gh` con su propio usuario (`gh auth login`) y Git Bash en Windows, y que el buzón empieza a escuchar solo, en menos de un minuto, en cada sesión con el plugin.
+
 ## Paso 4 — Verificar
 
 Ejecuta el comando de arranque con Bash y comprueba que sale el hola mundo de cada pieza. Si alguna pieza es un servidor, lanza el comando en segundo plano, comprueba con una petición HTTP a cada pieza que responde (y, si una consume a otra, que muestra lo que le devuelve), y después detén todos los procesos que hayas lanzado. Si falla, corrige y reintenta una vez. Informa del resultado real, incluido el error si sigue fallando. No hagas `git init` ni commits: sugiérelo en una línea.

@@ -1,0 +1,13 @@
+{
+  "description": "Coordinación entre agentes (opcional): reinyecta estado y buzón al empezar o reanudar la sesión",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/coordinacion/sesion.sh\"", "timeout": 15 }
+        ]
+      }
+    ]
+  }
+}
