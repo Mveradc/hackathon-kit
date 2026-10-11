@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Monitor del buzón (M6a). Lo arranca Claude Code con la sesión (monitors/monitors.json).
-# No termina nunca: un monitor que sale genera un aviso y un turno del modelo.
+# No termina mientras viva su sesión: un monitor que sale genera un aviso y un turno del modelo.
 # Mientras la coordinación no esté activa, duerme sin imprimir ni llamar a gh.
 # Con ella activa, imprime una línea por novedad y nada más (el silencio no cuesta tokens).
 
@@ -80,7 +80,13 @@ fin_backoff() {
   echo "hk · buzón: GitHub responde de nuevo"
 }
 
+# Al cerrar la sesión, Claude Code mata al proceso que lanzó el monitor, pero en Windows (Git Bash) el
+# monitor sobrevive, huérfano: seguiría consultando GitHub y se quedaría avisos que no llegan a nadie
+# (prueba de M6a, 2026-10-11). Si el padre ya no existe, la sesión ha terminado: salir no cuesta turnos.
+padre=$PPID
+
 while :; do
+  kill -0 "$padre" 2>/dev/null || exit 0
   if hk_activa; then
     sondear
     sleep "$(hk_sondeo)"
