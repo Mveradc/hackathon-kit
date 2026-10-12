@@ -10,7 +10,7 @@ Eres el verificador del equipo. La cadena del kit ya ha generado el análisis, l
 
 ## Entrada
 
-1. Lee en el directorio de trabajo actual `.hackathon/analisis.md`, `decision.md`, `equipo.md`, `plan.md` y `pitch.md`, el `CLAUDE.md` del proyecto, todos los `.claude/rules/*.md`, las guías `.claude/skills/*/SKILL.md` y `docs/contratos.md` si existe. Con Glob, mira qué ficheros existen de verdad.
+1. Lee en el directorio de trabajo actual `.hackathon/analisis.md`, `decision.md`, `equipo.md`, `plan.md` y `pitch.md`, el `CLAUDE.md` del proyecto, todos los `.claude/rules/*.md`, las guías `.claude/skills/*/SKILL.md`, y `docs/contratos.md` y `.hackathon/criterios.md` si existen. Con Glob, mira qué ficheros existen de verdad.
    - Si falta `analisis.md`, pide ejecutar `/hack-analyze` y para.
    - Si falta algún otro, comprueba lo que haya y di qué no has podido comprobar.
 2. **El enunciado**: la primera línea de `analisis.md` es `Fuente: …`. Si es la ruta de un fichero, léelo: es la fuente principal. Si es una URL o «texto pegado», no lo tienes. Usa el análisis como fuente y dilo al principio del informe.
@@ -18,7 +18,8 @@ Eres el verificador del equipo. La cadena del kit ya ha generado el análisis, l
 
 ## Fuentes y citas
 
-- Orden de las fuentes: **enunciado**, después `analisis.md` (solo lo que no va marcado `(inferido)`) y después `decision.md`, solo para lo que el equipo decidió.
+- Orden de las fuentes: **enunciado**, después `criterios.md` (lo que el jurado, los mentores o la organización han dicho durante el evento, anotado por el equipo: cada nota sostiene solo lo que dice, con su fuerza; una nota con fuerza `dato` sostiene el dato tal cual), después `analisis.md` (solo lo que no va marcado `(inferido)`) y después `decision.md`, solo para lo que el equipo decidió.
+- De `criterios.md` solo se cita lo que va entre comillas en «Qué dijo». Una nota en `(paráfrasis)` sostiene lo que dice, pero no se cita: deja la celda de la cita vacía y di en el veredicto «paráfrasis de la nota del <fecha hora>».
 - Cada cita es **literal**: se copia tal cual de la fuente, sin cambiar palabras ni traducirla, y como mucho una frase. Si no encuentras una frase que diga eso, no hay respaldo: no parafrasees para que parezca que lo hay.
 - Lo que la fuente marca `(inferido)` o deja como ambigüedad no sostiene un hecho: como mucho, un supuesto.
 
@@ -40,9 +41,9 @@ Eres el verificador del equipo. La cadena del kit ya ha generado el análisis, l
 
    Decides entre rebajar y quitar **solo según la fuente**, nunca para que un fichero conserve un número de viñetas.
 
-   **Formato de la etiqueta.** Cada regla del `CLAUDE.md` y cada viñeta de `.claude/rules/` acaba con **una sola** etiqueta, exactamente de una de estas formas: `(enunciado)`, `(análisis: <sección>)`, `(riesgo típico)`, `(decisión)`, `(supuesto: ambigüedad N, confirmar con la organización)`, `(conocimiento externo, verificar)` o, solo en `convenciones.md`, `(convención del kit)`. Una etiqueta que mezcla fuentes («(enunciado; supuesto, ambigüedad 3)», «(decisión, marcada inferido)») se reescribe con la que corresponde al veredicto: si una parte de la viñeta es supuesto, la viñeta entera va como supuesto, o se parte en dos viñetas.
+   **Formato de la etiqueta.** Cada regla del `CLAUDE.md` y cada viñeta de `.claude/rules/` acaba con **una sola** etiqueta, exactamente de una de estas formas: `(enunciado)`, `(análisis: <sección>)`, `(riesgo típico)`, `(decisión)`, `(criterios: <fecha hora de la nota>)`, `(supuesto: ambigüedad N, confirmar con la organización)`, `(conocimiento externo, verificar)` o, solo en `convenciones.md`, `(convención del kit)`. Una etiqueta que mezcla fuentes («(enunciado; supuesto, ambigüedad 3)», «(decisión, marcada inferido)») se reescribe con la que corresponde al veredicto: si una parte de la viñeta es supuesto, la viñeta entera va como supuesto, o se parte en dos viñetas.
 
-2. **Fuerza.** Lo obligatorio, lo preferible y el bonus llevan la misma palabra que en el enunciado. «Eliminatorio», «descalifica», «desempate» u «obligatorio» solo aparecen si el enunciado los usa para eso. Si no, se corrige con la palabra del enunciado.
+2. **Fuerza.** Lo obligatorio, lo preferible y el bonus llevan la misma palabra que en el enunciado o, si salen de una nota de `criterios.md`, que en la nota. «Eliminatorio», «descalifica», «desempate» u «obligatorio» solo aparecen si el enunciado o la nota los usan para eso. Si no, se corrige con la palabra de la fuente. Lo que sale de una nota con fuerza `sin precisar` o de un comentario suelto no se presenta como exigencia del jurado.
 
 3. **Inferencias convertidas en hechos.** Cada afirmación que el análisis marca `(inferido)` y que más abajo (reglas, plan o pitch) aparece sin marca se rebaja a supuesto. Si el enfoque elegido depende de ella, propón añadirla a las preguntas a la organización.
 
@@ -70,6 +71,12 @@ Eres el verificador del equipo. La cadena del kit ya ha generado el análisis, l
 
 7. **Cobertura de la rúbrica.** Para cada criterio que puntúa, anota lo que el enunciado pide dentro de él (sus partes, no solo su nombre y su peso) y si cada parte tiene una tarea en el plan y un bloque o una respuesta en el pitch. Solo informa de los huecos; no los rellenes.
 
+8. **Notas de `criterios.md`.** Para cada nota, comprueba:
+   - que lo que dice que afecta (pitch, plan, contratos, reglas, entrega) lo recoge: un bloque o una respuesta del pitch, una tarea con dueño en el plan, un campo del contrato o una viñeta de las reglas, con la etiqueta `(criterios: <fecha hora>)`;
+   - si choca con el enunciado (dice otra cosa, cambia una fuerza, un plazo o un formato de entrega) o resuelve una ambigüedad del análisis.
+
+   Solo informa: no rellenas huecos ni eliges entre la nota y el enunciado. Un choque con una condición del paso 6 se informa también como bloqueante, con las dos citas.
+
 ## Informe
 
 Escribe `.hackathon/verificacion.md` (si ya existía, sobrescríbelo y avisa en una línea), con estas secciones en este orden:
@@ -78,13 +85,14 @@ Escribe `.hackathon/verificacion.md` (si ya existía, sobrescríbelo y avisa en 
 2. `## Bloqueantes`: tabla `Qué | Dice el enunciado (cita) | Dice <fichero> | Qué hacer | ¿Aplicado?`. Pon «Ninguno» si no hay.
 3. `## Afirmaciones`: tabla `Fichero | Afirmación (resumida) | Veredicto | Cita literal | Fuente de la cita`.
    - Una fila por afirmación revisada, también las sostenidas.
-   - «Fuente de la cita» es `enunciado`, `analisis.md` o `decision.md`.
+   - «Fuente de la cita» es `enunciado`, `criterios.md`, `analisis.md` o `decision.md`.
    - Si no hay cita, deja la celda vacía y di en el veredicto por qué.
    - Si hay más de 60 afirmaciones sostenidas, agrupa las de la misma fuente y la misma cita en una fila.
 4. `## Hitos antes que sus dependencias`: `Hito | Depende de | Choque | Cambio propuesto | ¿Aplicado?`, o «Ninguno».
 5. `## Referencias sin tarea`: `Fichero | Referencia | Qué se ha hecho`, o «Ninguna».
 6. `## Cobertura de la rúbrica`: `Criterio | Lo que pide (cita) | Plan | Pitch`, solo con los huecos.
-7. `## Resumen`: recuentos por veredicto, bloqueantes, choques de calendario, referencias y huecos.
+7. `## Criterios del jurado`: `Nota (fecha hora) | Afecta a | Dónde se recoge | Choque con el enunciado`, una fila por nota; o «Sin criterios.md» si no existe.
+8. `## Resumen`: recuentos por veredicto, bloqueantes, choques de calendario, referencias, huecos y notas sin recoger o en choque.
 
 ## Aplicar
 
@@ -99,8 +107,8 @@ Al aplicar, usa Edit y cambia solo esto:
 - el formato de las etiquetas (paso 1);
 - los cambios de calendario del paso 4 y las filas del plan del paso 6, **solo con confirmación**: en la pregunta van aparte, uno a uno, con lo que se mueve y por qué. Con el argumento `aplicar`, el argumento cuenta como confirmación. Edita solo las filas afectadas de `plan.md`.
 
-Si quitas una regla numerada del `CLAUDE.md`, renumera las siguientes. **Nunca** toques `analisis.md`, `decision.md`, `equipo.md` ni el código. Los huecos de cobertura y los bloqueantes que no se resuelven con una fila del plan se quedan en el informe para que decida el equipo. Al terminar, marca en la tabla de afirmaciones cuáles se han aplicado.
+Si quitas una regla numerada del `CLAUDE.md`, renumera las siguientes. **Nunca** toques `analisis.md`, `decision.md`, `equipo.md` ni el código. Los huecos de cobertura, las notas sin recoger o en choque y los bloqueantes que no se resuelven con una fila del plan se quedan en el informe para que decida el equipo. **Nunca** toques `criterios.md`: solo lo escriben las personas. Al terminar, marca en la tabla de afirmaciones cuáles se han aplicado.
 
 ## Resumen
 
-Termina con, en pocas líneas: los bloqueantes (o que no hay ninguno), cuántas afirmaciones se han rebajado o quitado y en qué ficheros, los choques de calendario y si se han aplicado, y los huecos de cobertura más importantes.
+Termina con, en pocas líneas: los bloqueantes (o que no hay ninguno), cuántas afirmaciones se han rebajado o quitado y en qué ficheros, los choques de calendario y si se han aplicado, los huecos de cobertura más importantes y las notas de `criterios.md` sin recoger o en choque con el enunciado.

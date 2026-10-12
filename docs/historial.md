@@ -101,6 +101,15 @@ Registro de lo que se hizo y se aprendió en cada hito, tal como estaba en la se
   - errores de acceso repetidos en stderr cada minuto: un solo aviso;
   - `/hack-plan` no generaba la autoridad si el plan ya existía.
 
+## M6b-1 — Criterios del jurado (cerrado el 2026-10-12)
+- `/hack-note` anota en `.hackathon/criterios.md` lo que dicen el jurado, los mentores o la organización durante el evento: quién, su papel, dónde, sus palabras (o paráfrasis marcada) y su fuerza (`dato`, la palabra que usó, comentario suelto o `sin precisar`). Solo lo lanza una persona; solo se añade (`merge=union`). `/hack-pitch` recoge las notas con `(criterios: <fecha hora>)`; `/hack-check` las usa como fuente después del enunciado y añade «Criterios del jurado». `/hack-decide` y `/hack-note` terminan con el comando de commit y push.
+- Validado con el reto 03 (`../prueba-m6b-03`): cuatro notas en headless (completa, fuerza débil, sin papel, en choque con el análisis y posterior al pitch) y una en sesión interactiva. `comprobar.py`: A1–A4 y A7 pasan (A5, el falso positivo conocido).
+- Hallazgos: una cabecera YAML con «: » sin comillas hace que la skill cargue sin metadatos (lo detecta `claude plugin validate .`); una duración dicha por el jurado acababa como supuesto hasta añadir la fuerza `dato`; A2 del 03 fallaba por la URL raíz que imprime uvicorn (corregido en `comprobar.py`); A7 acepta ya citas de `criterios.md` en los bloqueantes.
+
+## M6b-2 — Aviso de las notas por issue (cerrado el 2026-10-12)
+- Con la coordinación activa, `/hack-note` publica la nota con `buzon.sh avisar` (issue `hk:tipo-nota` + `hk:para-todos`, cerrado al momento); el monitor avisa a todos menos a quien la escribe; `/hack-inbox` se la cuenta a su persona con `git pull`, sin escribir en `criterios.md`. Que el autor sea del equipo lo dice `buzon.sh ver`, no el modelo.
+- Validado en el sandbox con dos sesiones: los 5 criterios (`evals/coordinacion/prueba.md`). Dos correcciones durante la prueba: la línea del aviso dice qué hacer (B no lanzaba `/hack-inbox` sola, cuatro veces) y la comprobación del autor pasa al script (B la dedujo de `autoridad.md`).
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

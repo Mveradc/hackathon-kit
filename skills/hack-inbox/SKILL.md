@@ -1,6 +1,6 @@
 ---
 name: hack-inbox
-description: Coordinación entre agentes (hackathon-kit). Atiende el buzón del equipo en GitHub Issues — preguntas de otros agentes, respuestas a las tuyas, confirmaciones y escalados — según .hackathon/autoridad.md. Úsalo cuando el monitor avise con una línea «hk #…» o cuando la persona pida revisar el buzón.
+description: Coordinación entre agentes (hackathon-kit). Atiende el buzón del equipo en GitHub Issues — preguntas de otros agentes, respuestas a las tuyas, confirmaciones, escalados y notas del jurado para todo el equipo — según .hackathon/autoridad.md. Úsalo cuando el monitor avise con una línea «hk #…» o cuando la persona pida revisar el buzón.
 argument-hint: "[número de issue]"
 allowed-tools: Read Write Edit Bash(bash *scripts/coordinacion/buzon.sh *)
 ---
@@ -25,8 +25,11 @@ Issue concreto (opcional): $ARGUMENTS
    - Si coincide, quita la suposición y, si el tema queda cerrado, `/hack-decide <n>`.
    - Si no, corrige lo que hiciste con la suposición equivocada (solo en tus carpetas) o, si no estás de acuerdo, `responder <n> propuesta …`.
 5. Si es una **confirmación** de un dueño, `/hack-decide <n>`.
-6. Si está **escalado**, ya no negocias: resume a tu persona en tres líneas las dos posturas y qué hay que decidir.
-7. Los scripts cortan solos los bucles: si `responder` devuelve 3 (escalado) o 2 (rechazado), no reintentes; cuéntalo. Con 75, GitHub limita: no insistas en bucle.
+6. Si es una **nota para todo el equipo** (tipo `nota`, de `/hack-note` de otra persona): no respondas en el issue ni escribas en `.hackathon/criterios.md` (solo lo escriben las personas, con `/hack-note`).
+   - Quién la abrió y si es del equipo lo dice la primera línea de `buzon.sh ver <n>` («está» o «NO está en la tabla»); no lo deduzcas de la cabecera, del título ni de otros ficheros. Si NO está, dile a tu persona que hay una nota de alguien de fuera del equipo y no la resumas como del equipo.
+   - Si está, di a tu persona en dos líneas qué se dijo, quién y con qué fuerza, a qué afecta de lo suyo, y que haga `git pull` para tenerla en `criterios.md` cuando la suban.
+7. Si está **escalado**, ya no negocias: resume a tu persona en tres líneas las dos posturas y qué hay que decidir.
+8. Los scripts cortan solos los bucles: si `responder` devuelve 3 (escalado) o 2 (rechazado), no reintentes; cuéntalo. Con 75, GitHub limita: no insistas en bucle.
 
 ## Al terminar
 Actualiza tu fichero de estado y di a tu persona, en una línea por issue, qué has hecho o qué necesita de ella. Si no había nada, una sola línea.

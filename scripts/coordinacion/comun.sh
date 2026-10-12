@@ -50,7 +50,7 @@ hk_conf_activa() {
   case $(hk_minus "$(hk_conf activa)") in sí|si|yes) ;; *) return 1 ;; esac
   HK_REPO=$(hk_conf repo)
   case $HK_REPO in ''|*'<'*) return 1 ;; esac
-  hk_personas | grep -q '<' && return 1
+  hk_personas | grep '<' >/dev/null && return 1   # sin -q: leer todo evita «Broken pipe»
   [ -n "$(hk_personas)" ] || return 1
   hk_estado_dir
 }
@@ -70,7 +70,7 @@ hk_yo() {
 hk_activa() {
   hk_conf_activa || return 1
   hk_yo || return 1
-  hk_personas | cut -f2 | grep -qx "$HK_YO"
+  hk_personas | cut -f2 | grep -x "$HK_YO" >/dev/null   # sin -q: con -q, grep sale en la primera fila y la tubería da «Broken pipe»
 }
 
 hk_max_saltos() { local m; m=$(hk_conf max_saltos); case $m in ''|*[!0-9]*) echo 4 ;; *) echo "$m" ;; esac; }

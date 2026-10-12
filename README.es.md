@@ -27,7 +27,7 @@ claude plugin install hackathon-kit@hackathon-kit
 
 Para actualizar: `/plugin marketplace update hackathon-kit`. Para probarlo sin instalar, clona el repo y lanza `claude --plugin-dir <ruta al repo>`.
 
-Comprueba que `/hack` muestra los nueve comandos: los seis de la cadena y los tres de coordinación entre agentes. Cada uno se invoca como `/hack-<nombre>` o `/hackathon-kit:hack-<nombre>`.
+Comprueba que `/hack` muestra los diez comandos: los seis de la cadena, `/hack-note` y los tres de coordinación entre agentes. Cada uno se invoca como `/hack-<nombre>` o `/hackathon-kit:hack-<nombre>`.
 
 ## Flujo
 
@@ -46,6 +46,7 @@ Lánzalo en la carpeta vacía del proyecto. Cada comando lee el fichero del paso
 | `/hack-plan [ajustes]` | Hitos con hora, tareas por persona, dependencias y repliegues, a partir de `equipo.md` (plantilla en `skills/hack-plan/templates/`). Añade los dueños por carpeta al CLAUDE.md. | `plan.md` |
 | `/hack-pitch [ajustes]` | Guion por bloques con tiempo, criterio que cubre y quién habla; preguntas probables del jurado y cifras que hay que medir. | `pitch.md` |
 | `/hack-check [aplicar]` | Contrasta cada afirmación con la frase del enunciado que la sostiene y revisa las causas de descalificación. Con tu aprobación, rebaja o quita lo que no tiene respaldo. | `verificacion.md` |
+| `/hack-note <quién y qué dijo>` | Durante el evento, anota lo que dicen el jurado, los mentores o la organización y no está en el enunciado: quién, sus palabras y su fuerza, sin reforzarla. `/hack-pitch` y `/hack-check` lo tienen en cuenta. | `criterios.md` |
 
 Ejemplos de salida de dos retos reales, en `skills/*/examples/`.
 
@@ -56,6 +57,7 @@ Cuando cada persona trabaja con su propio Claude Code, las preguntas entre pieza
 - Se activa en `/hack-scaffold` (pregunta; por defecto, no). Guarda en `.hackathon/coordinacion.md` el repo y el usuario de GitHub de cada persona, y `/hack-plan` añade `.hackathon/autoridad.md`: qué decide cada agente solo, qué necesita la confirmación de su dueño y qué es solo de personas.
 - `/hack-ask` pregunta a otro agente sin bloquearse (trabaja con una suposición provisional), `/hack-inbox` atiende lo que llega y `/hack-decide` cierra un acuerdo en `.hackathon/decisiones.md`. Un monitor en segundo plano consulta el repo cada minuto y no dice nada si no hay novedades.
 - Un cambio de contrato solo se cierra cuando su dueño comenta exactamente `hk confirmo` desde su cuenta de GitHub. Los desacuerdos largos y los bucles se cortan y se escalan a las personas.
+- Cada nota de `/hack-note` se avisa a todo el equipo: el agente de cada persona se la resume y le dice que haga `git pull`.
 - Requisitos: `gh` con la cuenta de cada persona, Git Bash en Windows y sesión interactiva (no `claude -p`). Depende de los monitores de plugin, una función experimental de Claude Code.
 
 ## Coste y tiempo

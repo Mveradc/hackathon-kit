@@ -17,5 +17,5 @@ Petición: $ARGUMENTS
 4. Si se cerró:
    - Si el acuerdo cambia un contrato y el contrato es de tu persona, actualiza `docs/contratos.md`; si es de otra, no lo toques (lo hace su agente).
    - Quita de tu `.hackathon/estado/<tu usuario>.md` la suposición de ese issue.
-   - Recuerda a tu persona hacer commit de `.hackathon/decisiones.md` (y de `docs/contratos.md` si cambió).
+   - Da a tu persona, en una línea, el comando para compartirlo con el equipo, para que lo lance ella: `git add .hackathon/decisiones.md && git commit -m "Acuerdo #<n>: <resumen corto>" && git push` (con `docs/contratos.md` en el `git add` si cambió). No lo ejecutes tú.
 5. A tu persona, una línea: qué se ha acordado y dónde queda.

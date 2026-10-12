@@ -27,7 +27,7 @@ claude plugin install hackathon-kit@hackathon-kit
 
 To update: `/plugin marketplace update hackathon-kit`. To try it without installing, clone the repo and run `claude --plugin-dir <path to the repo>`.
 
-Check that `/hack` lists the nine commands: the six of the chain and the three for agent coordination. Each one can be run as `/hack-<name>` or `/hackathon-kit:hack-<name>`.
+Check that `/hack` lists the ten commands: the six of the chain, `/hack-note` and the three for agent coordination. Each one can be run as `/hack-<name>` or `/hackathon-kit:hack-<name>`.
 
 ## Flow
 
@@ -46,6 +46,7 @@ Run it in the project's empty folder. Each command reads the previous step's fil
 | `/hack-plan [adjustments]` | Timed milestones, tasks per person, dependencies and fallbacks, from `equipo.md` (template in `skills/hack-plan/templates/`). Adds folder owners to CLAUDE.md. | `plan.md` |
 | `/hack-pitch [adjustments]` | A block-by-block script with timing, the criterion each block covers and who speaks; likely jury questions and the figures you need to measure. | `pitch.md` |
 | `/hack-check [aplicar]` | Matches every claim with the sentence of the statement that supports it and reviews disqualification conditions. With your approval, it softens or removes what has no support. | `verificacion.md` |
+| `/hack-note <who said what>` | During the event, records what the jury, mentors or organisers say that is not in the statement: who, their words and how strongly they put it, never stronger. `/hack-pitch` and `/hack-check` take it into account. | `criterios.md` |
 
 Sample outputs from two real challenges are in `skills/*/examples/`.
 
@@ -56,6 +57,7 @@ When each team member works with their own Claude Code, questions between pieces
 - Turn it on in `/hack-scaffold` (it asks; off by default). It writes `.hackathon/coordinacion.md` with the repo and each person's GitHub user, and `/hack-plan` adds `.hackathon/autoridad.md`: what each agent decides alone, what needs its owner's confirmation and what is people-only.
 - `/hack-ask` asks another agent without blocking (it works on a provisional assumption), `/hack-inbox` handles what arrives and `/hack-decide` closes an agreement into `.hackathon/decisiones.md`. A background monitor polls the repo every minute and stays silent when there is nothing new.
 - A contract change only closes when its owner comments exactly `hk confirmo` from their own GitHub account. Long disagreements and loops are cut and escalated to people.
+- Every `/hack-note` note is announced to the whole team: each person's agent summarises it and tells them to `git pull`.
 - Requirements: `gh` signed in with each person's own account, Git Bash on Windows and an interactive session (not `claude -p`). It relies on plugin monitors, an experimental Claude Code feature.
 
 ## Cost and time

@@ -28,7 +28,7 @@ IGNORADAS = {".venv", "node_modules", "__pycache__", ".git", "dist", "build", ".
 TEXTO = {".md", ".txt", ".toml", ".json", ".py", ".js", ".mjs", ".cjs", ".ts", ".tsx", ".jsx",
          ".html", ".css", ".yml", ".yaml", ".cfg", ".ini", ".example", ".gitignore", ".env"}
 ORIGENES = ("enunciado", "análisis", "analisis", "riesgo típico", "decisión", "supuesto", "conocimiento externo",
-            "convención del kit")
+            "convención del kit", "criterios")
 
 PASA, FALLA, NA = "Pasa", "Falla", "N/A"
 
@@ -221,6 +221,14 @@ def puerto_abierto(url):
         return False
 
 
+def urls_anunciadas(texto):
+    urls = set(re.findall(r"https?://(?:localhost|127\.0\.0\.1):\d+[^\s'\"`»)]*", texto))
+    # El servidor (uvicorn, vite…) imprime su raíz aunque el arranque anuncie otra ruta del mismo puerto:
+    # si hay una URL más concreta con el mismo origen, la raíz sobra.
+    return sorted(u for u in urls
+                  if not any(o != u and o.startswith(u.rstrip("/") + "/") for o in urls))
+
+
 def a2(c, espera=300):
     cmd = comando_arranque(c)
     if not cmd:
@@ -235,7 +243,7 @@ def a2(c, espera=300):
     inicio = time.time()
     urls = []
     while time.time() - inicio < espera and proc.poll() is None:
-        urls = sorted(set(re.findall(r"https?://(?:localhost|127\.0\.0\.1):\d+[^\s'\"`»)]*", "".join(salida))))
+        urls = urls_anunciadas("".join(salida))
         if urls and all(puerto_abierto(u) for u in urls):
             break
         time.sleep(1)
@@ -525,17 +533,19 @@ def a7(c, enunciado):
     t = leer(v)
     fuentes = {"enunciado": leer(enunciado),
                "analisis.md": leer(c / ".hackathon/analisis.md") if (c / ".hackathon/analisis.md").exists() else "",
-               "decision.md": leer(c / ".hackathon/decision.md") if (c / ".hackathon/decision.md").exists() else ""}
+               "decision.md": leer(c / ".hackathon/decision.md") if (c / ".hackathon/decision.md").exists() else "",
+               "criterios.md": leer(c / ".hackathon/criterios.md") if (c / ".hackathon/criterios.md").exists() else ""}
     textos = {k: sin_comillas(x) for k, x in fuentes.items()}
     fallos, notas, vistas = [], [], 0
 
     def comprobar(cita, fuente, donde):
         nonlocal vistas
         cita = cita.strip()
-        if not cita or cita in {"—", "-"}:
+        if not cita or cita in {"—", "-"} or re.fullmatch(r"\([^()]*\)", cita):  # «(la misma)»: anotación
             return
         vistas += 1
-        clave = next((k for k in textos if k.split(".")[0] in fuente.lower()), None)
+        claves = [k for k in textos if k.split(".")[0] in fuente.lower()]
+        clave = claves[0] if claves else None
         if clave is None:
             fallos.append(f"{donde}: fuente desconocida «{fuente}» para «{cita[:60]}»")
             return
@@ -545,7 +555,7 @@ def a7(c, enunciado):
         citas = [a or b for a, b in partes] or re.split(r"\s+/\s+", cita)
         for x in citas:
             tramos = [sin_comillas(y) for y in re.split(r"…|\.\.\.|\[…\]", x)]
-            if not all(y in textos[clave] for y in tramos if y):
+            if not any(all(y in textos[k] for y in tramos if y) for k in claves):
                 fallos.append(f"{donde}: cita no literal en {clave}: «{x[:100]}»")
 
     cab, fs = filas(seccion(t, "Afirmaciones", 2) or "")
@@ -563,7 +573,8 @@ def a7(c, enunciado):
         k = next((n for n, x in enumerate(cab) if "cita" in x.lower()), None)
         for fila in fs:
             if k is not None and k < len(fila):
-                comprobar(fila[k], "enunciado", titulo)
+                # Una condición puede venir del enunciado o de una nota del jurado (criterios.md, M6b).
+                comprobar(fila[k], "enunciado criterios", titulo)
     notas.append(f"{vistas} citas comprobadas; veredictos: "
                  + ", ".join(f"{k} {n}" for k, n in sorted(veredictos.items())))
     return (FALLA if fallos else PASA), fallos + notas

@@ -26,5 +26,31 @@
 - Con la coordinación desactivada, la cadena 0.1.0 se comporta igual (repetir comprobar.py con un reto).
 - En las pruebas, desactivar la mensajería nativa entre sesiones para que no falsee el resultado.
 
+## M6b: criterios del jurado (decidido el 2026-10-12)
+- Dos partes que se validan por separado: **M6b-1**, el registro y la cobertura, sin coordinación; **M6b-2**, el aviso por issue.
+- `.hackathon/criterios.md`: solo se añade (`merge=union` en `.gitattributes`); cada nota con fecha y hora, quién lo dijo y su papel, dónde, qué dijo (literal o marcado como paráfrasis), fuerza (la palabra que usó, o `sin precisar`), a qué afecta y quién la anotó. Las notas se citan por su fecha y hora: `(criterios: <fecha hora>)`.
+- `/hack-note`: solo lo lanza una persona (`disable-model-invocation`), así que el registro solo lo escriben humanos. Pregunta lo que falte, nunca sube la fuerza, no toca otros ficheros y da en una línea el comando de commit y push (no lo ejecuta). Funciona sin coordinación.
+- `/hack-pitch` recoge las notas que le afectan; `/hack-check` las usa como fuente (después del enunciado) y añade la sección «Criterios del jurado»: dónde se recoge cada nota y si choca con el enunciado. Nadie elige entre una nota y el enunciado: lo decide el equipo.
+- M6b-2: `buzon.sh avisar` abre un issue de tipo `nota` con la etiqueta `hk:para-todos`; el monitor lo trata como dirigido a todos menos a quien lo escribe; el agente que lo recibe solo avisa a su persona (con `git pull`), nunca escribe en `criterios.md`.
+- Commit: `/hack-note` y `/hack-decide` terminan con el comando exacto de commit y push para que lo lance la persona.
+
+## Criterios de validación de M6b-1
+- Una nota completa queda en `criterios.md` con sus palabras y su fuerza tal cual; no se toca ningún otro fichero salvo `.gitattributes`.
+- Sin papel de quien lo dijo, en `-p` no escribe nada y dice qué falta.
+- Una fuerza débil («estaría bien») no sube a «se valora» ni a «obligatorio», ni en la nota ni en el pitch.
+- Una nota que choca con el enunciado se señala en `/hack-note` y en `/hack-check`, sin cambiar ninguno de los dos.
+- `/hack-pitch` recoge las notas que le afectan, con `(criterios: …)` y su misma fuerza.
+- `/hack-check` informa de una nota anotada después del pitch como no recogida.
+- Sin `criterios.md`, la cadena 0.2.0 se comporta igual (`comprobar.py` con un reto).
+- Con un reto real de `evals/` (03).
+
+## Criterios de validación de M6b-2
+Sandbox de M6a (`../hk-sandbox`, sesión A como @Mveradc; `../hk-sandbox-B`, sesión B como @hk-persona-b).
+1. Una nota de A con `/hack-note` llega a la sesión B en ≤ 3 min sin intervención; el monitor de A no le avisa de su propia nota.
+2. B se la cuenta a su persona (quién, qué, fuerza, qué le afecta, `git pull`), sin escribir en `criterios.md` ni comentar en el issue.
+3. El issue queda cerrado, con las etiquetas `hk:tipo-nota` y `hk:para-todos`, y `buzon.sh leer` no lo lista.
+4. Una nota de alguien que no está en la tabla de `coordinacion.md` (simulado en B quitando a A de su tabla) no se presenta como del equipo.
+5. Sin la coordinación activa, `/hack-note` no llama a `gh` ni lo menciona (prueba interactiva de M6b-1 en `../prueba-m6b-03`, sin `coordinacion.md`).
+
 ## Anexo: informe de investigación (11-10-2026)
 [pegar el informe]

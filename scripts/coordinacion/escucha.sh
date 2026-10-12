@@ -40,6 +40,13 @@ sondear() {
   local n de para tipo titulo estado comentarios fallo=0
   while IFS="$HK_SEP" read -r n de para tipo titulo estado; do
     [ -n "$n" ] || continue
+    if [ "$para" = todos ]; then   # nota de criterios.md (M6b): se abre y se cierra; sin conversación
+      if [ "$de" != "$HK_YO" ] && ! grep -qx "i:$n" "$vistos"; then
+        echo "i:$n" >> "$vistos"
+        echo "hk #$n · nota de @$de para todo el equipo · «$titulo» · lanza ya /hack-inbox $n: no hay que responder, solo contársela a tu persona"
+      fi
+      continue
+    fi
     [ "$para" = "$HK_YO" ] || [ "$de" = "$HK_YO" ] || continue
     if [ "$para" = "$HK_YO" ] && [ "$estado" = open ] && ! grep -qx "i:$n" "$vistos"; then
       echo "i:$n" >> "$vistos"

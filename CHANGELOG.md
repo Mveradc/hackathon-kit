@@ -1,5 +1,11 @@
 # Changelog
 
+## Sin publicar
+
+- Nuevo comando `/hack-note`: anota en `.hackathon/criterios.md` lo que dicen el jurado, los mentores o la organización durante el evento (quién, sus palabras y su fuerza). `/hack-pitch` lo recoge y `/hack-check` lo usa como fuente e informa de las notas sin recoger o que chocan con el enunciado.
+- `/hack-decide` termina con el comando exacto de commit y push para compartir el acuerdo.
+- Con la coordinación activa, cada nota de `/hack-note` se avisa a todo el equipo por un issue (`hk:para-todos`); el agente que la recibe se la cuenta a su persona, sin escribir en `criterios.md`. `buzon.sh ver` dice si quien abrió el issue está en la tabla del equipo.
+
 ## 0.2.0 — 2026-10-11
 
 Coordinación entre agentes, opcional.

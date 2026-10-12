@@ -34,3 +34,17 @@ Repo sandbox privado `Mveradc/hk-sandbox` con la cadena del reto 03 (M5, equipo 
 | 7 | Sí | A reanudada con `HK_GH=gh-falso.sh` y 429: un aviso a las 18:42:41 UTC («GitHub limita…; reintento en 29 s»); al quitar el fichero, otro a las 18:46:47 («GitHub responde de nuevo»), y nada más | Cada aviso cuesta un turno: dos en total |
 | 8 | Sí | `../prueba-m6a-08`: `/hack-scaffold` (0,96 USD) y `/hack-plan` (0,65 USD) sin coordinación, con las entradas del reto 03 de M5. Ni `coordinacion.md`, ni `autoridad.md`, ni `.github/`, ni `.gitattributes`, ni ninguna mención. `comprobar.py`: A2 y A5 fallan igual que en M5 (404 en la raíz y cabecera común del evento); A3 y A4 pasan | A1 falla: dos contratos con «Ejemplo mínimo válido: TODO» en lugar de un ejemplo. El cambio en el scaffold solo añade el paso 3b condicionado, así que es variación del modelo; aislado, a «Pendiente» |
 | 9 | Sí | En A, `SendMessage` no existe en la sesión (denegada por `settings.local.json`) | |
+
+# Prueba de M6b-2: aviso de las notas de `/hack-note` (2026-10-12)
+
+Mismo montaje que M6a. Criterios en `docs/coordinacion.md` («Criterios de validación de M6b-2»). Horas locales (UTC+2).
+
+| # | Criterio | Resultado | Evidencia | Notas |
+|---|---|---|---|---|
+| 1 | Llega a B en ≤ 3 min; A no se avisa a sí misma | Sí | #13: A terminó a las 14:30 y el aviso llegó a B antes de las 14:31. #9 y #10, con B cerrada, llegaron al abrirla (cursor). A no recibió ningún aviso de sus notas | |
+| 2 | B se lo cuenta a su persona sin escribir en `criterios.md` ni comentar | Sí | #15: B lanzó `/hack-inbox` sola; quién (Sara, jurado), qué, fuerza (`dato`), qué le afecta y `git pull`. 0 comentarios en el issue | En #9, #10, #13 y #14, B no la atendió sola: proponía lanzar `/hack-inbox`. Corregido con la línea del aviso («lanza ya /hack-inbox n: no hay que responder…») |
+| 3 | Issue cerrado, con `hk:tipo-nota` y `hk:para-todos`, fuera de `leer` | Sí | #9–#16 cerrados, con las dos etiquetas y 0 comentarios | |
+| 4 | Una nota de fuera del equipo no se presenta como del equipo | Sí | #16, con A quitada de la tabla de B: «quien la abrió no está en la tabla del equipo», no la resume como del equipo ni la añade a su estado | En #14 (primer intento) B dio por bueno al autor mirando `autoridad.md`. Ahora lo dice `buzon.sh ver` en su primera línea («está» / «NO está en la tabla»), no el modelo |
+| 5 | Sin coordinación, `/hack-note` no llama a `gh` ni lo menciona | Sí | Prueba interactiva de M6b-1 en `../prueba-m6b-03` | |
+
+Hallazgos: dos issues (#11 y #12) para una sola nota repetida, porque `avisar` no deduplica; «Broken pipe» en A dos veces, probablemente `grep -q` en tuberías (`hk_activa`), cambiado a `grep … >/dev/null`; A dijo una línea en inglés en el chat.
