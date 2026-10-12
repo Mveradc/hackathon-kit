@@ -110,6 +110,24 @@ Registro de lo que se hizo y se aprendió en cada hito, tal como estaba en la se
 - Con la coordinación activa, `/hack-note` publica la nota con `buzon.sh avisar` (issue `hk:tipo-nota` + `hk:para-todos`, cerrado al momento); el monitor avisa a todos menos a quien la escribe; `/hack-inbox` se la cuenta a su persona con `git pull`, sin escribir en `criterios.md`. Que el autor sea del equipo lo dice `buzon.sh ver`, no el modelo.
 - Validado en el sandbox con dos sesiones: los 5 criterios (`evals/coordinacion/prueba.md`). Dos correcciones durante la prueba: la línea del aviso dice qué hacer (B no lanzaba `/hack-inbox` sola, cuatro veces) y la comprobación del autor pasa al script (B la dedujo de `autoridad.md`).
 
+## M7 — Orquestador (cerrado el 2026-10-13, v0.3.0)
+- **M7a**: `agents/orquestador.md` (Opus, sesión principal con `--agent`) y `agents/worker.md` (Sonnet, `isolation: worktree`), máximo dos workers a la vez. `solo-orquestar.sh` (PreToolUse filtrando por `agent_type`) impide al orquestador editar código. Como los worktrees de subagentes salen de `origin/main`, cada encargo lleva `Base: <sha local>`.
+- **M7b**: revisor independiente (Sonnet) que revisa cada fusión en su propio worktree y vuelve a ejecutar la comprobación sin ver el informe del worker. Compuerta de evidencias sobre `SubagentHandback`, con SubagentStop de respaldo. Push del orquestador solo con fusiones aprobadas y sin commits de la persona.
+- **M7c**:
+  - la fusión se hace en un worktree temporal y se guarda en `refs/hackathon/fusion/<tarea>`; `main` solo avanza por `ff-only` hasta una fusión aprobada, y con CAMBIOS no hay nada que deshacer;
+  - reinicio en frío desde `estado/<persona>.md`, las referencias y los worktrees;
+  - `sin-confirmo.sh` impide a cualquier agente publicar «hk confirmo» con `gh`;
+  - recomendación de reiniciar el orquestador al terminar cada bloque.
+- Validado con el reto 03 en copias de prueba (`../prueba-m7*-03*`) y en el sandbox de la coordinación (`evals/coordinacion/prueba.md`). Coste: unos 0,9–1,6 USD por bloque de uno o dos encargos.
+- Hallazgos:
+  - los worktrees de subagentes salen del remoto, no del HEAD local;
+  - Claude Code lanza agentes internos cuyo SubagentStop llega con el `agent_type` del worker;
+  - los workers honestos se niegan a mentir aunque su prompt se lo pida, y corrigen un sabotaje que encuentran mientras trabajan;
+  - el patrón de `--force` cogía el «-f» de un nombre como `fusion-textos-ficha`;
+  - tras un corte, Claude Code deja el worktree del worker bloqueado con el pid muerto;
+  - el contexto del orquestador crece por la orquestación misma (68–74 k en dos bloques), no por leer código: de ahí el reinicio por bloque;
+  - al cerrar una sesión de Claude Code, un `claude -p` lanzado en segundo plano sigue vivo.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

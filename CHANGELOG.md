@@ -1,10 +1,20 @@
 # Changelog
 
-## Sin publicar
+## 0.3.0 — 2026-10-13
 
+Orquestador por persona (experimental) y criterios del jurado.
+
+- Nuevo agente `orquestador` (Opus), que se lanza con `claude --agent hackathon-kit:orquestador`: toma las tareas de una persona en `.hackathon/plan.md`, las parte en encargos y se los da a workers (Sonnet), como mucho dos a la vez y cada uno en su worktree. Él no edita código: un hook se lo impide.
+- Un revisor independiente (Sonnet) revisa cada fusión en un worktree propio y vuelve a ejecutar la comprobación sin ver el informe del worker. La fusión se hace fuera de la rama de la persona y la rama solo avanza (en rápido) hasta una fusión aprobada; con CAMBIOS, se relanza una vez y, si vuelve a fallar, la tarea queda sin cerrar y la rama no ha cambiado.
+- Una compuerta rechaza los informes de los workers sin evidencias (salida de la comprobación, commits, ficheros declarados, árbol limpio).
+- El orquestador sube sus fusiones aprobadas (sin forzar), nunca commits de la persona.
+- Reinicio en frío: si la sesión se corta, el orquestador retoma desde `.hackathon/estado/` sin repetir lo fusionado, vuelve a revisar la fusión pendiente y propone qué hacer con el trabajo huérfano sin borrarlo. Al terminar cada bloque, recomienda reiniciarlo, porque su contexto crece con cada encargo.
+- La coordinación entre agentes y el orquestador se marcan como experimentales en el README: se han validado en un sandbox con una persona simulando al equipo, todavía no con un equipo real.
+- Con la coordinación activa, un hook impide a cualquier agente publicar `hk confirmo` con `gh` (una red, no una garantía: ver limitaciones).
 - Nuevo comando `/hack-note`: anota en `.hackathon/criterios.md` lo que dicen el jurado, los mentores o la organización durante el evento (quién, sus palabras y su fuerza). `/hack-pitch` lo recoge y `/hack-check` lo usa como fuente e informa de las notas sin recoger o que chocan con el enunciado.
 - `/hack-decide` termina con el comando exacto de commit y push para compartir el acuerdo.
 - Con la coordinación activa, cada nota de `/hack-note` se avisa a todo el equipo por un issue (`hk:para-todos`); el agente que la recibe se la cuenta a su persona, sin escribir en `criterios.md`. `buzon.sh ver` dice si quien abrió el issue está en la tabla del equipo.
+- Validado con el reto 03: [evals/coordinacion/prueba.md](evals/coordinacion/prueba.md) (M6b y M7).
 
 ## 0.2.0 — 2026-10-11
 

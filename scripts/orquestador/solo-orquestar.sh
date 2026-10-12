@@ -35,6 +35,19 @@ case $herramienta in
     # Redirecciones que no escriben ficheros: a /dev/null y entre descriptores.
     limpio=$(printf '%s' "$cmd" | sed -E 's/[0-9&]?>>?[[:space:]]*\/dev\/null//g; s/[0-9]?>&[0-9-]//g')
     [[ $limpio == *'>'* ]] && negar "redirección a fichero en «$cmd» (si es un «>» dentro de un texto, reescríbelo sin él)."
+    # M7c: el orquestador borra con -D solo ramas de workers (con CAMBIOS nunca llegan a main y -d no puede).
+    if [ "$agente" = orquestador ] && [[ $cmd =~ git[[:space:]].*branch[[:space:]].*-D ]]; then
+      [[ $cmd =~ [\;\&\|\`] || $cmd == *'$('* ]] && negar "«branch -D» va solo, sin encadenar: «$cmd»."
+      resto=${cmd#*-D}; set -f
+      for r in $resto; do [[ $r == worktree-agent-* ]] || negar "«branch -D» solo sobre ramas de workers (worktree-agent-…): «$r»."; done
+      exit 0
+    fi
+    # update-ref: solo el orquestador y solo en refs/hackathon/ (referencias de fusiones en revisión).
+    if [[ $cmd =~ git[[:space:]].*update-ref ]]; then
+      [ "$agente" = revisor ] && negar "comando no permitido en «$cmd»."
+      [[ $cmd =~ update-ref([[:space:]]+-[a-z]+)*[[:space:]]+refs/hackathon/[^[:space:]]+([[:space:]]|$) && $cmd != *';'* && $cmd != *'&'* && $cmd != *'|'* ]] \
+        || negar "«update-ref» solo sobre refs/hackathon/…, sin encadenar: «$cmd»."
+    fi
     p='(^|[;&|(`[:space:]])'
     for patron in \
       "${p}tee([[:space:]]|$)" "${p}rm([[:space:]]|$)" "${p}mv([[:space:]]|$)" "${p}cp([[:space:]]|$)" \
@@ -42,7 +55,7 @@ case $herramienta in
       "git([[:space:]]+-[Cc][[:space:]]+[^[:space:]]+|[[:space:]]+-[^[:space:]]+)*[[:space:]]+(add|commit|stash|apply|restore|am|cherry-pick|rebase|clean)([[:space:]]|$)" \
       "git[[:space:]].*checkout([[:space:]].*)?[[:space:]]--([[:space:]]|$)" \
       "git[[:space:]].*reset[[:space:]].*--hard" "git[[:space:]].*branch[[:space:]].*-D" \
-      "git[[:space:]].*worktree[[:space:]]+remove[[:space:]].*(-f|--force)"; do
+      "git[[:space:]].*worktree[[:space:]]+remove[[:space:]](.*[[:space:]])?(-f|--force)([[:space:]]|$)"; do
       [[ $cmd =~ $patron ]] && negar "comando no permitido en «$cmd»."
     done
     # Push: solo el orquestador y nunca forzado ni borrando ramas (M7b; las condiciones, en su prompt).

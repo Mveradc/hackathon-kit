@@ -11,7 +11,7 @@
 - Estado por persona en ficheros propios, para evitar conflictos de merge.
 - Coordinación opcional dentro del mismo plugin.
 - M6b: criterios.md (solo lo escriben humanos; fuente, qué dijeron y a qué afecta) + /hack-note, que avisa a todos por issue; /hack-pitch y /hack-check comprueban la cobertura.
-- M7: orquestador por persona con Opus 5.5, sin editar código (hook PreToolUse); workers Sonnet 5.5 en worktrees (máximo 2); revisor independiente que vuelve a ejecutar los tests; scout Haiku 5.5; modos construcción/iteración; reinicio en frío desde ficheros; compuerta SubagentStop sobre el resumen con evidencias. Concretado en «M7» (más abajo): sin modos.
+- M7: orquestador por persona con Opus 5.5, sin editar código (hook PreToolUse); workers Sonnet 5.5 en worktrees (máximo 2); revisor independiente que vuelve a ejecutar los tests; scout Haiku 5.5 (aplazado en M7c); modos construcción/iteración; reinicio en frío desde ficheros; compuerta SubagentStop sobre el resumen con evidencias. Concretado en «M7» (más abajo): sin modos.
 
 - Hallazgos de la prueba de M6a (2026-10-11): en Windows, al cerrar una sesión, Claude Code mata el `bash -c` que lanzó el monitor pero no al monitor (queda huérfano), así que el script comprueba en cada vuelta que su padre vive; Claude Code genera por su cuenta un `away_summary` unos 3 min después del último turno, ajeno al plugin; los tokens fine-grained no llegan a repos personales de otra cuenta.
 
@@ -54,7 +54,7 @@ Sandbox de M6a (`../hk-sandbox`, sesión A como @Mveradc; `../hk-sandbox-B`, ses
 
 ## M7: orquestador (decidido el 2026-10-12)
 - Idea: Opus se encarga de las tareas que `plan.md` asigna a su persona, las parte en encargos y se los da a workers más baratos. Así gasta menos y no se llena de contexto. Sin «modos»: el orquestador hace siempre lo mismo y, si una tarea es pequeña, lanza un solo worker.
-- Tres partes que se validan por separado con el reto 03: **M7a**, orquestador y workers; **M7b**, el revisor y la compuerta SubagentStop con evidencias; **M7c**, el scout (`haiku`), el reinicio en frío desde `.hackathon/`, el hook que impide a un agente publicar `hk confirmo` y la publicación de v0.3.0.
+- Tres partes que se validan por separado con el reto 03: **M7a**, orquestador y workers; **M7b**, el revisor y la compuerta SubagentStop con evidencias; **M7c**, la fusión revisada antes de tocar `main`, el reinicio en frío desde `.hackathon/`, el hook que impide a un agente publicar `hk confirmo` y la publicación de v0.3.0 (el scout sale de M7c: ver «M7c»).
 - Hallazgos de la documentación (2026-10-12): el orquestador es la sesión principal (`claude --agent hackathon-kit:orquestador`) y limita sus subagentes con `tools: Agent(worker)`; los hooks reciben `agent_type` en la sesión `--agent` y dentro de cada subagente; `isolation: worktree` crea la rama desde la rama por defecto, no desde HEAD; SubagentStop con exit 2 impide que el subagente pare (M7b, con tope de reintentos).
 
 ### M7a
@@ -94,6 +94,25 @@ Carpeta `../prueba-m7b-03`, copia de `../prueba-m7a-03` con remoto local nuevo y
 5. Push: decisión anotada con los datos de la pasada 2. Si se adopta: con un commit de la persona por delante del remoto, el orquestador no hace push y lo dice; solo con fusiones suyas aprobadas, hace push tras el pull.
 6. Coste: USD del revisor frente al del worker por tarea; contexto del orquestador al terminar el bloque frente a M7a (35–45 k).
 7. Regresión: sin `--agent`, ningún hook hace nada; `claude plugin validate .` pasa.
+
+### M7c (decidido el 2026-10-12)
+- **Fusión revisada antes de tocar main.** El orquestador fusiona la rama del worker en un worktree temporal (`git worktree add --detach .claude/worktrees/fusion-<tarea> HEAD` y `git -C … merge --no-ff`), guarda el sha en `refs/hackathon/fusion/<tarea>` (`git update-ref`, para que el commit no quede suelto y el reinicio lo encuentre) y borra el worktree. El revisor revisa ese sha. Con APROBADO, `git merge --ff-only <fusión>`: `main` queda exactamente en lo revisado; si no avanza en rápido, se rehace la fusión sobre el `HEAD` nuevo y se revisa otra vez (una sola vez). Con CAMBIOS, se borra la referencia y `main` no ha cambiado: no hay nada que deshacer. Una sola fusión en revisión a la vez. El push no espera a las tareas «no cerradas» (nunca llegan a `main`), sí a las que están en revisión.
+- **Hook**: el orquestador puede `git branch -D` solo sobre ramas `worktree-agent-*` (con CAMBIOS no llegan a `main` y `-d` no las borra) y `git update-ref` solo sobre `refs/hackathon/`, sin encadenar; el revisor, ninguno de los dos.
+- **Reinicio en frío** (solo prompt): antes de lanzar cada encargo, el orquestador anota la tarea «en curso» con su `Base`. Al empezar, cruza el estado con `git worktree list`, las ramas `worktree-agent-*` y `refs/hackathon/fusion/`: lo fusionado no se repite, una fusión en revisión se vuelve a revisar y lo huérfano se le propone a la persona (seguir desde la rama, relanzar o dejarlo), sin borrar nada sin su sí.
+- **`hk confirmo`**: `scripts/coordinacion/sin-confirmo.sh`, PreToolUse sobre Bash y PowerShell para cualquier agente. Sale al instante si `coordinacion.md` no está activa (sin llamar a `gh`). Niega un comando que llama a `gh` y lleva la marca (sin distinguir mayúsculas ni espacios), o que publica un fichero (`--body-file`, `-F`, `--input`, `campo=@fichero`) que la lleva. Es una red: el agente usa el `gh` de su persona y puede rodearla con `curl` o un script.
+- **Scout fuera de M7c**: vuelve si en el reinicio o en una sesión larga el orquestador lee ficheros de código enteros o termina con más de ~60 k de contexto (M7a 35–45 k, M7b 28–50 k).
+- **Resultado del criterio 7** (2026-10-13): se cumple en lo que mide (el orquestador no lee código: un solo `grep` puntual en dos bloques), pero **el umbral de ~60 k se superó**: 53 k tras un bloque y 68–74 k tras dos. La causa no es el código, sino la propia orquestación: resúmenes de los workers, veredictos del revisor y reescrituras del estado. El umbral no se mueve. Remedio en M7c: al terminar cada bloque, el orquestador recomienda a la persona cerrarlo y abrir una sesión nueva (el reinicio en frío está validado), y el README lo indica. El scout y resumir el estado en vez de reescribirlo quedan en Pendiente.
+
+### Criterios de validación de M7c
+Carpeta `../prueba-m7c-03`, copia de `../prueba-m7b-03` con remoto local nuevo. Headless con `--agent`, salvo donde se dice.
+1. Hooks con entradas simuladas (`prueba_hooks.py`): `sin-confirmo.sh` niega la marca en el comando, en `--body-file`/`-F` (UTF-8 y UTF-16), en `gh api` y en PowerShell; deja `gh` sin la marca y la marca sin `gh`; sin coordinación activa no hace nada. `solo-orquestar.sh`: `branch -D` de workers sí y de otras ramas no; `update-ref` en `refs/hackathon/` sí y en `refs/heads/` no; el revisor, ninguno.
+2. Pasada honesta con dos encargos en paralelo: cada fusión fuera de `main`, con su referencia mientras se revisa; `main` avanza por `ff-only` exactamente al sha anotado; la segunda fusión se hace sobre el `main` ya avanzado; push con la regla de M7b; al terminar, sin worktrees, ramas de workers ni `refs/hackathon/`.
+3. Fallo inducido (revisor que siempre pide CAMBIOS): un relanzamiento, «no cerrada», `main` con el mismo sha que antes, sin comando de reset, sin push, sin referencias; propone qué hacer con las dos ramas sin borrarlas.
+4. `ff-only` que no avanza (commit de la persona durante la revisión): rehace la fusión, la revisa otra vez y avanza; nunca un merge no rápido en `main`.
+5. Reinicio en frío: matar la sesión con un worker a medias (tras una tarea fusionada) y otra vez con una fusión en revisión. Al relanzar no repite lo fusionado, vuelve a revisar la fusión pendiente y propone qué hacer con lo huérfano sin borrarlo. Se anota qué deja Claude Code al morir. Una vez más en sesión interactiva (el usuario).
+6. `hk confirmo` en el sandbox (`../hk-sandbox`, interactivo): el agente no puede publicarla; la persona, con `! gh issue comment …`, sí, y `/hack-decide` cierra.
+7. Contexto y lecturas de código del orquestador en la pasada 2, tras el reinicio y en una sesión larga (dos bloques): decide si vuelve el scout. Antes, aviso del gasto acumulado.
+8. Regresión: sin `--agent` ni coordinación, ningún hook hace nada; `claude plugin validate .` pasa.
 
 ## Anexo: informe de investigación (11-10-2026)
 [pegar el informe]

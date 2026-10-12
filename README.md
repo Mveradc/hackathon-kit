@@ -50,7 +50,9 @@ Run it in the project's empty folder. Each command reads the previous step's fil
 
 Sample outputs from two real challenges are in `skills/*/examples/`.
 
-## Agent coordination (optional, since 0.2.0)
+## Agent coordination (optional, experimental, since 0.2.0)
+
+> **Experimental.** Validated in a private sandbox repo with one person simulating the team (two accounts, two sessions), not yet with a real team.
 
 When each team member works with their own Claude Code, questions between pieces usually travel agent → person → person → agent. With coordination on, the agents ask each other through GitHub Issues and only design, product and pitch decisions reach people.
 
@@ -59,6 +61,23 @@ When each team member works with their own Claude Code, questions between pieces
 - A contract change only closes when its owner comments exactly `hk confirmo` from their own GitHub account. Long disagreements and loops are cut and escalated to people.
 - Every `/hack-note` note is announced to the whole team: each person's agent summarises it and tells them to `git pull`.
 - Requirements: `gh` signed in with each person's own account, Git Bash on Windows and an interactive session (not `claude -p`). It relies on plugin monitors, an experimental Claude Code feature.
+- Since 0.3.0, a hook stops any agent from posting `hk confirmo` through `gh`. It is a safety net, not a guarantee: the agent uses its person's `gh` and could get around it.
+
+## Orchestrator (optional, experimental, since 0.3.0)
+
+> **Experimental.** Validated in a sandbox copy of a real challenge with one person simulating the team, not yet with a real team.
+
+One orchestrator per person takes that person's tasks from `.hackathon/plan.md` and gets them done without writing code itself:
+
+```
+claude --agent hackathon-kit:orquestador
+```
+
+- It splits each block of the plan into small jobs and hands them to **workers** (Sonnet), at most two at a time, each in its own git worktree. A hook stops the orchestrator (Opus) from editing code.
+- It merges each worker's branch **outside your branch**. An independent **reviewer** (Sonnet) checks that merge in its own worktree and reruns the check, without seeing the worker's report. Your branch only moves (fast-forward) to merges the reviewer approved. If the reviewer asks for changes twice, the task stays open and your branch is untouched.
+- It pushes its approved merges (never forced), but never commits or pushes your own work.
+- Progress lives in `.hackathon/estado/<person>.md`. **Restart the orchestrator after each block**: its context grows with every job, and a fresh session picks up from the state file without repeating merged work. It also recovers after a crash: it re-reviews a pending merge and asks you what to do with leftover worktrees, without deleting anything on its own.
+- Cost: about USD 0.9–1.6 per block of one or two jobs, most of it the orchestrator.
 
 ## Cost and time
 

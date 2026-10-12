@@ -50,7 +50,9 @@ Lánzalo en la carpeta vacía del proyecto. Cada comando lee el fichero del paso
 
 Ejemplos de salida de dos retos reales, en `skills/*/examples/`.
 
-## Coordinación entre agentes (opcional, desde la 0.2.0)
+## Coordinación entre agentes (opcional, experimental, desde la 0.2.0)
+
+> **Experimental.** Validada en un repo sandbox privado con una persona simulando al equipo (dos cuentas, dos sesiones), todavía no con un equipo real.
 
 Cuando cada persona trabaja con su propio Claude Code, las preguntas entre piezas suelen ir agente → persona → persona → agente. Con la coordinación activada, los agentes se preguntan entre sí por GitHub Issues, y a las personas solo llegan las decisiones de diseño, producto o pitch.
 
@@ -59,6 +61,23 @@ Cuando cada persona trabaja con su propio Claude Code, las preguntas entre pieza
 - Un cambio de contrato solo se cierra cuando su dueño comenta exactamente `hk confirmo` desde su cuenta de GitHub. Los desacuerdos largos y los bucles se cortan y se escalan a las personas.
 - Cada nota de `/hack-note` se avisa a todo el equipo: el agente de cada persona se la resume y le dice que haga `git pull`.
 - Requisitos: `gh` con la cuenta de cada persona, Git Bash en Windows y sesión interactiva (no `claude -p`). Depende de los monitores de plugin, una función experimental de Claude Code.
+- Desde la 0.3.0, un hook impide a cualquier agente publicar `hk confirmo` con `gh`. Es una red, no una garantía: el agente usa el `gh` de su persona y podría rodearla.
+
+## Orquestador (opcional, experimental, desde la 0.3.0)
+
+> **Experimental.** Validado en una copia de prueba de un reto real con una persona simulando al equipo, todavía no con un equipo real.
+
+Un orquestador por persona toma sus tareas de `.hackathon/plan.md` y las saca adelante sin escribir código él mismo:
+
+```
+claude --agent hackathon-kit:orquestador
+```
+
+- Parte cada bloque del plan en encargos pequeños y se los da a **workers** (Sonnet), como mucho dos a la vez, cada uno en su propio worktree de git. Un hook impide al orquestador (Opus) editar código.
+- Fusiona la rama de cada worker **fuera de tu rama**. Un **revisor** independiente (Sonnet) comprueba esa fusión en su propio worktree y vuelve a ejecutar la comprobación, sin ver el informe del worker. Tu rama solo avanza (en rápido) hasta fusiones aprobadas. Si el revisor pide cambios dos veces, la tarea queda sin cerrar y tu rama no se toca.
+- Sube sus fusiones aprobadas (nunca forzando), pero nunca hace commit ni push de tu trabajo.
+- El avance queda en `.hackathon/estado/<persona>.md`. **Reinicia el orquestador al terminar cada bloque**: su contexto crece con cada encargo, y una sesión nueva retoma desde el estado sin repetir lo fusionado. También se recupera tras un corte: vuelve a revisar la fusión pendiente y te pregunta qué hacer con los worktrees que quedaron, sin borrar nada por su cuenta.
+- Coste: unos 0,9–1,6 USD por bloque de uno o dos encargos, casi todo del orquestador.
 
 ## Coste y tiempo
 
