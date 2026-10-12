@@ -11,7 +11,7 @@
 - Estado por persona en ficheros propios, para evitar conflictos de merge.
 - Coordinación opcional dentro del mismo plugin.
 - M6b: criterios.md (solo lo escriben humanos; fuente, qué dijeron y a qué afecta) + /hack-note, que avisa a todos por issue; /hack-pitch y /hack-check comprueban la cobertura.
-- M7: orquestador por persona con Opus 5.5, sin editar código (hook PreToolUse); workers Sonnet 5.5 en worktrees (máximo 2); revisor independiente que vuelve a ejecutar los tests; scout Haiku 5.5; modos construcción/iteración; reinicio en frío desde ficheros; compuerta SubagentStop sobre el resumen con evidencias.
+- M7: orquestador por persona con Opus 5.5, sin editar código (hook PreToolUse); workers Sonnet 5.5 en worktrees (máximo 2); revisor independiente que vuelve a ejecutar los tests; scout Haiku 5.5; modos construcción/iteración; reinicio en frío desde ficheros; compuerta SubagentStop sobre el resumen con evidencias. Concretado en «M7» (más abajo): sin modos.
 
 - Hallazgos de la prueba de M6a (2026-10-11): en Windows, al cerrar una sesión, Claude Code mata el `bash -c` que lanzó el monitor pero no al monitor (queda huérfano), así que el script comprueba en cada vuelta que su padre vive; Claude Code genera por su cuenta un `away_summary` unos 3 min después del último turno, ajeno al plugin; los tokens fine-grained no llegan a repos personales de otra cuenta.
 
@@ -51,6 +51,31 @@ Sandbox de M6a (`../hk-sandbox`, sesión A como @Mveradc; `../hk-sandbox-B`, ses
 3. El issue queda cerrado, con las etiquetas `hk:tipo-nota` y `hk:para-todos`, y `buzon.sh leer` no lo lista.
 4. Una nota de alguien que no está en la tabla de `coordinacion.md` (simulado en B quitando a A de su tabla) no se presenta como del equipo.
 5. Sin la coordinación activa, `/hack-note` no llama a `gh` ni lo menciona (prueba interactiva de M6b-1 en `../prueba-m6b-03`, sin `coordinacion.md`).
+
+## M7: orquestador (decidido el 2026-10-12)
+- Idea: Opus se encarga de las tareas que `plan.md` asigna a su persona, las parte en encargos y se los da a workers más baratos. Así gasta menos y no se llena de contexto. Sin «modos»: el orquestador hace siempre lo mismo y, si una tarea es pequeña, lanza un solo worker.
+- Tres partes que se validan por separado con el reto 03: **M7a**, orquestador y workers; **M7b**, el revisor y la compuerta SubagentStop con evidencias; **M7c**, el scout (`haiku`), el reinicio en frío desde `.hackathon/`, el hook que impide a un agente publicar `hk confirmo` y la publicación de v0.3.0.
+- Hallazgos de la documentación (2026-10-12): el orquestador es la sesión principal (`claude --agent hackathon-kit:orquestador`) y limita sus subagentes con `tools: Agent(worker)`; los hooks reciben `agent_type` en la sesión `--agent` y dentro de cada subagente; `isolation: worktree` crea la rama desde la rama por defecto, no desde HEAD; SubagentStop con exit 2 impide que el subagente pare (M7b, con tope de reintentos).
+
+### M7a
+- `agents/orquestador.md` (`model: opus`): lee `plan.md`, `equipo.md`, `docs/contratos.md` y `decisiones.md`/`criterios.md` si existen; pregunta a qué persona representa si no lo sabe; toma sus filas en orden y, para cada una, escribe encargos (objetivo, ficheros que puede tocar, contratos que aplican, comando que demuestra que está hecho). Como máximo dos workers a la vez y nunca dos sobre los mismos ficheros. No lee código entero: se guía por los resúmenes de los workers y por `git diff --stat`. Anota su avance en `.hackathon/estado/<persona>.md`.
+- `agents/worker.md` (`model: sonnet`, `isolation: worktree`): hace un encargo, ejecuta el comando de comprobación, hace commit en su rama y devuelve un resumen con la rama, los ficheros tocados, los comandos ejecutados y su salida, y lo que no ha podido hacer.
+- Antes de lanzar workers, el orquestador comprueba que el árbol está limpio y que lo que necesitan está en la rama por defecto; si no, para y se lo dice a su persona (no hace commit del trabajo de la persona). Hace `git pull` de la rama por defecto antes de lanzar workers y antes de cada fusión. Los worktrees de subagentes salen de la rama por defecto **del remoto** (`worktree.baseRef: "fresh"`; del HEAD local solo sin remoto), así que cada encargo lleva `Base: <sha del HEAD local>` y el worker empieza con `git merge --ff-only <Base>`: ve las fusiones sin subir sin push entre encargos (segunda pasada, 2026-10-12; descartados `worktree.baseRef: "head"`, ruta protegida y global, y pedir push antes de cada encargo dependiente). Al acabar un worker, fusiona su rama con `git merge --no-ff`; si hay conflicto, aborta la fusión y se lo cuenta a la persona. Tras una fusión correcta, elimina el worktree y la rama del worker (`git worktree remove`, `git branch -d`). El push lo hace la persona en M7a: el orquestador se lo indica al terminar (en M7b se decide si se automatiza).
+- Cada encargo incluye el comando de preparación del entorno del worktree (dependencias) y declara los ficheros compartidos que toca (manifiestos, lockfiles, punto de entrada); si dos encargos comparten alguno, se lanzan en serie.
+- Hook PreToolUse en `hooks/hooks.json` (`scripts/orquestador/solo-orquestar.sh`): si `agent_type` no es el orquestador, sale al instante. Si lo es, niega Edit/Write/NotebookEdit fuera de `.hackathon/` y, en Bash, las redirecciones a ficheros, `tee`, `sed -i`, `rm`, `mv`, `cp`, `git add`, `git commit`, `git stash`, `git apply`, `git checkout -- …`, `git restore`, `git reset --hard`, `git branch -D`, `git worktree remove --force` y `git push`. Deja `git pull`, `git merge`, `git merge --abort`, `git worktree remove`, `git branch -d`, `git status/diff/log`, los tests y `gh`. No es infranqueable: es una red bajo el prompt. Sin la herramienta PowerShell en su `tools` (y el hook la niega). El estado del orquestador (`.hackathon/estado/<persona>.md`) no cuenta como árbol sucio.
+- Sin coordinación: funciona igual. Con la coordinación activa, el buzón queda para M7c (no se prueba en M7a).
+
+### Criterios de validación de M7a
+Carpeta nueva `../prueba-m7a-03`, con la cadena del reto 03 hasta `/hack-plan` y el scaffolding arrancando.
+1. `claude --plugin-dir <ruta> --agent hackathon-kit:orquestador` toma las filas de una persona de `plan.md` y lanza workers Sonnet, cada uno en su worktree, nunca más de dos a la vez.
+2. Cada worker devuelve el resumen pedido y su comando de comprobación pasa también después de fusionar en la rama por defecto.
+3. Si se le pide al orquestador que corrija una línea de código, el hook lo niega (con Edit y con `echo >`/`sed -i` por Bash); en `.hackathon/` sí puede escribir; `git merge` funciona.
+4. Con el árbol sucio, no lanza workers y lo dice.
+5. Se anota el uso de contexto del orquestador (`/context`) al terminar un bloque del plan, para compararlo en M7b.
+6. Sin `--agent`, el hook no hace nada (una sesión normal edita código sin avisos) y `claude plugin validate .` pasa.
+7. Al terminar la prueba no quedan worktrees ni ramas de workers (`git worktree list`, `git branch`), y el orquestador ha indicado a la persona que haga push.
+
+Se anota también cuánto tarda y cuesta por worker la preparación del entorno del worktree.
 
 ## Anexo: informe de investigación (11-10-2026)
 [pegar el informe]

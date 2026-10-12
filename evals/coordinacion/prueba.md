@@ -48,3 +48,71 @@ Mismo montaje que M6a. Criterios en `docs/coordinacion.md` («Criterios de valid
 | 5 | Sin coordinación, `/hack-note` no llama a `gh` ni lo menciona | Sí | Prueba interactiva de M6b-1 en `../prueba-m6b-03` | |
 
 Hallazgos: dos issues (#11 y #12) para una sola nota repetida, porque `avisar` no deduplica; «Broken pipe» en A dos veces, probablemente `grep -q` en tuberías (`hk_activa`), cambiado a `grep … >/dev/null`; A dijo una línea en inglés en el chat.
+
+# Prueba de M7a: orquestador y workers (2026-10-12)
+
+Montaje: `../prueba-m7a-03`, copia de `../prueba-m6b-03` (reto 03 hasta el plan y el pitch) sin dependencias, con git en `main` y remoto local `../prueba-m7a-03-remoto.git`. Criterios en `docs/coordinacion.md` («Criterios de validación de M7a»).
+
+## Humo en headless (antes de la prueba con workers)
+- El orquestador real (Opus), con `--permission-mode bypassPermissions`, se negó por su prompt a editar código aunque se lo pidiera («No intentes rodear el hook»): el hook no llegó a actuar. 0,17 USD.
+- `tools: Agent(worker)` no encuentra al worker del plugin (la herramienta Agent no ofrecía ningún tipo). Con `Agent(hackathon-kit:worker)`, sí. Corregido en `agents/orquestador.md`.
+- Hook, con una copia del orquestador con el mismo nombre y prompt mínimo (en el scratchpad): niega Edit en `motor/`, `sed -i`, `echo … >>` y `git commit`, con su mensaje; deja Write en `.hackathon/estado/` y `git status`/`git log`. Con `bypassPermissions` el hook sigue mandando. 0,10 USD. Criterio 3 (parte del hook): sí.
+- Sin `--agent`, la misma petición (Edit en `main.py` y `echo x >` a un fichero) pasa sin ninguna negativa. 0,20 USD. Criterio 6: sí (`claude plugin validate .` pasa).
+
+## Primera pasada interactiva (A, bloque «Contratos»), 15:05–15:09
+Sesión `a762cd7d`, orquestador Opus y un worker Sonnet. La persona dio el visto bueno al plan del bloque y fijó la ventana de 24 meses.
+- El orquestador leyó el plan, el equipo, los contratos, las notas del jurado, `ls` de `motor/`, `pyproject.toml` y `wc -l` de `main.py`: no leyó código. Comprobó árbol limpio, rama `main` y `git pull --ff-only` antes de lanzar y antes de fusionar. Señaló sin decidir la ventana de 24 meses (TODO del contrato) y una nota del jurado que choca con el plan (test oculto).
+- Un solo encargo («toca el punto de entrada»: no se parte en paralelo). El worker preparó el entorno (`uv sync --project motor`, 1,4 s con la caché de uv llena), hizo el encargo, lo comprobó (200 con 24 meses, 404 para otra empresa) e hizo commit en `worktree-agent-a6951cd8…`. El resumen sigue el formato pedido. 55 s.
+- Fusión `--no-ff` (d9756c2), comprobación repetida en `main`, `git worktree remove` y rama borrada, estado en `.hackathon/estado/A.md` y «haz git push» al final.
+- El hook negó una vez un comando de comprobación (un `>` dentro de `python -c`); lo reescribió sin él.
+- Tokens: orquestador 304 k de caché leída, 34 k escritos y 7 k de salida; contexto al final del bloque, **35 k**. Worker: 178 k leídos, 24 k escritos; contexto final 24 k.
+
+| # | Criterio | Resultado | Notas |
+|---|---|---|---|
+| 1 | Workers Sonnet en su worktree, ≤ 2 a la vez | En parte | Un solo worker: falta un bloque con encargos en paralelo |
+| 2 | Resumen pedido y comprobación que pasa tras fusionar | Sí | |
+| 3 | Hook niega editar código; `.hackathon/` y `git merge`, sí | Sí | Hook en el humo; merge en esta pasada |
+| 4 | Con el árbol sucio no lanza workers | Pendiente | |
+| 5 | Contexto del orquestador al terminar un bloque | 35 k | Referencia para M7b |
+| 6 | Sin `--agent`, el hook no hace nada | Sí | Humo |
+| 7 | Sin worktrees ni ramas de workers; push indicado | Sí | `git worktree list` y `git branch`: solo `main` |
+
+Observaciones: el orquestador narró en inglés entre herramientas («I'll merge it»), aunque lo que le dijo a la persona fue en español; el worker paró el servidor con `taskkill //F //IM motor.exe` y el orquestador matando lo que escuchaba en el puerto 8000, lo que también tumbaría un servidor que la persona tuviera arrancado en su copia.
+
+## Segunda pasada interactiva (B, bloque «Ficha»), 15:16–16:16
+Sesión `4a466ae4`. La hora de espera es la de la pregunta a la persona (15:16 → 16:14), no del orquestador.
+- Antes de lanzar preguntó una incoherencia del plan (pide 3 acciones y el ejemplo del motor trae 1; la persona eligió un fixture en `web/`) y pidió el visto bueno al reparto. Recogió en los encargos la nota del jurado sobre el móvil.
+- W1 (`Desglose.jsx`) y W2 (`Acciones.jsx`) **en paralelo**, cada uno en su worktree; `App.jsx` (compartido) quedó para W3 en serie. Preparación `npm ci --prefix web`: 6,4 s y 6 s. 33 s y 29 s en total. Fusionados, worktrees y ramas quitados.
+- **W3 paró sin hacer nada**: su worktree salió de `origin/main`, que no tenía las dos fusiones (4 commits sin subir). La documentación lo confirma: los worktrees de subagentes salen de la rama por defecto **del remoto** (`worktree.baseRef: "fresh"`) salvo que se ponga `"head"`; sin remoto, del HEAD local. El orquestador lo vio (`git log origin/main..main`) y pidió el push en lugar de seguir.
+- La comprobación tras fusionar no se pudo repetir en `main` (sin `web/node_modules`); el orquestador lo dijo en vez de instalarlas, como pide el prompt.
+- Contexto del orquestador al final: **45 k** (opus); workers: 15–18 k.
+
+| # | Criterio | Resultado | Notas |
+|---|---|---|---|
+| 1 | Workers Sonnet en su worktree, ≤ 2 a la vez | Sí | W1 y W2 en paralelo; W3 en serie por `App.jsx` |
+| 2 | Resumen y comprobación tras fusionar | En parte | Resúmenes bien; en `main` no se repite sin dependencias |
+| 4 | Con el árbol sucio no lanza workers | Pendiente | |
+| 7 | Sin worktrees ni ramas de workers | Sí | El worktree de W3, sin cambios, se borró solo |
+
+Hallazgo que cambia el diseño: un encargo que depende de una fusión anterior sin subir no ve esa fusión.
+
+## Tercera pasada interactiva (B, sigue «Ficha»), 16:28–16:32, con `Base` en el encargo
+Sesión `0dbb1c6e`. `main` local 4 commits por delante de `origin/main`, sin push.
+- Retomó desde `.hackathon/estado/B.md` sin repetir lo hecho. Preguntó a la persona si hacía push o usaba la `Base` (no debía preguntarlo: probablemente por la nota de la pasada anterior en `estado/B.md`, «hace falta git push»).
+- **Criterio 4**: con `web/index.html` cambiado sin commitear, no lanzó W3, enseñó el diff, no lo tocó y dio las dos salidas (descartar o commit y nuevo HEAD como `Base`).
+- W3 con `Base: fa4ab4a` vio `Desglose.jsx` y `Acciones.jsx` sin push. El orquestador escribió en la línea `Base` una instrucción propia (`git reset --hard <sha>`) en vez del sha solo, y el worker la siguió en lugar de su `git merge --ff-only`: mismo resultado en un worktree recién creado. Preparación `npm ci`: unos 20 s (con la build); W3, 80 s en total.
+- Fusión (9165d0d), worktree y rama quitados. Tras fusionar, el orquestador no repitió la build en `main` (sin `web/node_modules`); la repetí como persona: `npm ci` 3,9 s y `npm run build` sin errores.
+- Contexto del orquestador al final: **36 k**; W3, 29 k.
+
+## Resultado de M7a
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | Workers Sonnet en su worktree, ≤ 2 a la vez | Sí (W1 y W2 en paralelo; W3 en serie por `App.jsx`) |
+| 2 | Resumen pedido; la comprobación pasa tras fusionar | Sí (motor: el orquestador; web: la persona, por las dependencias) |
+| 3 | Hook niega editar código; `.hackathon/` y `git merge`, sí | Sí |
+| 4 | Con el árbol sucio no lanza workers | Sí |
+| 5 | Contexto del orquestador al terminar un bloque | 35 k, 45 k y 36 k |
+| 6 | Sin `--agent`, el hook no hace nada | Sí |
+| 7 | Sin worktrees ni ramas de workers; push indicado | Sí |
+
+Preparación del entorno por worker: `uv sync` 1,4 s; `npm ci` 6–20 s (caché llena en esta máquina). Coste en dólares no medido (el transcript no lo trae).

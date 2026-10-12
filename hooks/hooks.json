@@ -1,6 +1,14 @@
 {
-  "description": "Coordinación entre agentes (opcional): reinyecta estado y buzón al empezar o reanudar la sesión",
+  "description": "Coordinación entre agentes (opcional): reinyecta estado y buzón al empezar o reanudar la sesión. Orquestador (M7): no edita código.",
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit|MultiEdit|Bash|PowerShell",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/orquestador/solo-orquestar.sh\"", "timeout": 10 }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "startup|resume|clear|compact",
