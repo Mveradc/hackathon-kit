@@ -1,11 +1,24 @@
 {
-  "description": "Coordinación entre agentes (opcional): reinyecta estado y buzón al empezar o reanudar la sesión. Orquestador (M7): no edita código.",
+  "description": "Coordinación entre agentes (opcional): reinyecta estado y buzón al empezar o reanudar la sesión. Orquestador (M7): no edita código; compuerta de evidencias de los workers.",
   "hooks": {
     "PreToolUse": [
       {
         "matcher": "Edit|Write|NotebookEdit|MultiEdit|Bash|PowerShell",
         "hooks": [
           { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/orquestador/solo-orquestar.sh\"", "timeout": 10 }
+        ]
+      },
+      {
+        "matcher": "SubagentHandback",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/orquestador/compuerta.sh\"", "timeout": 20 }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/orquestador/compuerta.sh\"", "timeout": 20 }
         ]
       }
     ],
