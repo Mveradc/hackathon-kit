@@ -1,69 +1,84 @@
-# Enfoques — X Ray · Embat (HackSpain 2026)
+# Enfoques — X Ray · Embat
 
-Fecha: 2026-10-10
-
-> Avisos heredados del análisis: el fichero del reto es una transcripción de un equipo; la anulación del test oculto llega por una nota de ese equipo, no de la organización. Sin contexto de equipo: cada enfoque indica el perfil que necesita. Las fechas del evento (18–20 sep 2026) ya han pasado respecto a hoy (10 oct 2026).
-
-Base común a los tres (mínimo obligatorio): score mensual por empresa con trayectoria (pendiente y dirección, no solo el último mes), sensible a mejora y a deterioro, suavizado para separar bache de caída, con explicación de qué lo movió; producto encima; comprador nombrado; demo navegable (no notebook local). Si se exige URL pública depende de la ambigüedad 5.
+> Base: `.hackathon/analisis.md`. La transcripción no es oficial y la nota del equipo anula el test oculto: ningún enfoque depende de un leaderboard.
+> Los tres comparten un núcleo mínimo, que es obligatorio: score mensual por empresa (0–100, ambigüedad 7), con tendencia y explicación de qué lo movió. Lo que cambia es **a quién sirve el producto y dónde se apuesta**.
+> «Generalización» y «anticipación medida» no tienen métrica oficial (ambigüedad 1). En los tres, la forma de defenderlas es traer una validación propia: apartar empresas que el modelo no ve y contar cuántos meses antes salta la señal respecto al cambio visible en caja o en impagos (inferido).
 
 ---
 
-### A — Copiloto de salud para el CFO
-- **Idea**: cada empresa ve su propio score, hacia dónde va y qué hacer. Es para el CFO o tesorero de las empresas cliente; el comprador es Embat, que lo ofrece como módulo a sus clientes.
-- **Qué se construye**: web con una ficha por empresa: score 0–100 (escala inferida, ambigüedad 7), curva de 24 meses, flecha de tendencia, desglose «qué lo movió este mes» (caja, cobros, deuda) y 2–3 acciones sugeridas a partir de reglas (p. ej. «tus cobros se alargan 12 días»).
+### A — Radar de cartera para Embat
+- **Idea**: un monitor que vigila las 1.286 empresas y avisa a Embat de cuáles se mueven de verdad, hacia arriba o hacia abajo, para que actúe antes que nadie. Es para el equipo de cuentas/riesgo de Embat.
+- **Qué se construye**: web navegable con (1) vista de cartera ordenada por cambio de tendencia, no por nivel; (2) cola de alertas «mejora» / «deterioro» con filtro bache frente a cambio sostenido; (3) ficha de empresa con la curva de 24 meses y los 3–4 factores que la movieron; (4) panel de validación: empresas apartadas y meses de adelanto medidos. La demo tiene que ser accesible por URL o, como mínimo, abrirse fuera de un notebook (ambigüedad 5).
 - **Cómo puntúa**:
-  - *Si acierta*: medio. Trayectoria y dos caras bien visibles en la ficha; la generalización solo se defiende si se añade una validación propia (ambigüedad 1).
-  - *Si llega a tiempo*: bajo-medio. La estabilidad sale bien con el suavizado; la anticipación medida y el monitor no son el foco.
-  - *Si vale algo*: alto. Producto, comprador (Embat, «el más obvio») y explicación son el centro. Encaja con la frase guía y con la nota de que Embat valora «sobre todo el producto».
-- **Qué se deja fuera**: vista de cartera, alertas automáticas, backtest de anticipación, consolidación por grupo.
-- **Demo/defensa**: abrir una empresa que mejora (tipo 45→65) y otra que cae con buen nivel (tipo 82→68); enseñar por qué se mueve cada una y qué le diría el producto al CFO.
-- **Equipo y esfuerzo**: 1 persona de datos (features + score), 1–2 de front/producto, 1 para pitch y narrativa. Esfuerzo medio: el modelo es sencillo y el peso está en la interfaz y el relato. Cabe en el fin de semana con margen para ensayar.
-- **Riesgos**: parecer «solo un dashboard» si las acciones son genéricas; floja en el bloque «si llega a tiempo», que oficialmente pesa 1/3 (ambigüedad 4). Si un LLM redacta las recomendaciones a partir de los conceptos bancarios, hay riesgo de instrucciones escondidas y de límites de API en vivo.
-
-### B — Radar de cartera con alertas anticipadas
-- **Idea**: vigilar las 1.286 empresas a la vez y avisar cuando una se mueve de verdad, con los meses de adelanto medidos. Es para quien «decide a quién presta o a quién asegura» (financiador o aseguradora de crédito), o para Embat como canal hacia ellos.
-- **Qué se construye**: web con ranking de cartera (quién mejora y quién empeora más), feed de alertas con umbral y persistencia (solo salta si el cambio dura más de N meses), ficha explicativa por empresa y una página de validación: backtest sobre empresas apartadas que mide cuántos meses antes salta la alerta respecto a «eventos» definidos con los propios datos (impagos de deuda, caja negativa sostenida, cobros que se alargan; definición propia, inferido, ambigüedad 2).
-- **Cómo puntúa**:
-  - *Si acierta*: alto. La validación con empresas apartadas da una respuesta propia a la generalización sin leaderboard.
-  - *Si llega a tiempo*: alto. Anticipación con cifra, estabilidad (persistencia contra baches) y el bonus del monitor.
-  - *Si vale algo*: medio-alto. Comprador claro y explicación por alerta; el producto es más «herramienta de analista» que algo que se venda a las propias empresas.
-- **Qué se deja fuera**: experiencia para la propia empresa, recomendaciones de acción, consolidación por grupo.
-- **Demo/defensa**: la cartera se reproduce mes a mes; salta una alerta; se abre la empresa y se ve qué la provocó; se cierra con la cifra «detecta el cambio X meses antes de media» y su tasa de falsas alarmas.
-- **Equipo y esfuerzo**: 2 de datos (eventos, backtest, umbrales), 1 de front, 1 para el pitch. Esfuerzo alto: definir eventos sin etiqueta y validarlos lleva tiempo; hay que recortar pronto para llegar a la demo.
-- **Riesgos**: que el jurado no acepte los «eventos» definidos por el equipo como verdad (ambigüedades 1 y 2); los falsos positivos se ven mucho en la demo; el enunciado dice que la entrega es venderle a «esas mismas empresas», y aquí el comprador es otro (es una elección permitida, pero hay que defenderla).
-
-### C — Tesorería de grupo: salud del holding
-- **Idea**: el score consolidado de un grupo y de sus filiales, para ver qué filial tira del grupo hacia arriba o hacia abajo. Es para el tesorero o CFO de grupo; el comprador es Embat, que vende a grupos con varias empresas.
-- **Qué se construye**: web con vista de grupo (score consolidado + trayectoria), mapa de filiales con su aportación al cambio del grupo, explicación por filial y alerta cuando una filial diverge del resto. Monedas convertidas a una de referencia (criterio propio, ambigüedad 8).
-- **Cómo puntúa**:
-  - *Si acierta*: medio. Dos caras y trayectoria a dos niveles; la generalización necesita validación propia, como en A.
-  - *Si llega a tiempo*: medio. Una filial que diverge sirve de alerta temprana del grupo, pero la anticipación medida no es el foco.
-  - *Si vale algo*: alto si el jurado compra el caso de holding. Producto diferenciado y comprador concreto; la explicación de qué filial movió el grupo es fácil de entender.
-- **Qué se deja fuera**: backtest formal de anticipación, recomendaciones de acción detalladas.
-- **Demo/defensa**: un grupo cuyo score total parece estable pero esconde una filial que se hunde y otra que crece; se ve cómo lo detecta y lo explica.
-- **Equipo y esfuerzo**: 1–2 de datos (consolidación, monedas, evitar señales duplicadas entre filiales), 1 de front, 1 para el pitch. Esfuerzo medio-alto por la consolidación.
-- **Riesgos**: depende de la ambigüedad 3 (¿score por empresa o por grupo?); la mediana es de 2 empresas por grupo, así que el caso de holding grande es minoritario; si se mezclan los niveles se duplican o se diluyen señales; el tratamiento de monedas puede no ser aceptado.
+  - *Si acierta*: trayectoria y dos caras están en el centro del producto (alerta de mejora y de deterioro). Generalización se defiende con el panel de validación.
+  - *Si llega a tiempo*: es el enfoque más fuerte aquí. El monitor (bonus) es el propio producto, y la anticipación medida se enseña en pantalla. La estabilidad se trabaja con la regla de «cambio sostenido» de las alertas.
+  - *Si vale algo*: comprador = Embat, «el comprador más obvio» según el enunciado. Explicación en cada alerta. Punto débil: «venderlo a esas mismas empresas» queda indirecto (Embat lo usa para venderles algo), hay que contarlo bien en el pitch.
+- **Qué se deja fuera**: la vista para la propia empresa, cualquier recomendación de acciones, la agregación por grupo (se muestra el grupo, no se puntúa).
+- **Qué se enseña en la demo**: «esta semana se han movido 12 empresas»; abrir una que mejora y otra que empeora; ver qué factores lo explican; enseñar que la alerta saltó N meses antes de que la caja lo hiciera evidente.
+- **Equipo y esfuerzo**: una persona de datos (features y score), una de backend/datos para alertas y validación, una de frontend para cartera y ficha, y quien prepare el pitch. Esfuerzo medio: el modelo puede ser sencillo; el trabajo está en el filtro de alertas y en medir la anticipación.
+- **Encaje con vuestro equipo**:
+  - Persona A: score, filtro de alertas y anticipación (series temporales, su terreno).
+  - Persona B: cartera y ficha; Persona C: caso de negocio con Embat como comprador.
+  - Hueco: backend de alertas y panel de validación; nadie lo tiene y C prefiere no hacerlo, así que carga a A.
+  - Defensa: C puede sostener el comprador; B, la demo.
+- **Riesgos**: muchas alertas falsas si el filtro bache/deterioro falla; anticipación difícil de medir sin etiqueta (ambigüedad 2); confusión empresa/grupo en holdings (ambigüedad 3); si la generalización la juzga el jurado sin datos propios, el panel de validación debe ser muy claro (ambigüedad 1).
 
 ---
 
-## Comparativa
+### B — Copiloto financiero para la propia empresa
+- **Idea**: cada empresa ve su salud financiera, hacia dónde va y qué está empujando el número, para actuar antes de que sea evidente. Es para el CFO o el tesorero de la empresa cliente; Embat lo vende como módulo de pago.
+- **Qué se construye**: web con login simulado por empresa: (1) score actual y trayectoria con proyección corta; (2) «qué lo movió este mes» en lenguaje claro (cobros que se alargan, deuda que vence, concentración de clientes…); (3) comparación con empresas parecidas (sector/tamaño/país); (4) 2–3 palancas sugeridas a partir de reglas sobre los factores. Si se usa un LLM para redactar explicaciones, solo sobre datos estructurados, nunca sobre el texto libre de `transactions.csv` (riesgo de instrucciones escondidas). Demo navegable, idealmente por URL (ambigüedad 5).
+- **Cómo puntúa**:
+  - *Si acierta*: trayectoria y dos caras visibles (la empresa ve si mejora). Generalización igual que el resto, con validación propia.
+  - *Si llega a tiempo*: medio. La anticipación se puede enseñar en la ficha («este factor empezó a moverse hace 4 meses»), pero el monitor (bonus) no es el foco.
+  - *Si vale algo*: el más fuerte en «producto que se le pueda vender a esas mismas empresas», que es literal del enunciado. La explicación es el centro. El comprador es doble (la empresa paga, Embat lo distribuye), y eso hay que contarlo en una frase.
+- **Qué se deja fuera**: vista de cartera, sistema de alertas en cola, agregación por grupo.
+- **Qué se enseña en la demo**: entrar como una empresa que va mal pero aún no lo parece; ver por qué; entrar como otra que se recupera y ver que el score lo reconoce; enseñar la palanca sugerida.
+- **Equipo y esfuerzo**: una persona de datos para score y factores, una de frontend/producto con buen ojo para UX y textos, una que lleve backend ligero y la comparación entre pares, y quien defienda el pitch. Esfuerzo medio: la carga está en la explicación y en la UX, no en el modelo.
+- **Encaje con vuestro equipo**:
+  - Persona A: score y factores; Persona B: UX, textos y producto, su punto fuerte.
+  - Persona C: palancas sugeridas y comparación entre pares desde finanzas.
+  - Hueco: el backend ligero; nadie lo tiene entre sus puntos fuertes.
+  - Defensa: B y C presentan y ambos encajan con un producto para el CFO.
+- **Riesgos**: que la explicación sea genérica y no convenza («nadie compra una caja negra»); recomendaciones que suenen a consejo financiero sin base; si se usa LLM en vivo, cuotas/latencia ante el jurado (riesgo típico); comparar empresas de varias monedas (ambigüedad 8).
 
-| Criterio (peso según el análisis) | A — Copiloto CFO | B — Radar de cartera | C — Tesorería de grupo |
+---
+
+### C — Pasaporte financiero para conseguir financiación
+- **Idea**: la empresa obtiene un informe verificable de su salud y trayectoria que comparte con un banco, aseguradora o proveedor para conseguir mejores condiciones. El usuario es la empresa; quien lo lee es un tercero que decide si presta o asegura.
+- **Qué se construye**: (1) generador de informe por empresa: score, curva de 24 meses, factores, estabilidad (bache frente a tendencia); (2) enlace o documento compartible con vista de lectura para el financiador; (3) API sencilla que devuelve score + trayectoria + explicación para una empresa; (4) apartado de validación con empresas apartadas. Demo navegable y enlace compartible: si se usa como argumento, necesita URL pública (ambigüedad 5).
+- **Cómo puntúa**:
+  - *Si acierta*: la estabilidad y la trayectoria son el argumento de venta («no te juzgo por un mes malo»), y las dos caras le dan valor a la empresa que mejora.
+  - *Si llega a tiempo*: medio-bajo. La anticipación se puede medir y mostrar en el informe, pero no hay monitor (bonus perdido).
+  - *Si vale algo*: comprador claro (la empresa paga para financiarse mejor) y alineado con «nadie compra una caja negra para decidir a quién presta o a quién asegura», que es literal del enunciado. Exige explicar bien por qué un financiador confiaría en el informe.
+- **Qué se deja fuera**: alertas, vista de cartera, recomendaciones de acciones.
+- **Qué se enseña en la demo**: una empresa que tuvo un bache y se recuperó genera su pasaporte; el financiador lo abre y ve que es un bache, no un deterioro; la misma pantalla para una empresa en caída muestra la diferencia.
+- **Equipo y esfuerzo**: una persona de datos para score y estabilidad, una de backend para API e informe compartible, una de frontend para el informe, y quien defienda el modelo de negocio. Esfuerzo medio-alto: el informe tiene que parecer creíble y la validación tiene que sostenerlo.
+- **Encaje con vuestro equipo**:
+  - Persona A: score y estabilidad; Persona B: informe y vista del financiador.
+  - Hueco grande: API, enlace compartible y despliegue público son backend; nadie lo tiene y C prefiere no hacerlo.
+  - Defensa: C, con perfil de finanzas, puede defender bien el caso de financiación.
+- **Riesgos**: que el jurado no vea el comprador tan claro como con Embat; credibilidad del informe sin una «verdad» con la que validarlo (ambigüedad 2); compartir por enlace añade despliegue público (ambigüedad 5); multimoneda en el informe (ambigüedad 8).
+
+---
+
+## Tabla comparativa
+
+| Criterio | A — Radar de cartera | B — Copiloto empresa | C — Pasaporte financiero |
 |---|---|---|---|
-| **Si acierta (1/3)**: generalización | bajo-medio | alto | bajo-medio |
-| Trayectoria | alto | medio-alto | alto |
-| Las dos caras | alto | medio-alto | alto |
-| **Si llega a tiempo (1/3)**: anticipación medida | bajo | alto | medio |
-| Estabilidad (bache frente a caída) | medio | alto | medio |
-| Monitor (bonus) | bajo | alto | medio |
-| **Si vale algo (1/3)** (posiblemente más, inferido): producto | alto | medio | alto |
-| Comprador | alto (Embat) | medio-alto (financiador/aseguradora) | alto (Embat → grupos) |
-| Explicación | alto | medio-alto | alto |
-| Artesanía de la demo | alto | medio (más piezas que pueden fallar) | medio |
-| Esfuerzo / riesgo de no llegar | bajo | alto | medio |
+| Generalización | medio | medio | medio |
+| Trayectoria | alto | alto | alto |
+| Dos caras | alto | alto | medio |
+| Anticipación medida | alto | medio | medio |
+| Estabilidad (bache vs. deterioro) | alto | medio | alto |
+| Monitor (bonus) | alto | bajo | bajo |
+| Producto | medio | alto | alto |
+| Comprador | alto | medio | medio |
+| Explicación | medio | alto | alto |
+| Artesanía (demo que se abre) | medio | alto | medio |
+| Encaje con el equipo | medio | alto | bajo |
 
----
-
-- Si priorizáis el producto y lo que Embat dice valorar «sobre todo» → **A**.
-- Si priorizáis los tres bloques con el mismo peso del enunciado y el bonus del monitor → **B**.
-- Si queréis diferenciaros con un caso que pocos equipos tocarán y la organización confirma que el score puede ser por grupo → **C**.
+Si priorizáis el bloque «si llega a tiempo» y el bonus del monitor → A.
+Si priorizáis el producto que se vende a las propias empresas (lo que, según la nota, Embat valora «sobre todo») → B.
+Si queréis apostar por la estabilidad y un caso de uso de financiación con un comprador diferenciador → C.
+Si no queréis depender de que alguien cubra backend sin tenerlo entre sus puntos fuertes → B, que es el que menos backend necesita.

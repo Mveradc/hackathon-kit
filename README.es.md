@@ -41,7 +41,7 @@ Lánzalo en la carpeta vacía del proyecto. Cada comando lee el fichero del paso
 | Comando | Qué hace | Escribe |
 |---|---|---|
 | `/hack-analyze <texto, fichero o URL>` | Qué piden, cómo se evalúa, restricciones, ambigüedades y riesgos. No propone soluciones. | `.hackathon/analisis.md` |
-| `/hack-approaches [perfil del equipo]` | 2–3 enfoques realmente distintos, justificados con los criterios de evaluación. **No elige por ti**: te pregunta. | `enfoques.md`, `decision.md` |
+| `/hack-approaches [perfil del equipo]` | 2–3 enfoques realmente distintos, justificados con los criterios de evaluación. Si existe `.hackathon/equipo.md`, dice después cómo encaja cada uno con vuestro equipo (quién cubre qué, huecos, ausencias), sin cambiar los enfoques. **No elige por ti**: te pregunta. | `enfoques.md`, `decision.md` |
 | `/hack-scaffold [stack]` | CLAUDE.md del proyecto, reglas, skills, contratos entre piezas, README y un hola mundo que arranca con un solo comando. Sin lógica de la aplicación. También escribe `.claude/settings.json` para que los commits y PR que haga Claude no lleven su coautoría, salvo que las bases pidan declarar el uso de IA. | el repositorio |
 | `/hack-plan [ajustes]` | Hitos con hora, tareas por persona, dependencias y repliegues, a partir de `equipo.md` (plantilla en `skills/hack-plan/templates/`). Añade los dueños por carpeta al CLAUDE.md. | `plan.md` |
 | `/hack-pitch [ajustes]` | Guion por bloques con tiempo, criterio que cubre y quién habla; preguntas probables del jurado y cifras que hay que medir. | `pitch.md` |

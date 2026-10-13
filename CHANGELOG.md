@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2 — 2026-10-13
+
+- `/hack-approaches` evalúa el encaje de cada enfoque con el equipo si existe `.hackathon/equipo.md`: quién cubre cada pieza, los huecos, las ausencias que chocan con una fase crítica y quién puede defenderlo, en unas 60 palabras por enfoque, más una fila en la tabla. El orden lo asegura: primero guarda los enfoques, sacados solo del reto, y después lee `equipo.md` y añade el encaje sin tocar lo ya escrito.
+
 ## 0.3.1 — 2026-10-13
 
 - `/hack-scaffold` genera `.claude/settings.json` con `attribution` vacía: los commits y PR que haga Claude (también los workers y el orquestador) no llevan su coautoría. Si las bases piden declarar el uso de IA, no la quita y lo avisa. `/hack-analyze` recoge lo que digan las bases sobre el uso de IA, y `/hack-check` comprueba que la declaración que pidan tenga tarea con dueño (y avisa si `settings.json` oculta la atribución).

@@ -140,6 +140,16 @@ Registro de lo que se hizo y se aprendió en cada hito, tal como estaba en la se
 - **Contexto del orquestador.** El worker deja su informe en `<git común>/hackathon/informes/<rama>.md` y devuelve una línea; la compuerta lo lee y solo acepta esa carpeta. El orquestador lee solo su sección del plan y lo que necesita de los contratos. Se descartó `bashOutputMaxChars`: su mínimo es 4.000, solo habría recortado la lectura inicial del plan y vale también para workers y revisor. Con la misma sesión de dos bloques de M7c, el contexto final pasa de 68–74 k a 58 k (2,40 USD; `evals/coordinacion/prueba.md`, «v0.3.1»).
 - **Limpieza (2026-10-13).** Se borraron las carpetas de prueba de `Proyectos/` (39 carpetas, 12 remotos bare y 68 ficheros sueltos de salidas en bruto). Sus resultados quedan en este historial, en `evals/resultados/` y en `evals/coordinacion/prueba.md`. Se conservan `../prueba-m5-02`, `../prueba-m6b-03`, `../prueba-m7c-03-base` y el sandbox de coordinación.
 
+## `/hack-approaches` con `equipo.md` (2026-10-13)
+- Paso nuevo, «Encaje con el equipo»: guarda `enfoques.md` solo con el análisis, **después** lee `equipo.md` y, con Edit, añade a cada enfoque «Encaje con vuestro equipo» (unas 60 palabras: quién hace qué, huecos, ausencias en fases críticas y defensa) y a la tabla la fila «Encaje con el equipo». El encaje evalúa, no filtra: no se descarta ni se suaviza ningún enfoque. `allowed-tools` incluye ahora Edit.
+- Validado con los retos 02 y 03 (copias de `../prueba-m5-02` y `../prueba-m6b-03`), en siete pasadas que costaron 3,00 USD:
+  - **Orden**: `Write enfoques.md` → leer `equipo.md` → `Edit`, en las cuatro pasadas con equipo.
+  - **Mismos enfoques**: el 03, sin `equipo.md` dos veces y con él dos veces, da los mismos tres conceptos (CFO, cartera para Embat y solvencia para quien presta), con los mismos criterios priorizados. Solo cambian el orden y los nombres. La pasada con la plantilla vacía cambió un enfoque, así que esa es la variación natural; la pasada con equipo no se separa de las otras más que eso.
+  - **Huecos y ausencias reales**: frontend sin dueño en el 02; backend sin dueño en el 03 (no estaba previsto); y quien no presenta tendría que defender las métricas. Sin recomendaciones ni stacks, y `decision.md` intacto.
+  - Con la plantilla sin rellenar lo dice, no añade el encaje y no inventa personas.
+- **Longitud**: la primera versión añadía unas 390 palabras (25 %). Con el tope de ~60 palabras queda en 51–65 por enfoque en el 03 y en 71–81 en el 02 (cinco personas). Sin el encaje, la salida mide lo mismo que antes.
+- Los ejemplos `examples/0{2,3}-*-enfoques.md` se regeneraron con las pasadas recortadas (los equipos ya eran Persona A, B…). Los `decision.md` de ejemplo vienen de una pasada anterior.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

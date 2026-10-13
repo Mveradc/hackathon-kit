@@ -41,7 +41,7 @@ Run it in the project's empty folder. Each command reads the previous step's fil
 | Command | What it does | Writes |
 |---|---|---|
 | `/hack-analyze <text, file or URL>` | What is asked, how it is judged, constraints, ambiguities and risks. Proposes no solutions. | `.hackathon/analisis.md` |
-| `/hack-approaches [team profile]` | 2–3 genuinely different approaches, justified against the judging criteria. **It never chooses for you**: it asks. | `enfoques.md`, `decision.md` |
+| `/hack-approaches [team profile]` | 2–3 genuinely different approaches, justified against the judging criteria. If `.hackathon/equipo.md` exists, it then says how each one fits your team (who covers what, gaps, absences), without changing the approaches. **It never chooses for you**: it asks. | `enfoques.md`, `decision.md` |
 | `/hack-scaffold [stack]` | The project's CLAUDE.md, rules, skills, contracts between pieces, README and a hello world that starts with one command. No application logic. It also writes `.claude/settings.json` so commits and PRs made by Claude don't carry its co-author line, unless the rules require declaring AI use. | the repo |
 | `/hack-plan [adjustments]` | Timed milestones, tasks per person, dependencies and fallbacks, from `equipo.md` (template in `skills/hack-plan/templates/`). Adds folder owners to CLAUDE.md. | `plan.md` |
 | `/hack-pitch [adjustments]` | A block-by-block script with timing, the criterion each block covers and who speaks; likely jury questions and the figures you need to measure. | `pitch.md` |

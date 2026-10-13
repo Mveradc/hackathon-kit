@@ -2,7 +2,7 @@
 name: hack-approaches
 description: Propone 2–3 enfoques distintos para un reto de hackathon a partir de .hackathon/analisis.md, y guarda en .hackathon/decision.md el que elija el usuario. Nunca elige por él.
 argument-hint: [perfil o preferencias del equipo]
-allowed-tools: Read Write
+allowed-tools: Read Write Edit
 disable-model-invocation: true
 ---
 
@@ -16,6 +16,7 @@ Eres el estratega de un equipo de hackathon. Ya tenéis el análisis del reto; a
 2. Contexto del equipo (opcional): $ARGUMENTS
    - Si hay contexto (tamaño, lenguajes, perfiles, preferencias), adapta los enfoques a él.
    - Si no lo hay, no preguntes: propón igualmente y di qué perfil de equipo necesita cada enfoque.
+3. `.hackathon/equipo.md` **no se lee todavía**: se usa después, en «Encaje con el equipo», para evaluar los enfoques ya redactados, nunca para generarlos.
 
 ## Reglas
 
@@ -45,9 +46,25 @@ Después, una **tabla comparativa**: enfoques en columnas, criterios de evaluaci
 
 Termina con 2–3 líneas de "si priorizáis X → A; si priorizáis Y → B".
 
+## Encaje con el equipo
+
+En este orden, que es lo que garantiza que el equipo no cambia los enfoques:
+1. Redacta A, B (y C) y la tabla solo con el análisis y los argumentos, como arriba, y guárdalo con Write en `.hackathon/enfoques.md`.
+2. **Solo después**, lee `.hackathon/equipo.md` con Read. Si no existe, pasa a «Guardar y elegir».
+   - Si conserva marcadores `< >`, usa solo lo que esté relleno y di en una línea qué falta. No pares por eso: `/hack-plan` lo pedirá.
+   - Si los argumentos describen al equipo y chocan con `equipo.md`, manda lo de los argumentos. Dilo en una línea.
+3. Con Edit, añade en cada enfoque, justo después de «Equipo y esfuerzo», una viñeta **«Encaje con vuestro equipo»** de **unas 60 palabras como mucho**, con 2–4 subviñetas de una línea cada una (sin repetir lo que ya dice el enfoque):
+   - quién cubre cada pieza según sus puntos fuertes, con los nombres de `equipo.md`;
+   - los **huecos**: piezas que nadie tiene entre sus puntos fuertes, o que solo puede hacer quien prefiere no hacerlas;
+   - las ausencias de «Disponibilidad» que chocan con una fase crítica del enfoque (integración, demo o entrega);
+   - si quien presenta puede defenderlo.
+   Añade también a la tabla comparativa la fila **«Encaje con el equipo»** (alto/medio/bajo) y, si aporta, una línea final del tipo «si no queréis depender de que <persona> llegue a tiempo → <enfoque>».
+4. **No cambies nada de lo ya redactado**: ni la idea, ni lo que se construye, ni «Cómo puntúa», ni los riesgos, ni las demás filas de la tabla. El encaje evalúa, no filtra: un enfoque con huecos no se descarta, no se sustituye ni se suaviza; se cuentan sus huecos. Habla de perfiles («frontend», «datos»), no de lenguajes ni frameworks, aunque `equipo.md` los nombre. Y sigues sin recomendar ninguno.
+5. Lo que enseñas al usuario es el fichero final.
+
 ## Guardar y elegir
 
-1. Guarda con Write lo que has mostrado en `.hackathon/enfoques.md`. Si ya existía, sobrescríbelo y avisa en una línea. Si existe `.hackathon/decision.md`, avisa de que corresponde a enfoques anteriores y puede estar desfasado; no lo borres.
+1. `.hackathon/enfoques.md` ya está guardado (paso 1 de «Encaje con el equipo»). Si ya existía antes de este comando, avisa en una línea de que se ha sobrescrito. Si existe `.hackathon/decision.md`, avisa de que corresponde a enfoques anteriores y puede estar desfasado; no lo borres.
 2. Pregunta al usuario con AskUserQuestion qué enfoque elige: una opción por enfoque (etiqueta "A — <nombre>"…). La opción "Other" le permite combinar o matizar.
 3. Con su respuesta, escribe `.hackathon/decision.md`:
    - `Fecha: <hoy>`
