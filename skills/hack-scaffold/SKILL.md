@@ -76,7 +76,11 @@ Sigue `templates/contratos.md`. Un bloque por contrato: la entrega que pide el r
 - **Campos**: tabla con nombre, tipo, si es obligatorio, valores o formato y origen. Copia del análisis los nombres de fichero, campos, valores y formatos tal cual; no los traduzcas ni los completes.
 - Lo que el análisis no fija (campos de una interfaz entre piezas, un formato que es ambigüedad) es una propuesta del equipo: origen `decisión` si sale de ella, `supuesto: ambigüedad N, confirmar con la organización` si depende de una ambigüedad, o `TODO`.
 - **Ejemplo mínimo válido** por contrato: un registro, o una petición y su respuesta, que respete la tabla. Con valores de ejemplo, nunca datos reales del reto.
-### README.md
+### Atribución (`.claude/settings.json`)
+Para que los commits y PR que haga Claude (también los workers y el orquestador del kit) no lleven su coautoría:
+- Si el análisis **no** dice que haya que declarar el uso de IA, escribe `.claude/settings.json` con `{"attribution": {"commit": "", "pr": "", "sessionUrl": false}}`. Si ya existe, consérvalo y añade solo la clave `attribution`; si ya tiene una, no la toques y dilo en el resumen.
+- Si el análisis dice que hay que declarar el uso de IA, **no** escribas `attribution`: avisa citando la frase del análisis y deja que la regla de equipo correspondiente salga, con su origen, como cualquier otra.
+
 Sigue `templates/README.md`: qué es, requisitos, comando de arranque con la salida esperada, estructura y enlace al reto.
 
 ### Código mínimo
@@ -113,4 +117,5 @@ Ejecuta el comando de arranque con Bash y comprueba que sale el hola mundo de ca
 Termina con:
 - ficheros creados, saltados y sobrescritos;
 - el comando de arranque y si ha funcionado;
+- la atribución: «los commits y PR que haga Claude no llevarán su coautoría», o el aviso de que las bases piden declarar el uso de IA y no se ha quitado;
 - el siguiente paso: repartir el trabajo del equipo.

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Compuerta de evidencias (M7b): rechaza el informe final de un worker sin evidencias.
+# Compuerta de evidencias (M7b): rechaza el informe final de un worker sin evidencias. Desde la v0.3.1,
+# el informe puede ir en un fichero de <git común>/hackathon/informes/ (línea «Informe: <ruta>»).
 # PreToolUse sobre SubagentHandback (el informe va en tool_input.message) y, de respaldo,
 # SubagentStop (last_assistant_message) para el worker que termina sin SubagentHandback.
 # Solo actúa con el agente worker del kit; en cualquier otro caso sale al instante.
@@ -30,10 +31,27 @@ case $evento in
 esac
 informe=${informe//$'\r'/}
 
+# v0.3.1: el worker puede dejar el informe completo en un fichero y entregar una sola línea con
+# «Informe: <ruta>». Solo vale una ruta dentro de <git común>/hackathon/informes/.
+motivos=()
+if [[ $informe =~ Informe:[[:space:]]*([^$'\n']+) ]]; then
+  ruta=$(printf '%s' "${BASH_REMATCH[1]}" | tr -d '`' | sed 's/[[:space:]]*$//'); ruta=${ruta//\\//}
+  abs() { if command -v cygpath >/dev/null; then cygpath -m -a "$1" 2>/dev/null; else realpath -m "$1"; fi; }
+  carpeta=$(abs "$comun/hackathon/informes")
+  if [[ $ruta == *..* ]]; then
+    motivos+=("la ruta del informe «$ruta» lleva «..»")
+  elif ! [[ $(abs "$ruta") == "$carpeta"/* ]]; then
+    motivos+=("el informe tiene que estar en $carpeta/, no en «$ruta»")
+  elif [ ! -f "$ruta" ]; then
+    motivos+=("el informe «$ruta» no existe")
+  else
+    informe=$(tr -d '\r' < "$ruta")
+  fi
+fi
+
 campo() { printf '%s\n' "$informe" | sed -nE "s/^[[:space:]*-]*$1:[[:space:]]*//p" | head -1; }
 
-motivos=()
-for c in Rama Base Worktree Estado 'Ficheros tocados' 'Preparación' 'Comprobación'; do
+[ ${#motivos[@]} -eq 0 ] && for c in Rama Base Worktree Estado 'Ficheros tocados' 'Preparación' 'Comprobación'; do
   printf '%s\n' "$informe" | grep -E "^[[:space:]*-]*$c:" >/dev/null || motivos+=("falta la línea «$c:»")
 done
 
@@ -77,6 +95,6 @@ fi
 {
   echo "Compuerta (intento $n de 2): el informe no trae evidencias suficientes."
   printf -- '- %s\n' "${motivos[@]}"
-  echo "Corrígelo (o completa el trabajo) y vuelve a entregar el informe con el formato de «Resumen final». No inventes salidas: copia las que viste."
+  echo "Corrígelo (o completa el trabajo) y vuelve a entregarlo: el informe completo con el formato de «Informe» en tu fichero de hackathon/informes/ y, como respuesta, la línea «Estado · Rama · Informe: <ruta>». No inventes salidas: copia las que viste."
 } >&2
 exit 2

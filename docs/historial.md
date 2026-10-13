@@ -128,6 +128,18 @@ Registro de lo que se hizo y se aprendió en cada hito, tal como estaba en la se
   - el contexto del orquestador crece por la orquestación misma (68–74 k en dos bloques), no por leer código: de ahí el reinicio por bloque;
   - al cerrar una sesión de Claude Code, un `claude -p` lanzado en segundo plano sigue vivo.
 
+## v0.3.1 — Atribución y contexto del orquestador (en curso, 2026-10-13)
+- **Atribución.** `/hack-scaffold` escribe `.claude/settings.json` con `{"attribution": {"commit": "", "pr": "", "sessionUrl": false}}`; es la forma compatible con versiones anteriores a la 2.1.281, que no admiten `attribution: false`. Si el análisis dice que hay que declarar el uso de IA, no la escribe y lo avisa. `/hack-analyze` recoge en «Restricciones» lo que digan las bases del uso de IA. `/hack-check` da bloqueante si la declaración no tiene tarea con dueño; si `settings.json` oculta la atribución, es un aviso, y solo bloqueante si el enunciado menciona los commits o el historial de git.
+- Validado (6,78 USD):
+  - **reto 03** (`../prueba-v031-03`): `settings.json` correcto; `comprobar.py` A2 y A3 pasan (A1 y A4 fallan por no tener plan ni pitch, y A5 es el falso positivo conocido). Prueba con control y `--setting-sources project,local`, porque el `~/.claude/settings.json` del usuario ya oculta la atribución: sin el fichero, el commit lleva `Co-Authored-By: Claude Opus 5.5`; con él, no;
+  - **reto 01** (sintético, `../prueba-v031-01*`): el análisis recoge «Permitida, con declaración obligatoria en el README»; el `scaffold` no crea `settings.json`, cita la frase y genera la regla con origen `enunciado`. En `/hack-check`:
+    - con la tarea en el plan, el `settings.json` sale solo como aviso (A);
+    - con una frase sobre el historial de git añadida al enunciado, pasa a bloqueante (B);
+    - sin ninguna tarea ni guía para la declaración, sale el bloqueante con la fila propuesta (C).
+  - En B, el check dio la declaración por cubierta con el hito de entrega y la guía `/entrega`: una tarea dentro de una guía con dueño cuenta como cubierta.
+- **Contexto del orquestador.** El worker deja su informe en `<git común>/hackathon/informes/<rama>.md` y devuelve una línea; la compuerta lo lee y solo acepta esa carpeta. El orquestador lee solo su sección del plan y lo que necesita de los contratos. Se descartó `bashOutputMaxChars`: su mínimo es 4.000, solo habría recortado la lectura inicial del plan y vale también para workers y revisor. Con la misma sesión de dos bloques de M7c, el contexto final pasa de 68–74 k a 58 k (2,40 USD; `evals/coordinacion/prueba.md`, «v0.3.1»).
+- **Limpieza (2026-10-13).** Se borraron las carpetas de prueba de `Proyectos/` (39 carpetas, 12 remotos bare y 68 ficheros sueltos de salidas en bruto). Sus resultados quedan en este historial, en `evals/resultados/` y en `evals/coordinacion/prueba.md`. Se conservan `../prueba-m5-02`, `../prueba-m6b-03`, `../prueba-m7c-03-base` y el sandbox de coordinación.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

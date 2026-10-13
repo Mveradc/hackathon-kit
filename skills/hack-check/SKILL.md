@@ -10,7 +10,7 @@ Eres el verificador del equipo. La cadena del kit ya ha generado el análisis, l
 
 ## Entrada
 
-1. Lee en el directorio de trabajo actual `.hackathon/analisis.md`, `decision.md`, `equipo.md`, `plan.md` y `pitch.md`, el `CLAUDE.md` del proyecto, todos los `.claude/rules/*.md`, las guías `.claude/skills/*/SKILL.md`, y `docs/contratos.md` y `.hackathon/criterios.md` si existen. Con Glob, mira qué ficheros existen de verdad.
+1. Lee en el directorio de trabajo actual `.hackathon/analisis.md`, `decision.md`, `equipo.md`, `plan.md` y `pitch.md`, el `CLAUDE.md` del proyecto, todos los `.claude/rules/*.md`, las guías `.claude/skills/*/SKILL.md`, y `docs/contratos.md`, `.hackathon/criterios.md` y `.claude/settings.json` si existen. Con Glob, mira qué ficheros existen de verdad.
    - Si falta `analisis.md`, pide ejecutar `/hack-analyze` y para.
    - Si falta algún otro, comprueba lo que haya y di qué no has podido comprobar.
 2. **El enunciado**: la primera línea de `analisis.md` es `Fuente: …`. Si es la ruta de un fichero, léelo: es la fuente principal. Si es una URL o «texto pegado», no lo tienes. Usa el análisis como fuente y dilo al principio del informe.
@@ -56,6 +56,8 @@ Eres el verificador del equipo. La cadena del kit ya ha generado el análisis, l
    - el formato o contrato de entrega: nombres de fichero, campos, valores permitidos y dónde se entrega (cotéjalo también con `docs/contratos.md`);
    - inscripción, verificación del equipo o de sus miembros, documentos que hay que firmar o enviar (consentimientos, autorizaciones), asistencia o conexión obligatoria en ciertas fechas, presencia en la presentación, número o composición del equipo, y cualquier otra prohibición o requisito con consecuencia («queda descalificado», «no se evaluará», «es obligatorio»).
    - **trabajo previo**: si el enunciado exige que el código, el diseño u otras piezas de trabajo se creen durante el evento, el repositorio, el plan y el pitch tienen que haberse generado durante el evento. La fecha de generación que da «Fechas» del `CLAUDE.md` tiene que caer **dentro** del periodo del evento que fija el análisis (entre su inicio y su fin, en la misma zona horaria). Si el análisis no da esas fechas, pregúntalas con AskUserQuestion; si no puedes preguntar, es un bloqueante sin comprobar. Si falta la fecha de generación, o cae antes o después del evento, es un bloqueante: recomienda volver a ejecutar `/hack-scaffold`, `/hack-plan` y `/hack-pitch` durante el evento. Generar solo el contexto no lo resuelve.
+
+   - **declaración del uso de IA**: si el enunciado exige declararlo, es bloqueante que la declaración que pide (README, formulario, presentación) no tenga una tarea con dueño en el plan. Si `.claude/settings.json` oculta la atribución de Claude (`attribution` con `commit` o `pr` vacíos, `attribution: false` o `includeCoAuthoredBy: false`), es un **aviso** en «Resumen», salvo que el enunciado mencione expresamente los commits o el historial de git: entonces es bloqueante. `settings.json` no se toca al aplicar: di qué cambiar.
 
    Para cada una, comprueba:
    - que esté igual en el análisis, en el `CLAUDE.md`, en las reglas y en las guías;

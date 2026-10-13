@@ -39,7 +39,7 @@ Entregables obligatorios (demo, repo, vídeo, pitch, documento…) y formato/fec
 Criterios de evaluación con su peso si lo hay. Si no se indican, pon "No especificado" y, aparte, los criterios que probablemente pesen marcados como `(inferido)`.
 
 ### Restricciones
-Tiempo, tamaño de equipo, tecnologías obligatorias o prohibidas, datos/APIs que hay que usar, licencias, reglas de la organización.
+Tiempo, tamaño de equipo, tecnologías obligatorias o prohibidas, datos/APIs que hay que usar, licencias, reglas de la organización. Si las bases hablan del uso de IA (asistentes de código, IA generativa), di si está permitido, prohibido o hay que declararlo, y dónde (README, formulario, presentación, commits), con sus palabras.
 
 ### Recursos disponibles
 Datasets, APIs, créditos, mentores o herramientas de patrocinadores que ofrece el reto.

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.1 — 2026-10-13
+
+- `/hack-scaffold` genera `.claude/settings.json` con `attribution` vacía: los commits y PR que haga Claude (también los workers y el orquestador) no llevan su coautoría. Si las bases piden declarar el uso de IA, no la quita y lo avisa. `/hack-analyze` recoge lo que digan las bases sobre el uso de IA, y `/hack-check` comprueba que la declaración que pidan tenga tarea con dueño (y avisa si `settings.json` oculta la atribución).
+- Orquestador: el worker deja su informe completo en `<git común>/hackathon/informes/<rama>.md` y devuelve una sola línea; la compuerta lee ese fichero (solo dentro de esa carpeta). El orquestador lee solo su sección del plan y lo que necesita de los contratos. En una sesión de dos bloques, su contexto final baja de 68–74 k a 58 k.
+
 ## 0.3.0 — 2026-10-13
 
 Orquestador por persona (experimental) y criterios del jurado.

@@ -350,3 +350,27 @@ Gasto acumulado de M7c: **10,50 USD**.
 | 8 | Regresión | Sí |
 
 Gasto total de M7c: 10,50 USD.
+
+# v0.3.1: informes de los workers en fichero y lectura parcial del plan (2026-10-13)
+
+Sesión de dos bloques repetida en las mismas condiciones que el criterio 7 de M7c: la misma base y los mismos prompts (`larga-v031.sh`, en el scratchpad). Sesión `5c1ac400`, carpeta `../prueba-v031-larga`, 19:26–19:45, **2,40 USD**.
+- Resultado limpio: tres encargos (dos en paralelo en «Pulido» y uno en «Pitch»), los tres APROBADOS y con push (`318a86d..3fd6d2e`). Al terminar no quedan worktrees, ramas ni referencias.
+- Los tres workers dejaron su informe en `.git/hackathon/informes/<rama>.md`, y su aviso en el contexto del orquestador bajó de 4.000–5.000 caracteres a ~1.140. Los veredictos del revisor siguen en ~2.700–3.000.
+- La compuerta rechazó una vez un informe en fichero al que le faltaba la línea `Worktree:`, y el worker lo corrigió a la primera. Su mensaje aún hablaba del formato «Resumen final»: ahora remite al de «Informe» y a la línea de respuesta.
+- El orquestador no abrió ningún informe (todos «hecho») y no leyó código: solo un `grep` de textos de `web/` para escribir un encargo de «Pulido». La única `Read` fue la de su estado.
+
+| | M7c | v0.3.1 |
+|---|---|---|
+| Contexto al empezar | 18 k | 17 k |
+| Al terminar el bloque 1 | 53 k | 47 k |
+| **Al terminar el bloque 2** | **68–74 k** | **58 k** |
+
+Desglose de lo que entra en el contexto (caracteres): encargos 20 %, salidas de Bash 20 % (antes 35 %, sobre todo por leer solo su parte del plan), avisos de subagentes y mensajes 18 %, órdenes de Bash 14 %, Edits del estado 9 %, resultados de Agent 9 % y texto 8 %. El transcript no guarda el pensamiento esta vez, así que la comparación por fuentes es aproximada. Las cifras de contexto salen del `usage` de la API.
+
+**Por debajo del umbral de ~60 k en dos bloques.** El reinicio por bloque sigue recomendado, porque deja margen para sesiones más largas.
+
+| Agente | USD |
+|---|---|
+| Orquestador (Opus) | 1,202 |
+| Workers ×3 | 0,282 + 0,330 + 0,334 |
+| Revisores ×3 | 0,088 + 0,069 + 0,093 |

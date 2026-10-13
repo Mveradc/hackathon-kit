@@ -88,6 +88,24 @@ try:
     caso("tope: 1.º rechazo", "niega", COMP, handback(informe(salida=""), "t1"), repo)
     caso("tope: 2.º rechazo", "niega", COMP, handback(informe(salida=""), "t1"), repo)
     caso("tope: 3.º deja pasar", "permite", COMP, handback(informe(salida=""), "t1"), repo)
+    # v0.3.1: informe en un fichero de <git común>/hackathon/informes/ y una línea en el contexto.
+    informes = os.path.join(repo, ".git", "hackathon", "informes").replace("\\", "/")
+    os.makedirs(informes, exist_ok=True)
+    def fichero(nombre, texto, carpeta=informes):
+        ruta = f"{carpeta}/{nombre}"
+        open(ruta, "w", encoding="utf-8").write(texto)
+        return ruta
+    def linea(ruta, aid):
+        return handback(f"Estado: hecho · Rama: worktree-agent-x · Informe: {ruta}", aid)
+    caso("informe en fichero, completo y cierto", "permite", COMP, linea(fichero("x.md", informe()), "i1"), repo)
+    caso("informe en fichero, ruta con barras de Windows", "permite", COMP,
+         linea(fichero("x2.md", informe()).replace("/", "\\"), "i2"), repo)
+    caso("informe en fichero, sin salida de la comprobación", "niega", COMP, linea(fichero("y.md", informe(salida="")), "i3"), repo)
+    caso("informe en fichero, ruta inexistente", "niega", COMP, linea(informes + "/no.md", "i4"), repo)
+    caso("informe en fichero, fuera de hackathon/informes", "niega", COMP, linea(fichero("fuera.md", informe(), tmp.replace("\\", "/")), "i5"), repo)
+    caso("informe en fichero, «..» para salir de la carpeta", "niega", COMP,
+         linea(informes + "/../../../../" + os.path.basename(tmp) + "/fuera.md", "i6"), repo)
+    caso("formato antiguo, informe completo en el mensaje", "permite", COMP, handback(informe(), "i7"), repo)
     tr = os.path.join(tmp, "agent-s1.jsonl").replace("\\", "/")
     open(tr, "w").write("{}\n")
     open(tr.replace(".jsonl", ".meta.json"), "w").write('{"agentType":"hackathon-kit:worker"}')
