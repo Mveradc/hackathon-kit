@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "hackathon-kit/os/evento/v1",
+  "title": "Evento del Hackathon OS (v1)",
+  "description": "Evento normalizado que el demonio envía al relay. Los hooks escriben una forma cruda (ver api.md §1) y el demonio la normaliza a esta.",
+  "type": "object",
+  "required": ["v", "id", "ts", "actor", "tipo", "fuente"],
+  "additionalProperties": false,
+  "properties": {
+    "v": { "const": 1 },
+    "id": { "type": "string", "description": "Único: <session_id|demonio>-<contador>. El relay descarta repetidos." },
+    "ts": { "type": "string", "format": "date-time", "description": "Hora de observación (UTC)." },
+    "actor": {
+      "type": "object",
+      "required": ["persona", "papel"],
+      "additionalProperties": false,
+      "properties": {
+        "persona": { "type": "string", "pattern": "^[a-z0-9-]+$", "description": "Usuario de GitHub en minúsculas." },
+        "sesion": { "type": "string" },
+        "agente": { "type": "string", "description": "agent_id del subagente, si lo es." },
+        "papel": { "enum": ["principal", "orquestador", "worker", "revisor", "humano", "demonio"] },
+        "worktree": { "type": "string", "description": "Ruta relativa al repo principal, p. ej. .claude/worktrees/agent-1a2b. Vacía en la copia principal." }
+      }
+    },
+    "tipo": {
+      "enum": [
+        "sesion.inicio", "sesion.fin", "latido",
+        "edicion", "arbol",
+        "encargo.lanzado", "worker.inicio", "worker.fin",
+        "compuerta.ok", "compuerta.ko",
+        "fusion.creada", "revision.veredicto", "fusion.aprobada", "fusion.descartada",
+        "push", "commit",
+        "reclamo", "reserva", "liberacion", "anotacion",
+        "wip.publicado"
+      ]
+    },
+    "tarea": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
+    "rutas": { "type": "array", "items": { "type": "string" }, "description": "Rutas relativas a la raíz del repo, con /." },
+    "datos": {
+      "type": "object",
+      "description": "Campos propios de cada tipo (api.md §2). Nunca contenido de ficheros.",
+      "properties": {
+        "sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "base": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "rama": { "type": "string" },
+        "veredicto": { "enum": ["APROBADO", "CAMBIOS"] },
+        "motivos": { "type": "array", "items": { "type": "string", "maxLength": 300 } },
+        "herramienta": { "type": "string" },
+        "ttl_s": { "type": "integer", "minimum": 30, "maximum": 7200 },
+        "modo": { "enum": ["exclusiva", "compartida"] },
+        "texto": { "type": "string", "maxLength": 300, "description": "Solo para anotacion: declarado, se muestra como tal." }
+      },
+      "additionalProperties": true
+    },
+    "fuente": { "enum": ["hook", "git", "github", "orquestador", "compuerta", "mcp", "humano"] }
+  }
+}
