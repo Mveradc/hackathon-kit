@@ -104,17 +104,17 @@ Cubre: R-16, R-18, R-32 · Depende de: K-20 · Puedes tocar: `hkos/relay.*`
 Contratos que aplican: `api.md` §3
 Hecho cuando: criterios 2, 4 y 5 de M8d.
 
-### K-41 · Relay: reservas y SSE [P]
-Cubre: R-22, R-26 · Depende de: K-40 · Puedes tocar: `hkos/relay_reservas.*`, `hkos/relay_sse.*`
-Hecho cuando: G11 sin pérdidas.
+### K-41 · Relay: SSE [P]
+Cubre: R-26 · Depende de: K-40 · Puedes tocar: `hkos/relay.*`
+Hecho cuando: G11 sin pérdidas (criterio 5 de M8d). Las reservas (`api.md` §3) pasan a K-73 (M8g), donde se valida R-22.
 
 ### K-42 · Demonio local [P]
 Cubre: R-16, R-29 · Depende de: K-34 · Puedes tocar: `hkos/agente.*`
 Contratos que aplican: `api.md` §4
-Hecho cuando: criterios 1 y 3 de M8d.
+Hecho cuando: criterios 1, 3, 6 y 7 de M8d. El sondeo de git del demonio pasa a K-52 (M8e), `estado-equipo.md` a K-60 (M8f) y `publicar_wip` a K-71 (M8g).
 
 ### K-43 · `hk-os unir` y `hk-os relay` (arranque)
-Cubre: R-02 · Depende de: K-40, K-42 · Puedes tocar: `bin/hk-os`, `hkos/cli.*`
+Cubre: R-02 · Depende de: K-40, K-42 · Puedes tocar: `bin/hk-os`, `hkos/cli.*`, `scripts/os/arranque.sh`, `scripts/coordinacion/sesion.sh` (lanzar el demonio)
 Hecho cuando: dos copias del sandbox se unen con un comando cada una.
 
 ## M8e · Estado duradero
@@ -129,13 +129,13 @@ Cubre: R-30, R-31 · Depende de: K-40 · Puedes tocar: `hkos/github.*`
 Hecho cuando: criterios 5 y 6 de M8e.
 
 ### K-52 · Motor de estados integrado y antigüedades
-Cubre: R-08, R-09, R-12–R-15 · Depende de: K-21, K-50, K-51 · Puedes tocar: `hkos/relay.*`, `hkos/estados.*`
+Cubre: R-08, R-09, R-12–R-15 · Depende de: K-21, K-50, K-51 · Puedes tocar: `hkos/relay.*`, `hkos/estados.*`, `hkos/agente.*` (el sondeo de git de `api.md` §4)
 Hecho cuando: criterios 2–4 de M8e.
 
 ## M8f · Proyección
 
 ### K-60 · Módulo de proyección (estado.json → md, datos de la web) [P]
-Cubre: R-24, R-28 · Depende de: K-52 · Puedes tocar: `hkos/proyeccion.*`
+Cubre: R-24, R-28 · Depende de: K-52 · Puedes tocar: `hkos/proyeccion.*`, `hkos/agente.*` (recibir `estado.json` y escribir `estado-equipo.md`)
 Contratos que aplican: `api.md` §6, ADR-0006
 Hecho cuando: test de igualdad en G1–G4.
 
@@ -167,7 +167,7 @@ Cubre: R-21 · Depende de: K-12, K-52 · Puedes tocar: `hkos/contratos.*`
 Hecho cuando: G6 (criterio 3 de M8g).
 
 ### K-73 · Aviso de reserva en PreToolUse y aviso rojo por el monitor
-Cubre: R-22, R-23 · Depende de: K-41, K-60 · Puedes tocar: `scripts/os/reserva.sh`, `scripts/coordinacion/escucha.sh`, `hooks/hooks.json`
+Cubre: R-22, R-23 · Depende de: K-41, K-60 · Puedes tocar: `scripts/os/reserva.sh`, `scripts/coordinacion/escucha.sh`, `hooks/hooks.json`, `hkos/relay.*` (reservas de `api.md` §3, desde M8d)
 Hecho cuando: criterios 4 y 5 de M8g; el monitor sigue en silencio sin OS activo.
 
 ## M8h · Robustez y ensayo

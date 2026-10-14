@@ -61,7 +61,7 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 **Alcance**: `hk-os agente`, `hk-os relay` (eventos, latidos, presencia, reservas, SSE, persistencia), `hk-os unir`.
 
 **Criterios de validación**
-1. Dos copias del sandbox (`../hk-sandbox` y `../hk-sandbox-B`) con su demonio y un relay: la presencia de cada una aparece en `GET /v1/estado` del relay en ≤ 5 s y desaparece de «activos» a los 90 s de cerrar la sesión.
+1. Dos clones de un mismo remoto `bare`, uno por persona y cada uno con su cuenta de GitHub (un clon, una persona: `diseno.md` §3; dos worktrees de un repo no valen), con su demonio y un relay: la presencia de cada una aparece en `GET /v1/estado` del relay en ≤ 5 s y desaparece de «activos» a los 90 s de cerrar la sesión.
 2. Reiniciar el relay no pierde eventos: los demonios reenvían desde su posición y el relay descarta repetidos.
 3. Con el relay parado 5 minutos, ningún hook falla ni se ralentiza; al volver, los eventos llegan en orden.
 4. Sin token, `401`; un evento inválido da `400` y no tumba el relay.

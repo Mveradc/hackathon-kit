@@ -6,8 +6,8 @@ Un contrato congelado solo cambia subiendo `v` o con una nota aquí con su motiv
 |---|---|
 | §1, §2, [eventos.schema.json](eventos.schema.json), [estado.schema.json](estado.schema.json) | **Congelados** (M8b, 2026-10-14) |
 | §0 y §7 | **Congelados** (M8c, 2026-10-14) |
-| §3–§5 | Estables; se congelan al abrir M8d |
-| §6 | Estable; se congela al abrir M8f |
+| §3 y §4 | **Congelados** (M8d, 2026-10-14) |
+| §5 y §6 | Estables; se congelan al abrir M8f |
 
 Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reglas que el código aún no usaba):
 - 2026-10-14, M8c, §1: `transcript_path` en `SubagentStart`. Sin él, el demonio tendría que adivinar la carpeta de la sesión a partir del `cwd`, y M8.0 vio que eso se rompe con las mayúsculas de la ruta. Es una ruta local, no contenido.
@@ -16,6 +16,8 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
 - 2026-10-14, M8c, §2: quien lee los JSONL salta las líneas que no son JSON válido sin cortar la lectura, conserva la numeración de las demás y las cuenta (en M8d, discrepancia `linea_corrupta`).
 - 2026-10-14, M8c, §1: `ts` con microsegundos (`2026-11-25T18:02:11.123456Z`), de `$EPOCHREALTIME` con `TZ=UTC0`, sin procesos. Varios hooks caen en el mismo segundo: el orden de los eventos es (`ts`, nº de línea). Sigue siendo `date-time` del esquema (RFC 3339 admite fracciones), así que el esquema no cambia.
 - 2026-10-14, M8c, §1 y §2: la compuerta marca con `"tope": true` (y `datos.tope`) el tercer intento, que deja pasar sin evidencias.
+- 2026-10-14, M8d, [estado.schema.json](estado.schema.json): `linea_corrupta` en el enum de `discrepancias` (las líneas rotas de los JSONL que cuenta cada demonio, §2). Solo añade un valor.
+- 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
 
@@ -119,28 +121,45 @@ Base: `relay:` de `os.md`. Todas las peticiones llevan `Authorization: Bearer <t
 
 | Método y ruta | Qué hace | Respuesta |
 |---|---|---|
-| `POST /v1/eventos` | Lote de eventos normalizados (≤ 200). Idempotente por `id`. | `{"aceptados":n,"repetidos":m}` |
-| `POST /v1/latido` | `{persona, actores:[{papel,sesion,agente,worktree,tarea,ficheros}]}`. Cada 15 s por demonio. | `204` |
+| `POST /v1/eventos` | Lote de eventos normalizados (≤ 200), `{"eventos":[…]}`. Idempotente por `id`. | `{"aceptados":n,"repetidos":m}` |
+| `POST /v1/latido` | `{persona, actores:[{papel,sesion,agente,worktree,tarea,ficheros,ultima_senal}], lineas_corruptas?}`. Cada 15 s por demonio. | `204` |
 | `GET /v1/estado` | Último `estado.json`. Admite `If-None-Match`. | `200` + `ETag`, o `304` |
 | `GET /v1/stream` | SSE. Evento `estado` con el `estado.json` completo cuando cambia; `ping` cada 20 s. | `text/event-stream` |
-| `POST /v1/reservas` | `{rutas, ttl_s, modo}` en nombre de `persona`/`actor`. | `{"id":…,"hasta":…}` |
-| `DELETE /v1/reservas/{id}` | Libera. | `204` |
-| `GET /` | Web de solo lectura (HTML estático que abre `/v1/stream`). El token va en el fragmento (`/#t=<token>`) y no se envía al servidor en la carga. | HTML |
+| `POST /v1/reservas` | `{rutas, ttl_s, modo}` en nombre de `persona`/`actor`. (Se implementa en M8g.) | `{"id":…,"hasta":…}` |
+| `DELETE /v1/reservas/{id}` | Libera. (M8g.) | `204` |
+| `GET /` | Web de solo lectura (HTML estático que abre `/v1/stream`). El token va en el fragmento (`/#t=<token>`) y no se envía al servidor en la carga. (M8f.) | HTML |
 
-Errores: `401` sin token; `400` con `{"error":…,"campo":…}` si un evento no valida; nunca `500` por un evento malo (se descarta y se registra).
+Errores: `401` sin token o con uno que no es el del equipo; `400` con `{"error":…,"campo":…,"indice":…}` si un evento del lote no valida contra [eventos.schema.json](eventos.schema.json) (o el cuerpo no es JSON, o el lote pasa de 200); nunca `500` por un evento malo (se descarta y se registra).
+
+Reglas (fijadas al congelar, M8d):
+- **Lote entero o nada.** Si un evento del lote no valida, el relay responde `400` con el `indice` del primero que falla y no guarda ninguno. El demonio valida cada evento con el mismo esquema antes de enviarlo y aparta los que no validan (los cuenta en `/salud`): un evento malo no bloquea su cola.
+- **Persistencia.** Cada evento nuevo se añade a `relay/eventos.jsonl` y se vuelca a disco antes de responder. Al arrancar, el relay lo vuelve a leer (saltando líneas rotas): los repetidos se reconocen también tras reiniciar. Los latidos no se guardan.
+- **Token.** Se genera la primera vez y se guarda en `relay/token`; un reinicio reutiliza el mismo, para que los demonios sigan entrando sin volver a unirse. Se compara en tiempo constante.
+- **Dónde escucha.** En `127.0.0.1`, en una IP privada (10/8, 172.16/12, 192.168/16) o en una de Tailscale (100.64/10). Nunca en `0.0.0.0` ni en una IP pública: si no encuentra una válida, no arranca y lo dice. Sin cabeceras CORS.
+- **Latido.** Cada latido sustituye al anterior de esa persona: es la lista completa de sus actores abiertos. Cada actor cuenta como un evento `latido` con `ts` = su `ultima_senal` (la hora de su última señal que vio el demonio, no la de llegada): así el latido no alarga la presencia más allá de los 90 s de R-18.
+- **Estado.** Lo calcula `hkos/modelo.py` (el mismo de M8b, no una copia) con los eventos recibidos, los actores del último latido de cada persona y el equipo de `coordinacion.md` de la copia del relay. Las tareas y los issues llegan en M8e; hasta entonces, la lista de tareas va vacía. Las líneas rotas que declara cada demonio en su latido van a `discrepancias` como `linea_corrupta`.
+- **Versión.** El relay recalcula tras cada lote (como mucho 4 veces por segundo) y cada 5 s, para que la presencia caduque sola. Solo hay versión nueva si el estado cambia sin contar `generado_en`. El `ETag` es esa versión, y cada mensaje SSE lleva `id: <versión>`. Al conectarse, un cliente SSE recibe primero el estado actual.
 
 TTL: actor sin latido en 90 s → `activo: false` (R-18). Reserva vencida → se borra.
 
 ## 4. Demonio local (`hk-os agente`)
-- Sigue `<git común>/hackathon/os/eventos/*.jsonl` (posición por fichero en `<git común>/hackathon/os/posiciones.json`).
-- Cada 15 s: `git worktree list --porcelain`; por worktree, `git status --porcelain` y `git diff --name-only <origin/main>...HEAD`; `git for-each-ref refs/hackathon/`; si hay `origin`, `git fetch --quiet` cada 60 s y `git merge-base --is-ancestor` de las fusiones aprobadas.
-- Con `publicar_wip: sí`: cada 60 s, commit del árbol con un índice temporal (`GIT_INDEX_FILE`, `add -A`, exclusiones de ADR-0007, `write-tree`, `commit-tree -p HEAD`; `HEAD` si no hay cambios) y `git push --force origin <sha>:refs/hackathon/wip/<persona>` **solo** si cambió el sha.
-- Escribe `<git común>/hackathon/os/estado-equipo.md` (formato §6) y `estado.json` local cada vez que recibe uno del relay.
+- Sigue `<git común>/hackathon/os/eventos/*.jsonl` (posición por fichero en `<git común>/hackathon/os/posiciones.json`: bytes y nº de línea ya enviados). **No consume la última línea de un JSONL mientras no acabe en salto**: puede estar a medio escribir. Al arrancar vuelve a normalizar cada fichero desde la primera línea, para recuperar lo que el normalizador sabe (la tarea de cada worker por su `agent_id`), pero solo envía lo que va detrás de su posición.
+- **Persona.** Una línea con `persona` vacía (el primer `SessionStart` de un clon, `api.md` §1) toma la persona del clon, que le pasa `sesion.sh` al lanzarlo (`--persona`, de `hk_yo`).
+- **Envío.** Junta lo nuevo de todos los JSONL, lo ordena por (`ts`, `id`), valida cada evento contra [eventos.schema.json](eventos.schema.json) y lo manda en lotes de ≤ 200. Solo avanza la posición cuando el relay responde `200`. Si el relay no responde o da error, reintenta con espera creciente (hasta 30 s), sin perder la posición. Cada 15 s manda un latido con sus actores abiertos (los que tienen una señal en los últimos 90 s y no han cerrado) y la cuenta de líneas rotas.
+- **Relay y token** de `<git común>/hackathon/os/relay.url` y `…/token`, que deja `hk-os unir` (la carpeta `…/os/relay/` es la del registro del relay, §7); si no está el primero, el `relay:` de `os.md`. Sin token, no envía nada (todo sigue en disco).
+- Cada 15 s: `git worktree list --porcelain`; por worktree, `git status --porcelain` y `git diff --name-only <origin/main>...HEAD`; `git for-each-ref refs/hackathon/`; si hay `origin`, `git fetch --quiet` cada 60 s y `git merge-base --is-ancestor` de las fusiones aprobadas. (Se implementa en M8e.)
+- Con `publicar_wip: sí`: cada 60 s, commit del árbol con un índice temporal (`GIT_INDEX_FILE`, `add -A`, exclusiones de ADR-0007, `write-tree`, `commit-tree -p HEAD`; `HEAD` si no hay cambios) y `git push --force origin <sha>:refs/hackathon/wip/<persona>` **solo** si cambió el sha. (M8g.)
+- Escribe `<git común>/hackathon/os/estado-equipo.md` (formato §6) y `estado.json` local cada vez que recibe uno del relay. (M8f.)
 - Sin relay: sigue con lo local y marca `fuentes.relay` como viejo.
-- Lo lanza `SessionStart` (`sesion.sh`, detrás del interruptor) si nadie responde en su puerto, desacoplado de la sesión. En Windows, con `Start-Process` de PowerShell (ADR-0004). Siempre con `uv run --no-project` (ADR-0005).
-- **Bloqueo: el puerto.** Escucha en `127.0.0.1:<puerto>` (`puerto_agente:` de `os.md`, o `47100 + (cksum del git común) % 900`). Si el `bind` falla, sale. `GET /salud` responde `hk-os <ruta del git común>` en texto plano, sin token (solo escucha en `127.0.0.1`); el arranque solo da por vivo un demonio que responde eso con su mismo git común.
-- **Puerto ocupado por otro programa** (el puerto acepta conexiones, pero `/salud` no responde con nuestro git común): `SessionStart` no lanza el demonio y lo avisa **una vez**: «el puerto N está ocupado por otro programa; pon `puerto_agente:` en `.hackathon/os.md`». A la persona, con `systemMessage`; al modelo, en una línea factual. Anota `puerto_ocupado` en `entregado/<session_id>` para no volver a intentarlo ni a avisar en esa sesión. Los eventos siguen esperando en disco.
-- **Apagado:** sale tras `apagado_min` sin eventos nuevos en los JSONL y sin ninguna sesión activa (sin `sesion.inicio` abierto por un `sesion.fin` o por el TTL de 90 s).
+- Lo lanza `SessionStart` (`sesion.sh`, detrás del interruptor y de la coordinación activa) si nadie responde en su puerto, desacoplado de la sesión. Siempre con `uv run --no-project` (ADR-0005). Lanzador:
+  - Windows (Git Bash): `powershell.exe -NoProfile -Command "Start-Process -WindowStyle Hidden …"`, síncrono (≈0,5 s): un hijo con `nohup … &` muere al acabar el hook (ADR-0004);
+  - Linux: `setsid -f nohup …`;
+  - sin `setsid` (macOS): `nohup … &` y el propio demonio se desacopla al arrancar (`--desacoplar`: `fork` y `os.setsid()`).
+  - Sin `uv` en el `PATH`, no lanza nada y lo avisa una vez por sesión, como el puerto ocupado.
+- **`agente.vivo`.** Al conseguir el puerto, el demonio escribe su puerto en `<git común>/hackathon/os/agente.vivo` y lo borra al salir. En Windows el arranque solo conecta directamente al puerto si ese fichero existe; si no, el sondeo (tope de 0,1 s) lo hace el mismo PowerShell que lanza el demonio. Cada `SessionStart` deja una línea en `…/arranque.log`.
+- **Bloqueo: el puerto.** Escucha en `127.0.0.1:<puerto>` (`puerto_agente:` de `os.md`, o `47100 + (cksum del git común) % 900`, con el git común escrito como lo da `git rev-parse --path-format=absolute --git-common-dir` y sin salto: `printf '%s' "$ruta" | cksum`). Si el `bind` falla, sale. `GET /salud` responde en texto plano, sin token (solo escucha en `127.0.0.1`): la primera línea es `hk-os <ruta del git común>` (con `/`); detrás, líneas `clave: valor` (`pendientes`, `lineas_corruptas`, `invalidos`, `relay`). El arranque solo da por vivo un demonio cuya primera línea es esa con su mismo git común (sin distinguir mayúsculas en Windows).
+- **Puerto ocupado por otro programa** (el puerto acepta conexiones, pero `/salud` no responde con nuestro git común): `SessionStart` no lanza el demonio y lo avisa **una vez**: «el puerto N está ocupado por otro programa; pon `puerto_agente:` en `.hackathon/os.md`». A la persona, con `systemMessage`; al modelo, en una línea factual. Anota `puerto_ocupado` en `entregado/<session_id>` para no volver a intentarlo ni a avisar en esa sesión. Los eventos siguen esperando en disco. `sesion.sh` sale en JSON (`systemMessage` y `hookSpecificOutput.additionalContext`) solo en ese caso; si no, su salida es la de siempre.
+- **Apagado:** sale tras `apagado_min` sin eventos nuevos en los JSONL y sin ninguna sesión activa (una sesión deja de estar activa con su `sesion.fin` o tras 90 s sin señales).
 
 ## 5. MCP (stdio, servido por `hk-os mcp`)
 Lee el estado del demonio de su persona; no habla con GitHub ni con el relay salvo en las dos acciones.
@@ -181,7 +200,7 @@ Cada línea, como mucho 160 caracteres. `sesion.sh` inyecta las secciones en ord
 |---|---|---|
 | `os.md` | `.hackathon/` | Sí |
 | Eventos crudos | `<git común>/hackathon/os/eventos/` | No |
-| Token, posiciones, `estado-equipo.md`, `entregado/` (hash y caracteres inyectados por sesión, R-25) | `<git común>/hackathon/os/` | No |
+| Token, `relay.url`, posiciones, `agente.vivo`, `agente.log`, `arranque.log`, `estado-equipo.md`, `entregado/` (hash y caracteres inyectados por sesión, R-25; avisos del arranque) | `<git común>/hackathon/os/` | No |
 | Último árbol de cada actor (`arbol/<session_id>-<agent_id o «sesion»>`), para no repetir `arbol` | `<git común>/hackathon/os/` | No |
 | Registro del relay, `estado.json` | `<git común>/hackathon/os/relay/` del coordinador | No |
 | Refs de trabajo en curso | `refs/hackathon/wip/<persona>` en el remoto (opt-in) | Refs, no ramas |

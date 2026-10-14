@@ -23,4 +23,4 @@ El kit es solo bash + `gh` para funcionar en Windows con Git Bash sin instalar n
 ## Consecuencias
 - Un solo código para los tres sistemas. Sin dependencias de PyPI, `uv run` no necesita red tras la primera descarga del intérprete.
 - Quien ya tenga Python ≥ 3.10 podría lanzar los scripts con `python`, pero el OS no lo usa: siempre `uv run`, para que todos los portátiles se comporten igual.
-- Pendiente para M8d: comprobar el arranque en macOS y Linux. M8.0 solo probó Windows y Windows Sandbox.
+- Arranque en Linux comprobado en M8d (WSL, Ubuntu, Python 3.12 del sistema elegido por uv; las pruebas de `hkos/` pasan). macOS sigue sin comprobar.

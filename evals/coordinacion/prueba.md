@@ -645,3 +645,104 @@ Fuera del API: 20,2 s de media con el OS activo y 21,1 s apagado. Los hooks `asy
   - el `SessionEnd` intermitente en `-p`;
   - la persona vacía en el primer `SessionStart` de un clon;
   - `arbol` lista también `.hackathon/estado/` (el estado del orquestador, sin commitear) y `.claude/worktrees/` cuando no están ignorados.
+
+# M8d: demonio y relay (2026-10-14)
+
+Criterios en `docs/hackathon-os/hitos.md` («M8d»); tareas K-40 a K-43. Windows 11 con Git Bash, y Linux en WSL (Ubuntu, Git 2.43, Python 3.12, uv 0.13.1, Claude Code 2.1.300 nativo). Montaje en vivo: un remoto `bare` nuevo, `../prueba-m8d-remoto.git` (desde `../prueba-m8-03-base`, `HEAD` en `main`), con el commit `6a9acd4` que activa `os.md` (`relay: http://127.0.0.1:7777`), y un clon por persona:
+- `../prueba-m8d-A`, como A (@hk-persona-b, `GH_CONFIG_DIR`);
+- `../prueba-m8d-B`, como B (@Mveradc), con el relay;
+- `~/prueba-m8d-L` en WSL, como B, con un `gh` falso (`HK_GH`) que solo responde `api user`.
+
+Gasto en modelos: **0,04 USD** (11 sesiones `-p` con Haiku: 7 en Windows, 4 en WSL).
+
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | Presencia de cada clon en `GET /v1/estado` en ≤ 5 s; fuera de «activos» a los 90 s de cerrar | **Sí**. Aparición: 2,9 s (B) y 3,4 s (A) desde su `SessionStart`. Retirada: A, 0,4 s tras su `SessionEnd`; B, sin `SessionEnd`, 91,4 s tras su última señal (TTL de 90 s más el recálculo cada 5 s) |
+| 2 | Reiniciar el relay no pierde eventos; los demonios reenvían desde su posición y el relay descarta repetidos | **Sí**: tres reinicios bruscos con hooks en marcha, 382 líneas y 382 distintas. Un demonio sin `posiciones.json` reenvía sus 191 eventos y el registro no crece |
+| 3 | Relay parado 5 min: ningún hook falla ni se ralentiza; al volver, los eventos llegan en orden | **Sí**: 290 hooks con el relay caído, 0 fallos; mediana de 40 y 31 ms (con el relay arriba, 37 y 31). Al volver, los 145 y 144 pendientes llegan todos, en orden por sesión, 30 s después (la espera máxima del reintento) |
+| 4 | Sin token, `401`; un evento inválido da `400` y no tumba el relay | **Sí**, en `hkos/pruebas/test_relay.py` y contra el relay en vivo |
+| 5 | 50 eventos/s a 5 clientes SSE durante 2 min sin perder ninguno | **Sí**: 6.000/6.000 aceptados, 0 repetidos, registro en orden; cada cliente ve los 6.000 reflejados, sin retrocesos; latencia p50 156 ms, p99 282 ms, máx. 297 ms |
+| 6 | Arranque en Windows | **Sí**, en vivo (abajo) |
+| 7 | Arranque en Linux y macOS | **Linux, sí**, en vivo en WSL (abajo). **macOS, no comprobado**: no hay un Mac. Alternativa elegida a `setsid`, abajo |
+
+Sin modelo:
+- `hkos/pruebas`: 88 pruebas OK (con Python 3.10 y 3.12; en WSL también).
+- `prueba_hooks.py`: 0 fallos (12 casos nuevos del arranque).
+- Simulador G1–G4: OK.
+- `claude plugin validate .`: pasa.
+Comandos: `evals/coordinacion/README.md`.
+
+## Qué se construyó
+- **`hkos/relay.py`** (K-40, K-41):
+  - eventos idempotentes por `id`, en lotes «entero o nada», validados contra `eventos.schema.json`;
+  - registro `relay/eventos.jsonl` volcado a disco antes de responder y releído al arrancar; token persistente;
+  - latidos que sustituyen al anterior de la persona, con la `ultima_senal` de cada actor;
+  - `estado.json` con `modelo.calcular()` de M8b (sin tareas hasta M8e) y `linea_corrupta`;
+  - `GET /v1/estado` con ETag y SSE (`/v1/stream`), con recálculo tras cada lote (como mucho 4 por segundo) y cada 5 s;
+  - escucha solo en `127.0.0.1`, LAN privada o Tailscale.
+- **`hkos/agente.py`** (K-42):
+  - el puerto es el bloqueo, con `/salud`;
+  - sigue los JSONL sin consumir la última línea sin salto, normaliza con `normaliza.py` (recupera su estado releyendo hasta la posición), rellena la persona vacía con `--persona`, valida, envía por lotes y solo avanza la posición con el `200` del relay;
+  - reintenta con espera creciente hasta 30 s; latido cada 15 s; se apaga solo; escribe `agente.vivo` y `agente.log`.
+- **`hkos/cli.py` y `bin/hk-os`** (K-43): `hk-os relay` imprime la línea `hk-os unir <url> <token>`, y cada clon se une con ese comando (comprobado con A y B).
+- **`scripts/os/arranque.sh` y `sesion.sh`:**
+  - el lanzamiento va después de `hk_activa` y de `os_activo`;
+  - sale en JSON con `systemMessage` solo si avisa (puerto ocupado, sin uv), una vez por sesión;
+  - con el OS apagado, la salida de `sesion.sh` es idéntica byte a byte a la de antes (`prueba_hooks.py` la compara con la de `HEAD`);
+  - deja una línea por `SessionStart` en `os/arranque.log` (qué hizo y cuántos ms).
+- **`hkos/esquema.py`:** validador mínimo de JSON Schema que lee los `.schema.json` de `contratos/`. Da el mismo veredicto que jsonschema en 57 casos (44 eventos y 13 estados, válidos e inválidos).
+- **Contratos:**
+  - §3 y §4 de `api.md`, congelados, con las reglas que concretan (lote entero o nada, `ultima_senal`, token persistente, IPs, `/salud`, `relay.url`, lanzadores);
+  - `linea_corrupta` añadida al enum de `discrepancias` (nota de cambio).
+- **Aplazado a su hito** (`tareas.md`, decisión del usuario): reservas (M8g), sondeo de git del demonio (M8e), `estado-equipo.md` y la web (M8f), `publicar_wip` (M8g).
+
+## Arranque en Windows (criterio 6)
+`arranque.log` en vivo (sesiones `-p` con Haiku):
+
+| Caso | Resultado |
+|---|---|
+| Primera sesión de B y de A, sin demonio | `lanzado` en 761 y 782 ms; el demonio sigue vivo tras el hook y tras salir de `-p` (`/salud` responde) |
+| Segunda sesión de B | `vivo` en 128 ms; un solo demonio |
+| B con `apagado_min: 1` | última señal 20:04:12, sin `SessionEnd`; se apaga a las 20:05:42 (90 s de TTL); borra `agente.vivo`; ningún proceso |
+| A con su puerto ocupado por `python -m http.server` | `puerto_ocupado` en 541 ms; no lanza nada; anotado en `entregado/<sesión>`; el modelo recibe la línea factual en su contexto de inicio (la cita literal) |
+
+El aviso «una vez por sesión» (con `startup` y después `compact`) y el `systemMessage` se comprueban en `prueba_hooks.py`: en `-p` no se ve el `systemMessage`.
+
+**Lo que costó cumplir el ≤ 1 s.** Mi primer lanzador tardaba 2,9–3,3 s.
+- **Causa:** en Windows, **conectar a un puerto local cerrado tarda ≈2 s**, porque el sistema reintenta (medido: `/dev/tcp` 2.060 ms; Python, 2.016 ms). M8.0 no lo vio, porque su juguete medía el arranque del demonio, no la vuelta del hook.
+- **Arreglo:**
+  - el demonio deja `os/agente.vivo` al conseguir el puerto y lo borra al salir; el arranque solo conecta directamente si existe;
+  - si no existe, el sondeo del puerto (tope de 0,1 s) lo hace el mismo PowerShell que lanza el demonio, con el guion por la entrada estándar (`-Command -`), sin iconv ni base64;
+  - el resto, con builtins (sin `uname`, `sed` ni `cygpath`).
+- **Resultado:** lanzamiento en 845–906 ms medido a mano y 734–782 ms dentro de las sesiones; con el demonio vivo, 128–264 ms.
+- **Límite que queda:** si el demonio muere sin borrar `agente.vivo` (lo matan), la siguiente sesión paga una vez los ≈2 s.
+
+**Fallo encontrado en vivo y corregido.** En la primera pareja de sesiones, el demonio no arrancó:
+- **B:** `arranque.sh` llamaba a `git -C /c/Users/…`, y con `MSYS_NO_PATHCONV=1` heredado (el modo headless del CLAUDE.md) `git.exe` no entiende esa ruta. Ahora hace `cd` y llama a `git` sin rutas; hay un caso nuevo en `prueba_hooks.py`.
+- **A:** el mismo efecto con mi `GH_CONFIG_DIR=/c/…`. Era del montaje: `gh` fallaba, `hk_activa` también y `sesion.sh` salía en silencio, como debe sin coordinación. Con `C:/…` funciona.
+
+Esas dos sesiones no cuentan para los resultados (0,009 USD).
+
+## Arranque en Linux, WSL (criterio 7)
+`~/prueba-m8d-L`, `claude -p` nativo de WSL con Haiku:
+
+| Caso | `arranque.log` | Además |
+|---|---|---|
+| Primera sesión | `lanzado_setsid` 7 ms | el demonio sobrevive a la salida de `-p` |
+| Segunda sesión | `vivo` 5 ms | un solo demonio |
+| Sin `setsid` (`HKOS_SIN_SETSID=1`, el camino de macOS) y `apagado_min: 1` | `lanzado_desacoplar` 5 ms | sobrevive a `-p`; se apaga solo a los 60 s y borra `agente.vivo` |
+| Puerto ocupado por `python3 -m http.server` | `puerto_ocupado` 16 ms | no lanza nada |
+
+En las cuatro sesiones de WSL llegó el `SessionEnd`; en Windows con `-p` faltó en 3 de las 4 sesiones de B (sigue en observación, como en M8c).
+
+**macOS: no comprobado.** No trae `setsid`. Alternativa elegida: `nohup uv run … --desacoplar &`, y el propio demonio se desacopla al arrancar (`fork`, `os.setsid()`, otro `fork` y la salida estándar a `/dev/null`). Es el camino que se probó en WSL forzando `HKOS_SIN_SETSID=1`. En macOS faltan dos cosas por ver:
+- si Claude Code mata el grupo de procesos del hook antes de que Python llegue a desacoplarse (en WSL no lo hizo);
+- el `cksum` de macOS, que es POSIX como el de Linux, así que el puerto debería coincidir.
+
+## Observaciones
+- **Persona vacía del primer `SessionStart`** (Pendiente de M8c): resuelta. La línea sigue llegando vacía, pero el demonio la rellena con `--persona` y el relay muestra la persona correcta.
+- **Presencia de una sesión quieta.** Con R-18 tal cual, una sesión interactiva sin señales deja de estar activa a los 90 s. Si sigue quieta más de `apagado_min`, el demonio se apaga y no vuelve hasta el siguiente `SessionStart`: los eventos esperan en disco. Propuesta para M8f: que `delta.sh` (`UserPromptSubmit`) lo relance si no responde.
+- **Reloj de cada portátil.** El relay toma `ahora` = el máximo entre su hora y la del último evento, para que un portátil adelantado no quede invisible. El desfase entre portátiles queda para el ensayo de M8h.
+- **Recálculo completo.** `modelo.calcular()` recalcula con todos los eventos; con `tareas=[]` va sobrado (p99 de 282 ms a 50 eventos/s). Con las tareas de M8e y miles de eventos habrá que indexar por tarea.
+- **jsonschema del sistema.** El 4.10.3 de Ubuntu hacía fallar las pruebas de esquema de M8b, porque no comprueba `date-time` sin el extra y resuelve mal el `$id`. `test_esquemas.py` ahora comprueba que el validador funciona y, si no, las salta.
+- **`bin/hk-os`** se probó por su ruta. Falta ver si Claude Code lo pone en el `PATH` de la sesión (M8h, guion de arranque).

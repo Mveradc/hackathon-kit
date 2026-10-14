@@ -205,6 +205,24 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Pruebas en vivo**, en clones separados de `../prueba-m8-03-base`: sesión normal, orquestador con dos encargos de T19, dos CAMBIOS con el revisor forzado y una sesión de 50 herramientas con el OS activo y apagado.
 - **Resultados** en `evals/coordinacion/prueba.md` («M8c»): los siete criterios cumplidos. Gasto: 2,65 USD.
 
+## M8d — Demonio y relay (2026-10-14)
+- **Contratos:** §3 y §4 de `api.md`, congelados. Al congelar se fijaron:
+  - lotes «entero o nada» con `indice` en el `400`;
+  - `ultima_senal` en el latido, para que no alargue la presencia;
+  - token persistente; IPs permitidas;
+  - `/salud` con `clave: valor` detrás de la primera línea;
+  - `relay.url` (la carpeta `relay/` es la del registro);
+  - lanzadores por sistema.
+  - `linea_corrupta`, añadida al enum de `discrepancias` de `estado.schema.json`.
+- **K-40 y K-41:** `hkos/relay.py`. El estado lo calcula `modelo.py` de M8b, no una copia. Eventos idempotentes, registro en disco, SSE y ETag. `hkos/esquema.py` valida contra los `.schema.json` de `contratos/` sin dependencias, con el mismo veredicto que jsonschema en 57 casos.
+- **K-42:** `hkos/agente.py`: bloqueo por puerto, `/salud`, JSONL sin consumir la última línea incompleta, persona vacía rellenada (Pendiente de M8c), posición que solo avanza con la confirmación del relay, reintentos y apagado solo.
+- **K-43:** `hk-os relay` y `hk-os unir` (`hkos/cli.py`, `bin/hk-os`): un comando por persona. El arranque desde `SessionStart` (`scripts/os/arranque.sh`, llamado desde `sesion.sh`) avisa una vez por sesión si el puerto es de otro programa o no hay uv. Con el OS apagado, `sesion.sh` imprime lo mismo que antes, byte a byte.
+- **Decisiones del usuario:** solo lo que exigen los criterios. Las reservas pasan a M8g, el sondeo de git a M8e, y `estado-equipo.md` y la web a M8f (`tareas.md`). El criterio 1 se prueba con dos clones de un remoto nuevo, con cuentas distintas, no con worktrees (`hitos.md`). Linux, con Claude Code real en WSL.
+- **Hallazgo:** en Windows, conectar a un puerto local cerrado tarda ≈2 s. El primer lanzador tardaba 3 s. Con `agente.vivo` y el sondeo dentro del PowerShell que lanza el demonio, el lanzamiento queda en 0,73–0,91 s y la comprobación con el demonio vivo, en 0,13–0,26 s.
+- **Fallo en vivo, corregido:** con `MSYS_NO_PATHCONV=1` heredado, `git.exe` no entiende `git -C /c/…`.
+- **macOS:** no comprobado. Alternativa a `setsid`: `nohup` y el demonio se desacopla solo (`--desacoplar`); el camino se probó en WSL.
+- **Resultados** en `evals/coordinacion/prueba.md` («M8d»): los criterios 1–6 cumplidos; el 7, en Linux sí y en macOS no comprobado. Gasto: 0,04 USD.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

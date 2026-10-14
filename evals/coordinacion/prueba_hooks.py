@@ -332,6 +332,149 @@ def prueba_os(tmp, repo, informe, handback):
     os.remove(os.path.join(repo, ".hackathon", "os.md"))
 
 
+def cksum(datos):
+    """El cksum de POSIX (CRC-32 con el polinomio 0x04C11DB7 y la longitud detrás), para comprobar la fórmula del puerto."""
+    tabla = []
+    for i in range(256):
+        c = i << 24
+        for _ in range(8):
+            c = ((c << 1) ^ 0x04C11DB7) if c & 0x80000000 else (c << 1)
+        tabla.append(c & 0xFFFFFFFF)
+    crc = 0
+    for b in datos:
+        crc = ((crc << 8) & 0xFFFFFFFF) ^ tabla[((crc >> 24) ^ b) & 0xFF]
+    n = len(datos)
+    while n:
+        crc = ((crc << 8) & 0xFFFFFFFF) ^ tabla[((crc >> 24) ^ (n & 0xFF)) & 0xFF]
+        n >>= 8
+    return ~crc & 0xFFFFFFFF
+
+
+def prueba_arranque(tmp):
+    """M8d: sesion.sh lanza el demonio (scripts/os/arranque.sh). Con el OS apagado, la salida es la de antes, byte a byte;
+    con el puerto de otro programa o sin uv, avisa una sola vez por sesión, en JSON, y no lanza nada."""
+    import http.server
+    import socket
+    import threading
+    print("\n== arranque del demonio (sesion.sh y arranque.sh, M8d)")
+    base = os.path.join(tmp, "arranque"); os.makedirs(base)
+    r = repo_os(base, "clon")
+    open(os.path.join(r, ".hackathon", "coordinacion.md"), "w", encoding="utf-8").write(
+        "activa: sí\nrepo: equipo/reto\n\n| Persona | GitHub |\n|---|---|\n| A | @persona-a |\n")
+    gh = os.path.join(base, "gh-falso").replace("\\", "/")
+    open(gh, "w", newline="\n").write('#!/usr/bin/env bash\ncase "$*" in *"api user"*) echo Persona-A ;; esac\nexit 0\n')
+    registro = os.path.join(base, "lanzado.txt").replace("\\", "/")
+    env = dict(ENV, HK_GH=gh, HKOS_LANZAR=registro)
+    # El sesion.sh del commit anterior, con el resto de scripts tal cual, para comparar la salida.
+    viejo = os.path.join(base, "kit-viejo")
+    shutil.copytree(os.path.join(KIT, "scripts"), os.path.join(viejo, "scripts"))
+    texto_viejo = subprocess.run(["git", "show", "HEAD:scripts/coordinacion/sesion.sh"], cwd=KIT, capture_output=True,
+                                 text=True, encoding="utf-8", check=True).stdout
+    open(os.path.join(viejo, "scripts", "coordinacion", "sesion.sh"), "w", encoding="utf-8", newline="\n").write(texto_viejo)
+    SES, SES_VIEJO = KIT + "/scripts/coordinacion/sesion.sh", (viejo + "/scripts/coordinacion/sesion.sh").replace("\\", "/")
+
+    def sesion(sid="s1", source="startup", script=SES, e=None):
+        return lanza(script, json.dumps({"hook_event_name": "SessionStart", "session_id": sid, "source": source, "cwd": r}), r, e or env)
+
+    def lanzados():
+        if not os.path.exists(registro):
+            return []
+        texto = open(registro, encoding="utf-8").read()
+        os.remove(registro)
+        return texto.splitlines()
+
+    antes = sesion(script=SES_VIEJO).stdout
+    comprueba("la coordinación responde en la prueba (Eres el agente de @persona-a)", "@persona-a" in antes, antes[:200])
+    for nombre, os_md in (("sin os.md", None), ("activa: no", "activa: no\n")):
+        if os_md is None:
+            if os.path.exists(os.path.join(r, ".hackathon", "os.md")):
+                os.remove(os.path.join(r, ".hackathon", "os.md"))
+        else:
+            open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write(os_md)
+        s = sesion()
+        comprueba(f"OS apagado ({nombre}): salida idéntica a la de antes y nada lanzado",
+                  s.stdout == antes and s.returncode == 0 and not lanzados() and not os.path.isdir(os.path.join(r, ".git", "hackathon", "os")),
+                  repr(s.stdout[:200]))
+
+    open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write("activa: sí\n")
+    s = sesion()
+    comun = git(r, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    puerto = 47100 + cksum(comun.encode("utf-8")) % 900
+    l = lanzados()
+    comprueba("OS activo, puerto libre: misma salida y un lanzamiento con la persona y el puerto 47100 + cksum % 900",
+              s.stdout == antes and len(l) == 1 and f"--persona persona-a --puerto {puerto}" in l[0] and "hkos/agente.py" in l[0],
+              f"{l} (puerto esperado {puerto})")
+    if os.name == "nt":
+        # Con MSYS_NO_PATHCONV=1 heredado (headless desde Git Bash), git.exe no entiende rutas /c/…: falló en vivo (M8d).
+        s = sesion(e=dict(env, MSYS_NO_PATHCONV="1"))
+        l = lanzados()
+        comprueba("…también con MSYS_NO_PATHCONV=1 heredado", s.stdout == antes and len(l) == 1 and f"--puerto {puerto}" in l[0], str(l))
+
+    # Un programa ajeno en el puerto (puerto_agente:), y después un demonio de este clon.
+    class Ajeno(http.server.BaseHTTPRequestHandler):
+        respuesta = b"<html>otro programa</html>"
+
+        def do_GET(self):
+            self.send_response(200)
+            self.send_header("Content-Length", str(len(self.respuesta)))
+            self.end_headers()
+            self.wfile.write(self.respuesta)
+
+        def log_message(self, *a):
+            pass
+    srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Ajeno)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    p = srv.server_address[1]
+    open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write(f"activa: sí\npuerto_agente: {p}   # prueba\n")
+    try:
+        s = sesion("s2")
+        try:
+            j = json.loads(s.stdout)
+        except ValueError:
+            j = {}
+        contexto = j.get("hookSpecificOutput", {}).get("additionalContext", "")
+        comprueba("puerto ocupado por otro programa: JSON con systemMessage y el contexto de siempre más el aviso; nada lanzado",
+                  f"puerto {p} está ocupado" in j.get("systemMessage", "") and contexto.startswith(antes) and "puerto_agente:" in contexto
+                  and not lanzados(), s.stdout[:300])
+        marca = open(os.path.join(r, ".git", "hackathon", "os", "entregado", "s2"), encoding="utf-8").read()
+        s = sesion("s2", "compact")
+        comprueba("…en la misma sesión (compact) no avisa ni lo reintenta", s.stdout == antes and not lanzados() and marca == "puerto_ocupado\n",
+                  s.stdout[:200])
+        s = sesion("s3")
+        comprueba("…en otra sesión vuelve a avisar", s.stdout.startswith('{"systemMessage"') and not lanzados())
+        Ajeno.respuesta = f"hk-os {comun.upper() if os.name == 'nt' else comun}\npendientes: 0\n".encode("utf-8")
+        s = sesion("s4")
+        comprueba("un demonio de este clon en el puerto (/salud con su git común): no lanza otro ni avisa",
+                  s.stdout == antes and not lanzados(), s.stdout[:200])
+        vivo = os.path.join(r, ".git", "hackathon", "os", "agente.vivo")
+        open(vivo, "w").write(f"{p}\n")
+        s = sesion("s4b")
+        comprueba("…también con agente.vivo (conexión directa, sin sondeo)", s.stdout == antes and not lanzados(), s.stdout[:200])
+        Ajeno.respuesta = b"hk-os C:/otro/clon/.git\n"
+        s = sesion("s5")
+        comprueba("el demonio de otro clon en el puerto cuenta como otro programa", s.stdout.startswith('{"systemMessage"') and not lanzados())
+        os.remove(vivo)
+    finally:
+        srv.shutdown(); srv.server_close()
+
+    # Sin uv en el PATH.
+    uv = shutil.which("uv")
+    if uv:
+        sep = os.pathsep
+        camino = sep.join(d for d in env["PATH"].split(sep) if os.path.normcase(os.path.abspath(d or ".")) != os.path.normcase(os.path.dirname(uv)))
+        with socket.socket() as so:
+            so.bind(("127.0.0.1", 0)); libre = so.getsockname()[1]
+        open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write(f"activa: sí\npuerto_agente: {libre}\n")
+        s = sesion("s6", e=dict(env, PATH=camino))
+        comprueba("sin uv: avisa una vez (JSON) y no lanza", "uv no está instalado" in s.stdout and not lanzados(), s.stdout[:200])
+        s = sesion("s6", "resume", e=dict(env, PATH=camino))
+        comprueba("…y en la misma sesión ya no", not s.stdout.startswith("{") and not lanzados())
+        open(os.path.join(r, ".git", "hackathon", "os", "agente.vivo"), "w").write(f"{libre}\n")
+        s = sesion("s7")
+        comprueba("agente.vivo viejo (demonio muerto) y el puerto libre: lo lanza", s.stdout == antes and len(lanzados()) == 1)
+    os.remove(os.path.join(r, ".hackathon", "os.md"))
+
+
 tmp = tempfile.mkdtemp(prefix="hk-hooks-")
 try:
     repo = os.path.join(tmp, "repo")
@@ -505,6 +648,7 @@ try:
         print(f"{'OK   ' if ok else 'FALLO'} {script}: consultas con labels={', labels='.join(consultas) or '(ninguna)'}")
 
     prueba_os(tmp, repo, informe, handback)
+    prueba_arranque(tmp)
 finally:
     subprocess.run(["git", "worktree", "prune"], cwd=os.path.join(tmp, "repo"), capture_output=True)
     shutil.rmtree(tmp, ignore_errors=True)

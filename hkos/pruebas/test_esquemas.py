@@ -19,9 +19,6 @@ try:
     import jsonschema
 except ImportError:
     jsonschema = None
-# Draft202012Validator llega en la 4.0; su FORMAT_CHECKER, después.
-USABLE = hasattr(getattr(jsonschema, "Draft202012Validator", None), "FORMAT_CHECKER")
-
 CONTRATOS = os.path.join(KIT, "docs", "hackathon-os", "contratos")
 NORMALIZADAS = os.path.join(KIT, "evals", "coordinacion", "entradas", "normalizadas.json")
 
@@ -29,6 +26,25 @@ NORMALIZADAS = os.path.join(KIT, "evals", "coordinacion", "entradas", "normaliza
 def carga(ruta):
     with open(ruta, encoding="utf-8") as f:
         return json.load(f)
+
+
+def _usable():
+    """Draft202012Validator llega en la 4.0 y su FORMAT_CHECKER después; sin el extra «format», no comprueba date-time,
+    y la 4.10 del sistema de Ubuntu no resuelve los $ref con el $id de estado.schema.json (M8d, WSL). Se prueba que
+    funciona de verdad, no solo que existe."""
+    v = getattr(jsonschema, "Draft202012Validator", None)
+    if not hasattr(v, "FORMAT_CHECKER"):
+        return False
+    try:
+        if v({"format": "date-time"}, format_checker=v.FORMAT_CHECKER).is_valid("ayer"):
+            return False
+        v(carga(os.path.join(CONTRATOS, "estado.schema.json"))).is_valid({"tareas": [{"estado": {}}]})
+    except Exception:
+        return False
+    return True
+
+
+USABLE = _usable()
 
 
 def validador(nombre):
