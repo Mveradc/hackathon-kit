@@ -1,5 +1,5 @@
 {
- "descripcion": "Evento normalizado (contratos/eventos.schema.json) que corresponde a cada entrada real de hooks de esta carpeta, según api.md §2. Escrito y revisado a mano en M8b; en M8c es la salida esperada del normalizador (K-34). Las entradas son del plugin de juguete de M8.0: juguete:orq hace de orquestador y juguete:worker de worker. Los ts son sintéticos: la forma cruda los lleva en el sobre que añade emite.sh.",
+ "descripcion": "Evento normalizado (contratos/eventos.schema.json) que corresponde a cada entrada real de hooks de esta carpeta, según api.md §2. Escrito y revisado a mano en M8b; en M8c, salida esperada del normalizador (K-34) tras pasar cada entrada por los hooks que le tocan según hooks.json. El id es <session_id>-<nº de línea del JSONL> (api.md §2). Las entradas son del plugin de juguete de M8.0: juguete:orq hace de orquestador y juguete:worker de worker. Los ts son sintéticos: la forma cruda los lleva en el sobre que añade emite.sh.",
  "sin_evento": "evento null: la entrada no produce evento normalizado (Read, ToolSearch, MCP, UserPromptSubmit, PreToolUse de Write o Edit, PostToolBatch y Stop: el árbol lo da arbol.sh; el commit del worker llega por el sondeo de git, no por su Bash).",
  "casos": [
   {
@@ -53,7 +53,7 @@
    "entrada": "sesion-normal/09-principal-PostToolUse-Edit.json",
    "evento": {
     "v": 1,
-    "id": "be342bee-6649-43f3-b3b9-1a1f96cd32df-2",
+    "id": "be342bee-6649-43f3-b3b9-1a1f96cd32df-3",
     "ts": "2026-10-14T10:00:08Z",
     "actor": {
      "persona": "persona-a",
@@ -116,7 +116,7 @@
    "entrada": "sesion-normal/21-principal-SessionEnd.json",
    "evento": {
     "v": 1,
-    "id": "be342bee-6649-43f3-b3b9-1a1f96cd32df-3",
+    "id": "be342bee-6649-43f3-b3b9-1a1f96cd32df-6",
     "ts": "2026-10-14T10:00:20Z",
     "actor": {
      "persona": "persona-a",
@@ -212,7 +212,7 @@
    "entrada": "orquestador-y-worker/09-worker-PostToolUse-Write.json",
    "evento": {
     "v": 1,
-    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-4",
+    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-5",
     "ts": "2026-10-14T11:00:08Z",
     "actor": {
      "persona": "persona-a",
@@ -257,7 +257,7 @@
    "entrada": "orquestador-y-worker/16-worker-SubagentStop.json",
    "evento": {
     "v": 1,
-    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-5",
+    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-10",
     "ts": "2026-10-14T11:00:15Z",
     "actor": {
      "persona": "persona-a",
@@ -287,7 +287,7 @@
    "entrada": "orquestador-y-worker/20-orq-SessionEnd.json",
    "evento": {
     "v": 1,
-    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-6",
+    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-12",
     "ts": "2026-10-14T11:00:19Z",
     "actor": {
      "persona": "persona-a",
@@ -395,7 +395,7 @@
    "entrada": "orquestador-y-worker-sin-tools/12-worker-PostToolUse-Write.json",
    "evento": {
     "v": 1,
-    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-4",
+    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-5",
     "ts": "2026-10-14T12:00:11Z",
     "actor": {
      "persona": "persona-a",
@@ -456,7 +456,7 @@
    "entrada": "orquestador-y-worker-sin-tools/23-worker-SubagentStop.json",
    "evento": {
     "v": 1,
-    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-5",
+    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-10",
     "ts": "2026-10-14T12:00:22Z",
     "actor": {
      "persona": "persona-a",
@@ -486,7 +486,7 @@
    "entrada": "orquestador-y-worker-sin-tools/27-orq-SessionEnd.json",
    "evento": {
     "v": 1,
-    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-6",
+    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-12",
     "ts": "2026-10-14T12:00:26Z",
     "actor": {
      "persona": "persona-a",

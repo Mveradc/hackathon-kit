@@ -3,6 +3,7 @@
 Monta un repo de juguete con un worktree de worker en un directorio temporal y lanza los hooks con bash.
 Uso: python evals/coordinacion/prueba_hooks.py   (sale con 1 si algún caso falla)
 """
+import glob
 import json
 import re
 import os
@@ -41,6 +42,294 @@ def caso(nombre, esperado, script, datos, cwd, ascii=True):
 
 def git(cwd, *args):
     return subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True, check=True).stdout.strip()
+
+
+# --- M8c: Hackathon OS (emite.sh, arbol.sh, línea de la compuerta y hkos/normaliza.py) ---
+EMITE, ARBOL = KIT + "/scripts/os/emite.sh", KIT + "/scripts/os/arbol.sh"
+ENTRADAS = os.path.join(KIT, "evals", "coordinacion", "entradas")
+CAMPOS = {  # lista blanca de api.md §1, por tipo de línea
+    "hook": {"v", "ts", "persona", "tipo", "session_id", "cwd", "agent_id", "agent_type", "source", "tool_name", "tool_use_id",
+             "ruta", "git", "subagent_type", "id", "base", "transcript_path", "veredicto", "fusion", "truncado"},
+    "arbol": {"v", "ts", "persona", "tipo", "session_id", "cwd", "agent_id", "agent_type", "base", "porcelain", "diff", "truncado"},
+    "compuerta": {"v", "ts", "persona", "tipo", "session_id", "cwd", "agent_id", "agent_type", "resultado", "tope", "motivos", "truncado"},
+}
+
+
+def comprueba(nombre, ok, detalle=""):
+    global fallos
+    fallos += not ok
+    print(f"{'OK   ' if ok else 'FALLO'} {nombre}" + (f"\n        {detalle}" if detalle and not ok else ""))
+
+
+def lanza(script, texto, cwd, env=None):
+    return subprocess.run([BASH, script], input=texto, capture_output=True, text=True, encoding="utf-8", cwd=cwd, env=env or ENV)
+
+
+def lineas(repo_dir):
+    """{sesión: [líneas]} de los JSONL del OS en ese repo."""
+    d = os.path.join(repo_dir, ".git", "hackathon", "os", "eventos")
+    if not os.path.isdir(d):
+        return {}
+    return {f[:-6]: open(os.path.join(d, f), encoding="utf-8").read().splitlines() for f in os.listdir(d) if f.endswith(".jsonl")}
+
+
+def valida(nombre, texto):
+    """json.loads y lista blanca de una línea cruda; da el dict o None."""
+    try:
+        d = json.loads(texto)
+    except ValueError as e:
+        comprueba(nombre, False, f"no es JSON: {e}: {texto[:120]}")
+        return None
+    clase = d.get("tipo") if d.get("tipo") in ("arbol", "compuerta") else "hook"
+    sobra = set(d) - CAMPOS[clase]
+    if sobra:
+        comprueba(nombre, False, f"campos fuera de la lista blanca: {sorted(sobra)}")
+        return None
+    return d
+
+
+def repo_os(base, nombre, os_md=None, codificacion="utf-8", remoto=False):
+    r = os.path.join(base, nombre)
+    os.makedirs(os.path.join(r, ".hackathon"))
+    git(r, "init", "-q", "-b", "main")
+    git(r, "config", "user.name", "prueba"); git(r, "config", "user.email", "prueba@example.com")
+    if os_md is not None:
+        open(os.path.join(r, ".hackathon", "os.md"), "w", encoding=codificacion, newline="").write(os_md)
+    if remoto:
+        subprocess.run(["git", "init", "-q", "--bare", "-b", "main", r + ".git"], check=True)
+        open(os.path.join(r, "a.txt"), "w").write("uno\n")
+        git(r, "add", "-A"); git(r, "commit", "-qm", "inicio")   # os.md va versionado (api.md §0)
+        git(r, "remote", "add", "origin", r + ".git"); git(r, "push", "-q", "-u", "origin", "main")
+    return r
+
+
+def scripts_del_os(d, hooks):
+    """Los scripts del OS que Claude Code lanzaría con esta entrada, según los matchers de hooks.json."""
+    ev, salida = d["hook_event_name"], []
+    for g in hooks.get(ev, []):
+        m = g.get("matcher")
+        clave = d.get("tool_name") if ev in ("PreToolUse", "PostToolUse") else d.get("source")
+        if m and not (clave and re.fullmatch(m, clave)):
+            continue
+        salida += [KIT + "/scripts/os/" + s for h in g["hooks"] for s in re.findall(r"scripts/os/(\w+\.sh)", h["command"])]
+    return salida
+
+
+def prueba_os(tmp, repo, informe, handback):
+    global fallos
+    sys.path.insert(0, os.path.join(KIT, "hkos"))
+    from normaliza import Contexto, Normalizador, normalizar_fichero
+    hooks = json.load(open(os.path.join(KIT, "hooks", "hooks.json"), encoding="utf-8"))["hooks"]
+    reales = {os.path.relpath(f, ENTRADAS).replace("\\", "/"): open(f, encoding="utf-8").read()
+              for f in sorted(glob.glob(os.path.join(ENTRADAS, "*", "*.json")))}
+    base = os.path.join(tmp, "os"); os.makedirs(base)
+
+    # gh y curl falsos: si un hook del OS los llama, dejan rastro (criterio 1: sin red).
+    falsos, rastro = os.path.join(base, "falsos"), os.path.join(base, "rastro").replace("\\", "/")
+    os.makedirs(falsos)
+    for p in ("gh", "curl"):
+        open(os.path.join(falsos, p), "w", newline="\n").write(f"#!/bin/sh\necho {p} >> '{rastro}'\n")
+    env_falsos = dict(ENV, PATH=falsos + os.pathsep + ENV.get("PATH", ""))
+
+    print("\n== Hackathon OS: apagado (criterio 1)")
+    comprueba("los hooks de antes no han creado nada del OS en el repo de prueba",
+              not os.path.exists(os.path.join(repo, ".git", "hackathon", "os")))
+    variantes = [("sin os.md", None, "utf-8"), ("«activa: no»", "activa: no\n", "utf-8"),
+                 ("«activa: no» en UTF-16", "activa: no\r\n", "utf-16"), ("sin línea activa", "# Hackathon OS\nrelay: x\n", "utf-8")]
+    for i, (nombre, contenido, cod) in enumerate(variantes):
+        r = repo_os(base, f"apagado{i}", contenido, cod, remoto=True)
+        open(os.path.join(r, "nuevo.txt"), "w").write("x\n")
+        for texto in reales.values():
+            lanza(EMITE, texto, r, env_falsos)
+        lanza(ARBOL, json.dumps({"hook_event_name": "PostToolBatch", "session_id": "s-apagado", "cwd": r}), r, env_falsos)
+        comprueba(f"{nombre}: ni una escritura en .git/hackathon", not os.path.exists(os.path.join(r, ".git", "hackathon")))
+    comprueba("sin red: ningún hook del OS ha llamado a gh ni a curl", not os.path.exists(rastro))
+    medida = subprocess.run([BASH, "-c", f"cd '{base}/apagado0' && source '{KIT}/scripts/os/comun.sh' && s=$EPOCHREALTIME; "
+                             "for i in {1..100}; do os_activo; done; e=$EPOCHREALTIME; echo $(( (${e/./}-${s/./}) / 100 ))"],
+                            capture_output=True, text=True)
+    us = int(medida.stdout.strip() or 10**9)
+    comprueba(f"os_activo sin os.md: {us / 1000:.2f} ms por llamada (< 20 ms)", us < 20000)
+
+    print("\n== Hackathon OS: activado")
+    for i, (nombre, contenido, cod) in enumerate([("«activa: sí» con comentario", "activa: sí   # prueba\n", "utf-8"),
+                                                  ("«activa: si» con CRLF", "# OS\r\nactiva: si\r\n", "utf-8"),
+                                                  ("con BOM", "activa: yes\n", "utf-8-sig"),
+                                                  ("en UTF-16", "activa: sí\r\n", "utf-16")]):
+        r = repo_os(base, f"activo{i}", contenido, cod)
+        lanza(EMITE, reales["sesion-normal/01-principal-SessionStart.json"], r, env_falsos)
+        comprueba(f"{nombre}: escribe la línea", sum(map(len, lineas(r).values())) == 1)
+    comprueba("activado tampoco llama a gh ni a curl", not os.path.exists(rastro))
+
+    print("\n== Entradas reales por los hooks del OS y normaliza.py (K-34)")
+    r = repo_os(base, "reales", "activa: sí\n")
+    for texto in reales.values():
+        for s in scripts_del_os(json.loads(texto), hooks):
+            lanza(s, texto, r)
+    prompts = {}
+    for texto in reales.values():
+        d = json.loads(texto)
+        if d["hook_event_name"] == "PreToolUse" and d.get("tool_name") == "Agent":
+            prompts[d["session_id"]] = d["tool_input"]["prompt"]
+    def primera(ruta):
+        m = re.search(r"/([0-9a-f-]{36})/subagents/agent-[0-9a-f]+\.jsonl$", ruta)
+        return json.dumps({"type": "user", "message": {"role": "user", "content": prompts[m.group(1)]}}) if m else None
+    def raices(cwd):
+        c = cwd.replace("\\", "/"); i = c.lower().find("/repo")
+        return c, (c[:i + 5] if i >= 0 else c)
+    papeles = {"juguete:orq": "orquestador", "juguete:orqlibre": "orquestador", "juguete:worker": "worker", "juguete:workerlibre": "worker"}
+    obtenidos, n_lineas = {}, 0
+    for sesion, ls in lineas(r).items():
+        for i, l in enumerate(ls, 1):
+            n_lineas += valida(f"línea {sesion[:8]}-{i}", l) is not None
+        nz = Normalizador(Contexto(persona="persona-a", papeles=papeles, raices=raices, primera_linea=primera))
+        for e in normalizar_fichero(os.path.join(r, ".git", "hackathon", "os", "eventos", sesion + ".jsonl"), normalizador=nz):
+            obtenidos[e["id"]] = e
+    print(f"      {n_lineas} líneas crudas válidas y en la lista blanca; {len(obtenidos)} eventos normalizados")
+    esperados = {c["evento"]["id"]: c for c in json.load(open(os.path.join(ENTRADAS, "normalizadas.json"), encoding="utf-8"))["casos"] if c["evento"]}
+    comprueba("los mismos eventos que normalizadas.json (ni de más ni de menos)", set(obtenidos) == set(esperados),
+              f"de más: {sorted(set(obtenidos) - set(esperados))}; faltan: {sorted(set(esperados) - set(obtenidos))}")
+    for i, c in esperados.items():
+        o = dict(obtenidos.get(i, {})); e = dict(c["evento"])
+        ts_ok = bool(re.fullmatch(r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d\.\d{6}Z", o.pop("ts", "")))
+        e.pop("ts")
+        if o != e or not ts_ok:
+            comprueba(f"evento de {c['entrada']}", False, f"obtenido {o}\n        esperado {e}")
+    comprueba("cada evento coincide con su entrada (salvo ts, que es el de emite.sh)", True)
+
+    print("\n== Recorte de «git» a 200 caracteres (criterio 7)")
+    r = repo_os(base, "recorte", "activa: sí\n")
+    plantilla = json.loads(reales["orquestador-y-worker/14-worker-PostToolUse-Bash.json"])
+    casos = 0
+    for nombre, especial, ascii in (("\\\"", '"', True), ("\\\\", "\\", True), ("\\u00f3", "ó", True), ("ó en UTF-8", "ó", False)):
+        for k in range(185, 202):
+            cmd = "git commit -m " + "a" * (k - 14) + especial * 3 + "b" * 30
+            d = dict(plantilla, session_id=f"s-recorte-{casos}", tool_input={"command": cmd, "description": "x"})
+            lanza(EMITE, json.dumps(d, ensure_ascii=ascii), r)
+            casos += 1
+            ls = lineas(r).get(d["session_id"], [])
+            linea = valida(f"recorte {nombre} en {k}", ls[0]) if len(ls) == 1 else None
+            ok = linea is not None and cmd.startswith(linea.get("git", "-")) and len(json.dumps(linea["git"], ensure_ascii=ascii)) - 2 <= 200
+            if not ok:
+                comprueba(f"recorte {nombre} con el especial en {k}", False, f"líneas: {ls}")
+    comprueba(f"{casos} recortes alrededor de \\\", \\\\, \\u00f3 y ó: JSON válido y prefijo del comando", True)
+
+    print("\n== Entradas grandes (un Edit con el fichero entero en tool_response, un Write de 200 KB)")
+    r = repo_os(base, "grandes", "activa: sí\n")
+    d = json.loads(reales["sesion-normal/09-principal-PostToolUse-Edit.json"])
+    d["tool_response"] = {"originalFile": "línea de código con «texto» y \"comillas\"\n" * 6000}
+    d["session_id"] = "s-grande-edit"
+    lanza(EMITE, json.dumps(d, ensure_ascii=False), r)
+    w = json.loads(reales["orquestador-y-worker/09-worker-PostToolUse-Write.json"])
+    w["tool_input"]["content"] = "x = 1\n" * 35000
+    w["session_id"] = "s-grande-write"
+    lanza(EMITE, json.dumps(w), r)
+    for sesion, entrada in (("s-grande-edit", d), ("s-grande-write", w)):
+        ls = lineas(r).get(sesion, [])
+        l = valida(f"entrada grande {sesion}", ls[0]) if len(ls) == 1 else None
+        comprueba(f"{sesion}: ruta y tool_use_id aunque la entrada pase de 200 KB",
+                  l is not None and l.get("ruta") == entrada["tool_input"]["file_path"] and l.get("tool_use_id") == entrada["tool_use_id"], str(ls)[:300])
+
+    print("\n== Escrituras simultáneas en el mismo JSONL (criterio 7, tope de 1.000 bytes)")
+    # emite.sh y arbol.sh reales, mezclados, con líneas cerca del tope. En Windows, el printf de bash escribe en
+    # trozos de 1 KB (api.md §1): por debajo, las líneas de procesos simultáneos no se han mezclado en las medidas.
+    r = repo_os(base, "simultaneas", "activa: sí\n", remoto=True)
+    for i in range(60):
+        open(os.path.join(r, f"fichero-con-un-nombre-bastante-largo-{i:03}.txt"), "w").write("x")
+    largo = "C:\\" + "\\".join(["carpeta-larga"] * 25)
+    escritura = dict(json.loads(reales["orquestador-y-worker/09-worker-PostToolUse-Write.json"]), session_id="s-simultaneas",
+                     cwd=largo, tool_input={"file_path": largo + "\\fichero.txt", "content": "x"})
+    rondas, por_ronda = int(os.environ.get("HK_RONDAS", 50)), 20
+    for ronda in range(rondas):
+        trabajos = []
+        for i in range(por_ronda):
+            if i % 2:   # cada arbol con su agent_id, para que «sin cambios, no repite» no lo frene
+                trabajos.append((ARBOL, json.dumps({"hook_event_name": "PostToolBatch", "session_id": "s-simultaneas", "cwd": r,
+                                                    "agent_id": f"w{ronda}-{i}"})))
+            else:
+                trabajos.append((EMITE, json.dumps(escritura)))
+        procs = [subprocess.Popen([BASH, s], stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=r, env=ENV)
+                 for s, _ in trabajos]
+        for p, (_, texto) in zip(procs, trabajos):   # todos arrancados y esperando la entrada: se la damos casi a la vez
+            p.stdin.write(texto.encode()); p.stdin.close()
+        for p in procs:
+            p.wait()
+    ls = lineas(r).get("s-simultaneas", [])
+    tams = [len(l.encode()) + 1 for l in ls]
+    validas = [valida("línea simultánea", l) for l in ls]
+    tipos = [v["tipo"] for v in validas if v]
+    comprueba(f"{rondas}×{por_ronda} emite.sh y arbol.sh a la vez: {len(ls)} líneas, {len(tipos)} enteras y válidas "
+              f"({tipos.count('PostToolUse')} de emite, {tipos.count('arbol')} de arbol; de {min(tams, default=0)} a {max(tams, default=0)} bytes)",
+              len(ls) == len(tipos) == rondas * por_ronda and tipos.count("arbol") == tipos.count("PostToolUse")
+              and 900 < max(tams) <= 1000 and all(v.get("truncado") for v in validas if v and v["tipo"] == "arbol"))
+    escritura["cwd"] = largo * 3
+    lanza(EMITE, json.dumps(escritura), r)
+    ultima = lineas(r)["s-simultaneas"][-1]
+    comprueba("una línea que no cabe en 1.000 bytes se reduce al sobre mínimo con «truncado»",
+              len(ultima.encode()) + 1 <= 1000 and (valida("línea reducida", ultima) or {}).get("truncado") is True
+              and "cwd" not in json.loads(ultima))
+
+    print("\n== Líneas rotas en un JSONL (normaliza.py)")
+    sesion = "be342bee-6649-43f3-b3b9-1a1f96cd32df"
+    buenas = open(os.path.join(base, "reales", ".git", "hackathon", "os", "eventos", sesion + ".jsonl"), "rb").read().splitlines(keepends=True)
+    rota = os.path.join(base, "rota.jsonl")
+    with open(rota, "wb") as f:   # la línea 2 (PreToolUse de Edit) partida en dos, como si dos escrituras se hubieran mezclado
+        f.write(buenas[0] + buenas[1][:60] + b"\n" + buenas[1][60:] + b"".join(buenas[2:]))
+    nz = Normalizador(Contexto(persona="persona-a", raices=raices))
+    e = normalizar_fichero(rota, normalizador=nz)
+    comprueba("salta las dos mitades, sigue leyendo, conserva el número de línea real y las cuenta",
+              [(x["tipo"], x["id"].rsplit("-", 1)[1]) for x in e] == [("sesion.inicio", "1"), ("edicion", "4"), ("sesion.fin", "7")]
+              and nz.lineas_corruptas == 2, f"{[(x['tipo'], x['id']) for x in e]}, rotas: {nz.lineas_corruptas}")
+
+    print("\n== arbol.sh (criterio 4)")
+    r = repo_os(base, "arbol", "activa: sí\n", remoto=True)
+    def arbol(agente=None):
+        d = {"hook_event_name": "PostToolBatch", "session_id": "s-arbol", "cwd": r}
+        if agente:
+            d["agent_id"] = agente
+        lanza(ARBOL, json.dumps(d), r)
+        return lineas(r).get("s-arbol", [])
+    subprocess.run([BASH, "-c", "sed -i 's/uno/dos/' a.txt && echo nuevo > generado.txt"], cwd=r, check=True)
+    ls = arbol()
+    l1 = valida("arbol", ls[-1]) if ls else None
+    comprueba("un fichero cambiado solo por Bash (sed) y uno generado aparecen en el arbol",
+              l1 is not None and " M a.txt" in l1["porcelain"] and "?? generado.txt" in l1["porcelain"] and l1.get("base") == git(r, "rev-parse", "origin/main"),
+              str(l1))
+    comprueba("sin cambios, no repite la línea", len(arbol()) == 1)
+    comprueba("otro actor (agent_id) con el mismo árbol sí escribe la suya", len(arbol("w1")) == 2)
+    git(r, "add", "a.txt", "generado.txt"); git(r, "commit", "-qm", "T07 · cambio")
+    ls = arbol()
+    l2 = valida("arbol tras commit", ls[-1])
+    comprueba("tras un commit, el cambio está en «diff» y no en «porcelain»",
+              len(ls) == 3 and l2 is not None and l2["porcelain"] == [] and sorted(l2["diff"]) == ["a.txt", "generado.txt"], str(l2))
+    for i in range(300):
+        open(os.path.join(r, f"fichero-con-un-nombre-bastante-largo-{i:03}.txt"), "w").write("x")
+    ls = arbol()
+    l3 = valida("arbol recortado", ls[-1])
+    comprueba("con 300 ficheros nuevos, la lista se recorta: «truncado» y como mucho 1.000 bytes",
+              l3 is not None and l3.get("truncado") is True and len(ls[-1].encode()) + 1 <= 1000 and len(l3.get("porcelain", [])) >= 3, str(l3))
+    nz = Normalizador(Contexto(persona="persona-a", raices=lambda c: (c, c)))
+    e = nz.eventos(l1, 1)
+    comprueba("normaliza.py: el arbol da rutas de porcelain y diff", len(e) == 1 and e[0]["rutas"] == ["a.txt", "generado.txt"], str(e))
+
+    print("\n== compuerta.sh con el OS activo (K-33)")
+    open(os.path.join(repo, ".hackathon", "os.md") if os.path.isdir(os.path.join(repo, ".hackathon")) else
+         (os.makedirs(os.path.join(repo, ".hackathon")) or os.path.join(repo, ".hackathon", "os.md")), "w", encoding="utf-8").write("activa: sí\n")
+    def entrega(msg, aid):
+        return dict(handback(msg, aid), session_id="s-compuerta", cwd=repo)
+    caso("OS activo: informe cierto", "permite", COMP, entrega(informe(), "os1"), repo)
+    caso("OS activo: sin salida de la comprobación", "niega", COMP, entrega(informe(salida=""), "os2"), repo)
+    for n, esperado in ((1, "niega"), (2, "niega"), (3, "permite")):
+        caso(f"OS activo: tope, intento {n}", esperado, COMP, entrega(informe(salida=""), "os3"), repo)
+    ls = [valida("línea de la compuerta", l) for l in lineas(repo).get("s-compuerta", [])]
+    resumen = [(l["agent_id"], l["resultado"], l.get("tope", False), len(l["motivos"])) for l in ls if l]
+    comprueba("una línea por decisión: ok, ko con motivos, y el tercer intento ko con «tope»",
+              resumen == [("os1", "ok", False, 0), ("os2", "ko", False, 1), ("os3", "ko", False, 1), ("os3", "ko", False, 1), ("os3", "ko", True, 1)],
+              str(resumen))
+    nz = Normalizador(Contexto(persona="persona-a", raices=lambda c: (c, c)))
+    e = [x for l in ls for x in nz.eventos(l, 1)]
+    comprueba("normaliza.py: compuerta.ok/ko con motivos y datos.tope",
+              [x["tipo"] for x in e] == ["compuerta.ok"] + ["compuerta.ko"] * 4 and e[-1]["datos"].get("tope") is True and e[0]["fuente"] == "compuerta")
+    os.remove(os.path.join(repo, ".hackathon", "os.md"))
 
 
 tmp = tempfile.mkdtemp(prefix="hk-hooks-")
@@ -214,6 +503,8 @@ try:
         ok = bool(consultas) and all(c.split(",")[0] == "hk" for c in consultas)
         fallos += not ok
         print(f"{'OK   ' if ok else 'FALLO'} {script}: consultas con labels={', labels='.join(consultas) or '(ninguna)'}")
+
+    prueba_os(tmp, repo, informe, handback)
 finally:
     subprocess.run(["git", "worktree", "prune"], cwd=os.path.join(tmp, "repo"), capture_output=True)
     shutil.rmtree(tmp, ignore_errors=True)

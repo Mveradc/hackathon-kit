@@ -58,6 +58,7 @@ humano (la persona actuando fuera de Claude Code: commits a mano, issues desde l
 - La persona sale de `hk_yo` (usuario de `gh`), igual que en el buzón.
 - El worktree sale de `cwd` (en subagentes con `isolation: worktree`, `cwd` es la raíz del worktree: comprobado en M8.0, P4).
 - Lo que una persona hace a mano se ve por git (commits, ramas, `git status` que sondea el demonio), como actor `humano`.
+- **Restricción: un clon, una persona.** El interruptor (`os.md` de la copia principal), la persona (la caché de `hk_yo`) y los eventos viven en el git común, así que el OS da por hecho que cada git común es de una sola persona. Los worktrees de un clon (workers, fusiones, revisores) son de esa persona. Dos personas en worktrees del mismo clon no se distinguen: cada una necesita su clon (ADR-0004). La persona se resuelve en la copia principal del clon.
 
 ## 4. Recorrido de una señal
 

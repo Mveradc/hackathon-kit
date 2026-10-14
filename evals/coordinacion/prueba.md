@@ -516,3 +516,132 @@ uv run --no-project evals/coordinacion/simulador/simula.py evals/coordinacion/si
 ## Observaciones
 - «Quién espera a quién» del plan de `../prueba-m8-03-base` no citaba IDs: la base se montó a mano desde la de M7c (efecto del montaje, no del kit). Las dependencias de `tareas-03.json` se sacaron a mano de ese texto (T10←T01, T14←T05, T06←T21, T22←T04, T07←T17). Con el visto bueno del usuario, esa sección de la base se reescribió con esas cinco dependencias por ID («T14 espera a T05: …»), con commit y push (`1f34bba`, `main` = `origin/main`), para que M8e compile un plan con el formato real de `/hack-plan`.
 - Con un jsonschema sin Draft 2020-12 o sin su comprobador de formatos (3.2 del sistema, 4.0), las pruebas de esquema y `prueba_simulador.py` se saltan en vez de dar `AttributeError`. Comprobado con `--with "jsonschema==3.2.0"` y `==4.0.0`.
+
+# M8c: emisión (2026-10-14)
+
+Criterios en `docs/hackathon-os/hitos.md` («M8c»); tareas K-30 a K-34. Windows 11 con Git Bash. Pruebas en vivo en `-p` desde Git Bash, cada persona con su propio clon (`diseno.md` §3): `../prueba-m8c-B`, `../prueba-m8c-coste` y `../prueba-m8c-cambios`, cada uno con su remoto `bare`, partiendo de `../prueba-m8-03-base` con `os.md` activo y el estado de partida de `partida-m8-03/`. Gasto: **2,65 USD**.
+
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | Sin `os.md` activo, ningún hook del OS escribe ni llama a la red | **Sí**, en `prueba_hooks.py`. Con cuatro variantes de interruptor apagado (sin `os.md`, `activa: no`, `activa: no` en UTF-16, sin línea `activa`) y todas las entradas reales, no aparece `.git/hackathon`. Con un `gh` y un `curl` falsos en el `PATH`, ninguno se llama. `os_activo` tarda 0,5 ms |
+| 2 | Sesión normal: `sesion.inicio`, `edicion`, `arbol`. Orquestador con dos encargos: la secuencia completa en orden y con la tarea correcta | **Sí** (ejecuciones 1 y 2, abajo) |
+| 3 | Los eventos de los workers llevan su `agent_id` y su worktree | **Sí**: las 85 líneas de los dos workers de la ejecución 2 llevan `agent_id` y el `cwd` de su worktree |
+| 4 | Un fichero cambiado solo por Bash aparece en el siguiente `arbol` | **Sí**: en `prueba_hooks.py` (`sed -i` y un fichero generado) y en vivo (ejecución 1: el `sed` sobre `docs/contratos.md`) |
+| 5 | Dos CAMBIOS: dos `revision.veredicto` CAMBIOS y ninguna `fusion.aprobada` | **Sí** (ejecución 3, abajo) |
+| 6 | Coste en Windows: ≤ 50 ms por llamada y ≤ +1 s fuera del API en 50 herramientas | **Sí**: `emite.sh`, 34–40 ms (bash vacío: 23); sesión de 50 herramientas, sin diferencia apreciable (abajo) |
+| 7 | `json.loads` de cada línea; recortes de `git` dentro de `\"` y de `ó`; solo campos de la lista blanca | **Sí**, en `prueba_hooks.py`, más escrituras simultáneas y líneas rotas (abajo) |
+
+Sin modelo: `python evals/coordinacion/prueba_hooks.py`, 0 fallos (incluidos los casos de antes de compuerta, `solo-orquestar` y `sin-confirmo`, sin cambios de comportamiento); `hkos/` y el simulador, OK; `claude plugin validate .`, pasa. Comandos y códigos de salida: `evals/coordinacion/README.md`.
+
+## Qué se construyó
+- **`scripts/os/comun.sh`** (K-30): interruptor, git común, copia principal, persona y refs, solo con builtins.
+  - El interruptor se lee en la copia principal del clon.
+  - Tolera BOM, UTF-16, `\r` y un comentario detrás.
+- **`scripts/os/emite.sh`** (K-31): la lista blanca de `api.md` §1, con los valores copiados sin desescapar.
+- **`scripts/os/arbol.sh`** (K-32): `git status`, y `git diff` solo si `HEAD` se ha separado de `origin/main`; `origin/main` y `HEAD` se leen de las refs. No repite la línea si el árbol de ese actor (por `agent_id`) no ha cambiado.
+- **Línea de la compuerta** (K-33): `ok`, `ko` con motivos, y `ko` con `tope` en el tercer intento; lo que decide no cambia.
+- **`hkos/normaliza.py`** (K-34): la tabla de `api.md` §2 con un contexto inyectable (git, transcripts).
+- **`hooks/hooks.json`:** los matchers de ADR-0004, todos `async` salvo `SessionEnd`.
+- **Plantilla:** `skills/hack-scaffold/templates/os.md`.
+- **Contratos:**
+  - §0 y §7, congelados;
+  - cambios tras congelar, anotados en `api.md`: `transcript_path` en `SubagentStart`, IDs por número de línea, JSONL que solo crecen, tope de 1.000 bytes, `tope` de la compuerta, `ts` con microsegundos y líneas rotas;
+  - «un clon, una persona», en `diseno.md` §3 y ADR-0004.
+- **`normalizadas.json`:** sus IDs, recalculados por número de línea. La prueba pasa cada entrada real por los hooks que le tocan según `hooks.json` y compara los 15 eventos.
+
+## Escrituras simultáneas (criterio 7) y tope de 1.000 bytes
+Varios procesos bash, a la vez, sobre el mismo fichero (`O_APPEND`):
+
+| Líneas | Rondas × procesos | Enteras |
+|---|---|---|
+| 500, 1.000 y 1.020 bytes | 10 × 20 cada una | 200/200 cada una |
+| 1.030, 2.000 y 3.500 bytes | 10 × 20 cada una | 176, 188 y 175 de 200 |
+| `emite.sh` real, ~3,2 KB | 5 × 20 | 81/100 |
+| 100–1.000 bytes mezcladas | 50 × 20 | 1.000/1.000 |
+| **`emite.sh` y `arbol.sh` reales mezclados, tope de 1.000 bytes** | **50 × 20** | **1.000/1.000** (500 y 500, de 146 a 986 bytes) |
+
+- **Causa:** el `printf` de bash en MSYS escribe en trozos de 1 KB.
+- **Decisión del usuario:** tope de 1.000 bytes por línea, salto incluido; si no cabe, sobre mínimo con `"truncado": true`.
+- **Es un límite medido, no una garantía.** Por eso `normaliza.py` salta las líneas rotas sin cortar la lectura, conserva la numeración y las cuenta. Lo comprueba un caso con una línea partida en dos en medio del fichero: los eventos quedan en las líneas 1, 4 y 7, con 2 rotas.
+
+## Recortes y entradas grandes (criterio 7)
+- **68 recortes** del campo `git` con el corte en cada posición alrededor de `\"`, `\\`, `ó` y una `ó` en UTF-8: todos dan JSON válido y un prefijo del comando.
+- **Entradas grandes:** un Edit con 226 KB de entrada y un Write con 200 KB de contenido dan `ruta` y `tool_use_id` correctos.
+- **Lectura de la entrada:** con la tubería nativa de Windows por la que Claude Code pasa la entrada:
+  - `read -d ''` lee byte a byte (534 ms con 226 KB);
+  - `/dev/stdin` no existe;
+  - `read -N` lee en bloque (≈0 ms): el emisor busca en los primeros 16 KB y, para `tool_use_id`, en los últimos 400 caracteres.
+
+## Coste (criterio 6)
+`python evals/coordinacion/coste_hooks.py 50` (ms por llamada, con un bash por llamada, como Claude Code):
+
+| Llamada | ms |
+|---|---|
+| bash vacío | 22,9 |
+| `emite.sh` con el OS apagado | 24,8 |
+| `emite.sh`, Write | 34,6 |
+| `emite.sh`, Bash con `git commit` | 34,1 |
+| `emite.sh`, Edit con 226 KB de entrada | 39,7 |
+| `arbol.sh` (el `git status`; sin cambios, no escribe) | 87,2 |
+
+`arbol.sh` corre una vez por lote (`PostToolBatch`, `Stop`, `SubagentStop`) y en `async`: cuenta dentro del presupuesto de la sesión de 50 herramientas.
+
+**Ejecución 4** (`../prueba-m8c-coste`, Haiku, 0,03 USD): el prompt de P6 de M8.0 (50 `echo` en 10 lotes), alternando el OS activo y apagado. Haiku hizo una herramienta por turno (51 turnos), así que salen 50 hooks Pre y 50 Post igual.
+
+| Pasada | OS | Pared | API | Fuera del API | Líneas del OS |
+|---|---|---|---|---|---|
+| 1 | activo | 46,5 s | 26,4 s | 20,2 s | 102 |
+| 1 | apagado | 49,1 s | 29,3 s | 19,8 s | 0 |
+| 2 | activo | 42,3 s | 22,1 s | 20,2 s | 102 |
+| 2 | apagado | 50,4 s | 28,0 s | 22,4 s | 0 |
+
+Fuera del API: 20,2 s de media con el OS activo y 21,1 s apagado. Los hooks `async` no añaden nada apreciable; el umbral era +1 s.
+
+## Ejecución 1: sesión normal (`../prueba-m8c-B`, Haiku, 0,005 USD)
+- **Encargo:** cambiar una frase de `README.md` con Edit y `docs/contratos.md` con `sed` por Bash.
+- **Eventos normalizados:** `sesion.inicio`; `arbol` con `docs/contratos.md` (el `sed`); `edicion` de `README.md`; `arbol` con los dos ficheros.
+- **El `SessionEnd`:** esta vez no llegó, aunque es síncrono. En tres sesiones cortas posteriores de `-p` (en un repo de juguete y en el mismo clon) sí llegó. Es intermitente en `-p`; la presencia lo cubre con su TTL de 90 s (R-18).
+- **La `persona` del primer `SessionStart` de un clon sale vacía.** Ese `emite.sh` (`async`) corre a la vez que `sesion.sh`, que es quien crea la caché de `hk_yo`. Desde la línea siguiente es `mveradc`. El demonio la resuelve (`api.md` §1).
+- Se deshicieron los cambios después, para dejar el árbol limpio para el orquestador.
+
+## Ejecución 2: orquestador con dos encargos (`../prueba-m8c-B`, 1,25 USD, 9 min)
+`--agent hackathon-kit:orquestador`: «Soy B… haz T19 en dos encargos en serie. Tienes mi visto bueno para el reparto que propongas; no me preguntes, lanza los encargos. Cuando el revisor apruebe los dos, sube a origin.» 191 líneas crudas, 44 eventos, ninguna línea rota. Sin `arbol` ni `edicion`, en orden (`ts`, línea):
+
+```
+15:23:25.621  encargo.lanzado     T19  orquestador  base 2019cd6
+15:23:26.229  worker.inicio       T19  worker a629f0c1 (.claude/worktrees/agent-a629f0c1…)  base 2019cd6
+15:25:07.578  worker.fin          T19  worker a629f0c1
+15:25:09.008  compuerta.ok        T19  worker a629f0c1
+15:25:24.197  fusion.creada       T19  orquestador  f4c0862
+15:26:35.348  revision.veredicto  T19  revisor  APROBADO f4c0862
+15:26:46.360  fusion.aprobada     T19  orquestador  f4c0862
+15:27:10.233  encargo.lanzado     T19  orquestador  base f4c0862
+15:27:10.774  worker.inicio       T19  worker ada2fafb  base f4c0862
+15:29:22.968  worker.fin          T19  worker ada2fafb
+15:29:24.364  compuerta.ok        T19  worker ada2fafb
+15:29:35.466  fusion.creada       T19  orquestador  db99688
+15:30:46.456  revision.veredicto  T19  revisor  APROBADO db99688
+15:30:50.812  fusion.aprobada     T19  orquestador  db99688
+15:31:01.719  push                     orquestador
+```
+- **Repo al terminar:** `main` = `origin/main` = `db99688`, sin `refs/hackathon/` ni worktrees.
+- **Motor de M8b:** los eventos dan T19 `integrada` (git), sin discrepancias. No sale `publicada` porque el `push` del hook no publica: lo hará el `push` de git del demonio (M8d).
+- **Arreglado en la prueba:** al normalizar, los worktrees de los workers ya estaban borrados y `worktree` salía vacío. El contexto por defecto lo saca ahora de la ruta `.claude/worktrees/<nombre>` cuando git no responde.
+
+## Ejecución 3: dos CAMBIOS (`../prueba-m8c-cambios`, copia del plugin con el revisor que siempre pide CAMBIOS, 0,99 USD)
+- **Mismo prompt que la ejecución 2.**
+- **Eventos:**
+  - `encargo.lanzado`, `worker.inicio` y `worker.fin` de T19;
+  - un `compuerta.ko` real (el primer worker entregó sin evidencias; corrigió y volvió a terminar);
+  - `fusion.creada` 7790c2a, `revision.veredicto` CAMBIOS y `fusion.descartada`;
+  - segundo encargo, con `compuerta.ok`, `fusion.creada` 0ff3820, `revision.veredicto` CAMBIOS y `fusion.descartada`.
+- **Ninguna `fusion.aprobada` ni `push`:** `main` = `origin/main` = `fd93584`, sin cambios. Las dos ramas de los workers quedan para que decida la persona.
+- **Motor de M8b:** T19 `no_cerrada`, sin discrepancias.
+- **Primer intento inválido (0,37 USD), por error de montaje mío:** `../prueba-m8c-B-cambios` compartía remoto con `../prueba-m8c-B`. El orquestador trajo de `origin` el T19 de la ejecución 2, vio la tarea hecha, no lanzó encargos y pidió una revisión sobre `db99688`. Se repitió con un clon y un remoto propios.
+
+## Otros
+- **El remoto `bare` de `../prueba-m8-03-base` tenía `HEAD` en `master`**, que no existe, y un `git clone` salía vacío. Ahora apunta a `main`; comprobado con un clon nuevo.
+- **Observaciones:**
+  - el `SessionEnd` intermitente en `-p`;
+  - la persona vacía en el primer `SessionStart` de un clon;
+  - `arbol` lista también `.hackathon/estado/` (el estado del orquestador, sin commitear) y `.claude/worktrees/` cuando no están ignorados.

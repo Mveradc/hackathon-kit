@@ -7,7 +7,8 @@ cada estado.json contra estado.schema.json, y coinciden con lo esperado de cada 
 
 jsonschema solo hace falta aquí (el OS no depende de él):
   uv run --no-project --with "jsonschema[format-nongpl]" evals/coordinacion/simulador/prueba_simulador.py
-Sale con 1 si algo falla. Sin jsonschema, o con uno sin Draft 2020-12 y su comprobador de formatos (3.2, 4.0), se salta.
+Sale con 0 si todo pasa, 1 si algo falla y 77 si se salta: sin jsonschema, o con uno sin Draft 2020-12 y su
+comprobador de formatos (3.2, 4.0).
 """
 import json
 import os
@@ -38,7 +39,7 @@ def main():
     # Draft202012Validator llega en la 4.0; su FORMAT_CHECKER, después.
     if not hasattr(getattr(jsonschema, "Draft202012Validator", None), "FORMAT_CHECKER"):
         print('SALTADA: sin jsonschema con Draft 2020-12; lanzar con uv run --with "jsonschema[format-nongpl]"')
-        sys.exit(0)
+        sys.exit(77)
     ev, es = validador("eventos.schema.json"), validador("estado.schema.json")
     fallos = 0
     for g in GUIONES:

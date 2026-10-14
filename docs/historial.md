@@ -187,6 +187,24 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Estado de partida** de `../prueba-m8-03-base` (B con T18 hecha), en `evals/coordinacion/partida-m8-03/`.
 - Resultados en `evals/coordinacion/prueba.md` («M8b»): los tres criterios cumplidos, también con Python 3.10. Sin gasto en modelos.
 
+## M8c — Emisión (2026-10-14)
+- **K-30:** `scripts/os/comun.sh`, solo con builtins (`os_activo`: 0,5 ms).
+  - El interruptor se lee en la copia principal del clon; tolera BOM, UTF-16 y comentarios.
+  - Plantilla `skills/hack-scaffold/templates/os.md`; §0 y §7 de `api.md`, congelados.
+- **K-31 y K-32:** `emite.sh` (lista blanca, valores sin desescapar) y `arbol.sh` (no repite por `agent_id`), en `hooks.json` con los matchers de ADR-0004.
+- **K-33:** la compuerta escribe su línea (`ok`, `ko`, `ko` con `tope`) sin cambiar lo que decide.
+- **K-34:** `hkos/normaliza.py`, con contexto inyectable. Las entradas reales, pasadas por los hooks según `hooks.json`, dan los eventos de `normalizadas.json` (IDs por número de línea).
+- **Decisiones del usuario:**
+  - `transcript_path` en `SubagentStart`;
+  - IDs `<session_id>-<nº de línea>` y JSONL que solo crecen;
+  - un clon, una persona;
+  - `ts` con microsegundos;
+  - tope de 1.000 bytes por línea.
+- **Por qué el tope de 1.000 bytes:** en Windows, el `printf` de bash escribe en trozos de 1 KB y las líneas más largas de hooks simultáneos se mezclaban. Es un límite medido, no una garantía: quien lee salta las líneas rotas sin perder la numeración y las cuenta.
+- **Coste en Windows:** `emite.sh` lee la entrada con `read -N` (`read -d ''` va byte a byte con la tubería de Claude Code) y busca solo en 16 KB: 34–40 ms por llamada, también con 226 KB de entrada.
+- **Pruebas en vivo**, en clones separados de `../prueba-m8-03-base`: sesión normal, orquestador con dos encargos de T19, dos CAMBIOS con el revisor forzado y una sesión de 50 herramientas con el OS activo y apagado.
+- **Resultados** en `evals/coordinacion/prueba.md` («M8c»): los siete criterios cumplidos. Gasto: 2,65 USD.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

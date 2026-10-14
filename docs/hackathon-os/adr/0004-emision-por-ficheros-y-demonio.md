@@ -13,7 +13,8 @@ Medido en M8.0 (Windows, Git Bash):
 - El hijo que lanza un monitor sobrevive al cierre de la sesión. El que lanza un hook con `nohup … &` muere al terminar el hook, antes de arrancar. El que se lanza con `Start-Process` de PowerShell sobrevive incluso a la salida de `-p`.
 
 ## Decisión
-- **Emisión.** Los hooks del OS son `command` con `async: true`, salvo `SessionEnd`, que es síncrono (≈37 ms una vez por sesión). Cada hook añade **una línea** a `<git común>/hackathon/os/eventos/<session_id>.jsonl`. Sin red, sin `gh`.
+- **Emisión.** Los hooks del OS son `command` con `async: true`, salvo `SessionEnd`, que es síncrono (≈37 ms una vez por sesión). Cada hook añade **una línea** a `<git común>/hackathon/os/eventos/<session_id>.jsonl`, en una sola escritura de como mucho 1.000 bytes con el salto (`api.md` §1, con la tabla de la medida). Sin red, sin `gh`.
+- **Tope por línea medido, no garantizado.** En Linux, `O_APPEND` es atómico por debajo de 4 KB; en Windows con Git Bash, el `printf` de bash escribe en trozos de 1 KB y las líneas más largas de hooks simultáneos se mezclaron (81 de 100 enteras con ~3,2 KB; 1.000 de 1.000 con 100–1.000 bytes). Por eso el tope es de 1.000 bytes, con un sobre mínimo y `"truncado":true` si no cabe, y quien lee los JSONL salta las líneas rotas sin perder la numeración y las cuenta.
 - **Emisor solo con builtins de bash** (sin `tr`, `date` ni `mkdir` por llamada; la hora, con `TZ=UTC0 printf '%(…)T'`). Umbral de M8c: ≤ 50 ms por llamada en Windows y ≤ +1 s fuera del API en una sesión de 50 herramientas.
 - **Lista blanca, no la entrada entera.** El emisor no guarda la entrada del hook: copia solo los campos de `api.md` §1, con el estilo de `valor()` de `scripts/orquestador/comun.sh`. Del comando de Bash, solo las operaciones git que interesan; del prompt de Agent, solo `ID:` y `Base:`; del mensaje final del revisor, solo `Veredicto:` y `Fusión:`. Ningún contenido de ficheros llega al JSONL.
 - **Matchers.** `PreToolUse` y `PostToolUse` solo sobre `Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell|Agent`; nunca sobre Read, Grep o Glob. Además: `SessionStart`, `SessionEnd`, `SubagentStart`, `SubagentStop`, `Stop` y `PostToolBatch` (`arbol.sh`).
@@ -34,6 +35,7 @@ Medido en M8.0 (Windows, Git Bash):
 
 ## Consecuencias
 - Si el demonio no corre, no se pierde nada: los eventos esperan en disco.
-- Hay que rotar o limitar los JSONL (por sesión, se borran al cerrar el relay o tras 48 h).
+- Los JSONL nunca se reescriben ni se truncan: solo se añaden líneas, o se borra el fichero entero (por sesión, al cerrar el relay o tras 48 h). El `id` de cada evento es su número de línea (`api.md` §2).
+- **Un clon, una persona.** El interruptor (`os.md` en la copia principal), la persona (la caché de `hk_yo`) y los eventos viven en el git común, así que cada git común es de una sola persona. Dos personas en worktrees del mismo clon (como el sandbox de M6a) no son un montaje válido para el OS: cada persona, su clon (`diseno.md` §3).
 - Un demonio puede quedar vivo hasta `apagado_min` después de la última sesión. Es intencionado.
 - Un programa ajeno, o el demonio de otro repo, podría ocupar el puerto. Por eso el arranque no se fía solo de que el puerto esté abierto: pide `GET /salud` y comprueba que responde `hk-os` con el mismo git común (`api.md` §4). Si responde otra cosa, no lanza nada y `SessionStart` lo avisa una vez por sesión («el puerto N está ocupado por otro programa; pon `puerto_agente:` en `.hackathon/os.md`»), sin volver a intentarlo en esa sesión (`api.md` §4).

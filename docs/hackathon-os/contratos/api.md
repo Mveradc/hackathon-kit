@@ -5,14 +5,25 @@ Un contrato congelado solo cambia subiendo `v` o con una nota aquí con su motiv
 | Parte | Estado |
 |---|---|
 | §1, §2, [eventos.schema.json](eventos.schema.json), [estado.schema.json](estado.schema.json) | **Congelados** (M8b, 2026-10-14) |
+| §0 y §7 | **Congelados** (M8c, 2026-10-14) |
 | §3–§5 | Estables; se congelan al abrir M8d |
-| §0 y §7 | Estables; se congelan al abrir M8c |
 | §6 | Estable; se congela al abrir M8f |
+
+Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reglas que el código aún no usaba):
+- 2026-10-14, M8c, §1: `transcript_path` en `SubagentStart`. Sin él, el demonio tendría que adivinar la carpeta de la sesión a partir del `cwd`, y M8.0 vio que eso se rompe con las mayúsculas de la ruta. Es una ruta local, no contenido.
+- 2026-10-14, M8c, §1 y §2: el `id` del evento normalizado es `<session_id>-<nº de línea del JSONL>`, y los JSONL solo crecen. Así, releer un fichero da los mismos IDs y el relay descarta repetidos.
+- 2026-10-14, M8c, §1: cada línea ocupa como mucho 1.000 bytes con el salto (ver «Tope por línea»); `arbol` recorta sus listas y lleva `"truncado": true` si no caben; `arbol` no se repite si el árbol de ese actor no ha cambiado.
+- 2026-10-14, M8c, §2: quien lee los JSONL salta las líneas que no son JSON válido sin cortar la lectura, conserva la numeración de las demás y las cuenta (en M8d, discrepancia `linea_corrupta`).
+- 2026-10-14, M8c, §1: `ts` con microsegundos (`2026-11-25T18:02:11.123456Z`), de `$EPOCHREALTIME` con `TZ=UTC0`, sin procesos. Varios hooks caen en el mismo segundo: el orden de los eventos es (`ts`, nº de línea). Sigue siendo `date-time` del esquema (RFC 3339 admite fracciones), así que el esquema no cambia.
+- 2026-10-14, M8c, §1 y §2: la compuerta marca con `"tope": true` (y `datos.tope`) el tercer intento, que deja pasar sin evidencias.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
 
 ## 0. Interruptor: `.hackathon/os.md`
-Versionado, lo escribe una persona (o `hk-os iniciar`). Mismo estilo que `coordinacion.md`.
+Versionado, lo escribe una persona (o `hk-os iniciar`). Mismo estilo que `coordinacion.md`. Plantilla: `skills/hack-scaffold/templates/os.md`.
+
+Los hooks lo leen en la **copia principal** del clon (la carpeta del git común), no en el worktree en que corren: los worktrees de los workers salen de `origin/main` y podrían no tenerlo. Activo = una línea `activa:` con `sí`, `si` o `yes`; se toleran BOM, UTF-16, `
+` y un comentario `# …` detrás del valor. Sin `os.md` activo, todo hook del OS sale sin red ni escritura (R-01).
 
 ```
 # Hackathon OS
@@ -32,15 +43,29 @@ El token del relay **no** va aquí: va en `<git común>/hackathon/os/token` (fue
 ## 1. Forma cruda (lo que escriben los hooks)
 `emite.sh` añade una línea por evento a `<git común>/hackathon/os/eventos/<session_id>.jsonl`. El `session_id` es el de la sesión madre también en los subagentes (P4), así que un JSONL junta la sesión o el orquestador y sus workers, que se distinguen por `agent_id`.
 
+- **Los JSONL nunca se reescriben ni se truncan**: solo se les añaden líneas, o se borra el fichero entero. El `id` de un evento normalizado depende del número de línea (§2).
+- **Tope por línea: 1.000 bytes con el salto**, contados en bytes (`LC_ALL=C`), escritos con un solo `printf` en modo `O_APPEND`. Los hooks `async` de la sesión, el orquestador y los workers escriben a la vez en el mismo fichero. Si una línea no cabe, se escribe solo el sobre mínimo (`v`, `ts`, `persona`, `tipo`, `session_id`, `agent_id`) con `"truncado":true`; `arbol` antes recorta sus listas.
+- **Es un límite medido, no una garantía.** En Linux, una escritura `O_APPEND` de menos de 4 KB es atómica. En Windows con Git Bash (MSYS), el `printf` de bash escribe en trozos de 1 KB, y las líneas más largas de hooks simultáneos se mezclan. Medido el 2026-10-14 (procesos bash a la vez sobre el mismo fichero):
+
+  | Líneas | Rondas × procesos | Enteras |
+  |---|---|---|
+  | 500, 1.000 y 1.020 bytes | 10 × 20 cada una | 200/200 cada una |
+  | 1.030, 2.000 y 3.500 bytes | 10 × 20 cada una | 176, 188 y 175 de 200 |
+  | `emite.sh` real, ~3,2 KB | 5 × 20 | 81/100 |
+  | 100–1.000 bytes mezcladas | 50 × 20 | 1.000/1.000 |
+
+  Por eso quien lee los JSONL (`normaliza.py` y el demonio) tolera líneas rotas: las salta sin cortar la lectura, conserva la numeración de las demás y las cuenta (§2).
+- **Un clon, una persona**: el git común es de una sola persona (`diseno.md` §3).
+
 ```json
-{"v":1,"ts":"2026-11-25T18:02:11Z","persona":"mveradc","tipo":"PostToolUse","session_id":"…","agent_id":"a17759f71a1625d5c","agent_type":"hackathon-kit:worker","cwd":"C:\…\.claude\worktrees\agent-a17759f71a1625d5c","tool_name":"Edit","tool_use_id":"toolu_…","ruta":"C:\…\src\a.py"}
+{"v":1,"ts":"2026-11-25T18:02:11.123456Z","persona":"mveradc","tipo":"PostToolUse","session_id":"…","agent_id":"a17759f71a1625d5c","agent_type":"hackathon-kit:worker","cwd":"C:\…\.claude\worktrees\agent-a17759f71a1625d5c","tool_name":"Edit","tool_use_id":"toolu_…","ruta":"C:\…\src\a.py"}
 ```
 
 **Lista blanca** (ADR-0004): el emisor no guarda la entrada del hook, solo estos campos. Un campo que no viene se omite.
 
 | Campo | De dónde | Cuándo |
 |---|---|---|
-| `v`, `ts`, `persona`, `tipo` | Sobre: `ts` en UTC (`TZ=UTC0 printf '%(…)T'`); `persona` de la caché de `hk_yo` (`""` si no existe: lo resuelve el demonio); `tipo` = `hook_event_name` | Siempre |
+| `v`, `ts`, `persona`, `tipo` | Sobre: `ts` en UTC con microsegundos (`$EPOCHREALTIME` y `TZ=UTC0 printf '%(…)T'`); `persona` de la caché de `hk_yo` (`""` si no existe: lo resuelve el demonio); `tipo` = `hook_event_name` | Siempre |
 | `session_id`, `cwd` | Entrada | Siempre |
 | `agent_id`, `agent_type` | Entrada | Si vienen (subagentes; `agent_type` también en sesiones `--agent`) |
 | `source` | Entrada | `SessionStart` (`startup`, `resume`, `clear`, `compact`: la compactación reinicia el tope de R-25) |
@@ -49,6 +74,7 @@ El token del relay **no** va aquí: va en `<git común>/hackathon/os/token` (fue
 | `git` | `tool_input.command`, **solo** si contiene `git` seguido de `update-ref`, `merge --ff-only`, `push` o `commit` (también con `git -C <ruta>`); recortado a 200 caracteres | Bash y PowerShell |
 | `subagent_type` | `tool_input.subagent_type` | PreToolUse y PostToolUse de `Agent` (worker o revisor) |
 | `id`, `base` | Del `tool_input.prompt`, solo las líneas `ID: (T[0-9]{2,3})` y `Base: ([0-9a-f]{7,40})` | PreToolUse de `Agent` |
+| `transcript_path` | Entrada (el transcript de la sesión madre) | `SubagentStart`: el demonio lee la primera línea del del worker (§2) |
 | `veredicto`, `fusion` | De `last_assistant_message`, solo `Veredicto: (APROBADO\|CAMBIOS)` y `Fusión: ([0-9a-f]{7,40})` (la «ó» puede venir como UTF-8 o como `\u00f3`) | `SubagentStop` con `agent_type` revisor |
 
 Reglas del emisor:
@@ -56,13 +82,14 @@ Reglas del emisor:
 - Los valores de texto se copian **tal como vienen escapados** en la entrada, sin desescapar, así que la línea sigue siendo JSON válido sin volver a escaparla. Al recortar `git` a 200 caracteres, se quita del final cualquier secuencia de escape incompleta: una `\` suelta (un número impar de barras al final) o un `\u` seguido de menos de 4 dígitos hexadecimales.
 - Las rutas van **absolutas y como vienen** (en Windows, con `\`). Las normaliza el demonio a relativas con `/` (con el `cwd` y `git rev-parse --show-toplevel`).
 - Nada de `tool_response`, `content`, `old_string`, `new_string`, `prompt` ni `last_assistant_message` completos.
+- Solo busca en los primeros 16 KB de la entrada (el sobre y `tool_input` van delante; `tool_response` se descarta) y, para `tool_use_id`, en los últimos 400 caracteres. Lee la entrada hasta el final con `read -N` en bloques: en Windows, `read -d ''` la lee byte a byte (534 ms con 226 KB) y `/dev/stdin` no existe con la tubería de Claude Code. Un campo que caiga más allá de los 16 KB (un `prompt` con `ID:` lejos del principio) se omite.
 
 Otros productores de forma cruda:
-- `arbol.sh` (`PostToolBatch`, `Stop`, `SubagentStop`) escribe `{"v":1,"ts":…,"persona":…,"tipo":"arbol","session_id":…,"agent_id":…,"cwd":"…","base":"<sha de origin/main>","porcelain":["M src/a.py","?? b.txt"],"diff":["src/a.py","src/c.py"]}`.
-- `compuerta.sh` escribe `{"v":1,…,"tipo":"compuerta","resultado":"ok|ko","agent_id":"…","motivos":[…]}`.
+- `arbol.sh` (`PostToolBatch`, `Stop`, `SubagentStop`) escribe `{"v":1,"ts":…,"persona":…,"tipo":"arbol","session_id":…,"agent_id":…,"cwd":"…","base":"<sha de origin/main>","porcelain":["M src/a.py","?? b.txt"],"diff":["src/a.py","src/c.py"]}`. Solo si el árbol de ese actor (`agent_id`, o la sesión) ha cambiado desde su último `arbol`. Si las listas no caben en la línea, se recortan y la línea lleva `"truncado":true`.
+- `compuerta.sh` escribe `{"v":1,…,"tipo":"compuerta","resultado":"ok|ko","agent_id":"…","motivos":[…]}`, y `"tope":true` en el tercer intento, que deja pasar sin evidencias (es `ko`).
 
 ## 2. Evento normalizado
-Esquema: [eventos.schema.json](eventos.schema.json). Correspondencia con la forma cruda:
+Esquema: [eventos.schema.json](eventos.schema.json). Lo produce `hkos/normaliza.py`. El `id` es `<session_id>-<nº de línea del JSONL, desde 1>`. Una línea que no es JSON válido se salta sin cortar la lectura: las demás conservan su número de línea real y se lleva la cuenta de las rotas (en M8d sale en `/salud` y en `estado.json` como discrepancia `linea_corrupta`). Correspondencia con la forma cruda:
 
 | Forma cruda | Evento normalizado |
 |---|---|
@@ -71,8 +98,8 @@ Esquema: [eventos.schema.json](eventos.schema.json). Correspondencia con la form
 | `PostToolUse` con `tool_name` Edit/Write/MultiEdit/NotebookEdit | `edicion`, `rutas` = `ruta`, relativa y con `/` |
 | `arbol` | `arbol`, `rutas` = unión de `porcelain` y `diff` |
 | `PreToolUse` `Agent` del orquestador con `subagent_type` worker | `encargo.lanzado`, `tarea` = `id`, `datos.base` = `base` |
-| `SubagentStart` / `SubagentStop` worker | `worker.inicio` / `worker.fin`. `SubagentStart` no trae el prompt (P3): el demonio toma `ID:` y `Base:` de la primera línea del transcript del worker, `<dir de la sesión>/<session_id>/subagents/agent-<agent_id>.jsonl`, y no lee nada más de él. Es un formato interno de Claude Code: si cambia, la tarea del worker queda sin asignar hasta su `fusion.creada` |
-| `compuerta` | `compuerta.ok` / `compuerta.ko` con `datos.motivos` |
+| `SubagentStart` / `SubagentStop` worker | `worker.inicio` / `worker.fin`. `SubagentStart` no trae el prompt (P3): el demonio toma `ID:` y `Base:` de la primera línea del transcript del worker, `<carpeta de transcript_path>/<session_id>/subagents/agent-<agent_id>.jsonl`, y no lee nada más de él. Es un formato interno de Claude Code: si cambia, la tarea del worker queda sin asignar hasta su `fusion.creada` |
+| `compuerta` | `compuerta.ok` / `compuerta.ko` con `datos.motivos` (y `datos.tope`) |
 | `PostToolUse` Bash del orquestador con `git` = `git update-ref refs/hackathon/fusion/<T>` | `fusion.creada` (`tarea`, `datos.sha`) |
 | `SubagentStop` revisor | `revision.veredicto` (`datos.veredicto` = `veredicto`, `datos.sha` = `fusion`) |
 | `PostToolUse` Bash del orquestador con `git` = `git merge --ff-only <sha>` | `fusion.aprobada`, solo si el demonio confirma que `main` contiene el sha (la forma cruda no lleva la salida del comando) |
@@ -155,6 +182,7 @@ Cada línea, como mucho 160 caracteres. `sesion.sh` inyecta las secciones en ord
 | `os.md` | `.hackathon/` | Sí |
 | Eventos crudos | `<git común>/hackathon/os/eventos/` | No |
 | Token, posiciones, `estado-equipo.md`, `entregado/` (hash y caracteres inyectados por sesión, R-25) | `<git común>/hackathon/os/` | No |
+| Último árbol de cada actor (`arbol/<session_id>-<agent_id o «sesion»>`), para no repetir `arbol` | `<git común>/hackathon/os/` | No |
 | Registro del relay, `estado.json` | `<git común>/hackathon/os/relay/` del coordinador | No |
 | Refs de trabajo en curso | `refs/hackathon/wip/<persona>` en el remoto (opt-in) | Refs, no ramas |
 

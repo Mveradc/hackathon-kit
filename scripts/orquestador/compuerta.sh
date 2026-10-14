@@ -5,8 +5,10 @@
 # SubagentStop (last_assistant_message) para el worker que termina sin SubagentHandback.
 # Solo actúa con el agente worker del kit; en cualquier otro caso sale al instante.
 # Tope: 2 rechazos por agent_id; al tercero deja pasar y el orquestador no fusiona sin evidencias.
+# M8c (K-33): con el Hackathon OS activo, cada decisión deja su línea «compuerta» (api.md §1); no cambia la decisión.
 
 source "$(dirname "$0")/comun.sh"
+source "$(dirname "$0")/../os/comun.sh"
 es_agente worker || exit 0
 
 evento=$(valor hook_event_name) || exit 0
@@ -82,6 +84,7 @@ fi
 
 if [ ${#motivos[@]} -eq 0 ]; then
   [ "$evento" = PreToolUse ] && : > "$dir/$id.entregado"
+  os_compuerta ok ""
   exit 0
 fi
 
@@ -89,8 +92,10 @@ n=$(( $(cat "$dir/$id.rechazos" 2>/dev/null || echo 0) + 1 ))
 echo "$n" > "$dir/$id.rechazos"
 if [ "$n" -gt 2 ]; then
   [ "$evento" = PreToolUse ] && : > "$dir/$id.entregado"
+  os_compuerta ko tope "${motivos[@]}"
   exit 0      # tope: deja pasar; el orquestador no fusiona un informe sin evidencias
 fi
+os_compuerta ko "" "${motivos[@]}"
 
 {
   echo "Compuerta (intento $n de 2): el informe no trae evidencias suficientes."
