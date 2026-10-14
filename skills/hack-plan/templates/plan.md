@@ -7,6 +7,8 @@ Si no cabe, quita tareas menores o recorta detalle (nunca juntes tareas en una c
 
 <Duración, número de personas, zona horaria.> Hitos: <contratos HH:MM · demo mínima HH:MM · congelación HH:MM · entrega HH:MM>.
 
+IDs usados hasta: T<NN>
+
 ## Hitos del equipo
 <!--
 Siempre: (1) contratos entre piezas acordados en la primera hora; (2) demo mínima de principio a fin
@@ -23,16 +25,17 @@ Repliegue solo en los hitos críticos: qué se recorta si no se llega y quién l
 y el arranque) y toda carpeta en la que escriba una tarea, cada cosa con un solo dueño.
 Cada tarea, redactada para que la ejecute un agente:
 qué ficheros toca y cuándo está hecha. Una tarea por fila, nunca varias en una celda separadas por «;».
-Un bloque ocupa 1–3 filas: la primera lleva hora y bloque; las siguientes dejan esas celdas vacías. -->
+Un bloque ocupa 1–3 filas: la primera lleva hora y bloque; las siguientes dejan esas celdas vacías.
+Cada fila lleva un ID único (T01, T02…, en orden de aparición) que no cambia al ajustar el plan y no se reutiliza. -->
 
 ### <Nombre> · escribe solo en `<carpetas>`
-| Hasta | Bloque | Tarea | Cómo se comprueba |
-|---|---|---|---|
-| <HH:MM> | <bloque> | <tarea 1> | <comprobación> |
-| | | <tarea 2> | <comprobación> |
+| ID | Hasta | Bloque | Tarea | Cómo se comprueba |
+|---|---|---|---|---|
+| T01 | <HH:MM> | <bloque> | <tarea 1> | <comprobación> |
+| T02 | | | <tarea 2> | <comprobación> |
 
 ## Quién espera a quién
-<!-- Solo bloqueos reales. Cada uno con cómo desbloquear antes (p. ej., trabajar contra el contrato acordado con datos falsos). -->
+<!-- Solo bloqueos reales, citando IDs («T05 espera a T02»). Cada uno con cómo desbloquear antes (p. ej., trabajar contra el contrato acordado con datos falsos). -->
 
 ## Preguntas a la organización
 <!-- Ambigüedades abiertas del análisis que afectan al plan, con dueño y hora límite para preguntarlas. -->

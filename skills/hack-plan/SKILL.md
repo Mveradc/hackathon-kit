@@ -17,6 +17,7 @@ Eres quien organiza al equipo para todo el hackathon. Con el enfoque ya elegido 
 2. Ajustes de última hora (opcionales): $ARGUMENTS
 3. Si existen, lee el `CLAUDE.md` del proyecto y mira con Glob las carpetas generadas: los dueños tienen que coincidir con carpetas reales. Si no hay scaffolding, reparte según las piezas de la decisión y avísalo.
 4. Lee la plantilla `${CLAUDE_SKILL_DIR}/templates/plan.md`.
+5. Si ya existe `.hackathon/plan.md`, léelo: sus IDs de tarea se conservan (ver «IDs de tarea»).
 
 ## Calendario
 
@@ -45,6 +46,13 @@ Eres quien organiza al equipo para todo el hackathon. Con el enfoque ya elegido 
 - **Una tarea por fila**, con su propia comprobación. Un bloque ocupa como máximo **3 filas**: la primera lleva la hora y el nombre del bloque, y las siguientes dejan esas dos celdas vacías. Nunca juntes varias tareas en una celda con «;», «,» o frases seguidas: si un bloque necesita más de 3, divídelo en dos bloques o recorta.
 - La sección de cada persona **cabe en una pantalla**: unas 10 filas como máximo. Cada tarea, en una línea corta (unas 15 palabras), y cada comprobación, en menos de 10.
 - Lo que ya está en «Hitos del equipo» (ensayos, entregas, defensa, congelación) no se repite como tarea en la sección de cada persona.
+
+## IDs de tarea
+
+- Cada fila de «Por persona» lleva un **ID único** en la primera columna: `T01`, `T02`…, en orden de aparición. «Quién espera a quién» cita IDs («T05 espera a T02»).
+- Bajo el título va la línea `IDs usados hasta: T<NN>`, con el ID más alto que se ha dado nunca en este plan.
+- **Si ya hay un plan** (ajuste): cada tarea que sigue conserva su ID, aunque cambien su redacción, su hora o su dueño. Las nuevas reciben IDs a partir de «IDs usados hasta» más uno. Un ID de una tarea quitada no se vuelve a usar. Actualiza la línea.
+- Si la línea falta o es menor que el ID más alto del plan, toma ese ID más alto como punto de partida y corrige la línea.
 - El plan entero se lee en **cinco minutos** (unas 1.100 palabras como máximo).
 - Si no cabe, quita tareas menores o recorta detalle; juntar tareas en una celda no cuenta como recortar. No añadas secciones a la plantilla.
 

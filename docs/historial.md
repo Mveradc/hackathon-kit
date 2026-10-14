@@ -150,6 +150,27 @@ Registro de lo que se hizo y se aprendió en cada hito, tal como estaba en la se
 - **Longitud**: la primera versión añadía unas 390 palabras (25 %). Con el tope de ~60 palabras queda en 51–65 por enfoque en el 03 y en 71–81 en el 02 (cinco personas). Sin el encaje, la salida mide lo mismo que antes.
 - Los ejemplos `examples/0{2,3}-*-enfoques.md` se regeneraron con las pasadas recortadas (los equipos ya eran Persona A, B…). Los `decision.md` de ejemplo vienen de una pasada anterior.
 
+## M8.0 — Paso 0 del Hackathon OS (cerrado el 2026-10-14)
+- Especificación en `docs/hackathon-os/` (commit `af2a1a4`).
+- Paso 0 con plugins de juguete: hallazgos P1–P16 en `docs/coordinacion.md` («Hallazgos M8.0»).
+- ADR-0001, 0004, 0005, 0006 y 0007 aceptados por el usuario; contratos sin `[POR DECIDIR]` (commit `28afd35`).
+- Gasto en `-p`: 0,31 USD.
+
+## M8a — El kit, preparado para el OS (2026-10-14)
+- **K-10, IDs en `/hack-plan`**:
+  - columna `ID` (`T01`…) en cada tabla de «Por persona», «Quién espera a quién» por IDs y la línea `IDs usados hasta: Txx`;
+  - al ajustar, se conservan los IDs y no se reutilizan los quitados; si la línea falta o es menor que el ID más alto, se parte de ese ID;
+  - `comprobar.py` (A1) falla si una fila no tiene ID válido, si hay IDs repetidos o si «Quién espera a quién» cita un ID que no existe, y avisa si la línea falta o es menor;
+  - ejemplos del 02 y del 03 regenerados (el del 02 con la línea corregida a T42).
+- **`/hack-check`** (decisión del usuario en M8a): las filas que añade al plan reciben el siguiente ID y actualizan la línea.
+- **K-11, orquestador**:
+  - línea `ID:` en el encargo; referencia y worktree de fusión con el ID exacto; commits `Txx · …` (también el del worker);
+  - con la coordinación activa, su estado es `estado/<usuario>.orquestador.md`; sin ella, `estado/<persona>.md`;
+  - tras la primera prueba se aclaró que el ID va sin sufijos aunque la tarea vaya en varios encargos.
+- **K-12**: `Vive en:` en cada bloque de la plantilla de contratos y en `/hack-scaffold`.
+- **K-13**: sin cambios en los scripts (P7); caso de regresión en `prueba_hooks.py`.
+- Resultados en `evals/coordinacion/prueba.md` («M8a»): los seis criterios cumplidos (el 2, en interactivo, por el usuario). Gasto: 7,42 USD.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

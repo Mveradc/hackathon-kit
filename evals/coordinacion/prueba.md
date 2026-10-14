@@ -374,3 +374,90 @@ Desglose de lo que entra en el contexto (caracteres): encargos 20 %, salidas de 
 | Orquestador (Opus) | 1,202 |
 | Workers ×3 | 0,282 + 0,330 + 0,334 |
 | Revisores ×3 | 0,088 + 0,069 + 0,093 |
+
+# M8a: el kit, preparado para el Hackathon OS (2026-10-14)
+
+Criterios en `docs/hackathon-os/hitos.md` («M8a»); tareas K-10 a K-13. Headless desde Git Bash con el modelo por defecto, salvo donde se dice. Gasto: **7,42 USD**.
+
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | IDs únicos en `/hack-plan` (02 y 03); dependencias por ID; sin regresiones | **Sí.** 02: 42 IDs (T01–T42); 03: 28 (T01–T28). «Quién espera a quién» cita IDs en los dos. `comprobar.py` da en A2–A7 lo mismo que con la 0.3.2 (A5 y A7, fallos conocidos de Pendiente); A1 pasa con la comprobación nueva de IDs (los planes de la 0.3.2 no tienen columna `ID`) |
+| 2 | Un ajuste conserva los IDs y no reutiliza los quitados | **Sí**, en interactivo (el usuario): quitado T40, la tarea nueva es T44 (la línea anterior decía T43), ninguna ID cambia de tarea, «IDs usados hasta: T44»; A1 pasa |
+| 3 | Encargos con `ID:`, referencia `fusion/<Txx>` y reinicio en frío con `estado/<usuario>.orquestador.md` | **Sí**, tras aclarar el prompt (ver abajo) |
+| 4 | `Vive en:` en cada bloque de `docs/contratos.md` (scaffold del 03) | **Sí**: 3 de 3 |
+| 5 | `hk-tarea` fuera del buzón | **Sí**, en el sandbox y en `prueba_hooks.py` |
+| 6 | `prueba_hooks.py` en verde y `claude plugin validate .` | **Sí** |
+
+## Criterio 1: `/hack-plan` con IDs (`../prueba-m8a-02` y `../prueba-m8a-03`, 1,31 USD)
+- Copias de `../prueba-m5-02` y `../prueba-m6b-03` sin `plan.md` (el de la 0.3.2 queda como `.bak`).
+  - 02: 90 s, 0,64 USD, 1.135 palabras; filas por persona 10/9/8/8/7.
+  - 03: 139 s, 0,66 USD, 1.092 palabras; filas por persona 10/9/9.
+- 02: «IDs usados hasta: T43» con T42 como ID más alto. Es inexacto pero inofensivo, porque no se reutiliza nada; `comprobar.py` solo avisa si la línea es **menor**. En el ejemplo se dejó en T42. En observación.
+- No hay repositorio de referencia local para `--ref`. Los planes salen del mismo prompt que en la 0.3.2; lo único nuevo son los IDs.
+
+## `/hack-check aplicar` con IDs (`../prueba-m8a-03-check`, 1,35 USD)
+Copia de `../prueba-m8a-03` (plan con T01–T28) sin `verificacion.md`. El check añadió por su cuenta dos filas a la Persona A para una nota de `criterios.md` (las predicciones del test oculto), así que no hizo falta provocar ninguna:
+- las filas nuevas recibieron **T29 y T30**;
+- la línea pasó a «IDs usados hasta: T30»;
+- el resto de IDs quedó intacto.
+
+Observaciones:
+- Con esas dos filas, la Persona A queda con 12 (A1 falla: máximo 10).
+- A7 marca una cita no literal en un bloqueante.
+
+## Criterio 2: ajuste del plan (el usuario, interactivo, `../prueba-m8a-02-ajuste`)
+`/hack-plan Quitad T40 (el plan para más volumen). Añadid a E una tarea: preparar tres preguntas difíciles del jurado con sus respuestas antes del DOM 07:30.`, sobrescribiendo el plan. Comparado con el anterior:
+- quitados: solo `T40`;
+- nuevos: `T44` («Tres preguntas difíciles del jurado con respuesta en `.hackathon/pitch.md`»);
+- ninguna ID cambia de tarea;
+- la línea queda en `IDs usados hasta: T44`.
+
+`comprobar.py`: A1 pasa (42 IDs, del T01 al T44), sin avisos.
+
+## Criterio 3: orquestador (`../prueba-m8a-orq1`, `orq2` y `orq3`, 3,59 USD)
+Montaje: copias de `../prueba-m7c-03-base` con remoto `bare` local, IDs en el plan (T01–T27; las de B, T10–T19), `coordinacion.md` activa (B = `@Mveradc`, repo del sandbox) y el antiguo `estado/B.md` pasado a `estado/mveradc.orquestador.md` con IDs. Tarea: «Pulido» (T18), en dos encargos en serie. Corte con `taskkill /T /F` sobre la sesión, como en M7c.
+
+**Corte con un worker a medias** (`orq1`, 0,97 USD).
+- Al cortar: el primer encargo, aprobado y en `main` (`1b40306`, commits `T18 · …`); el segundo worker, con su worktree bloqueado y tres ficheros sin commitear.
+- El vigilante falló al matar (`//PID` con `MSYS_NO_PATHCONV=1`), así que se cortó a mano unos 30 s más tarde.
+- **Reinicio** (0,21 USD):
+  - no repitió lo aprobado y vio que no había fusiones en revisión;
+  - describió el huérfano (17 líneas añadidas y 8 quitadas, sin commitear);
+  - propuso relanzar, aprovecharlo o mirarlo, ahora con `git worktree unlock` antes del `remove --force`;
+  - no borró nada;
+  - lo sacó todo de `estado/mveradc.orquestador.md`, sin crear `B.md` ni `mveradc.md`.
+
+**Corte con una fusión en revisión** (`orq2`, 0,56 USD).
+- Al cortar quedaron la referencia, la rama del worker y el worktree `revision-ef677d71`.
+- **Reinicio** (0,16 USD): encontró la fusión por su referencia y propuso borrar el worktree de revisión (sin forzar) y relanzar solo el revisor. Pidió el visto bueno antes de hacerlo; en M7c siguió sin preguntar, y su prompt permite las dos cosas.
+- Con el sí (0,39 USD): APROBADO, `ff-only` a `ef677d7`, referencia y rama borradas, estado al día.
+
+**Desviación: la referencia `T18a`.**
+- En `orq2`, la referencia se llamó `refs/hackathon/fusion/T18a`, porque el orquestador distinguió con un sufijo los dos encargos de la misma fila. En `orq1` fue `T18`.
+- La línea `ID:` de los encargos llevó a veces un comentario detrás («T18 (encargo 1 de 2: armazón)»).
+- **Arreglo en el prompt:**
+  - `ID:` lleva solo el ID;
+  - la referencia y el worktree de fusión usan exactamente el ID de la fila, también cuando la tarea va en varios encargos (solo hay una fusión en revisión a la vez);
+  - los encargos se distinguen en el estado (`T18 (1/2)`).
+- **Repetido en `orq3`**, sin corte (1,15 USD):
+  - solo apareció `refs/hackathon/fusion/T18`;
+  - los cuatro commits empiezan por `T18 ·`;
+  - el estado distingue `T18 (1/2)` y `(2/2)`.
+- La línea `ID:` siguió llevando un comentario en 2 de 4 encargos. Es inofensivo para el contrato, porque la regex de `api.md` §1 toma el `T18` del principio. En observación.
+
+## Criterio 4: `/hack-scaffold` del 03 (`../prueba-m8a-03-scaffold`, 1,32 USD)
+Carpeta nueva con `analisis.md`, `enfoques.md`, `decision.md` y `equipo.md` del 03.
+- Sin stack, el comando se paró en `-p` porque la decisión no lo fija, que es lo esperado (0,29 USD).
+- Con «Motor en Python con uv y FastAPI; web en React con Vite» (1,04 USD): tres contratos, cada uno con `Vive en:`:
+  - la entrega: «fuera del repo»;
+  - los datos: `motor/datos/`;
+  - la interfaz motor → web: `motor/src/motor/main.py` y `web/src/App.jsx`.
+- A2 y A3 pasan; A1 y A4 fallan solo porque en la carpeta no hay plan ni pitch.
+
+## Criterio 5: `hk-tarea` fuera del buzón
+- En el sandbox, el issue #20, con `hk-tarea` y `hk:para-mveradc` (sin `hk`), sale con `labels=hk-tarea`, pero no en `buzon.sh leer` ni en la consulta del monitor. Está cerrado.
+- En `prueba_hooks.py`, un caso nuevo comprueba que toda consulta de issues de `buzon.sh` y `escucha.sh` pide la etiqueta `hk` exacta.
+- No hizo falta tocar los scripts.
+
+## Criterio 6
+`python evals/coordinacion/prueba_hooks.py`: 0 fallos. `claude plugin validate .`: pasa.

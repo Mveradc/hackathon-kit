@@ -107,7 +107,7 @@ Al aplicar, usa Edit y cambia solo esto:
 - las palabras de fuerza (paso 2);
 - las referencias del pitch (paso 5);
 - el formato de las etiquetas (paso 1);
-- los cambios de calendario del paso 4 y las filas del plan del paso 6, **solo con confirmación**: en la pregunta van aparte, uno a uno, con lo que se mueve y por qué. Con el argumento `aplicar`, el argumento cuenta como confirmación. Edita solo las filas afectadas de `plan.md`.
+- los cambios de calendario del paso 4 y las filas del plan del paso 6, **solo con confirmación**: en la pregunta van aparte, uno a uno, con lo que se mueve y por qué. Con el argumento `aplicar`, el argumento cuenta como confirmación. Edita solo las filas afectadas de `plan.md`. Si el plan tiene columna `ID`, cada fila nueva recibe el siguiente ID tras la línea `IDs usados hasta: Txx` (si falta o es menor que el ID más alto del plan, parte de ese ID más alto), y esa línea se actualiza; las filas que solo se mueven conservan su ID.
 
 Si quitas una regla numerada del `CLAUDE.md`, renumera las siguientes. **Nunca** toques `analisis.md`, `decision.md`, `equipo.md` ni el código. Los huecos de cobertura, las notas sin recoger o en choque y los bloqueantes que no se resuelven con una fila del plan se quedan en el informe para que decida el equipo. **Nunca** toques `criterios.md`: solo lo escriben las personas. Al terminar, marca en la tabla de afirmaciones cuáles se han aplicado.
 

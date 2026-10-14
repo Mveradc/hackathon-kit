@@ -134,7 +134,7 @@ def a1(c):
             # El plan se mide por persona: la sección de cada una cabe en una pantalla (unas 10 filas).
             # El total crece con el número de personas y solo se anota.
             bloques = re.split(r"\n(?=### )", seccion(t, "Por persona", 2) or "")[1:]
-            filas_pp = []
+            filas_pp, ids = [], []
             for b in bloques:
                 quien = re.split(r"[(·]", b.splitlines()[0][4:])[0].strip()
                 cab, fs = filas(b)
@@ -142,9 +142,33 @@ def a1(c):
                 if len(fs) > 10:
                     fallos.append(f"plan.md: {quien} con {len(fs)} filas (máx. 10 por persona)")
                 i = next((k for k, x in enumerate(cab) if x.startswith("Tarea")), None)
+                ib = next((k for k, x in enumerate(cab) if x.startswith("Bloque")), 1)
                 for fila in fs:
                     if i is not None and i < len(fila) and fila[i].count(";") >= 3:
-                        notas.append(f"plan.md: bloque «{fila[1] if len(fila) > 1 else '?'}» con {fila[i].count(';') + 1} tareas separadas por «;» (C4)")
+                        notas.append(f"plan.md: bloque «{fila[ib] if len(fila) > ib else '?'}» con {fila[i].count(';') + 1} tareas separadas por «;» (C4)")
+                # IDs de tarea (M8a, ADR-0002): una columna «ID» con Txx en cada fila.
+                if not cab or cab[0] != "ID":
+                    fallos.append(f"plan.md: {quien} sin columna «ID»")
+                else:
+                    for fila in fs:
+                        if not re.fullmatch(r"T\d{2,3}", fila[0]):
+                            fallos.append(f"plan.md: {quien}, fila sin ID válido («{fila[0]}»)")
+                        else:
+                            ids.append(fila[0])
+            for d in sorted({x for x in ids if ids.count(x) > 1}):
+                fallos.append(f"plan.md: ID repetido {d}")
+            espera = seccion(t, "Quién espera a quién", 2) or ""
+            for d in sorted(set(re.findall(r"\bT\d{2,3}\b", espera)) - set(ids)):
+                fallos.append(f"plan.md: «Quién espera a quién» cita {d}, que no está en el plan")
+            if ids and not re.search(r"\bT\d{2,3}\b", espera):
+                notas.append("plan.md: «Quién espera a quién» no cita IDs")
+            m = re.search(r"^IDs usados hasta:\s*T(\d{2,3})\s*$", t, re.M)
+            alto = max((int(x[1:]) for x in ids), default=0)
+            if ids and not m:
+                notas.append("AVISO plan.md: falta la línea «IDs usados hasta: Txx»")
+            elif ids and int(m.group(1)) < alto:
+                notas.append(f"AVISO plan.md: «IDs usados hasta: T{m.group(1)}» es menor que T{alto:02d}, que está en el plan")
+            notas.append(f"plan.md: {len(ids)} IDs, del {min(ids, default='—')} al {max(ids, default='—')}")
             notas.append(f"plan.md: {n} palabras, {len(bloques)} personas; filas por persona: {', '.join(filas_pp)}")
             continue
         (fallos if n > maximo else notas).append(f"{nombre}: {n} palabras (máx. {maximo})")

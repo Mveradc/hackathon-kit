@@ -75,6 +75,7 @@ Sigue `templates/skill.md`. Son **guías de pasos para momentos clave del reto**
 Sigue `templates/contratos.md`. Un bloque por contrato: la entrega que pide el reto, los datos de entrada que da y, si hay varias piezas, cada interfaz entre ellas (por ejemplo, la respuesta del motor que pinta la web).
 - **Campos**: tabla con nombre, tipo, si es obligatorio, valores o formato y origen. Copia del análisis los nombres de fichero, campos, valores y formatos tal cual; no los traduzcas ni los completes.
 - Lo que el análisis no fija (campos de una interfaz entre piezas, un formato que es ambigüedad) es una propuesta del equipo: origen `decisión` si sale de ella, `supuesto: ambigüedad N, confirmar con la organización` si depende de una ambigüedad, o `TODO`.
+- **`Vive en:`** por contrato: las rutas del repo generado que lo implementan o lo guardan (las carpetas o ficheros reales del scaffold, separados por comas), o «fuera del repo» si es un formulario o un servicio externo.
 - **Ejemplo mínimo válido** por contrato: un registro, o una petición y su respuesta, que respete la tabla. Con valores de ejemplo, nunca datos reales del reto.
 ### Atribución (`.claude/settings.json`)
 Para que los commits y PR que haga Claude (también los workers y el orquestador del kit) no lleven su coautoría:

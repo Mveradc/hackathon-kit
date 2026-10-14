@@ -4,6 +4,7 @@ Monta un repo de juguete con un worktree de worker en un directorio temporal y l
 Uso: python evals/coordinacion/prueba_hooks.py   (sale con 1 si algún caso falla)
 """
 import json
+import re
 import os
 import shutil
 import subprocess
@@ -202,6 +203,17 @@ try:
     open(os.path.join(coord, ".hackathon", "coordinacion.md"), "w", encoding="utf-8").write(
         "activa: no\nrepo: equipo/reto\n\n| Persona | GitHub |\n|---|---|\n| A | @persona-a |\n")
     caso("coordinación con «activa: no»", "permite", CONF, cmd('gh issue comment 7 --body "hk confirmo"'), coord)
+
+    # --- M8a (K-13): los issues de tarea (`hk-tarea`) no entran en el buzón ---
+    # GitHub filtra `labels=` por etiqueta exacta (P7 de M8.0, comprobado en el sandbox): basta con que toda
+    # consulta de issues del buzón y del monitor pida la etiqueta `hk` tal cual, sin comodines ni prefijos.
+    print("\n-- hk-tarea fuera del buzón --")
+    for script in ("buzon.sh", "escucha.sh"):
+        texto = open(f"{KIT}/scripts/coordinacion/{script}", encoding="utf-8").read()
+        consultas = re.findall(r"issues\?labels=([^&\"]*)", texto)
+        ok = bool(consultas) and all(c.split(",")[0] == "hk" for c in consultas)
+        fallos += not ok
+        print(f"{'OK   ' if ok else 'FALLO'} {script}: consultas con labels={', labels='.join(consultas) or '(ninguna)'}")
 finally:
     subprocess.run(["git", "worktree", "prune"], cwd=os.path.join(tmp, "repo"), capture_output=True)
     shutil.rmtree(tmp, ignore_errors=True)

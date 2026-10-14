@@ -14,6 +14,8 @@ Lo que no se puede romper sin avisar al resto del equipo. Si un contrato cambia,
 
 <Quién lo produce, quién lo consume y dónde vive (fichero, endpoint, formulario de entrega).> (<origen>)
 
+Vive en: <rutas del repo que lo implementan o lo guardan, separadas por comas; «fuera del repo» si es un formulario o un servicio externo>
+
 | Campo | Tipo | Obligatorio | Valores o formato | Origen |
 |---|---|---|---|---|
 | <nombre> | <texto, número, fecha…> | <sí / no / TODO> | <valores permitidos, unidad, zona horaria> | <enunciado · análisis: <sección> · decisión · supuesto: ambigüedad N, confirmar con la organización · TODO> |

@@ -1,83 +1,86 @@
 # Plan del equipo · X Ray · Embat (HackSpain 2026)
 
-39 horas (vie 18 sep 19:00 → dom 20 sep 10:00), 3 personas, hora de Europe/Madrid. Hitos: contratos vie 20:00 · demo mínima sáb 10:30 · congelación dom 05:00 · entrega dom 09:30 (límite 10:00).
+39 h (vie 18 sep 19:00 → dom 20 sep 10:00), 3 personas, Europe/Madrid. Hitos: contratos vie 20:00 · demo mínima sáb 12:30 · congelación sáb 22:00 · entrega dom 10:00.
+
+IDs usados hasta: T28
 
 ## Hitos del equipo
 | Cuándo | Qué | Dueño | Cómo se comprueba | Repliegue si no está |
 |---|---|---|---|---|
-| Vie 20:00 | Contratos acordados: ficha motor → web y ventana de 24 meses | A | `docs/contratos.md` sin TODO en ficha ni en meses | — |
-| Sáb mañana (hora por confirmar) | Sesión formativa sobre los datos | A | Respuestas en `docs/contratos.md` | — |
-| Sáb 10:30 | **Demo mínima**: `uv run arranca.py` abre la ficha real de dos empresas | A | Score, curva, desglose y acciones salen del motor, no del ejemplo | La ficha usa score sin suavizar y una sola regla de acción; decide A |
-| Sáb 16:00 | **Demo por URL** (ambigüedad 5) | A | Se abre desde un móvil en otra red | Demo en local en el portátil de B más vídeo de la ficha; decide C |
-| Sáb 20:00 | Entrega temprana, si el canal permite volver a entregar | C | Hay acuse de la organización | — |
-| Dom 05:00 | **Congelación**: después, solo arreglos y pitch | C | Último commit de funcionalidad antes de las 05:00 | Se quita de la demo lo que no esté estable; decide C |
-| Dom 07:00 | Ensayo 1 completo (guía `ensayo-demo`) | C | Cronometrado ≤ 5 min (inferido, ambigüedad 6) | — |
-| Dom 08:30 | Ensayo 2 completo, con la URL pública | B | Sin cortes ni pantallas en blanco | — |
-| Dom 09:30 | Entrega final (guía `entrega`) | C | Acuse antes de las 10:00 | — |
+| vie 20:00 | Contratos acordados: ventana de 24 meses, ficha motor → web y entregables (`docs/contratos.md`) | Persona A | B y C lo releen y dan el visto bueno | Se trabaja con el ejemplo del contrato y columnas provisionales; decide A |
+| sáb mañana (hora por confirmar) | Sesión formativa sobre los datos | Persona A | Dudas de columnas resueltas en `docs/contratos.md` | — |
+| sáb 12:30 | Demo mínima de principio a fin (≈45 %, cuando vuelve B): `uv run arranca.py`, una empresa real con curva, desglose y acciones | Persona A | C recorre la ficha de una empresa real sin ayuda | Score sin suavizado fino y una sola regla de acción; decide A |
+| sáb 20:00 | Demo abierta por URL pública | Persona A | Se abre desde un móvil fuera de la red del aula | Túnel desde el portátil de A (conocimiento externo, verificar) y vídeo grabado; deciden A y C |
+| sáb 22:00 | Congelación: después, solo arreglos y pitch | Persona C | Nadie abre tareas nuevas | — |
+| sáb 22:30 | Entrega temprana, si se puede volver a entregar (supuesto: ambigüedad 5) | Persona C | Justificante de envío guardado | — |
+| sáb 22:30 | Ensayo 1 del pitch completo, 5 min (inferido, ambigüedad 6) | Persona B y Persona C | Cronometrado, con las dos empresas en vivo | — |
+| dom 08:30 | Ensayo 2 del pitch completo | Persona B y Persona C | Dentro de tiempo y sin fallos de demo | Se usa el vídeo grabado; decide C |
+| dom 10:00 | Entrega final (pitch: hora por confirmar) | Persona C | URL, repositorio y lo que pida Embat enviados | — |
 
 ## Por persona
 
-### A · escribe solo en `motor/`, `datos/`, `docs/`, `arranca.py`, `.gitignore`
-| Hasta | Bloque | Tarea | Cómo se comprueba |
-|---|---|---|---|
-| Vie 20:30 | Contratos | Servir en `motor/` la ficha del ejemplo de `docs/contratos.md` | `GET /api/empresas/EJ-0001/ficha` devuelve 24 meses |
-| Vie 23:30 | Datos | Cargar los CSV de `datos/` en UTF-8 a tabla mensual por `company_id` | 1.286 empresas × 24 meses |
-| | | Calcular caja, días de cobro y deuda por mes, con su `moneda` | Sin nulos ni monedas sumadas |
-| Sáb 03:00 | Score | Score 0–100 suavizado a partir de las tres señales | Un bache de un mes no cambia la tendencia |
-| | | Calcular `tendencia` y `desglose` del último mes | El desglose explica el cambio del mes |
-| Sáb 10:30 | Acciones | Implementar las reglas de C, cada una con su cifra | Las dos empresas de la demo tienen ≥ 2 acciones |
-| Sáb 16:00 | Despliegue | Publicar motor y build de la web en una URL (conocimiento externo, verificar plataforma) | La URL abre una ficha real |
-| Sáb 22:00 | Robustez | Arreglar errores en 30 empresas al azar | Ninguna da error 500 |
-| | | Si Embat pide validación propia: medir estabilidad en empresas apartadas | Cifra apuntada en `docs/contratos.md` |
+### Persona A · escribe solo en `motor/`, `datos/`, `docs/`, `arranca.py`, `.gitignore`, `.gitattributes`
+| ID | Hasta | Bloque | Tarea | Cómo se comprueba |
+|---|---|---|---|---|
+| T01 | vie 19:45 | Contratos | Fijar en `docs/contratos.md` los 24 meses `YYYY-MM` que se usan | Sin TODO de ventana |
+| T02 | vie 20:30 | Ficha falsa | `GET /api/empresas/{company_id}/ficha` devuelve el ejemplo del contrato | `curl` devuelve el JSON del contrato |
+| T03 | vie 23:00 | Datos | Cargar los CSV de `datos/` en UTF-8 desde `motor/src/motor/datos.py` | Cargan 1.286 `company_id` sin errores |
+| T04 | | | Copiar las columnas reales de `data_dictionary.md` a `docs/contratos.md` | Sin TODO de columnas |
+| T05 | sáb 02:30 | Features | Calcular caja, cobros (días de cobro) y deuda mensuales por `company_id`, sin mezclar monedas | 24 meses por empresa |
+| T06 | sáb 11:00 | Score | Score 0–100 suavizado con `tendencia` en `motor/src/motor/score.py` | Un bache de un mes no cambia la tendencia |
+| T07 | | | Desglose caja/cobros/deuda en puntos de score | La suma cuadra con el cambio del mes |
+| T08 | sáb 12:30 | Acciones | 2–3 reglas sobre los datos de la empresa que citan su cifra | Cada acción trae `regla` y `cifra` |
+| T09 | sáb 16:00 | Despliegue | Publicar motor y web en una URL pública (plataforma por elegir) | La ficha abre por URL |
+| T10 | sáb 19:00 | Validación | Apartar empresas y medir la estabilidad del score en ellas (`docs/validacion.md`) | Cifra anotada con método |
 
-### B · escribe solo en `web/`
-| Hasta | Bloque | Tarea | Cómo se comprueba |
-|---|---|---|---|
-| Vie 23:00 | Ficha | Pintar en `web/src/App.jsx` score, curva de 24 meses y flecha | Se ve con el JSON del ejemplo |
-| | | Pintar el desglose caja / cobros / deuda con signo | Cada barra muestra puntos de score |
-| | | Pintar las acciones con su cifra destacada | 3 acciones visibles |
-| Sáb 01:00 | Navegación | Selector de `company_id` que llama a `/api` | Cambiar de empresa cambia la ficha |
-| Sáb 09:00 | Integración | Conectar con la ficha real del motor | Dos empresas cargan sin errores en consola |
-| Sáb 15:00 | Producto | Inicio con acceso en dos clics a las dos empresas de la demo | Dos clics a cada ficha |
-| | | Estados de carga, vacío y sin acciones | Ninguna pantalla en blanco |
-| | | `npm run build` listo para que A lo despliegue | Build sin errores |
-| Sáb 23:00 | Pulido | Textos para el CFO revisados con C | Ningún texto en inglés ni genérico |
-| Dom 07:00 | Pitch | Guion de clics de la demo en vivo | Demo recorrida en ≤ 2 min |
+### Persona B · escribe solo en `web/`
+| ID | Hasta | Bloque | Tarea | Cómo se comprueba |
+|---|---|---|---|---|
+| T11 | vie 23:30 | Ficha | Score, curva de 24 meses y flecha de tendencia en `web/src/`, con el JSON de ejemplo | Se ven 24 puntos y la flecha |
+| T12 | | | Desglose «qué lo movió» (caja, cobros, deuda) con signo | Tres aportaciones visibles |
+| T13 | | | Lista de 0–3 acciones con su cifra | Las acciones del ejemplo se ven |
+| T14 | sáb 01:00 | Selector | Elegir `company_id` y pedir la ficha a `/api` (T02) | Cambiar de id cambia la ficha |
+| T15 | sáb 08:45 | Estados | Mensaje de carga y de empresa inexistente | Un id inválido no deja la pantalla en blanco |
+| T16 | sáb 14:00 | Datos reales | Probar la ficha con 5 empresas reales y corregir lo que se rompa | Las 5 se pintan bien |
+| T17 | | | `npm run build --prefix web` limpio para el despliegue | Build sin errores |
+| T18 | sáb 18:00 | Pulido | Ninguna vista enseña el score sin curva, tendencia y desglose | Revisado vista a vista |
+| T19 | | | Cada cifra lleva su moneda o «puntos» | Ninguna cifra sin unidad |
 
-### C · escribe solo en `README.md`, `CLAUDE.md`, `.claude/`, `pitch/`
-| Hasta | Bloque | Tarea | Cómo se comprueba |
-|---|---|---|---|
-| Vie 21:00 | Preguntas | Apuntar las respuestas de Embat en `CLAUDE.md` | Cada supuesto marcado como confirmado o no |
-| Vie 23:30 | Reglas | Escribir 5–6 reglas de acción en `.claude/rules/ficha-y-acciones.md` | Cada regla con campo, umbral y texto con cifra |
-| Sáb 14:00 | Empresas | Elegir una empresa que mejora (~45→65) y otra que cae (~82→68) | Sus `company_id` en `.claude/skills/ensayo-demo/SKILL.md` |
-| | | Escribir qué movió a cada una y qué haría su CFO | 3 frases con cifras por empresa |
-| Sáb 19:00 | Pitch | Guion de 5 min en `pitch/guion.md`: comprador Embat, problema, demo, cierre | Leído en voz alta ≤ 5 min |
-| | | Diapositivas en `pitch/` | ≤ 6 diapositivas |
-| Sáb 22:00 | README | Cómo abrir la demo, URL y comprador en `README.md` | B la abre siguiendo solo el README |
-| Dom 04:00 | Cierre | Completar los TODO de la guía `entrega` (canal y comandos) | Guía sin TODO |
-
-`.hackathon/`: no se edita.
+### Persona C · escribe solo en `README.md`, `CLAUDE.md`, `.claude/`, `pitch/`
+| ID | Hasta | Bloque | Tarea | Cómo se comprueba |
+|---|---|---|---|---|
+| T20 | vie 20:30 | Preguntas | Preguntar a Embat las ambigüedades de abajo y anotar respuestas en `pitch/preguntas.md` | Cada pregunta con respuesta o «sin respuesta» |
+| T21 | vie 23:00 | Guion | `pitch/guion.md`: CFO, comprador Embat y por qué lo compra | Leído en voz alta en menos de 5 min |
+| T22 | sáb 12:00 | Supuestos | Actualizar reglas 8–10 y «Despliegue» de `CLAUDE.md` con las respuestas | Cada supuesto confirmado o pendiente |
+| T23 | | | Ajustar `.claude/skills/entrega/SKILL.md` a la forma de entrega | Pasos coinciden con lo que pide Embat |
+| T24 | sáb 14:00 | Casos demo | Elegir una empresa que mejora (≈45→65) y otra que cae (≈82→68) en `pitch/guion.md` | Dos ids con tendencia opuesta |
+| T25 | sáb 15:30 | Acciones | Revisar como CFO el texto de las acciones en `pitch/revision-acciones.md` | A recibe la lista de cambios |
+| T26 | sáb 18:00 | README | `README.md` con la URL de la demo y el arranque local | B arranca siguiendo solo el README |
+| T27 | sáb 21:00 | Pitch | Diapositivas en `pitch/` con capturas de las dos fichas | Caben en 5 min |
+| T28 | | | Respuesta a «¿cómo sabéis que acierta?» con la cifra de T10 | Una frase con cifra y método |
 
 ## Quién espera a quién
-- **B espera la ficha real de A** (sáb 09:00): B trabaja contra el ejemplo que A sirve desde vie 20:30.
-- **A espera las reglas de C** (vie 23:30): A empieza por la regla de días de cobro.
-- **C espera el score real** (sáb 10:30): A le pasa curvas provisionales a las 03:00.
-- **A espera la build de B** (sáb 15:00): A ensaya el despliegue con la web del scaffold.
+- T14 espera a T02: hasta entonces B lee el JSON de ejemplo de `docs/contratos.md` desde un fichero local de `web/`.
+- T05 espera a T03 y T04: A avanza con las columnas del ejemplo y las renombra tras la sesión formativa.
+- T16 espera a T06–T08: B sigue con T15 contra la ficha falsa; A avisa en cuanto haya ficha real.
+- T09 espera a T17: A prueba antes la plataforma publicando el «hola mundo» de `/api/hola`.
+- T24 espera a T06: C prepara los criterios de elección y pide a A una lista de candidatas por tendencia.
+- T28 espera a T10: si no llega, C defiende la estabilidad con un bache de la demo, sin decir «acertado».
 
 ## Preguntas a la organización
-| Ambigüedad | Dueño | Límite |
+| Pregunta | Dueño | Hasta |
 |---|---|---|
-| 5 · Hora, canal y formato de entrega; ¿hace falta URL pública? | C | Vie 20:00 |
-| 6 · Duración del pitch y turno de preguntas | C | Vie 20:00 |
-| 4 · ¿Mismo peso de los tres bloques o prima el producto? | C | Vie 21:00 |
-| 1 y 2 · ¿Validación propia? ¿Hay etiqueta de salud? | A | Sesión formativa del sábado |
-| 3 · ¿Score por empresa o por grupo? | A | Sesión formativa del sábado |
-| 7 · ¿Escala 0–100? | A | Sesión formativa del sábado |
-| 8 · ¿Cómo se tratan las monedas? | A | Sesión formativa del sábado |
+| 5. Cuándo y cómo se entrega, y si hace falta deploy público | Persona C | vie 20:30 |
+| 1 y 2. Cómo se valora la generalización y si hay etiqueta de salud | Persona C | vie 20:30 |
+| 3. Score por empresa o por grupo | Persona A | sesión formativa |
+| 7 y 8. Escala 0–100 y trato de varias monedas | Persona A | sesión formativa |
+| 6 y 4. Duración del pitch, preguntas y peso de los bloques | Persona C | sáb 12:00 |
 
 ## Descansos
-| Quién | Noche 1 | Noche 2 |
-|---|---|---|
-| C (presenta) | Vie 23:30 – sáb 05:30 | Sáb 23:00 – dom 03:30 |
-| B (presenta) | Sáb 01:00 – 07:00 (fuera además 09:00–12:00) | Sáb 23:30 – dom 04:00 |
-| A | Sáb 03:00 – 08:00 | Dom 05:00 – 08:00 |
+| Turno | Quién |
+|---|---|
+| sáb 00:30–06:30 | Persona C |
+| sáb 01:00–07:00 | Persona B |
+| sáb 02:30–08:00 | Persona A |
+| sáb 23:00–dom 07:30 | Persona B y Persona C |
+| sáb 23:30–dom 07:00 | Persona A |
