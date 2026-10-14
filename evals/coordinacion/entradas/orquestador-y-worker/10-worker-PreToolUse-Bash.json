@@ -1,0 +1,19 @@
+{
+ "session_id": "9552c5a8-961e-4774-b682-dff888dfdde6",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-Desktop-Proyectos-prueba-m8-paso0-repo\\9552c5a8-961e-4774-b682-dff888dfdde6.jsonl",
+ "cwd": "C:\\Users\\persona-a\\Desktop\\Proyectos\\prueba-m8-paso0\\repo\\.claude\\worktrees\\agent-a17759f71a1625d5c",
+ "prompt_id": "fc37c6ca-757a-40b7-a4de-275c79351f93",
+ "permission_mode": "bypassPermissions",
+ "agent_id": "a17759f71a1625d5c",
+ "agent_type": "juguete:worker",
+ "effort": {
+  "level": "medium"
+ },
+ "hook_event_name": "PreToolUse",
+ "tool_name": "Bash",
+ "tool_input": {
+  "command": "cd \"C:\\Users\\persona-a\\Desktop\\Proyectos\\prueba-m8-paso0\\repo\\.claude\\worktrees\\agent-a17759f71a1625d5c\" 2>/dev/null; pwd; git rev-parse --show-toplevel; git status --short",
+  "description": "Show cwd, git toplevel and status"
+ },
+ "tool_use_id": "toolu_01V91pWhVHoD51BoNfzVkZQ5"
+}

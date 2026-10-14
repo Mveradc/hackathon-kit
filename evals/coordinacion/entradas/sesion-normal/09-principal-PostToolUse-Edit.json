@@ -1,0 +1,40 @@
+{
+ "session_id": "be342bee-6649-43f3-b3b9-1a1f96cd32df",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-tmp-repo\\be342bee-6649-43f3-b3b9-1a1f96cd32df.jsonl",
+ "cwd": "C:\\Users\\persona-a\\tmp\\repo",
+ "prompt_id": "b6503b91-efda-47dc-b27f-75f133bebb71",
+ "permission_mode": "bypassPermissions",
+ "effort": {
+  "level": "medium"
+ },
+ "hook_event_name": "PostToolUse",
+ "tool_name": "Edit",
+ "tool_input": {
+  "file_path": "C:\\Users\\persona-a\\tmp\\repo\\a.txt",
+  "old_string": "hola",
+  "new_string": "adios",
+  "replace_all": false
+ },
+ "tool_response": {
+  "filePath": "C:\\Users\\persona-a\\tmp\\repo\\a.txt",
+  "oldString": "hola",
+  "newString": "adios",
+  "originalFile": "hola\n",
+  "structuredPatch": [
+   {
+    "oldStart": 1,
+    "oldLines": 1,
+    "newStart": 1,
+    "newLines": 1,
+    "lines": [
+     "-hola",
+     "+adios"
+    ]
+   }
+  ],
+  "userModified": false,
+  "replaceAll": false
+ },
+ "tool_use_id": "toolu_01Gj93GpepEQjPDFym28v17e",
+ "duration_ms": 16
+}

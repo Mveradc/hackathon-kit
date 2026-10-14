@@ -1,0 +1,11 @@
+<!-- Cambia <KIT> por la ruta del clon de hackathon-kit, con barras de Windows (por ejemplo, C:\Users\<tu usuario>\Proyectos\hackathon-kit). -->
+<Configuration>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder><KIT>\evals\coordinacion\paso0-m8</HostFolder>
+      <SandboxFolder>C:\paso0</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <Networking>Enable</Networking>
+</Configuration>

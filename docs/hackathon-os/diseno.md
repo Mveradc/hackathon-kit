@@ -33,17 +33,17 @@ Tres capas, cada una útil sin la siguiente (constitución VIII):
 
 | Componente | Qué es | Dónde corre | Escribe |
 |---|---|---|---|
-| `scripts/os/emite.sh` | Hook bash (`async: true`) que añade una línea JSON por evento | Cada sesión y subagente | `<git común>/hackathon/os/eventos/<session_id>.jsonl` |
+| `scripts/os/emite.sh` | Hook bash (`async: true`; síncrono en `SessionEnd`) que añade una línea JSON por evento, solo con los campos de la lista blanca de `api.md` §1 | Cada sesión y subagente | `<git común>/hackathon/os/eventos/<session_id>.jsonl` |
 | `scripts/os/arbol.sh` | Hook bash en `Stop`, `SubagentStop` y `PostToolBatch`: `git status --porcelain` y diff contra la base del `cwd` | Cada sesión y subagente | Evento `arbol` |
 | Cambios en `compuerta.sh` | Emite `compuerta.ok` / `compuerta.ko` con los motivos | Workers | Evento |
 | `hk-os agente` | Demonio local: lee los JSONL, sondea git, habla con el relay, sirve MCP | Uno por persona y repo | `<git común>/hackathon/os/estado-equipo.md` |
 | `hk-os relay` | Servidor HTTP + SSE: presencia, reservas, eventos, sondeo de GitHub, motor de estados, web | Portátil coordinador | `estado.json`, `<git común>/hackathon/os/relay/eventos.jsonl` |
 | `hk-os compilar` | Compila `plan.md` a issues `hk-tarea` | Quien lo lanza | Issues |
-| Cambios en `sesion.sh` | SessionStart: añade el estado del equipo | Cada sesión | — |
+| Cambios en `sesion.sh` | SessionStart: lanza el demonio si no responde en su puerto (ADR-0004) y añade el estado del equipo | Cada sesión | — |
 | `scripts/os/delta.sh` | UserPromptSubmit: inyecta solo lo que cambió | Cada sesión | — |
 | `scripts/os/reserva.sh` | PreToolUse Edit/Write: avisa si el fichero está reservado o en colisión | Cada sesión y subagente | — |
 
-Lenguaje del demonio y del relay: ADR-0005 (se decide en M8.0). Los hooks siguen en bash.
+Lenguaje del demonio y del relay: Python con biblioteca estándar, lanzado con `uv run` (ADR-0005). Los hooks siguen en bash.
 
 ## 3. Actores
 
@@ -56,12 +56,12 @@ humano (la persona actuando fuera de Claude Code: commits a mano, issues desde l
 
 - El papel sale de `agent_type` (`hackathon-kit:orquestador`, `…:worker`, `…:revisor`; sin `agent_type`, `principal`).
 - La persona sale de `hk_yo` (usuario de `gh`), igual que en el buzón.
-- El worktree sale de `cwd` (en subagentes con `isolation: worktree`, `cwd` es la raíz del worktree; verificar en M8.0).
+- El worktree sale de `cwd` (en subagentes con `isolation: worktree`, `cwd` es la raíz del worktree: comprobado en M8.0, P4).
 - Lo que una persona hace a mano se ve por git (commits, ramas, `git status` que sondea el demonio), como actor `humano`.
 
 ## 4. Recorrido de una señal
 
-1. Claude Code dispara un hook. `emite.sh` lee la entrada (una línea JSON), le añade sobre (`v`, `ts`, `persona`, `tipo`) **sin parsearla** (no hay `jq`) y la añade al JSONL de su sesión. No usa red. Coste: un proceso bash.
+1. Claude Code dispara un hook. `emite.sh` lee la entrada (una línea JSON), copia solo los campos de la lista blanca (`api.md` §1) con regex de bash, sin `jq` y sin desescapar, les añade el sobre (`v`, `ts`, `persona`, `tipo`) y escribe la línea en el JSONL de su sesión. No usa red ni guarda contenido de ficheros. Coste: un proceso bash (≈37 ms en Windows).
 2. El demonio sigue los JSONL (posición por fichero), parsea la entrada, normaliza al esquema de `contratos/eventos.schema.json` y la envía al relay en lotes (`POST /eventos`). Si el relay no responde, guarda la posición y reintenta.
 3. Cada 15 s, el demonio sondea git: `git worktree list`, `git status --porcelain` por worktree, `refs/hackathon/fusion/*`, y si hay `origin`, qué commits de las fusiones ya están en `origin/main`. Emite lo que cambió.
 4. El relay aplica cada evento al modelo (presencia, ficheros, reservas, señales por tarea), sondea los issues `hk-tarea` cada 30 s con ETag y recalcula `estado.json`. Lo publica por SSE.
@@ -94,8 +94,8 @@ Sin tocar su lógica (está validada): se detectan con hooks sobre lo que ya hac
 
 | Evento | Cómo se detecta |
 |---|---|
-| `encargo.lanzado` | PreToolUse sobre `Agent` con `agent_type` orquestador y `subagent_type` worker: `tool_input.prompt` trae `ID:`, `Base:` y «Puedes tocar» (verificar el campo en M8.0) |
-| `worker.inicio` / `worker.fin` | `SubagentStart` / `SubagentStop` con `agent_type` worker |
+| `encargo.lanzado` | PreToolUse sobre `Agent` con `agent_type` orquestador y `subagent_type` worker: el emisor saca de `tool_input.prompt` solo `ID:` y `Base:` (campo comprobado en M8.0, P2) |
+| `worker.inicio` / `worker.fin` | `SubagentStart` / `SubagentStop` con `agent_type` worker; el ID de la tarea, de la primera línea del transcript del worker (P3) |
 | `compuerta.ok` / `compuerta.ko` | Lo emite `compuerta.sh` |
 | `fusion.creada` | PostToolUse Bash del orquestador con `git update-ref refs/hackathon/fusion/<ID>`; el demonio lo confirma leyendo la ref |
 | `revision.veredicto` | `SubagentStop` del revisor: `Veredicto:` y `Fusión:` de `last_assistant_message` |
@@ -122,7 +122,7 @@ El trabajo de dos workers de la misma persona no colisiona en este sentido: el o
 ## 8. Inyección en las sesiones
 
 - **SessionStart** (`sesion.sh`, ya existe): añade, si el OS está activo, el bloque «Equipo» desde `estado-equipo.md`. Presupuesto total de 2.500 caracteres (R-24), en este orden: tarea de la sesión y bloqueos, colisiones que la afectan, decisiones y criterios nuevos desde la última sesión, una línea por persona. El detalle, en la ruta de `estado-equipo.md`.
-- **UserPromptSubmit** (`delta.sh`): compara el hash de lo relevante para esa sesión con el último entregado (`<git común>/hackathon/os/entregado/<session_id>`). Si cambió, imprime solo el cambio; si no, nada.
+- **UserPromptSubmit** (`delta.sh`): compara el hash de lo relevante para la persona de esa sesión (su tarea, sus colisiones, decisiones y criterios nuevos) con el último entregado (`<git común>/hackathon/os/entregado/<session_id>`). Si cambió, imprime solo el cambio en ≤ 600 caracteres; si no, nada. Lleva la cuenta de lo inyectado desde el inicio o la última compactación: pasados 6.000 caracteres, solo colisiones rojas (R-25, R-25b). Lo inyectado no se borra del contexto (M8.0, P16).
 - **Colisión roja a mitad de turno**: el monitor (`escucha.sh`) imprime una línea cuando `estado-equipo.md` marca una colisión roja nueva para esa persona. Una línea del monitor abre un turno (comprobado en M6a), así que solo se usa para rojo.
 - Redacción factual, no imperativa (guía oficial de hooks), y todo lo externo entrecomillado con autor.
 

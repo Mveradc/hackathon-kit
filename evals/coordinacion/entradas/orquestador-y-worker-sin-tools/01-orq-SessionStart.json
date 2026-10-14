@@ -1,0 +1,8 @@
+{
+ "session_id": "b12eeada-3c10-4d8b-b468-5edd7437335b",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-Desktop-Proyectos-prueba-m8-paso0-repo\\b12eeada-3c10-4d8b-b468-5edd7437335b.jsonl",
+ "cwd": "C:\\Users\\persona-a\\Desktop\\Proyectos\\prueba-m8-paso0\\repo",
+ "agent_type": "juguete:orqlibre",
+ "hook_event_name": "SessionStart",
+ "source": "startup"
+}

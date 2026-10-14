@@ -1,0 +1,1 @@
+{ "hooks": { "UserPromptSubmit": [ { "hooks": [ { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/delta.sh\"", "timeout": 10 } ] } ] } }

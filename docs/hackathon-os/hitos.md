@@ -52,7 +52,8 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 3. Los eventos de los workers llevan su `agent_id` y su worktree.
 4. Un fichero cambiado solo por Bash (generador o `sed`) aparece en el siguiente `arbol`.
 5. El fallo inducido de M7b (revisor que pide CAMBIOS dos veces) produce dos `revision.veredicto` CAMBIOS y ninguna `fusion.aprobada`.
-6. Coste en Windows: por debajo del umbral medido en M8.0 para una sesión de 50 herramientas.
+6. Coste en Windows: por debajo del umbral fijado en M8.0 para una sesión de 50 herramientas (≤ 50 ms por llamada y ≤ +1 s fuera del API, ADR-0004).
+7. `prueba_hooks.py` pasa por `json.loads` cada línea que escribe el emisor: con las entradas reales de `evals/coordinacion/entradas/` y con casos en que el recorte del campo `git` a 200 caracteres cae dentro de un `\"` y dentro de un `ó` (en cada posición del escape). Ninguna línea lleva campos fuera de la lista blanca de `api.md` §1.
 
 ---
 
@@ -65,6 +66,13 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 3. Con el relay parado 5 minutos, ningún hook falla ni se ralentiza; al volver, los eventos llegan en orden.
 4. Sin token, `401`; un evento inválido da `400` y no tumba el relay.
 5. El simulador manda 50 eventos/s a 5 clientes SSE durante 2 minutos sin perder ninguno.
+6. Arranque en **Windows** (Git Bash):
+   - `SessionStart` lanza el demonio con `Start-Process` y vuelve en ≤ 1 s;
+   - el demonio sigue vivo al terminar el hook y tras salir de `-p`;
+   - un segundo `SessionStart` lo encuentra por `/salud` y no lanza otro;
+   - se apaga solo tras `apagado_min` sin eventos ni sesiones;
+   - con el puerto ocupado por otro programa, avisa una vez por sesión y no lo reintenta.
+7. Arranque en **macOS y Linux**: lo mismo que el criterio 6, con `nohup setsid … &`. macOS no trae `setsid` de serie: se anota la alternativa que se elija.
 
 ---
 
@@ -88,7 +96,7 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 1. La web abre en un navegador de otro portátil sin instalar nada, muestra haciendo/hecho/falta, colisiones y antigüedad, y refleja un cambio del relay en ≤ 5 s.
 2. Una sesión nueva recibe el bloque «Equipo» en ≤ 2.500 caracteres, con las secciones en el orden de R-24; con un equipo simulado de 5 personas y 20 tareas no se pasa del presupuesto.
 3. Tras un cambio que la afecta, la sesión recibe solo ese cambio en su siguiente turno; sin cambios, `delta.sh` no imprime nada (30 minutos sin turnos inducidos por el OS, como el criterio de silencio de M6a).
-4. El MCP responde `estado`, `tarea` y `colisiones` en una sesión normal y, si M8.0 lo confirmó, en una sesión `--agent hackathon-kit:orquestador`.
+4. El MCP responde `estado`, `tarea` y `colisiones` en una sesión normal y en una sesión `--agent hackathon-kit:orquestador` (con el servidor en su `tools:`, ADR-0006); el worker y el revisor no lo ven.
 5. Test de igualdad: en los guiones G1–G6, la web, `estado-equipo.md` y el MCP coinciden en estados, dueños, colisiones y antigüedades.
 
 ---

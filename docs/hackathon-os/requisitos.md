@@ -55,7 +55,8 @@ Cada criterio es comprobable y lo cubre al menos un guion de `simulador.md` o un
 
 ## Proyección (N)
 - **R-24** CUANDO empiece, se reanude, se limpie o se compacte una sesión con el OS activo, el sistema DEBE inyectarle el estado del equipo en un máximo de 2.500 caracteres, priorizando: su tarea y bloqueos, colisiones que le afectan, decisiones y criterios nuevos, y una línea por persona.
-- **R-25** CUANDO el estado del equipo cambie en algo que afecta a una sesión, el sistema DEBE inyectarle solo el cambio en su siguiente turno; SI no hay cambios, ENTONCES no DEBE inyectar nada.
+- **R-25** CUANDO cambie algo de la persona de una sesión (su tarea, una colisión suya, o una decisión o un criterio nuevos), el sistema DEBE inyectarle solo ese cambio en su siguiente turno, en un máximo de **600 caracteres**; SI no cambia nada de eso, ENTONCES no DEBE inyectar nada.
+- **R-25b** MIENTRAS lo inyectado por deltas en una sesión, desde su inicio o su última compactación o limpieza, supere **6.000 caracteres**, el sistema DEBE inyectar solo las colisiones rojas nuevas; el resto se consulta por MCP. Motivo (M8.0, P16): cada `additionalContext` queda en el historial y se paga en todos los turnos siguientes hasta compactar (957 caracteres ≈ 420 tokens por turno). 6.000 caracteres son unos 2.600 tokens, más los 2.500 caracteres de R-24 (≈1.100 tokens): en total, unos 3.700 tokens por tramo de sesión.
 - **R-26** El sistema DEBE servir una página web de solo lectura, abierta desde el navegador sin instalar nada, con tres columnas (haciendo, hecho, falta), un panel de colisiones y la antigüedad de cada dato, que se actualiza sola en menos de 5 segundos tras un cambio en el relay.
 - **R-27** El sistema DEBE ofrecer a los agentes, por MCP, consultas de estado y las acciones `reclamar` y `reservar`, con el mismo modelo que la web.
 - **R-28** La web, el markdown de los agentes y el MCP DEBEN coincidir en todos los guiones del simulador.

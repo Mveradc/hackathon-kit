@@ -1,0 +1,88 @@
+{
+ "hooks": {
+  "SessionStart": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/emite.sh\" SessionStart",
+      "timeout": 10,
+      "async": true
+     }
+    ]
+   }
+  ],
+  "SessionEnd": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/emite.sh\" SessionEnd",
+      "timeout": 10,
+      "async": true
+     }
+    ]
+   }
+  ],
+  "UserPromptSubmit": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/emite.sh\" UserPromptSubmit",
+      "timeout": 10,
+      "async": true
+     }
+    ]
+   }
+  ],
+  "PreToolUse": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/emite.sh\" PreToolUse",
+      "timeout": 10,
+      "async": true
+     }
+    ]
+   }
+  ],
+  "PostToolUse": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/emite.sh\" PostToolUse",
+      "timeout": 10,
+      "async": true
+     }
+    ]
+   }
+  ],
+  "PostToolBatch": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/emite.sh\" PostToolBatch",
+      "timeout": 10,
+      "async": true
+     }
+    ]
+   }
+  ],
+  "Stop": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/emite.sh\" Stop",
+      "timeout": 10,
+      "async": true
+     }
+    ]
+   }
+  ]
+ }
+}

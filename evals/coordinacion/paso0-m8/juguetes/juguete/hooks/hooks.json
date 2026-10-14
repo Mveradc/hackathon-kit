@@ -1,0 +1,103 @@
+{
+ "hooks": {
+  "SessionStart": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/vuelca.sh\" SessionStart",
+      "timeout": 10
+     }
+    ]
+   }
+  ],
+  "SessionEnd": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/vuelca.sh\" SessionEnd",
+      "timeout": 10
+     }
+    ]
+   }
+  ],
+  "UserPromptSubmit": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/vuelca.sh\" UserPromptSubmit",
+      "timeout": 10
+     }
+    ]
+   }
+  ],
+  "PreToolUse": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/vuelca.sh\" PreToolUse",
+      "timeout": 10
+     }
+    ]
+   }
+  ],
+  "PostToolUse": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/vuelca.sh\" PostToolUse",
+      "timeout": 10
+     }
+    ]
+   }
+  ],
+  "PostToolBatch": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/vuelca.sh\" PostToolBatch",
+      "timeout": 10
+     }
+    ]
+   }
+  ],
+  "Stop": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/vuelca.sh\" Stop",
+      "timeout": 10
+     }
+    ]
+   }
+  ],
+  "SubagentStart": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/vuelca.sh\" SubagentStart",
+      "timeout": 10
+     }
+    ]
+   }
+  ],
+  "SubagentStop": [
+   {
+    "hooks": [
+     {
+      "type": "command",
+      "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/vuelca.sh\" SubagentStop",
+      "timeout": 10
+     }
+    ]
+   }
+  ]
+ }
+}

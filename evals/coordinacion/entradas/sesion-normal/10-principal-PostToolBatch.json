@@ -1,0 +1,24 @@
+{
+ "session_id": "be342bee-6649-43f3-b3b9-1a1f96cd32df",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-tmp-repo\\be342bee-6649-43f3-b3b9-1a1f96cd32df.jsonl",
+ "cwd": "C:\\Users\\persona-a\\tmp\\repo",
+ "prompt_id": "b6503b91-efda-47dc-b27f-75f133bebb71",
+ "permission_mode": "bypassPermissions",
+ "effort": {
+  "level": "medium"
+ },
+ "hook_event_name": "PostToolBatch",
+ "tool_calls": [
+  {
+   "tool_name": "Edit",
+   "tool_input": {
+    "replace_all": false,
+    "file_path": "C:\\Users\\persona-a\\tmp\\repo\\a.txt",
+    "old_string": "hola",
+    "new_string": "adios"
+   },
+   "tool_use_id": "toolu_01Gj93GpepEQjPDFym28v17e",
+   "tool_response": "The file C:\\Users\\persona-a\\tmp\\repo\\a.txt has been updated successfully. (file state is current in your context — no need to Read it back)"
+  }
+ ]
+}

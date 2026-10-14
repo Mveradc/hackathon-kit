@@ -1,0 +1,9 @@
+{
+ "session_id": "b12eeada-3c10-4d8b-b468-5edd7437335b",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-Desktop-Proyectos-prueba-m8-paso0-repo\\b12eeada-3c10-4d8b-b468-5edd7437335b.jsonl",
+ "cwd": "C:\\Users\\persona-a\\Desktop\\Proyectos\\prueba-m8-paso0\\repo\\.claude\\worktrees\\agent-a42b289d8585a645f",
+ "prompt_id": "1c1d399d-756a-4c6f-98e0-d69e19e3afae",
+ "agent_id": "a42b289d8585a645f",
+ "agent_type": "juguete:workerlibre",
+ "hook_event_name": "SubagentStart"
+}

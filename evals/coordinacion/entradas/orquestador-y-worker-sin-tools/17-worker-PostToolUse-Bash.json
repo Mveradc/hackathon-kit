@@ -1,0 +1,34 @@
+{
+ "session_id": "b12eeada-3c10-4d8b-b468-5edd7437335b",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-Desktop-Proyectos-prueba-m8-paso0-repo\\b12eeada-3c10-4d8b-b468-5edd7437335b.jsonl",
+ "cwd": "C:\\Users\\persona-a\\Desktop\\Proyectos\\prueba-m8-paso0\\repo\\.claude\\worktrees\\agent-a42b289d8585a645f",
+ "prompt_id": "1c1d399d-756a-4c6f-98e0-d69e19e3afae",
+ "permission_mode": "bypassPermissions",
+ "agent_id": "a42b289d8585a645f",
+ "agent_type": "juguete:workerlibre",
+ "effort": {
+  "level": "medium"
+ },
+ "hook_event_name": "PostToolUse",
+ "tool_name": "Bash",
+ "tool_input": {
+  "command": "cd \"C:\\Users\\persona-a\\Desktop\\Proyectos\\prueba-m8-paso0\\repo\\.claude\\worktrees\\agent-a42b289d8585a645f\" && git add libre.txt && git commit -m \"T02 · libre\" && git log --oneline -1",
+  "description": "Stage libre.txt and commit with T02 message"
+ },
+ "tool_response": {
+  "stdout": "warning: in the working copy of 'libre.txt', LF will be replaced by CRLF the next time Git touches it\n[worktree-agent-a42b289d8585a645f e87451c] T02 · libre\n 1 file changed, 1 insertion(+)\n create mode 100644 libre.txt\ne87451c T02 · libre",
+  "stderr": "",
+  "interrupted": false,
+  "isImage": false,
+  "noOutputExpected": false,
+  "gitOperation": {
+   "commit": {
+    "sha": "e87451c",
+    "kind": "committed",
+    "branch": "worktree-agent-a42b289d8585a645f"
+   }
+  }
+ },
+ "tool_use_id": "toolu_01Q7xNxo6k6iSPh8fhc21bji",
+ "duration_ms": 1177
+}

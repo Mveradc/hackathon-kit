@@ -13,20 +13,43 @@ publicar_wip: no          # ADR-0007, nivel 2
 repo_tareas:              # vacío = el repo de coordinacion.md
 umbral_parada_min: 20
 umbral_viejo_s: 300
+datos_excluidos: data/, datos/   # ADR-0007: nunca se publican en refs/hackathon/wip/*
+puerto_agente:            # vacío = 47100 + (cksum del git común) % 900 (ADR-0004)
+apagado_min: 30           # el demonio sale tras este tiempo sin eventos ni sesiones
 ```
 
 El token del relay **no** va aquí: va en `<git común>/hackathon/os/token` (fuera de git).
 
 ## 1. Forma cruda (lo que escriben los hooks)
-`emite.sh` añade una línea por evento a `<git común>/hackathon/os/eventos/<session_id>.jsonl`:
+`emite.sh` añade una línea por evento a `<git común>/hackathon/os/eventos/<session_id>.jsonl`. El `session_id` es el de la sesión madre también en los subagentes (P4), así que un JSONL junta la sesión o el orquestador y sus workers, que se distinguen por `agent_id`.
 
 ```json
-{"v":1,"ts":"2026-11-25T18:02:11Z","persona":"mveradc","tipo":"PostToolUse","entrada":{…entrada del hook tal cual…}}
+{"v":1,"ts":"2026-11-25T18:02:11Z","persona":"mveradc","tipo":"PostToolUse","session_id":"…","agent_id":"a17759f71a1625d5c","agent_type":"hackathon-kit:worker","cwd":"C:\…\.claude\worktrees\agent-a17759f71a1625d5c","tool_name":"Edit","tool_use_id":"toolu_…","ruta":"C:\…\src\a.py"}
 ```
 
-- `entrada` es la entrada del hook sin parsear (quitados `\r` y saltos de línea, que en JSON válido solo pueden ir fuera de las cadenas). No hay `jq`: el hook no la interpreta.
-- `persona` sale de la caché de `hk_yo` (sin llamar a `gh` si no existe: entonces `""` y lo resuelve el demonio).
-- `arbol.sh` escribe `{"v":1,"ts":…,"persona":…,"tipo":"arbol","cwd":"…","base":"<sha de origin/main>","porcelain":["M src/a.py","?? b.txt"],"diff":["src/a.py","src/c.py"]}`.
+**Lista blanca** (ADR-0004): el emisor no guarda la entrada del hook, solo estos campos. Un campo que no viene se omite.
+
+| Campo | De dónde | Cuándo |
+|---|---|---|
+| `v`, `ts`, `persona`, `tipo` | Sobre: `ts` en UTC (`TZ=UTC0 printf '%(…)T'`); `persona` de la caché de `hk_yo` (`""` si no existe: lo resuelve el demonio); `tipo` = `hook_event_name` | Siempre |
+| `session_id`, `cwd` | Entrada | Siempre |
+| `agent_id`, `agent_type` | Entrada | Si vienen (subagentes; `agent_type` también en sesiones `--agent`) |
+| `source` | Entrada | `SessionStart` (`startup`, `resume`, `clear`, `compact`: la compactación reinicia el tope de R-25) |
+| `tool_name`, `tool_use_id` | Entrada | Eventos de herramienta |
+| `ruta` | `tool_input.file_path` o `tool_input.notebook_path` | Edit, Write, MultiEdit, NotebookEdit |
+| `git` | `tool_input.command`, **solo** si contiene `git` seguido de `update-ref`, `merge --ff-only`, `push` o `commit` (también con `git -C <ruta>`); recortado a 200 caracteres | Bash y PowerShell |
+| `subagent_type` | `tool_input.subagent_type` | PreToolUse y PostToolUse de `Agent` (worker o revisor) |
+| `id`, `base` | Del `tool_input.prompt`, solo las líneas `ID: (T[0-9]{2,3})` y `Base: ([0-9a-f]{7,40})` | PreToolUse de `Agent` |
+| `veredicto`, `fusion` | De `last_assistant_message`, solo `Veredicto: (APROBADO\|CAMBIOS)` y `Fusión: ([0-9a-f]{7,40})` (la «ó» puede venir como UTF-8 o como `\u00f3`) | `SubagentStop` con `agent_type` revisor |
+
+Reglas del emisor:
+- Solo builtins de bash, con el estilo de `valor()` de `scripts/orquestador/comun.sh` (regex sobre la entrada; una clave escrita dentro de una cadena va escapada, `\"clave\"`, y no coincide).
+- Los valores de texto se copian **tal como vienen escapados** en la entrada, sin desescapar, así que la línea sigue siendo JSON válido sin volver a escaparla. Al recortar `git` a 200 caracteres, se quita del final cualquier secuencia de escape incompleta: una `\` suelta (un número impar de barras al final) o un `\u` seguido de menos de 4 dígitos hexadecimales.
+- Las rutas van **absolutas y como vienen** (en Windows, con `\`). Las normaliza el demonio a relativas con `/` (con el `cwd` y `git rev-parse --show-toplevel`).
+- Nada de `tool_response`, `content`, `old_string`, `new_string`, `prompt` ni `last_assistant_message` completos.
+
+Otros productores de forma cruda:
+- `arbol.sh` (`PostToolBatch`, `Stop`, `SubagentStop`) escribe `{"v":1,"ts":…,"persona":…,"tipo":"arbol","session_id":…,"agent_id":…,"cwd":"…","base":"<sha de origin/main>","porcelain":["M src/a.py","?? b.txt"],"diff":["src/a.py","src/c.py"]}`.
 - `compuerta.sh` escribe `{"v":1,…,"tipo":"compuerta","resultado":"ok|ko","agent_id":"…","motivos":[…]}`.
 
 ## 2. Evento normalizado
@@ -36,14 +59,14 @@ Esquema: [eventos.schema.json](eventos.schema.json). Correspondencia con la form
 |---|---|
 | `SessionStart` | `sesion.inicio` |
 | `SessionEnd` | `sesion.fin` |
-| `PostToolUse` con `tool_name` Edit/Write/MultiEdit/NotebookEdit | `edicion`, `rutas` = `file_path` relativo |
+| `PostToolUse` con `tool_name` Edit/Write/MultiEdit/NotebookEdit | `edicion`, `rutas` = `ruta`, relativa y con `/` |
 | `arbol` | `arbol`, `rutas` = unión de `porcelain` y `diff` |
-| `PreToolUse` `Agent` del orquestador hacia worker | `encargo.lanzado`, `tarea` = línea `ID:`, `datos.base` = `Base:` |
-| `SubagentStart` / `SubagentStop` worker | `worker.inicio` / `worker.fin` |
+| `PreToolUse` `Agent` del orquestador con `subagent_type` worker | `encargo.lanzado`, `tarea` = `id`, `datos.base` = `base` |
+| `SubagentStart` / `SubagentStop` worker | `worker.inicio` / `worker.fin`. `SubagentStart` no trae el prompt (P3): el demonio toma `ID:` y `Base:` de la primera línea del transcript del worker, `<dir de la sesión>/<session_id>/subagents/agent-<agent_id>.jsonl`, y no lee nada más de él. Es un formato interno de Claude Code: si cambia, la tarea del worker queda sin asignar hasta su `fusion.creada` |
 | `compuerta` | `compuerta.ok` / `compuerta.ko` con `datos.motivos` |
-| `PostToolUse` Bash del orquestador `git update-ref refs/hackathon/fusion/<T>` | `fusion.creada` (`tarea`, `datos.sha`) |
-| `SubagentStop` revisor | `revision.veredicto` (`datos.veredicto`, `datos.sha` de `Fusión:`) |
-| `PostToolUse` Bash del orquestador `git merge --ff-only <sha>` con éxito | `fusion.aprobada` |
+| `PostToolUse` Bash del orquestador con `git` = `git update-ref refs/hackathon/fusion/<T>` | `fusion.creada` (`tarea`, `datos.sha`) |
+| `SubagentStop` revisor | `revision.veredicto` (`datos.veredicto` = `veredicto`, `datos.sha` = `fusion`) |
+| `PostToolUse` Bash del orquestador con `git` = `git merge --ff-only <sha>` | `fusion.aprobada`, solo si el demonio confirma que `main` contiene el sha (la forma cruda no lleva la salida del comando) |
 | `PostToolUse` Bash del orquestador `git update-ref -d refs/hackathon/fusion/<T>` sin aprobada previa | `fusion.descartada` |
 | `PostToolUse` Bash `git push` / sondeo de `origin/main` | `push` (fuente `hook` o `git`) |
 | Sondeo de git del demonio | `arbol`, `commit`, `push`, `fusion.*` de reconciliación (fuente `git`) |
@@ -71,10 +94,13 @@ TTL: actor sin latido en 90 s → `activo: false` (R-18). Reserva vencida → se
 ## 4. Demonio local (`hk-os agente`)
 - Sigue `<git común>/hackathon/os/eventos/*.jsonl` (posición por fichero en `<git común>/hackathon/os/posiciones.json`).
 - Cada 15 s: `git worktree list --porcelain`; por worktree, `git status --porcelain` y `git diff --name-only <origin/main>...HEAD`; `git for-each-ref refs/hackathon/`; si hay `origin`, `git fetch --quiet` cada 60 s y `git merge-base --is-ancestor` de las fusiones aprobadas.
-- Con `publicar_wip: sí`: cada 60 s, `git stash create` (o `HEAD` si no hay cambios) y `git push --force origin <sha>:refs/hackathon/wip/<persona>` **solo** si cambió el sha.
+- Con `publicar_wip: sí`: cada 60 s, commit del árbol con un índice temporal (`GIT_INDEX_FILE`, `add -A`, exclusiones de ADR-0007, `write-tree`, `commit-tree -p HEAD`; `HEAD` si no hay cambios) y `git push --force origin <sha>:refs/hackathon/wip/<persona>` **solo** si cambió el sha.
 - Escribe `<git común>/hackathon/os/estado-equipo.md` (formato §6) y `estado.json` local cada vez que recibe uno del relay.
 - Sin relay: sigue con lo local y marca `fuentes.relay` como viejo.
-- Salida: un solo proceso por repo (fichero de bloqueo con pid en `<git común>/hackathon/os/agente.pid`).
+- Lo lanza `SessionStart` (`sesion.sh`, detrás del interruptor) si nadie responde en su puerto, desacoplado de la sesión. En Windows, con `Start-Process` de PowerShell (ADR-0004). Siempre con `uv run --no-project` (ADR-0005).
+- **Bloqueo: el puerto.** Escucha en `127.0.0.1:<puerto>` (`puerto_agente:` de `os.md`, o `47100 + (cksum del git común) % 900`). Si el `bind` falla, sale. `GET /salud` responde `hk-os <ruta del git común>` en texto plano, sin token (solo escucha en `127.0.0.1`); el arranque solo da por vivo un demonio que responde eso con su mismo git común.
+- **Puerto ocupado por otro programa** (el puerto acepta conexiones, pero `/salud` no responde con nuestro git común): `SessionStart` no lanza el demonio y lo avisa **una vez**: «el puerto N está ocupado por otro programa; pon `puerto_agente:` en `.hackathon/os.md`». A la persona, con `systemMessage`; al modelo, en una línea factual. Anota `puerto_ocupado` en `entregado/<session_id>` para no volver a intentarlo ni a avisar en esa sesión. Los eventos siguen esperando en disco.
+- **Apagado:** sale tras `apagado_min` sin eventos nuevos en los JSONL y sin ninguna sesión activa (sin `sesion.inicio` abierto por un `sesion.fin` o por el TTL de 90 s).
 
 ## 5. MCP (stdio, servido por `hk-os mcp`)
 Lee el estado del demonio de su persona; no habla con GitHub ni con el relay salvo en las dos acciones.
@@ -87,7 +113,7 @@ Lee el estado del demonio de su persona; no habla con GitHub ni con el relay sal
 | `reclamar` | `{"id":"T07"}` | Asigna el issue a la persona con su `gh` y emite `reclamo`. Falla si la tarea es de otro dueño según `plan.md`. |
 | `reservar` | `{"rutas":[…],"ttl_s":900,"modo":"compartida"}` | `{"id","hasta"}` vía relay |
 
-`[POR DECIDIR]` en M8.0: si el MCP del plugin está disponible en sesiones `--agent` y en subagentes worker.
+Disponibilidad (M8.0, P1): en sesiones normales, como herramientas diferidas. En `--agent hackathon-kit:orquestador`, porque su `tools:` nombra el servidor entero (`mcp__plugin_hackathon-kit_<servidor>`). El worker y el revisor no lo tienen (ADR-0006).
 
 ## 6. `estado-equipo.md` (lo que leen los hooks de inyección)
 Generado. Secciones en este orden y con estos títulos, para que `sesion.sh` y `delta.sh` puedan recortar por sección sin parsear Markdown complejo:
@@ -115,7 +141,7 @@ Cada línea, como mucho 160 caracteres. `sesion.sh` inyecta las secciones en ord
 |---|---|---|
 | `os.md` | `.hackathon/` | Sí |
 | Eventos crudos | `<git común>/hackathon/os/eventos/` | No |
-| Token, posiciones, pid, `estado-equipo.md`, `entregado/` | `<git común>/hackathon/os/` | No |
+| Token, posiciones, `estado-equipo.md`, `entregado/` (hash y caracteres inyectados por sesión, R-25) | `<git común>/hackathon/os/` | No |
 | Registro del relay, `estado.json` | `<git común>/hackathon/os/relay/` del coordinador | No |
 | Refs de trabajo en curso | `refs/hackathon/wip/<persona>` en el remoto (opt-in) | Refs, no ramas |
 

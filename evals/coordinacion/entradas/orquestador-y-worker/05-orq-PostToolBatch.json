@@ -1,0 +1,25 @@
+{
+ "session_id": "9552c5a8-961e-4774-b682-dff888dfdde6",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-Desktop-Proyectos-prueba-m8-paso0-repo\\9552c5a8-961e-4774-b682-dff888dfdde6.jsonl",
+ "cwd": "C:\\Users\\persona-a\\Desktop\\Proyectos\\prueba-m8-paso0\\repo",
+ "prompt_id": "fc37c6ca-757a-40b7-a4de-275c79351f93",
+ "permission_mode": "bypassPermissions",
+ "agent_type": "juguete:orq",
+ "effort": {
+  "level": "medium"
+ },
+ "hook_event_name": "PostToolBatch",
+ "tool_calls": [
+  {
+   "tool_name": "mcp__plugin_juguete_jugmcp__eco",
+   "tool_input": {},
+   "tool_use_id": "toolu_013VkQ5k4FPFcgaz14fWtzyZ",
+   "tool_response": [
+    {
+     "type": "text",
+     "text": "PONG-M8"
+    }
+   ]
+  }
+ ]
+}

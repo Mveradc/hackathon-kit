@@ -1,0 +1,9 @@
+{
+ "session_id": "9552c5a8-961e-4774-b682-dff888dfdde6",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-Desktop-Proyectos-prueba-m8-paso0-repo\\9552c5a8-961e-4774-b682-dff888dfdde6.jsonl",
+ "cwd": "C:\\Users\\persona-a\\Desktop\\Proyectos\\prueba-m8-paso0\\repo",
+ "prompt_id": "fc37c6ca-757a-40b7-a4de-275c79351f93",
+ "agent_type": "juguete:orq",
+ "hook_event_name": "SessionEnd",
+ "reason": "other"
+}

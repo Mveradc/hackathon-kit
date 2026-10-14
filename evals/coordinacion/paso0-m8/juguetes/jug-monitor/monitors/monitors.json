@@ -1,0 +1,7 @@
+[
+  {
+    "name": "lanzador",
+    "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/lanzador.sh\"",
+    "description": "P13: lanza un demonio de prueba y se queda en silencio"
+  }
+]

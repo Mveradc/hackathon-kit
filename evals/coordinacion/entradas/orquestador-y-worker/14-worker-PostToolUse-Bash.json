@@ -1,0 +1,34 @@
+{
+ "session_id": "9552c5a8-961e-4774-b682-dff888dfdde6",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-Desktop-Proyectos-prueba-m8-paso0-repo\\9552c5a8-961e-4774-b682-dff888dfdde6.jsonl",
+ "cwd": "C:\\Users\\persona-a\\Desktop\\Proyectos\\prueba-m8-paso0\\repo\\.claude\\worktrees\\agent-a17759f71a1625d5c",
+ "prompt_id": "fc37c6ca-757a-40b7-a4de-275c79351f93",
+ "permission_mode": "bypassPermissions",
+ "agent_id": "a17759f71a1625d5c",
+ "agent_type": "juguete:worker",
+ "effort": {
+  "level": "medium"
+ },
+ "hook_event_name": "PostToolUse",
+ "tool_name": "Bash",
+ "tool_input": {
+  "command": "git add agente.txt && git commit -m \"T01 · agente\" && git log --oneline -1 && git status --short",
+  "description": "Stage and commit agente.txt, show log and status"
+ },
+ "tool_response": {
+  "stdout": "warning: in the working copy of 'agente.txt', LF will be replaced by CRLF the next time Git touches it\n[worktree-agent-a17759f71a1625d5c f75e7d9] T01 · agente\n 1 file changed, 1 insertion(+)\n create mode 100644 agente.txt\nf75e7d9 T01 · agente",
+  "stderr": "",
+  "interrupted": false,
+  "isImage": false,
+  "noOutputExpected": false,
+  "gitOperation": {
+   "commit": {
+    "sha": "f75e7d9",
+    "kind": "committed",
+    "branch": "worktree-agent-a17759f71a1625d5c"
+   }
+  }
+ },
+ "tool_use_id": "toolu_01NXbibnSgfgNJYeZSUrxCxf",
+ "duration_ms": 300
+}
