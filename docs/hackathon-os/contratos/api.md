@@ -1,6 +1,15 @@
 # Contratos: ficheros, eventos, API del relay, demonio y MCP
 
-Se congelan en M8b. Un cambio posterior sube `v` o se anota aquí con su motivo. Las marcas `[POR DECIDIR]` se cierran antes de implementar lo que afectan.
+Un contrato congelado solo cambia subiendo `v` o con una nota aquí con su motivo. Las marcas `[POR DECIDIR]` se cierran antes de implementar lo que afectan.
+
+| Parte | Estado |
+|---|---|
+| §1, §2, [eventos.schema.json](eventos.schema.json), [estado.schema.json](estado.schema.json) | **Congelados** (M8b, 2026-10-14) |
+| §3–§5 | Estables; se congelan al abrir M8d |
+| §0 y §7 | Estables; se congelan al abrir M8c |
+| §6 | Estable; se congela al abrir M8f |
+
+Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
 
 ## 0. Interruptor: `.hackathon/os.md`
 Versionado, lo escribe una persona (o `hk-os iniciar`). Mismo estilo que `coordinacion.md`.
@@ -68,11 +77,15 @@ Esquema: [eventos.schema.json](eventos.schema.json). Correspondencia con la form
 | `SubagentStop` revisor | `revision.veredicto` (`datos.veredicto` = `veredicto`, `datos.sha` = `fusion`) |
 | `PostToolUse` Bash del orquestador con `git` = `git merge --ff-only <sha>` | `fusion.aprobada`, solo si el demonio confirma que `main` contiene el sha (la forma cruda no lleva la salida del comando) |
 | `PostToolUse` Bash del orquestador `git update-ref -d refs/hackathon/fusion/<T>` sin aprobada previa | `fusion.descartada` |
-| `PostToolUse` Bash `git push` / sondeo de `origin/main` | `push` (fuente `hook` o `git`) |
-| Sondeo de git del demonio | `arbol`, `commit`, `push`, `fusion.*` de reconciliación (fuente `git`) |
+| `PostToolUse` Bash `git push` / sondeo de `origin/main` | `push` (fuente `hook` o `git`). Con fuente `git`, `datos.sha` = punta nueva de `origin/main` y `datos.incluye` = shas de fusiones y de commits con ID de tarea que ya se alcanzan desde ella (los calcula el demonio con `merge-base --is-ancestor`) |
+| Sondeo de git del demonio | `arbol`, `commit` (`tarea` si el mensaje cita un ID, `datos.sha` y `datos.alcanzable` si ya se alcanza desde `origin/main`), `push`, `fusion.*` de reconciliación (fuente `git`) |
 | MCP `reclamar`, `reservar`, `liberar` | `reclamo`, `reserva`, `liberacion` (fuente `mcp`) |
 
-Regla: si un evento de hook y uno de git dicen cosas distintas, gana git, y la discrepancia se registra.
+Los eventos de un worker (`edicion`, `worker.fin`…) llevan la tarea de su encargo, la de su `worker.inicio` con el mismo `agent_id`. Salida esperada con las entradas reales: `evals/coordinacion/entradas/normalizadas.json`.
+
+Regla: si un evento de hook y uno de git dicen cosas distintas, gana git, y la discrepancia se registra en `discrepancias` de `estado.json`, agrupada por (tipo, tarea, persona) con contador y primera y última vez.
+
+Atribución (paso previo al motor, `diseno.md` §5): un evento sin `tarea` (`edicion`, `arbol`) cuenta para la tarea de su persona solo si esa persona tiene exactamente una tarea `reclamada`, `en_curso` o `parada`; con varias, no cuenta y queda en `discrepancias`; con ninguna, va a `sin_tarea`. El mapeo por carpetas queda para M8e.
 
 ## 3. API del relay
 Base: `relay:` de `os.md`. Todas las peticiones llevan `Authorization: Bearer <token>`. JSON en UTF-8.

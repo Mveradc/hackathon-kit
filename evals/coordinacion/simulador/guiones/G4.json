@@ -1,0 +1,137 @@
+{
+ "nombre": "G4-tarea-humana",
+ "descripcion": "A edita sin tarea (sin_tarea), reclama T02, edita a mano (se atribuye a T02, su única tarea abierta), cambia un fichero con sed (solo lo ve el arbol), hace un commit con el ID y sube; al final cierra el issue.",
+ "tareas": "tareas-03.json",
+ "pasos": [
+  {
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "t": 0,
+   "tipo": "sesion.inicio",
+   "datos": {
+    "source": "startup"
+   }
+  },
+  {
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "t": 5,
+   "tipo": "edicion",
+   "rutas": [
+    "docs/notas.md"
+   ]
+  },
+  {
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "mcp",
+   "t": 10,
+   "tipo": "reclamo",
+   "tarea": "T02"
+  },
+  {
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "t": 60,
+   "tipo": "edicion",
+   "rutas": [
+    "motor/carga.py"
+   ]
+  },
+  {
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "t": 120,
+   "tipo": "arbol",
+   "rutas": [
+    "motor/carga.py",
+    "datos/limpio.csv"
+   ]
+  },
+  {
+   "persona": "persona-a",
+   "papel": "humano",
+   "t": 400,
+   "tipo": "commit",
+   "tarea": "T02",
+   "datos": {
+    "sha": "c02c02c"
+   },
+   "fuente": "git"
+  },
+  {
+   "persona": "persona-a",
+   "papel": "demonio",
+   "fuente": "git",
+   "t": 500,
+   "tipo": "push",
+   "datos": {
+    "sha": "c02c02c",
+    "incluye": [
+     "c02c02c"
+    ]
+   }
+  },
+  {
+   "t": 600,
+   "github": "cerrar",
+   "tarea": "T02",
+   "por": "persona-a"
+  }
+ ],
+ "esperado": [
+  {
+   "tras": 8,
+   "tareas": {
+    "T02": "lista"
+   },
+   "sin_tarea": 1
+  },
+  {
+   "tras": 20,
+   "tareas": {
+    "T02": "reclamada"
+   }
+  },
+  {
+   "tras": 70,
+   "tareas": {
+    "T02": "en_curso"
+   }
+  },
+  {
+   "tras": 410,
+   "tareas": {
+    "T02": "en_curso"
+   },
+   "sin_tarea": 1,
+   "discrepancias": {}
+  },
+  {
+   "tras": 510,
+   "tareas": {
+    "T02": "publicada"
+   }
+  },
+  {
+   "tras": 610,
+   "tareas": {
+    "T02": "cerrada"
+   },
+   "declarado": {
+    "T02": null
+   },
+   "sin_tarea": 1,
+   "discrepancias": {}
+  }
+ ]
+}

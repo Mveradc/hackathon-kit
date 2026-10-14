@@ -1,0 +1,502 @@
+{
+ "descripcion": "Evento normalizado (contratos/eventos.schema.json) que corresponde a cada entrada real de hooks de esta carpeta, según api.md §2. Escrito y revisado a mano en M8b; en M8c es la salida esperada del normalizador (K-34). Las entradas son del plugin de juguete de M8.0: juguete:orq hace de orquestador y juguete:worker de worker. Los ts son sintéticos: la forma cruda los lleva en el sobre que añade emite.sh.",
+ "sin_evento": "evento null: la entrada no produce evento normalizado (Read, ToolSearch, MCP, UserPromptSubmit, PreToolUse de Write o Edit, PostToolBatch y Stop: el árbol lo da arbol.sh; el commit del worker llega por el sondeo de git, no por su Bash).",
+ "casos": [
+  {
+   "entrada": "sesion-normal/01-principal-SessionStart.json",
+   "evento": {
+    "v": 1,
+    "id": "be342bee-6649-43f3-b3b9-1a1f96cd32df-1",
+    "ts": "2026-10-14T10:00:00Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "be342bee-6649-43f3-b3b9-1a1f96cd32df",
+     "papel": "principal",
+     "worktree": ""
+    },
+    "tipo": "sesion.inicio",
+    "datos": {
+     "source": "startup"
+    },
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "sesion-normal/02-principal-UserPromptSubmit.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/03-principal-PreToolUse-Read.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/04-principal-PostToolUse-Read.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/05-principal-PreToolUse-Read.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/06-principal-PostToolUse-Read.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/07-principal-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/08-principal-PreToolUse-Edit.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/09-principal-PostToolUse-Edit.json",
+   "evento": {
+    "v": 1,
+    "id": "be342bee-6649-43f3-b3b9-1a1f96cd32df-2",
+    "ts": "2026-10-14T10:00:08Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "be342bee-6649-43f3-b3b9-1a1f96cd32df",
+     "papel": "principal",
+     "worktree": ""
+    },
+    "tipo": "edicion",
+    "rutas": [
+     "a.txt"
+    ],
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "sesion-normal/10-principal-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/11-principal-PreToolUse-Bash.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/12-principal-PostToolUse-Bash.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/13-principal-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/14-principal-PreToolUse-ToolSearch.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/15-principal-PostToolUse-ToolSearch.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/16-principal-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/17-principal-PreToolUse-MCP.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/18-principal-PostToolUse-MCP.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/19-principal-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/20-principal-Stop.json",
+   "evento": null
+  },
+  {
+   "entrada": "sesion-normal/21-principal-SessionEnd.json",
+   "evento": {
+    "v": 1,
+    "id": "be342bee-6649-43f3-b3b9-1a1f96cd32df-3",
+    "ts": "2026-10-14T10:00:20Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "be342bee-6649-43f3-b3b9-1a1f96cd32df",
+     "papel": "principal",
+     "worktree": ""
+    },
+    "tipo": "sesion.fin",
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker/01-orq-SessionStart.json",
+   "evento": {
+    "v": 1,
+    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-1",
+    "ts": "2026-10-14T11:00:00Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "9552c5a8-961e-4774-b682-dff888dfdde6",
+     "papel": "orquestador",
+     "worktree": ""
+    },
+    "tipo": "sesion.inicio",
+    "datos": {
+     "source": "startup"
+    },
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker/02-orq-UserPromptSubmit.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/03-orq-PreToolUse-MCP.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/04-orq-PostToolUse-MCP.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/05-orq-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/06-orq-PreToolUse-Agent.json",
+   "evento": {
+    "v": 1,
+    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-2",
+    "ts": "2026-10-14T11:00:05Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "9552c5a8-961e-4774-b682-dff888dfdde6",
+     "papel": "orquestador",
+     "worktree": ""
+    },
+    "tipo": "encargo.lanzado",
+    "tarea": "T01",
+    "datos": {
+     "base": "c5624a8"
+    },
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker/07-worker-SubagentStart.json",
+   "evento": {
+    "v": 1,
+    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-3",
+    "ts": "2026-10-14T11:00:06Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "9552c5a8-961e-4774-b682-dff888dfdde6",
+     "papel": "worker",
+     "worktree": ".claude/worktrees/agent-a17759f71a1625d5c",
+     "agente": "a17759f71a1625d5c"
+    },
+    "tipo": "worker.inicio",
+    "tarea": "T01",
+    "datos": {
+     "base": "c5624a8"
+    },
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker/08-worker-PreToolUse-Write.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/09-worker-PostToolUse-Write.json",
+   "evento": {
+    "v": 1,
+    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-4",
+    "ts": "2026-10-14T11:00:08Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "9552c5a8-961e-4774-b682-dff888dfdde6",
+     "papel": "worker",
+     "worktree": ".claude/worktrees/agent-a17759f71a1625d5c",
+     "agente": "a17759f71a1625d5c"
+    },
+    "tipo": "edicion",
+    "rutas": [
+     "agente.txt"
+    ],
+    "tarea": "T01",
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker/10-worker-PreToolUse-Bash.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/11-worker-PostToolUse-Bash.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/12-worker-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/13-worker-PreToolUse-Bash.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/14-worker-PostToolUse-Bash.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/15-worker-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/16-worker-SubagentStop.json",
+   "evento": {
+    "v": 1,
+    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-5",
+    "ts": "2026-10-14T11:00:15Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "9552c5a8-961e-4774-b682-dff888dfdde6",
+     "papel": "worker",
+     "worktree": ".claude/worktrees/agent-a17759f71a1625d5c",
+     "agente": "a17759f71a1625d5c"
+    },
+    "tipo": "worker.fin",
+    "tarea": "T01",
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker/17-orq-PostToolUse-Agent.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/18-orq-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/19-orq-Stop.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker/20-orq-SessionEnd.json",
+   "evento": {
+    "v": 1,
+    "id": "9552c5a8-961e-4774-b682-dff888dfdde6-6",
+    "ts": "2026-10-14T11:00:19Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "9552c5a8-961e-4774-b682-dff888dfdde6",
+     "papel": "orquestador",
+     "worktree": ""
+    },
+    "tipo": "sesion.fin",
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/01-orq-SessionStart.json",
+   "evento": {
+    "v": 1,
+    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-1",
+    "ts": "2026-10-14T12:00:00Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "b12eeada-3c10-4d8b-b468-5edd7437335b",
+     "papel": "orquestador",
+     "worktree": ""
+    },
+    "tipo": "sesion.inicio",
+    "datos": {
+     "source": "startup"
+    },
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/02-orq-UserPromptSubmit.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/03-orq-PreToolUse-ToolSearch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/04-orq-PostToolUse-ToolSearch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/05-orq-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/06-orq-PreToolUse-MCP.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/07-orq-PostToolUse-MCP.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/08-orq-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/09-orq-PreToolUse-Agent.json",
+   "evento": {
+    "v": 1,
+    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-2",
+    "ts": "2026-10-14T12:00:08Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "b12eeada-3c10-4d8b-b468-5edd7437335b",
+     "papel": "orquestador",
+     "worktree": ""
+    },
+    "tipo": "encargo.lanzado",
+    "tarea": "T02",
+    "datos": {
+     "base": "c5624a8"
+    },
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/10-worker-SubagentStart.json",
+   "evento": {
+    "v": 1,
+    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-3",
+    "ts": "2026-10-14T12:00:09Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "b12eeada-3c10-4d8b-b468-5edd7437335b",
+     "papel": "worker",
+     "worktree": ".claude/worktrees/agent-a42b289d8585a645f",
+     "agente": "a42b289d8585a645f"
+    },
+    "tipo": "worker.inicio",
+    "tarea": "T02",
+    "datos": {
+     "base": "c5624a8"
+    },
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/11-worker-PreToolUse-Write.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/12-worker-PostToolUse-Write.json",
+   "evento": {
+    "v": 1,
+    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-4",
+    "ts": "2026-10-14T12:00:11Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "b12eeada-3c10-4d8b-b468-5edd7437335b",
+     "papel": "worker",
+     "worktree": ".claude/worktrees/agent-a42b289d8585a645f",
+     "agente": "a42b289d8585a645f"
+    },
+    "tipo": "edicion",
+    "rutas": [
+     "libre.txt"
+    ],
+    "tarea": "T02",
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/13-worker-PreToolUse-ToolSearch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/14-worker-PostToolUse-ToolSearch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/15-worker-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/16-worker-PreToolUse-Bash.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/17-worker-PostToolUse-Bash.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/18-worker-PreToolUse-MCP.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/19-worker-PostToolUse-MCP.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/20-worker-PreToolUse-Bash.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/21-worker-PostToolUse-Bash.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/22-worker-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/23-worker-SubagentStop.json",
+   "evento": {
+    "v": 1,
+    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-5",
+    "ts": "2026-10-14T12:00:22Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "b12eeada-3c10-4d8b-b468-5edd7437335b",
+     "papel": "worker",
+     "worktree": ".claude/worktrees/agent-a42b289d8585a645f",
+     "agente": "a42b289d8585a645f"
+    },
+    "tipo": "worker.fin",
+    "tarea": "T02",
+    "fuente": "hook"
+   }
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/24-orq-PostToolUse-Agent.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/25-orq-PostToolBatch.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/26-orq-Stop.json",
+   "evento": null
+  },
+  {
+   "entrada": "orquestador-y-worker-sin-tools/27-orq-SessionEnd.json",
+   "evento": {
+    "v": 1,
+    "id": "b12eeada-3c10-4d8b-b468-5edd7437335b-6",
+    "ts": "2026-10-14T12:00:26Z",
+    "actor": {
+     "persona": "persona-a",
+     "sesion": "b12eeada-3c10-4d8b-b468-5edd7437335b",
+     "papel": "orquestador",
+     "worktree": ""
+    },
+    "tipo": "sesion.fin",
+    "fuente": "hook"
+   }
+  }
+ ]
+}

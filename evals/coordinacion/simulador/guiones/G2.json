@@ -1,0 +1,331 @@
+{
+ "nombre": "G2-orquestador-dos-encargos",
+ "descripcion": "El orquestador de B lanza T15 y T16 en paralelo; cada worker entrega, el revisor aprueba cada fusión, el orquestador avanza main con ff-only y sube. El push del hook no publica: publica el del demonio (git).",
+ "tareas": "tareas-03.json",
+ "pasos": [
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 0,
+   "tipo": "sesion.inicio",
+   "datos": {
+    "source": "startup"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 10,
+   "tipo": "encargo.lanzado",
+   "tarea": "T15",
+   "datos": {
+    "base": "b2ba511"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 11,
+   "tipo": "encargo.lanzado",
+   "tarea": "T16",
+   "datos": {
+    "base": "b2ba511"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w1",
+   "worktree": ".claude/worktrees/agent-w1",
+   "fuente": "hook",
+   "t": 12,
+   "tipo": "worker.inicio",
+   "tarea": "T15",
+   "datos": {
+    "base": "b2ba511"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w2",
+   "worktree": ".claude/worktrees/agent-w2",
+   "fuente": "hook",
+   "t": 13,
+   "tipo": "worker.inicio",
+   "tarea": "T16",
+   "datos": {
+    "base": "b2ba511"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w1",
+   "worktree": ".claude/worktrees/agent-w1",
+   "fuente": "hook",
+   "t": 60,
+   "tipo": "edicion",
+   "tarea": "T15",
+   "rutas": [
+    "web/src/Inicio.jsx"
+   ]
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w2",
+   "worktree": ".claude/worktrees/agent-w2",
+   "fuente": "hook",
+   "t": 70,
+   "tipo": "edicion",
+   "tarea": "T16",
+   "rutas": [
+    "web/src/Estados.jsx"
+   ]
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 180,
+   "tipo": "latido"
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w1",
+   "worktree": ".claude/worktrees/agent-w1",
+   "fuente": "hook",
+   "t": 180,
+   "tipo": "latido",
+   "tarea": "T15"
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w2",
+   "worktree": ".claude/worktrees/agent-w2",
+   "fuente": "hook",
+   "t": 180,
+   "tipo": "latido",
+   "tarea": "T16"
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w1",
+   "worktree": ".claude/worktrees/agent-w1",
+   "fuente": "compuerta",
+   "t": 300,
+   "tipo": "compuerta.ok",
+   "tarea": "T15"
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w1",
+   "worktree": ".claude/worktrees/agent-w1",
+   "fuente": "hook",
+   "t": 301,
+   "tipo": "worker.fin",
+   "tarea": "T15"
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 310,
+   "tipo": "fusion.creada",
+   "tarea": "T15",
+   "datos": {
+    "sha": "a15a15a"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "revisor",
+   "agente": "r1",
+   "fuente": "hook",
+   "t": 400,
+   "tipo": "revision.veredicto",
+   "tarea": "T15",
+   "datos": {
+    "veredicto": "APROBADO",
+    "sha": "a15a15a"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "git",
+   "t": 401,
+   "tipo": "fusion.aprobada",
+   "tarea": "T15",
+   "datos": {
+    "sha": "a15a15a"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w2",
+   "worktree": ".claude/worktrees/agent-w2",
+   "fuente": "compuerta",
+   "t": 420,
+   "tipo": "compuerta.ok",
+   "tarea": "T16"
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w2",
+   "worktree": ".claude/worktrees/agent-w2",
+   "fuente": "hook",
+   "t": 421,
+   "tipo": "worker.fin",
+   "tarea": "T16"
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 430,
+   "tipo": "fusion.creada",
+   "tarea": "T16",
+   "datos": {
+    "sha": "b16b16b"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "revisor",
+   "agente": "r2",
+   "fuente": "hook",
+   "t": 500,
+   "tipo": "revision.veredicto",
+   "tarea": "T16",
+   "datos": {
+    "veredicto": "APROBADO",
+    "sha": "b16b16b"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "git",
+   "t": 501,
+   "tipo": "fusion.aprobada",
+   "tarea": "T16",
+   "datos": {
+    "sha": "b16b16b"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 600,
+   "tipo": "push"
+  },
+  {
+   "persona": "persona-b",
+   "papel": "demonio",
+   "fuente": "git",
+   "t": 615,
+   "tipo": "push",
+   "datos": {
+    "sha": "b16b16b",
+    "incluye": [
+     "a15a15a",
+     "b16b16b"
+    ]
+   }
+  }
+ ],
+ "esperado": [
+  {
+   "tras": 200,
+   "tareas": {
+    "T15": "en_curso",
+    "T16": "en_curso",
+    "T17": "lista"
+   },
+   "activos": {
+    "persona-b": 3
+   }
+  },
+  {
+   "tras": 320,
+   "tareas": {
+    "T15": "en_revision",
+    "T16": "en_curso"
+   }
+  },
+  {
+   "tras": 450,
+   "tareas": {
+    "T15": "integrada",
+    "T16": "en_revision"
+   },
+   "fusion": {
+    "T15": "a15a15a"
+   }
+  },
+  {
+   "tras": 605,
+   "tareas": {
+    "T15": "integrada",
+    "T16": "integrada"
+   },
+   "fusion": {
+    "T16": "b16b16b"
+   }
+  },
+  {
+   "tras": 620,
+   "tareas": {
+    "T15": "publicada",
+    "T16": "publicada"
+   },
+   "activos": {
+    "persona-b": 1
+   },
+   "discrepancias": {}
+  },
+  {
+   "tras": 3000,
+   "tareas": {
+    "T15": "publicada",
+    "T16": "publicada"
+   },
+   "activos": {
+    "persona-b": 0
+   }
+  }
+ ]
+}

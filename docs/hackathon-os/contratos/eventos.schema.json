@@ -38,11 +38,13 @@
     "rutas": { "type": "array", "items": { "type": "string" }, "description": "Rutas relativas a la raíz del repo, con /." },
     "datos": {
       "type": "object",
-      "description": "Campos propios de cada tipo (api.md §2). Nunca contenido de ficheros.",
+      "description": "Campos propios de cada tipo (api.md §2). Nunca contenido de ficheros. Abierto en v1: admite campos no listados.",
       "properties": {
         "sha": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
         "base": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" },
+        "incluye": { "type": "array", "items": { "type": "string", "pattern": "^[0-9a-f]{7,40}$" }, "description": "Solo en push con fuente git: shas de fusiones y de commits con ID de tarea alcanzables desde la punta nueva de origin/main." },
         "rama": { "type": "string" },
+        "alcanzable": { "type": "boolean", "description": "Solo en commit con fuente git: el demonio lo ve alcanzable desde origin/main." },
         "veredicto": { "enum": ["APROBADO", "CAMBIOS"] },
         "motivos": { "type": "array", "items": { "type": "string", "maxLength": 300 } },
         "herramienta": { "type": "string" },

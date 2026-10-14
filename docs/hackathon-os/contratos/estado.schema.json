@@ -2,14 +2,16 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "hackathon-kit/os/estado/v1",
   "title": "Estado proyectado del equipo (v1)",
-  "description": "Lo calcula el relay. Web, estado-equipo.md y MCP salen solo de aquí. Todo dato observado va como Dato {valor, fuente, observado_en}.",
+  "description": "Lo calcula el relay. Web, estado-equipo.md y MCP salen solo de aquí. Todo dato observado va como Dato {valor, fuente, observado_en}. Los estados de tarea son identificadores; las vistas muestran su etiqueta legible.",
   "type": "object",
   "required": ["v", "generado_en", "fuentes", "personas", "tareas", "colisiones"],
+  "additionalProperties": false,
   "$defs": {
     "fuente": { "enum": ["hook", "git", "github", "orquestador", "compuerta", "mcp", "humano", "derivado"] },
     "dato": {
       "type": "object",
       "required": ["valor", "fuente", "observado_en"],
+      "additionalProperties": false,
       "properties": {
         "valor": {},
         "fuente": { "$ref": "#/$defs/fuente" },
@@ -17,7 +19,18 @@
         "declarado": { "type": "boolean", "default": false }
       }
     },
-    "estado_tarea": { "enum": ["pendiente", "lista", "reclamada", "en curso", "parada", "en revision", "integrada", "no cerrada", "publicada", "cerrada"] }
+    "estado_tarea": { "enum": ["pendiente", "lista", "reclamada", "en_curso", "parada", "en_revision", "integrada", "no_cerrada", "publicada", "cerrada"] },
+    "dato_estado": {
+      "type": "object",
+      "required": ["valor", "fuente", "observado_en"],
+      "additionalProperties": false,
+      "properties": {
+        "valor": { "$ref": "#/$defs/estado_tarea" },
+        "fuente": { "$ref": "#/$defs/fuente" },
+        "observado_en": { "type": "string", "format": "date-time" },
+        "declarado": { "type": "boolean", "default": false }
+      }
+    }
   },
   "properties": {
     "v": { "const": 1 },
@@ -25,6 +38,7 @@
     "fuentes": {
       "type": "object",
       "description": "Salud de cada fuente: cuándo se leyó por última vez con éxito.",
+      "additionalProperties": false,
       "properties": {
         "relay": { "$ref": "#/$defs/dato" },
         "github": { "$ref": "#/$defs/dato" },
@@ -36,6 +50,7 @@
       "items": {
         "type": "object",
         "required": ["persona", "nombre", "actores"],
+        "additionalProperties": false,
         "properties": {
           "persona": { "type": "string" },
           "nombre": { "type": "string" },
@@ -44,6 +59,7 @@
             "items": {
               "type": "object",
               "required": ["papel", "activo", "ultimo_latido"],
+              "additionalProperties": false,
               "properties": {
                 "papel": { "enum": ["principal", "orquestador", "worker", "revisor", "humano"] },
                 "sesion": { "type": "string" },
@@ -64,6 +80,7 @@
       "items": {
         "type": "object",
         "required": ["id", "titulo", "dueno", "estado"],
+        "additionalProperties": false,
         "properties": {
           "id": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
           "titulo": { "type": "string" },
@@ -71,13 +88,11 @@
           "dueno": { "type": "string" },
           "issue": { "type": "integer" },
           "depende_de": { "type": "array", "items": { "type": "string" } },
-          "estado": {
-            "allOf": [{ "$ref": "#/$defs/dato" }],
-            "properties": { "valor": { "$ref": "#/$defs/estado_tarea" } }
-          },
+          "cumplidas_por_cierre": { "type": "array", "items": { "type": "string", "pattern": "^T[0-9]{2,3}$" }, "description": "Dependencias cumplidas porque alguien del equipo cerró su issue sin que estén publicadas (se muestra «⚑ T02 cerrada a mano»)." },
+          "estado": { "$ref": "#/$defs/dato_estado", "description": "Siempre el derivado de las señales (diseno.md §5)." },
           "declarado": {
             "description": "Estado forzado por una persona, si lo hay (se muestra con ⚑ junto al derivado).",
-            "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/dato" }]
+            "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/dato_estado" }]
           },
           "fusion": { "type": "string" },
           "evidencia": { "type": "string", "description": "Comprobación del revisor o commit que la publica." }
@@ -87,13 +102,37 @@
     "sin_tarea": {
       "type": "array",
       "description": "Actividad que no corresponde a ninguna tarea (R-15).",
-      "items": { "type": "object", "properties": { "persona": { "type": "string" }, "que": { "type": "string" }, "observado_en": { "type": "string", "format": "date-time" } } }
+      "items": {
+        "type": "object",
+        "required": ["persona", "que", "observado_en"],
+        "additionalProperties": false,
+        "properties": { "persona": { "type": "string" }, "que": { "type": "string" }, "observado_en": { "type": "string", "format": "date-time" } }
+      }
+    },
+    "discrepancias": {
+      "type": "array",
+      "description": "Señales que el motor de estados ignora o en las que gana git, para que no se pierdan en silencio (constitución II). Una entrada por (tipo, tarea, persona), con su contador.",
+      "items": {
+        "type": "object",
+        "required": ["tipo", "detalle", "veces", "primera_vez", "ultima_vez"],
+        "additionalProperties": false,
+        "properties": {
+          "tipo": { "enum": ["hook_frente_a_git", "veredicto_sha", "dependencia_inexistente", "fuera_del_equipo", "actividad_ajena", "atribucion_ambigua"] },
+          "tarea": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
+          "persona": { "type": "string", "description": "Quién produjo la señal (en fuera_del_equipo, la cuenta de fuera)." },
+          "detalle": { "type": "string", "maxLength": 300, "description": "El de la última vez." },
+          "veces": { "type": "integer", "minimum": 1 },
+          "primera_vez": { "type": "string", "format": "date-time" },
+          "ultima_vez": { "type": "string", "format": "date-time" }
+        }
+      }
     },
     "colisiones": {
       "type": "array",
       "items": {
         "type": "object",
         "required": ["id", "nivel", "gravedad", "personas", "rutas", "observado_en"],
+        "additionalProperties": false,
         "properties": {
           "id": { "type": "string" },
           "nivel": { "enum": ["1", "2", "2b", "3", "reserva"] },
@@ -110,6 +149,7 @@
       "items": {
         "type": "object",
         "required": ["rutas", "persona", "hasta", "modo"],
+        "additionalProperties": false,
         "properties": {
           "rutas": { "type": "array", "items": { "type": "string" } },
           "persona": { "type": "string" },
@@ -122,7 +162,11 @@
     "novedades": {
       "type": "array",
       "description": "Decisiones (decisiones.md, issues hk:acordado) y criterios (criterios.md) con su hora, para los deltas.",
-      "items": { "type": "object", "properties": { "tipo": { "enum": ["decision", "criterio", "escalado"] }, "resumen": { "type": "string", "maxLength": 200 }, "autor": { "type": "string" }, "observado_en": { "type": "string", "format": "date-time" } } }
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": { "tipo": { "enum": ["decision", "criterio", "escalado"] }, "resumen": { "type": "string", "maxLength": 200 }, "autor": { "type": "string" }, "observado_en": { "type": "string", "format": "date-time" } }
+      }
     }
   }
 }

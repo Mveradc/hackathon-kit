@@ -171,6 +171,22 @@ Registro de lo que se hizo y se aprendió en cada hito, tal como estaba en la se
 - **K-13**: sin cambios en los scripts (P7); caso de regresión en `prueba_hooks.py`.
 - Resultados en `evals/coordinacion/prueba.md` («M8a»): los seis criterios cumplidos (el 2, en interactivo, por el usuario). Gasto: 7,42 USD.
 
+## M8b — Contratos y simulador (2026-10-14)
+Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el módulo `os`): biblioteca estándar, `requires-python >= 3.10` y `uv run --no-project`. Las pruebas se ejecutan con unittest; jsonschema solo lo usan ellas (`uv run --with "jsonschema[format-nongpl]"`).
+- **K-20, contratos**:
+  - ADR-0002, 0003 y 0008 aceptadas;
+  - congelados §1, §2 y los esquemas (el resto, al abrir el hito que lo usa);
+  - estados como identificadores sin espacios;
+  - esquemas estrictos salvo `datos`;
+  - `push.datos.incluye`, `commit.datos.alcanzable`, `discrepancias` agrupadas y `cumplidas_por_cierre`;
+  - eventos normalizados esperados de las entradas reales, en `evals/coordinacion/entradas/normalizadas.json`.
+- **K-21, motor**:
+  - primero la tabla (`diseno.md` §5.1 reglas, §5.2 52 casos), revisada por el usuario en dos vueltas; después `hkos/estados.py` (puro, por tarea);
+  - la atribución de eventos sin tarea va aparte, en `hkos/modelo.py`, porque depende de varias tareas.
+- **K-22, simulador**: `evals/coordinacion/simulador/` con guiones JSON G1–G4 sobre las tareas del 03; `simulador.md` pasa de YAML a JSON.
+- **Estado de partida** de `../prueba-m8-03-base` (B con T18 hecha), en `evals/coordinacion/partida-m8-03/`.
+- Resultados en `evals/coordinacion/prueba.md` («M8b»): los tres criterios cumplidos, también con Python 3.10. Sin gasto en modelos.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

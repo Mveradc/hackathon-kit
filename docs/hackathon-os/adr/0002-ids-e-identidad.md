@@ -1,6 +1,6 @@
 # ADR-0002 · IDs de tarea estables y una sola clave de persona
 
-Estado: **propuesta**.
+Estado: **aceptada** (2026-10-14, por el usuario al abrir M8b).
 
 ## Contexto
 - Las tareas de `plan.md` son filas de tabla sin identificador. Sin ID no se pueden relacionar issues, encargos, refs de fusión, commits y eventos con una tarea.

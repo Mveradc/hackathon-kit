@@ -1,0 +1,220 @@
+{
+ "nombre": "G3-cambios-dos-veces",
+ "descripcion": "Fallo inducido de M7b: el revisor pide CAMBIOS dos veces en T16. El encargo relanzado no reinicia la cuenta; tras el segundo CAMBIOS, no_cerrada, y el fusion.descartada del orquestador no lo cambia. Ninguna fusion.aprobada: main sin cambios.",
+ "tareas": "tareas-03.json",
+ "pasos": [
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 0,
+   "tipo": "sesion.inicio",
+   "datos": {
+    "source": "startup"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 10,
+   "tipo": "encargo.lanzado",
+   "tarea": "T16",
+   "datos": {
+    "base": "b2ba511"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w1",
+   "worktree": ".claude/worktrees/agent-w1",
+   "fuente": "hook",
+   "t": 11,
+   "tipo": "worker.inicio",
+   "tarea": "T16",
+   "datos": {
+    "base": "b2ba511"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w1",
+   "worktree": ".claude/worktrees/agent-w1",
+   "fuente": "hook",
+   "t": 50,
+   "tipo": "edicion",
+   "tarea": "T16",
+   "rutas": [
+    "web/src/Estados.jsx"
+   ]
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w1",
+   "worktree": ".claude/worktrees/agent-w1",
+   "fuente": "hook",
+   "t": 90,
+   "tipo": "worker.fin",
+   "tarea": "T16"
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 100,
+   "tipo": "fusion.creada",
+   "tarea": "T16",
+   "datos": {
+    "sha": "f1f1f1f"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "revisor",
+   "agente": "r1",
+   "fuente": "hook",
+   "t": 200,
+   "tipo": "revision.veredicto",
+   "tarea": "T16",
+   "datos": {
+    "veredicto": "CAMBIOS",
+    "sha": "f1f1f1f"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 210,
+   "tipo": "encargo.lanzado",
+   "tarea": "T16",
+   "datos": {
+    "base": "b2ba511"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w3",
+   "worktree": ".claude/worktrees/agent-w3",
+   "fuente": "hook",
+   "t": 211,
+   "tipo": "worker.inicio",
+   "tarea": "T16",
+   "datos": {
+    "base": "b2ba511"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w3",
+   "worktree": ".claude/worktrees/agent-w3",
+   "fuente": "hook",
+   "t": 250,
+   "tipo": "edicion",
+   "tarea": "T16",
+   "rutas": [
+    "web/src/Estados.jsx"
+   ]
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "worker",
+   "agente": "w3",
+   "worktree": ".claude/worktrees/agent-w3",
+   "fuente": "hook",
+   "t": 290,
+   "tipo": "worker.fin",
+   "tarea": "T16"
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 300,
+   "tipo": "fusion.creada",
+   "tarea": "T16",
+   "datos": {
+    "sha": "f2f2f2f"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "revisor",
+   "agente": "r2",
+   "fuente": "hook",
+   "t": 400,
+   "tipo": "revision.veredicto",
+   "tarea": "T16",
+   "datos": {
+    "veredicto": "CAMBIOS",
+    "sha": "f2f2f2f"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "sesion": "s-b-orq",
+   "papel": "orquestador",
+   "fuente": "hook",
+   "t": 401,
+   "tipo": "fusion.descartada",
+   "tarea": "T16",
+   "datos": {
+    "sha": "f2f2f2f"
+   }
+  }
+ ],
+ "esperado": [
+  {
+   "tras": 150,
+   "tareas": {
+    "T16": "en_revision"
+   }
+  },
+  {
+   "tras": 205,
+   "tareas": {
+    "T16": "en_curso"
+   }
+  },
+  {
+   "tras": 350,
+   "tareas": {
+    "T16": "en_revision"
+   }
+  },
+  {
+   "tras": 405,
+   "tareas": {
+    "T16": "no_cerrada"
+   },
+   "discrepancias": {}
+  },
+  {
+   "tras": 4000,
+   "tareas": {
+    "T16": "no_cerrada"
+   },
+   "fusion": {
+    "T16": null
+   }
+  }
+ ]
+}

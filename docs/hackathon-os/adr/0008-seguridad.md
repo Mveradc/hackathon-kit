@@ -1,6 +1,6 @@
 # ADR-0008 · Seguridad del canal y de la inyección
 
-Estado: **propuesta**.
+Estado: **aceptada** (2026-10-14, por el usuario al abrir M8b).
 
 ## Decisión
 - **Repo privado** por defecto para la coordinación y las tareas (ya lo recomienda el kit para el sandbox).

@@ -1,6 +1,6 @@
 # ADR-0003 · Relay propio en el portátil coordinador (HTTP + SSE)
 
-Estado: **propuesta**.
+Estado: **aceptada** (2026-10-14, por el usuario al abrir M8b).
 
 ## Contexto
 El estado efímero (presencia, ficheros tocados, reservas) cambia cada pocos segundos y no puede ir por GitHub (límites de escritura). El equipo trabaja en la misma sala, con una red de evento de calidad desconocida (NAT, portal cautivo, puertos bloqueados).

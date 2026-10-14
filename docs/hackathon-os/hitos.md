@@ -83,7 +83,7 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 1. Compilar el plan del reto 03 en el sandbox crea un issue `hk-tarea` por tarea, con dueño y dependencias; compilar otra vez no crea ni edita nada; tras un ajuste del plan, solo cambian los issues de las filas cambiadas y una tarea quitada se cierra con comentario.
 2. El estado de cada tarea en `estado.json` sigue la tabla de `diseno.md` §5 en una pasada real del orquestador (dos tareas) y una tarea humana (commit con su ID).
 3. Una tarea cerrada a mano sin publicar se muestra con ⚑ y el estado derivado al lado.
-4. Una tarea reclamada sin actividad en 20 min pasa a `parada`; una rama sin ID aparece en `sin_tarea`.
+4. Una tarea `en_curso` sin actividad en 20 min pasa a `parada` (una `reclamada` sin actividad sigue `reclamada`); una rama sin ID aparece en `sin_tarea`.
 5. Un issue `hk-tarea` o un comentario de una cuenta fuera de la tabla no cambia ningún estado y se marca «de fuera del equipo».
 6. En una sesión de 2 horas con el simulador: menos de 60 escrituras a GitHub por hora entre todos, y el sondeo usa `304` cuando no hay cambios.
 

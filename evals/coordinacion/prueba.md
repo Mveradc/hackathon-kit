@@ -461,3 +461,58 @@ Carpeta nueva con `analisis.md`, `enfoques.md`, `decision.md` y `equipo.md` del 
 
 ## Criterio 6
 `python evals/coordinacion/prueba_hooks.py`: 0 fallos. `claude plugin validate .`: pasa.
+
+# M8b: contratos y simulador (2026-10-14)
+
+Criterios en `docs/hackathon-os/hitos.md` («M8b»); tareas K-20 a K-22. No gasta en modelos (solo la sesión). Primer código Python del kit: biblioteca estándar, `requires-python >= 3.10` y `uv run --no-project` (ADR-0005). jsonschema solo lo usan las pruebas, con `uv run --with "jsonschema[format-nongpl]"`: sin el extra, no comprueba `format: date-time` y no avisa.
+
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | Los esquemas de `contratos/` validan con un validador 2020-12 | **Sí**: `check_schema` de los dos; los eventos normalizados de las 15 entradas reales que producen evento validan; 7 eventos y 5 estados mal formados se rechazan |
+| 2 | El motor de estados pasa la tabla de `diseno.md` §5.2 | **Sí**: 52 casos (E01–E52), cada uno con su prueba; otra prueba comprueba que tabla y pruebas tienen los mismos IDs |
+| 3 | G1–G4 de principio a fin; `estado.json` valida y coincide con lo esperado | **Sí**: 20 de 20 puntos de control; cada evento y cada `estado.json`, validados contra su esquema; con una expectativa cambiada a propósito, falla |
+
+Todo, con el Python por defecto de uv (3.12) y con `--python 3.10`:
+```
+uv run --no-project --with "jsonschema[format-nongpl]" -m unittest discover -s hkos/pruebas -v    # 60 pruebas, OK (sin jsonschema: 54, 6 saltadas)
+uv run --no-project --with "jsonschema[format-nongpl]" evals/coordinacion/simulador/prueba_simulador.py
+uv run --no-project evals/coordinacion/simulador/simula.py evals/coordinacion/simulador/guiones/G2.json [--salida estado.json]
+```
+`prueba_hooks.py`: 0 fallos. `claude plugin validate .`: pasa (único aviso, el CLAUDE.md de la raíz).
+
+## K-20: contratos
+- ADR-0002, 0003 y 0008 aceptadas por el usuario. Congelados §1, §2 de `api.md` y los dos esquemas; §3–§5 se congelan al abrir M8d, §0 y §7 al abrir M8c, §6 al abrir M8f (tabla al principio de `api.md`).
+- Cambios al congelar:
+  - estados como identificadores (`en_curso`, `en_revision`, `no_cerrada`…); las vistas muestran la etiqueta legible;
+  - `additionalProperties: false` en `estado.json` y en el evento, salvo `datos`, abierto en v1;
+  - `push` con fuente git lleva `datos.incluye`; `commit` lleva `tarea`, `datos.sha` y `datos.alcanzable`;
+  - `estado.json` gana `discrepancias` (agrupadas por tipo, tarea y persona, con contador y primera y última vez) y `cumplidas_por_cierre` por tarea;
+  - los eventos de un worker llevan la tarea de su encargo (por su `agent_id`).
+- `evals/coordinacion/entradas/normalizadas.json`: el evento normalizado de cada una de las 68 entradas reales (15 con evento, 53 sin él), escrito y revisado a mano. En M8c es la salida esperada del normalizador.
+
+## K-21: motor de estados
+- `hkos/estados.py`: `derivar(...)`, función pura por tarea (reglas de `diseno.md` §5.1).
+- `hkos/modelo.py`: atribución previa de los eventos sin tarea (regla 9), derivación de todas las tareas en orden de dependencias, presencia (90 s) y discrepancias agrupadas. Es el núcleo que usará el relay; va en `hkos/` y no en el simulador (desviación del «Puedes tocar» de K-22, aprobada en el plan).
+- Decisiones del usuario sobre la tabla:
+  - la cuenta de CAMBIOS solo se reinicia con APROBADO o con un encargo tras `no_cerrada`;
+  - `no_cerrada` es pegajoso frente a `fusion.descartada`;
+  - un cierre declarado cumple la dependencia, con marca;
+  - un commit ya alcanzable no hace retroceder la tarea;
+  - la atribución va en `modelo.py`, con `parada` incluida; sin tareas abiertas, el evento va a `sin_tarea`.
+
+## K-22: simulador
+- `evals/coordinacion/simulador/`: `simula.py`, `tareas-03.json` (T01–T27 de la base, dueños anonimizados), `guiones/G1–G4.json` y `prueba_simulador.py`.
+- Guiones en JSON (`simulador.md` corregido): pasos de evento normalizado abreviado o de GitHub, y puntos de control con los campos que importan.
+- Lo que cubre cada guion:
+  - G1: arranque, 27 tareas en `pendiente` o `lista`, presencia y su retirada a los 90 s o al cerrar la sesión;
+  - G2: dos encargos en paralelo hasta `publicada`; el push del hook no publica;
+  - G3: dos CAMBIOS → `no_cerrada`, que el descarte no cambia;
+  - G4: tarea humana: `sin_tarea`, reclamo, edición atribuida, `arbol` con el fichero de `sed`, commit, push y cierre.
+- Un fallo en la primera pasada, del guion y no del modelo: G2 esperaba 3 actores activos de B en t=200 s sin latidos desde t=70; el modelo los retiró a los 90 s, como debe. Se añadieron latidos a t=180 (el demonio los manda cada 15 s).
+
+## Estado de partida
+`evals/coordinacion/partida-m8-03/`: `estado/mveradc.orquestador.md` (B con T18 hecha en dos encargos, `5940185` y `b2ba511`, subida) y un README con el comando para copiarlo. Todos los shas comprobados en `origin/main` de `../prueba-m8-03-base`. No se ha tocado la base.
+
+## Observaciones
+- «Quién espera a quién» del plan de `../prueba-m8-03-base` no citaba IDs: la base se montó a mano desde la de M7c (efecto del montaje, no del kit). Las dependencias de `tareas-03.json` se sacaron a mano de ese texto (T10←T01, T14←T05, T06←T21, T22←T04, T07←T17). Con el visto bueno del usuario, esa sección de la base se reescribió con esas cinco dependencias por ID («T14 espera a T05: …»), con commit y push (`1f34bba`, `main` = `origin/main`), para que M8e compile un plan con el formato real de `/hack-plan`.
+- Con un jsonschema sin Draft 2020-12 o sin su comprobador de formatos (3.2 del sistema, 4.0), las pruebas de esquema y `prueba_simulador.py` se saltan en vez de dar `AttributeError`. Comprobado con `--with "jsonschema==3.2.0"` y `==4.0.0`.

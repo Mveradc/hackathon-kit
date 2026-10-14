@@ -1,0 +1,218 @@
+{
+ "descripcion": "Las 27 tareas del plan del reto 03 (../prueba-m8-03-base, T01–T27), con dueños anonimizados (persona-a, -b, -c = A, B, C). Las dependencias son las de «Quién espera a quién» del plan (con IDs desde el commit 1f34bba de la base).",
+ "personas": [
+  {
+   "persona": "persona-a",
+   "nombre": "A"
+  },
+  {
+   "persona": "persona-b",
+   "nombre": "B"
+  },
+  {
+   "persona": "persona-c",
+   "nombre": "C"
+  }
+ ],
+ "tareas": [
+  {
+   "id": "T01",
+   "titulo": "Servir en `motor/` la ficha del ejemplo de `docs/contratos.md`",
+   "bloque": "Contratos",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T02",
+   "titulo": "Cargar los CSV de `datos/` en UTF-8 a tabla mensual por `company_id`",
+   "bloque": "Datos",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T03",
+   "titulo": "Calcular caja, días de cobro y deuda por mes, con su `moneda`",
+   "bloque": "Datos",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T04",
+   "titulo": "Score 0–100 suavizado a partir de las tres señales",
+   "bloque": "Score",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T05",
+   "titulo": "Calcular `tendencia` y `desglose` del último mes",
+   "bloque": "Score",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T06",
+   "titulo": "Implementar las reglas de C, cada una con su cifra",
+   "bloque": "Acciones",
+   "dueno": "persona-a",
+   "depende_de": [
+    "T21"
+   ]
+  },
+  {
+   "id": "T07",
+   "titulo": "Publicar motor y build de la web en una URL (conocimiento externo, verificar plataforma)",
+   "bloque": "Despliegue",
+   "dueno": "persona-a",
+   "depende_de": [
+    "T17"
+   ]
+  },
+  {
+   "id": "T08",
+   "titulo": "Arreglar errores en 30 empresas al azar",
+   "bloque": "Robustez",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T09",
+   "titulo": "Si Embat pide validación propia: medir estabilidad en empresas apartadas",
+   "bloque": "Robustez",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T10",
+   "titulo": "Pintar en `web/src/App.jsx` score, curva de 24 meses y flecha",
+   "bloque": "Ficha",
+   "dueno": "persona-b",
+   "depende_de": [
+    "T01"
+   ]
+  },
+  {
+   "id": "T11",
+   "titulo": "Pintar el desglose caja / cobros / deuda con signo",
+   "bloque": "Ficha",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T12",
+   "titulo": "Pintar las acciones con su cifra destacada",
+   "bloque": "Ficha",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T13",
+   "titulo": "Selector de `company_id` que llama a `/api`",
+   "bloque": "Navegación",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T14",
+   "titulo": "Conectar con la ficha real del motor",
+   "bloque": "Integración",
+   "dueno": "persona-b",
+   "depende_de": [
+    "T05"
+   ]
+  },
+  {
+   "id": "T15",
+   "titulo": "Inicio con acceso en dos clics a las dos empresas de la demo",
+   "bloque": "Producto",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T16",
+   "titulo": "Estados de carga, vacío y sin acciones",
+   "bloque": "Producto",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T17",
+   "titulo": "`npm run build` listo para que A lo despliegue",
+   "bloque": "Producto",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T18",
+   "titulo": "Textos para el CFO revisados con C",
+   "bloque": "Pulido",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T19",
+   "titulo": "Guion de clics de la demo en vivo",
+   "bloque": "Pitch",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T20",
+   "titulo": "Apuntar las respuestas de Embat en `CLAUDE.md`",
+   "bloque": "Preguntas",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T21",
+   "titulo": "Escribir 5–6 reglas de acción en `.claude/rules/ficha-y-acciones.md`",
+   "bloque": "Reglas",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T22",
+   "titulo": "Elegir una empresa que mejora (~45→65) y otra que cae (~82→68)",
+   "bloque": "Empresas",
+   "dueno": "persona-c",
+   "depende_de": [
+    "T04"
+   ]
+  },
+  {
+   "id": "T23",
+   "titulo": "Escribir qué movió a cada una y qué haría su CFO",
+   "bloque": "Empresas",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T24",
+   "titulo": "Guion de 5 min en `pitch/guion.md`: comprador Embat, problema, demo, cierre",
+   "bloque": "Pitch",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T25",
+   "titulo": "Diapositivas en `pitch/`",
+   "bloque": "Pitch",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T26",
+   "titulo": "Cómo abrir la demo, URL y comprador en `README.md`",
+   "bloque": "README",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T27",
+   "titulo": "Completar los TODO de la guía `entrega` (canal y comandos)",
+   "bloque": "Cierre",
+   "dueno": "persona-c",
+   "depende_de": []
+  }
+ ]
+}

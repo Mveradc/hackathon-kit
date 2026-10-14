@@ -64,7 +64,7 @@ Cubre: — · Depende de: M8.0 · Puedes tocar: `docs/hackathon-os/contratos/`
 Hecho cuando: sin `[POR DECIDIR]`; esquemas validan; las entradas reales de K-01 se normalizan a eventos válidos.
 
 ### K-21 · Motor de estados (función pura) con tabla de casos [P]
-Cubre: R-09, R-13, R-14 · Depende de: K-20 · Puedes tocar: `os/estados.*`, `os/pruebas/`
+Cubre: R-09, R-13, R-14 · Depende de: K-20 · Puedes tocar: `hkos/estados.*`, `hkos/pruebas/`
 Contratos que aplican: `diseno.md` §5, `estado.schema.json`
 Hecho cuando: la tabla de casos pasa (un caso por transición y por señal contradictoria).
 
@@ -93,54 +93,54 @@ Cubre: R-11 · Puedes tocar: `scripts/orquestador/compuerta.sh`
 Hecho cuando: `prueba_hooks.py` comprueba que cada aceptación y rechazo deja su línea; el comportamiento de la compuerta no cambia.
 
 ### K-34 · Normalizador forma cruda → evento
-Cubre: R-10 · Depende de: K-20, K-31 · Puedes tocar: `os/normaliza.*`
+Cubre: R-10 · Depende de: K-20, K-31 · Puedes tocar: `hkos/normaliza.*`
 Contratos que aplican: `api.md` §2
 Hecho cuando: criterios 2 y 5 de M8c con las entradas reales y una pasada del orquestador.
 
 ## M8d · Demonio y relay
 
 ### K-40 · Relay: eventos, latidos, presencia, persistencia
-Cubre: R-16, R-18, R-32 · Depende de: K-20 · Puedes tocar: `os/relay.*`
+Cubre: R-16, R-18, R-32 · Depende de: K-20 · Puedes tocar: `hkos/relay.*`
 Contratos que aplican: `api.md` §3
 Hecho cuando: criterios 2, 4 y 5 de M8d.
 
 ### K-41 · Relay: reservas y SSE [P]
-Cubre: R-22, R-26 · Depende de: K-40 · Puedes tocar: `os/relay_reservas.*`, `os/relay_sse.*`
+Cubre: R-22, R-26 · Depende de: K-40 · Puedes tocar: `hkos/relay_reservas.*`, `hkos/relay_sse.*`
 Hecho cuando: G11 sin pérdidas.
 
 ### K-42 · Demonio local [P]
-Cubre: R-16, R-29 · Depende de: K-34 · Puedes tocar: `os/agente.*`
+Cubre: R-16, R-29 · Depende de: K-34 · Puedes tocar: `hkos/agente.*`
 Contratos que aplican: `api.md` §4
 Hecho cuando: criterios 1 y 3 de M8d.
 
 ### K-43 · `hk-os unir` y `hk-os relay` (arranque)
-Cubre: R-02 · Depende de: K-40, K-42 · Puedes tocar: `bin/hk-os`, `os/cli.*`
+Cubre: R-02 · Depende de: K-40, K-42 · Puedes tocar: `bin/hk-os`, `hkos/cli.*`
 Hecho cuando: dos copias del sandbox se unen con un comando cada una.
 
 ## M8e · Estado duradero
 
 ### K-50 · `hk-os compilar` [P]
-Cubre: R-05, R-06 · Depende de: K-10 · Puedes tocar: `os/compilar.*`
+Cubre: R-05, R-06 · Depende de: K-10 · Puedes tocar: `hkos/compilar.*`
 Contratos que aplican: ADR-0001
 Hecho cuando: criterio 1 de M8e.
 
 ### K-51 · Sondeo de GitHub con ETag y filtro de autores [P]
-Cubre: R-30, R-31 · Depende de: K-40 · Puedes tocar: `os/github.*`
+Cubre: R-30, R-31 · Depende de: K-40 · Puedes tocar: `hkos/github.*`
 Hecho cuando: criterios 5 y 6 de M8e.
 
 ### K-52 · Motor de estados integrado y antigüedades
-Cubre: R-08, R-09, R-12–R-15 · Depende de: K-21, K-50, K-51 · Puedes tocar: `os/relay.*`, `os/estados.*`
+Cubre: R-08, R-09, R-12–R-15 · Depende de: K-21, K-50, K-51 · Puedes tocar: `hkos/relay.*`, `hkos/estados.*`
 Hecho cuando: criterios 2–4 de M8e.
 
 ## M8f · Proyección
 
 ### K-60 · Módulo de proyección (estado.json → md, datos de la web) [P]
-Cubre: R-24, R-28 · Depende de: K-52 · Puedes tocar: `os/proyeccion.*`
+Cubre: R-24, R-28 · Depende de: K-52 · Puedes tocar: `hkos/proyeccion.*`
 Contratos que aplican: `api.md` §6, ADR-0006
 Hecho cuando: test de igualdad en G1–G4.
 
 ### K-61 · Web de solo lectura [P]
-Cubre: R-26 · Depende de: K-41 · Puedes tocar: `os/web/`
+Cubre: R-26 · Depende de: K-41 · Puedes tocar: `hkos/web/`
 Hecho cuando: criterio 1 de M8f.
 
 ### K-62 · `sesion.sh` ampliado y `delta.sh`
@@ -148,22 +148,22 @@ Cubre: R-24, R-25 · Depende de: K-60 · Puedes tocar: `scripts/coordinacion/ses
 Hecho cuando: criterios 2 y 3 de M8f; sin OS activo, `sesion.sh` imprime exactamente lo mismo que en la 0.3.2.
 
 ### K-63 · MCP [P]
-Cubre: R-27 · Depende de: K-42 · Puedes tocar: `os/mcp.*`, `.mcp.json`
+Cubre: R-27 · Depende de: K-42 · Puedes tocar: `hkos/mcp.*`, `.mcp.json`
 Contratos que aplican: `api.md` §5
 Hecho cuando: criterio 4 de M8f.
 
 ## M8g · Colisiones
 
 ### K-70 · Nivel 1 en el relay [P]
-Cubre: R-19 · Depende de: K-52 · Puedes tocar: `os/colisiones.*`
+Cubre: R-19 · Depende de: K-52 · Puedes tocar: `hkos/colisiones.*`
 Hecho cuando: G5 y criterio 6 de M8g.
 
 ### K-71 · Nivel 2: trabajo en curso y `merge-tree` [P]
-Cubre: R-20 · Depende de: K-42, P9–P11 · Puedes tocar: `os/agente.*` (solo la publicación), `os/colisiones_merge.*`
+Cubre: R-20 · Depende de: K-42, P9–P11 · Puedes tocar: `hkos/agente.*` (solo la publicación), `hkos/colisiones_merge.*`
 Hecho cuando: G5b (criterio 2 de M8g).
 
 ### K-72 · Nivel 3: contratos [P]
-Cubre: R-21 · Depende de: K-12, K-52 · Puedes tocar: `os/contratos.*`
+Cubre: R-21 · Depende de: K-12, K-52 · Puedes tocar: `hkos/contratos.*`
 Hecho cuando: G6 (criterio 3 de M8g).
 
 ### K-73 · Aviso de reserva en PreToolUse y aviso rojo por el monitor
@@ -173,7 +173,7 @@ Hecho cuando: criterios 4 y 5 de M8g; el monitor sigue en silencio sin OS activo
 ## M8h · Robustez y ensayo
 
 ### K-80 · Modo sin GitHub [P]
-Cubre: R-29, R-30 · Puedes tocar: `os/github.*`, `os/compilar.*`
+Cubre: R-29, R-30 · Puedes tocar: `hkos/github.*`, `hkos/compilar.*`
 Hecho cuando: G7.
 
 ### K-81 · Guiones G7–G10 como evals [P]

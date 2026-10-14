@@ -1,0 +1,205 @@
+{
+ "nombre": "G1-arranque",
+ "descripcion": "Plan compilado en t=0 (un issue por tarea); se unen tres personas. Todas las tareas, pendiente o lista según sus dependencias; presencia de cada una, que se retira a los 90 s sin señales o al cerrar la sesión.",
+ "tareas": "tareas-03.json",
+ "pasos": [
+  {
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "t": 10,
+   "tipo": "sesion.inicio",
+   "fuente": "hook",
+   "datos": {
+    "source": "startup"
+   }
+  },
+  {
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "t": 20,
+   "tipo": "sesion.inicio",
+   "fuente": "hook",
+   "datos": {
+    "source": "startup"
+   }
+  },
+  {
+   "persona": "persona-c",
+   "papel": "principal",
+   "sesion": "s-c",
+   "t": 30,
+   "tipo": "sesion.inicio",
+   "fuente": "hook",
+   "datos": {
+    "source": "startup"
+   }
+  },
+  {
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "t": 45,
+   "tipo": "latido",
+   "fuente": "hook"
+  },
+  {
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "t": 60,
+   "tipo": "latido",
+   "fuente": "hook"
+  },
+  {
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "t": 90,
+   "tipo": "latido",
+   "fuente": "hook"
+  },
+  {
+   "persona": "persona-c",
+   "papel": "principal",
+   "sesion": "s-c",
+   "t": 120,
+   "tipo": "sesion.fin",
+   "fuente": "hook"
+  },
+  {
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "t": 135,
+   "tipo": "latido",
+   "fuente": "hook"
+  },
+  {
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "t": 180,
+   "tipo": "latido",
+   "fuente": "hook"
+  }
+ ],
+ "esperado": [
+  {
+   "tras": 5,
+   "tareas": {
+    "T01": "lista",
+    "T02": "lista",
+    "T03": "lista",
+    "T04": "lista",
+    "T05": "lista",
+    "T06": "pendiente",
+    "T07": "pendiente",
+    "T08": "lista",
+    "T09": "lista",
+    "T10": "pendiente",
+    "T11": "lista",
+    "T12": "lista",
+    "T13": "lista",
+    "T14": "pendiente",
+    "T15": "lista",
+    "T16": "lista",
+    "T17": "lista",
+    "T18": "lista",
+    "T19": "lista",
+    "T20": "lista",
+    "T21": "lista",
+    "T22": "pendiente",
+    "T23": "lista",
+    "T24": "lista",
+    "T25": "lista",
+    "T26": "lista",
+    "T27": "lista"
+   },
+   "activos": {
+    "persona-a": 0,
+    "persona-b": 0,
+    "persona-c": 0
+   },
+   "discrepancias": {}
+  },
+  {
+   "tras": 61,
+   "tareas": {
+    "T01": "lista",
+    "T02": "lista",
+    "T03": "lista",
+    "T04": "lista",
+    "T05": "lista",
+    "T06": "pendiente",
+    "T07": "pendiente",
+    "T08": "lista",
+    "T09": "lista",
+    "T10": "pendiente",
+    "T11": "lista",
+    "T12": "lista",
+    "T13": "lista",
+    "T14": "pendiente",
+    "T15": "lista",
+    "T16": "lista",
+    "T17": "lista",
+    "T18": "lista",
+    "T19": "lista",
+    "T20": "lista",
+    "T21": "lista",
+    "T22": "pendiente",
+    "T23": "lista",
+    "T24": "lista",
+    "T25": "lista",
+    "T26": "lista",
+    "T27": "lista"
+   },
+   "activos": {
+    "persona-a": 1,
+    "persona-b": 1,
+    "persona-c": 1
+   },
+   "sin_tarea": 0,
+   "discrepancias": {}
+  },
+  {
+   "tras": 200,
+   "tareas": {
+    "T01": "lista",
+    "T02": "lista",
+    "T03": "lista",
+    "T04": "lista",
+    "T05": "lista",
+    "T06": "pendiente",
+    "T07": "pendiente",
+    "T08": "lista",
+    "T09": "lista",
+    "T10": "pendiente",
+    "T11": "lista",
+    "T12": "lista",
+    "T13": "lista",
+    "T14": "pendiente",
+    "T15": "lista",
+    "T16": "lista",
+    "T17": "lista",
+    "T18": "lista",
+    "T19": "lista",
+    "T20": "lista",
+    "T21": "lista",
+    "T22": "pendiente",
+    "T23": "lista",
+    "T24": "lista",
+    "T25": "lista",
+    "T26": "lista",
+    "T27": "lista"
+   },
+   "activos": {
+    "persona-a": 1,
+    "persona-b": 0,
+    "persona-c": 0
+   },
+   "discrepancias": {}
+  }
+ ]
+}
