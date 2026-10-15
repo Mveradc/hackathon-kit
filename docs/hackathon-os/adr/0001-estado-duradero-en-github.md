@@ -31,3 +31,9 @@ El estado duradero (tareas, dependencias, asignación, cierre) tiene que verlo t
 ## Consecuencias
 - Hace falta un ID estable por tarea (ADR-0002).
 - El jurado verá issues `hk-tarea` si mira el repo: son legibles por personas (título = tarea, cuerpo = comprobación y dueño).
+
+## Nota (M8h, 2026-10-15): modo sin GitHub (decisión del usuario)
+- **Activación:** solo explícita, con `github: no` en `os.md` (`api.md` §0). Si GitHub está configurado y se cae, nada cambia: la última instantánea, marcada como vieja. Nunca hay dos fuentes de tareas a la vez.
+- **De dónde salen las tareas:** el relay las toma de `.hackathon/plan.md` de `origin/main` de su clon, cuyo `origin` es el remoto del equipo (`api.md` §9). Las dependencias, de «Quién espera a quién», que es también de donde las saca `hk-os compilar`.
+- **Qué se pierde:** sin issues no hay asignación ni cierre, así que tampoco `reclamada`, `cerrada` ni `cumplidas_por_cierre`. Una tarea avanza por sus señales. Una tarea sin código se da por hecha con un commit vacío `Txx · hecha` y su push (queda `publicada` y cumple las dependencias).
+- **Vuelta a GitHub:** `hk-os remoto --volver` sube el `main` del equipo; con `github: sí`, el relay reiniciado y `hk-os compilar`, las tareas vuelven a ser issues.

@@ -87,8 +87,10 @@ def vista(estado, ahora=None, umbral_viejo_s=FUENTE_VIEJA_S):
 
     fuentes = {}
     for k, d in sorted(estado.get("fuentes", {}).items()):
+        # `no` (M8h, modo sin GitHub): no hay sondeo que pueda envejecer; la hora es la del commit del plan.
+        sin = k == "github" and d["valor"] == "no"
         fuentes[k] = {"valor": d["valor"], "observado_en": d["observado_en"],
-                      "viejo": d["valor"] != "ok" or _edad(d["observado_en"], ahora) > umbral_viejo_s}
+                      "viejo": not sin and (d["valor"] != "ok" or _edad(d["observado_en"], ahora) > umbral_viejo_s)}
     colisiones = sorted(estado.get("colisiones", []), key=lambda c: (c["gravedad"] != "rojo", c["id"]))
     novedades = sorted(estado.get("novedades", []), key=lambda n: fecha(n["observado_en"]), reverse=True)
     return {"v": 1, "generado_en": estado["generado_en"], "ahora": ahora, "fuentes": fuentes,
@@ -227,7 +229,10 @@ def avisos(v, tz):
     """Fuentes viejas (R-12, R-29): una línea cada una, antes de las secciones."""
     salida = []
     for k, d in v["fuentes"].items():
-        if d["viejo"] and k != "git":
+        if k == "github" and d["valor"] == "no":
+            salida.append(f"> Sin GitHub: las tareas salen de plan.md de main ({_hora(d['observado_en'], tz)}); "
+                          "sin asignar ni cerrar issues.")
+        elif d["viejo"] and k != "git":
             nombre = {"relay": "Relay (lo efímero: presencia, ficheros)", "github": "GitHub (tareas)"}.get(k, k)
             salida.append(f"> {nombre}: sin datos nuevos desde {_hora(d['observado_en'], tz)} ({d['valor']}).")
     return salida
@@ -244,7 +249,7 @@ def markdown(v, persona, ruta_detalle, tz=None, epoch=None, relay=None, avisos_l
     github = v["fuentes"].get("github")
     cabecera = (f"<!-- hk-os v1 persona={persona} generado_en={v['generado_en']} hora={_hora(v['ahora'], tz)} "
                 f"epoch={epoch if epoch is not None else int(fecha(v['ahora']).timestamp())} relay={relay_ok} "
-                f"github={'viejo' if github and github['viejo'] else 'ok'} "
+                f"github={'no' if github and github['valor'] == 'no' else 'viejo' if github and github['viejo'] else 'ok'} "
                 f"firmas=trabajo:{f['trabajo']},colisiones:{f['colisiones']},novedades:{f['novedades']},"
                 f"reservas:{f['reservas']} -->")
     lineas = [cabecera]

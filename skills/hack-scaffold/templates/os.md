@@ -7,6 +7,7 @@ publicar_wip: no          # ADR-0007, nivel 2. Lee el aviso de abajo antes de po
 # y credenciales comunes, datos_excluidos y lo de más de 1 MB, pero ninguna lista es completa: revisa el .gitignore
 # antes. Borrar la ref no borra lo subido (GitHub sigue sirviendo los objetos por su sha): una clave que suba, rótala.
 # Con el repo público no publica, salvo «publicar_wip: sí, incluso público». Lo publicado: wip.json y /salud del demonio.
+github: sí                # no = modo sin GitHub: tareas de plan.md y remoto del equipo (docs/hackathon-os/arranque.md)
 repo_tareas:              # vacío = el repo de coordinacion.md
 umbral_parada_min: 20
 umbral_viejo_s: 300

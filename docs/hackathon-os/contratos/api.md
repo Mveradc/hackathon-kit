@@ -9,6 +9,7 @@ Un contrato congelado solo cambia subiendo `v` o con una nota aquí con su motiv
 | §3 y §4 | **Congelados** (M8d, 2026-10-14) |
 | §5 y §6 | **Congelados** (M8f, 2026-10-15) |
 | §8 | **Congelado** (M8e, 2026-10-15) |
+| §9 | **Nueva** (M8h, 2026-10-15): se congela al cerrar M8h |
 
 Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reglas que el código aún no usaba):
 - 2026-10-14, M8c, §1: `transcript_path` en `SubagentStart`. Sin él, el demonio tendría que adivinar la carpeta de la sesión a partir del `cwd`, y M8.0 vio que eso se rompe con las mayúsculas de la ruta. Es una ruta local, no contenido.
@@ -30,6 +31,16 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
 - 2026-10-15, M8g, §4: publicación del trabajo en curso (decisiones del usuario, ADR-0007 con nota): el padre del commit es la merge-base con `origin/main`, no HEAD; exclusiones ampliadas y aplicadas como pathspecs del propio `git add`; lo excluido que ya estaba vuelve a su versión de la base; no publica con el repo de GitHub público (salvo `publicar_wip: sí, incluso público`) ni si no sabe si lo es, ni con un merge, rebase o cherry-pick a medias; git sin diálogos de credenciales y `--no-verify` en ese push; línea `wip:` en `/salud`. Detalle en §4.
 - 2026-10-15, M8g, §6: sección `## Reservas` (entre «Colisiones que te afectan» y «Novedades»; las reservas vigentes de las demás personas) y firma `reservas:` en la cabecera, sin horas (renovar una reserva no es un cambio). Las líneas `>` del principio pueden traer avisos del propio demonio que no están en `estado.json` (por qué no publica el trabajo en curso).
 - 2026-10-15, M8g, §7: `reservas.tsv`, `wip.index`, `wip.pathspecs`, `wip.json` y `entregado/<session_id>-<agent_id o «sesion»>.reservas` en `<git común>/hackathon/os/`; `refs/hackathon/relay-wip/*` en el clon del relay.
+- 2026-10-15, M8h, §0, §3, §6 y §7 (modo sin GitHub, K-80; decisiones del usuario):
+  - **§0:** clave nueva `github: sí|no` (por defecto, `sí`); el modo se activa solo de forma explícita;
+  - **§3:** con `github: no`, el relay no sondea GitHub. Toma las tareas de `.hackathon/plan.md` de `origin/main` de su clon (`compilar.SondeoPlan`, con el fetch de las novedades): sin issues, así que sin `reclamada` ni `cerrada`. `fuentes.github` = `{valor: "no", fuente: "git", observado_en: <hora del commit del plan>}`; la fuente de `pendiente` pasa a ser `git`. Un plan mal formado no borra las tareas: se queda el último bueno y se avisa una vez;
+  - **§6:** `github=no` en la cabecera y la línea `> Sin GitHub: las tareas salen de plan.md de main (HH:MM); sin asignar ni cerrar issues.`; «no» nunca está viejo;
+  - **§7:** `<git común>/hackathon/yo-fijo` (la persona declarada con `hk-os unir --persona`, que manda sobre gh en `hk_yo` y en los eventos), `yo-fijo.comprobado` y `<git común>/hackathon/os/remoto/equipo.git`;
+  - **§9, nueva:** el remoto del equipo.
+  - Con GitHub configurado y caído, todo sigue como antes: la última instantánea, marcada como vieja. Los esquemas no cambian.
+- 2026-10-15, M8h, §3: la hora de un sondeo bueno de GitHub sin cambios no saca versión nueva (ni SSE) hasta que avanza un tercio de `umbral_viejo_s` respecto de la publicada (Pendiente de M8f: la web decía «actualizado» cada 30 s sin cambios). Así nada se ve «viejo» sin serlo.
+- 2026-10-15, M8h, §4: `hk-os unir <url> <token> [--persona <usuario>] [--remoto <url>]` imprime el desfase del reloj frente a la cabecera `Date` del relay. `--remoto` pone `origin` = remoto del equipo (el anterior pasa a ser `github`) con el token en `http.<url>.extraHeader`, nunca en la URL, y `credential.<url>.helper` vacío; sin `--remoto`, deshace lo que hizo uno anterior (`hkos.remoto` en la configuración del clon). `hk-os recoger` deja un zip con `<git común>/hackathon/os/` sin `token`, `relay.url`, `wip.index`, `wip.pathspecs` ni `remoto/`, más el log de git y el desfase; nunca la configuración de git. El git del demonio y del publicador, sin askpass (`GIT_ASKPASS` vacío): con un `401`, git se quedaba esperando al askpass heredado (el de VS Code).
+- 2026-10-15, M8h, §0 y hooks: con bash < 5 (el 3.2 de macOS), `os_activo` falla y el OS se queda apagado; `arranque.sh` lo avisa una vez por sesión si `os.md` lo pide.
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -45,6 +56,7 @@ Los hooks lo leen en la **copia principal** del clon (la carpeta del git común)
 activa: sí
 relay: http://<ip-lan-o-tailnet>:7777
 publicar_wip: no          # ADR-0007, nivel 2
+github: sí                # no = modo sin GitHub: tareas de plan.md y remoto del equipo (§9; M8h)
 repo_tareas:              # vacío = el repo de coordinacion.md
 umbral_parada_min: 20
 umbral_viejo_s: 300
@@ -329,3 +341,19 @@ Los escribe `hk-os compilar` (`hkos/compilar.py`) y los lee el relay (`hkos/gith
   - `fuentes.relay` = hora del cálculo (no cuenta para la versión ni para el SSE).
   Marcar «viejo» en las vistas es de M8f.
 
+
+## 9. Remoto del equipo sin GitHub (M8h, K-80; decisiones del usuario)
+Para trabajar sin internet con LAN (`github: no`, §0). Lo sirve `hk-os remoto` (`hkos/remoto.py`) en el portátil de quien coordina, en un proceso aparte del relay: el relay sigue sin transportar código (constitución IX).
+- **Qué sirve:** un solo repo, `<git común>/hackathon/os/remoto/equipo.git` del coordinador (fuera de git), en `http://<ip>:7778/equipo.git`. Solo el protocolo *smart* de git (`GET info/refs?service=git-upload-pack|git-receive-pack`, `POST git-upload-pack`, `POST git-receive-pack`) a través de `git http-backend`. Cualquier otra ruta, `404`.
+- **Dónde escucha:** como el relay (§3): 127.0.0.1, una IP privada o una de Tailscale; nunca `0.0.0.0` ni una pública. Sin CORS.
+- **Token:** el del relay (`relay/token`; si aún no existe, se crea igual). Va en `Authorization: Bearer <token>` (o Basic con el token de contraseña) y se compara en tiempo constante. Sin él, `401`. HTTP sin cifrar: en una red que no sea de confianza, Tailscale o ZeroTier (`docs/limitaciones.md`).
+- **`--iniciar`:** crea el bare con `main` = `origin/main` del clon (si no hay, `HEAD`), renombra el `origin` de antes a `github` y apunta `origin` al bare. Si ya estaba iniciado, no toca nada.
+- **Cada persona:** `hk-os unir … --remoto <url>` (§4) en un clon de antes; uno nuevo, con `git -c http.extraHeader="Authorization: Bearer <token>" clone <url>` y después `unir --remoto`.
+- **`--volver`** (quien coordina, con internet):
+  - trae `origin` (el bare) y `github`;
+  - si GitHub ya tiene el `main` del equipo, no sube nada;
+  - si va por detrás, sube por avance rápido;
+  - si los dos `main` han divergido, lo dice y para sin tocar nada (no fusiona por su cuenta);
+  - al terminar, `origin` vuelve a ser GitHub y el bare se queda en disco;
+  - cada persona, `hk-os unir` sin `--remoto`.
+- **Lo que no viaja:** `refs/hackathon/*` no se sube a GitHub al volver.

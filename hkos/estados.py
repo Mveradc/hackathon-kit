@@ -183,7 +183,7 @@ def derivar(tarea, issue, eventos, dependencias, equipo, ahora, umbral_parada_s=
             primero = min((x for x in ((asignado, "github"), (reclamo, "mcp")) if x[0]), key=lambda x: fecha(x[0]))
             estado = dato("reclamada", primero[1], primero[0])
         elif pendientes:
-            estado = dato("pendiente", "github", issue["creado_en"])
+            estado = dato("pendiente", issue.get("fuente", "github"), issue["creado_en"])   # sin GitHub, git (M8h)
         else:
             ts = max([issue["creado_en"]] + cumplidas, key=fecha)
             estado = dato("lista", "derivado", ts)

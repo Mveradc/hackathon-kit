@@ -231,8 +231,68 @@ class Compilador:
                               "description": "Tarea del plan (hackathon-kit, Hackathon OS)"}, "etiqueta")
 
 
+def sin_github(os_md):
+    """Modo sin GitHub (M8h, K-80; api.md §0): `github: no` en os.md."""
+    return conf(os_md, "github").lower() in ("no", "false")
+
+
+def tareas_de_plan(texto, tabla, ts):
+    """Modo sin GitHub: plan.md → lo mismo que github.tareas_de_issues (tareas, issues del motor, números,
+    discrepancias). Sin issues, no hay asignación ni cierre: `reclamada` y `cerrada` no salen, y lo que hace avanzar una
+    tarea son sus señales (actividad, commits con su ID, push). `ts` es la hora del commit del plan; la fuente, `git`."""
+    tareas, motor = [], {}
+    for t in leer_plan(texto, tabla):
+        x = {"id": t["id"], "titulo": t["titulo"], "dueno": t["dueno"], "depende_de": list(t["depende_de"])}
+        if t["bloque"] and t["bloque"] != "—":
+            x["bloque"] = t["bloque"]
+        tareas.append(x)
+        motor[t["id"]] = {"creado_en": ts, "acciones": [], "fuente": "git"}
+    tareas.sort(key=lambda t: int(t["id"][1:]))
+    return tareas, motor, {}, []
+
+
+class SondeoPlan:
+    """Fuente de tareas del relay en el modo sin GitHub (M8h, K-80; api.md §3): lee .hackathon/plan.md de origin/main
+    del clon del relay (el fetch es el de las novedades, cada 60 s) con la misma interfaz que github.Sondeo. No escribe
+    nada ni usa la red. Un plan mal formado no borra las tareas: se queda el último bueno y se avisa una vez."""
+    fuente = "git"
+    REF = "origin/main"
+
+    def __init__(self, repo, tabla, git=None, aviso=None):
+        self.repo, self.tabla = repo, tabla
+        self.git = git or (lambda *a: _git(repo, *a))
+        self.aviso = aviso or (lambda s: None)
+        self.blob, self.malo, self.texto, self.ts = None, None, None, None
+        self.estado, self.ultimo_ok = "no", None
+
+    def sondear(self):
+        """True si cambió el plan de origin/main."""
+        blob = self.git("rev-parse", f"{self.REF}:.hackathon/plan.md")
+        if not blob or blob == self.blob or blob == self.malo:
+            return False
+        texto = self.git("show", f"{self.REF}:.hackathon/plan.md")
+        ct = self.git("log", "-1", "--format=%ct", self.REF, "--", ".hackathon/plan.md")
+        try:
+            ts = github.iso(datetime.fromtimestamp(int(ct), timezone.utc))
+            leer_plan(texto or "", self.tabla)
+        except (PlanMalo, TypeError, ValueError) as ex:
+            self.malo = blob
+            self.aviso(f"Sin GitHub: el plan.md de {self.REF} está mal formado ({ex}); sigo con el anterior.")
+            return False
+        self.blob, self.malo, self.texto, self.ts = blob, None, texto, ts
+        self.ultimo_ok = int(ct)
+        return True
+
+    def resultado(self, ahora=None):
+        if self.texto is None:
+            return [], {}, [], 0
+        tareas, motor, _, disc = tareas_de_plan(self.texto, self.tabla, self.ts)
+        return tareas, motor, disc, 0
+
+
 def _git(cwd, *args):
-    r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, timeout=60)
+    r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       timeout=60)
     return r.stdout.strip() if r.returncode == 0 else None
 
 
@@ -252,6 +312,10 @@ def main(argv=None, cwd=".", salida=print):
     if conf(coord, "activa").lower() not in ("sí", "si", "yes"):
         salida("hk-os compilar: la coordinación no está activa (.hackathon/coordinacion.md). No se ha hecho nada.")
         return 1
+    if sin_github(os_md):
+        salida("hk-os compilar: modo sin GitHub (github: no en os.md): las tareas salen de .hackathon/plan.md de "
+               "origin/main; no hay nada que compilar.")
+        return 0
     repo = conf(os_md, "repo_tareas") or conf(coord, "repo")
     tabla = equipo(coord)
     if not repo or "<" in repo or not tabla:

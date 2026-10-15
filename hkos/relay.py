@@ -31,6 +31,7 @@ from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import colisiones_merge  # noqa: E402
+import compilar  # noqa: E402
 import contratos as contratos_mod  # noqa: E402
 import github  # noqa: E402
 import proyeccion  # noqa: E402
@@ -193,7 +194,7 @@ class Relay:
         self.version, self.estado, self.texto, self._huella = 0, None, b"", None
         self.vista = None
         self._cargar()
-        if self.sondeo:                           # sin GitHub al arrancar, el último estado conocido (constitución VIII)
+        if self.sondeo and hasattr(self.sondeo, "de_disco"):   # sin GitHub al arrancar, el último estado conocido (VIII)
             try:
                 with open(os.path.join(carpeta, "github.json"), encoding="utf-8") as f:
                     self.sondeo.de_disco(json.load(f))
@@ -374,7 +375,8 @@ class Relay:
             with self.lock:
                 tareas, issues, disc, escrituras = self.sondeo.resultado(fecha(ahora))
                 visto = self.sondeo.ultimo_ok
-                fuentes["github"] = {"valor": self.sondeo.estado, "fuente": "github",
+                # Con `github: no` (M8h), las tareas salen de plan.md: valor «no», fuente git y la hora del commit del plan.
+                fuentes["github"] = {"valor": self.sondeo.estado, "fuente": getattr(self.sondeo, "fuente", "github"),
                                      "observado_en": iso_us(visto) if visto else ahora}
             if escrituras >= github.TOPE_HORA:
                 print(f"relay: {escrituras} escrituras del equipo a GitHub en la última hora (tope {github.TOPE_HORA}, R-30)",
@@ -402,6 +404,12 @@ class Relay:
                                             "detalle": f"{c['veces']} líneas rotas en los JSONL de {p}"})
         # Sin la hora del cálculo ni la del relay: solo hay versión nueva (y SSE) si cambia algo de verdad.
         sin_hora = dict(estado, generado_en=None, fuentes={k: v for k, v in estado["fuentes"].items() if k != "relay"})
+        # M8h: un sondeo bueno de GitHub sin cambios solo mueve la hora de fuentes.github. No es una versión nueva
+        # (ni un SSE) hasta que esa hora avanza un tercio de umbral_viejo_s: así nada se ve «viejo» sin serlo.
+        gh, pub = estado["fuentes"].get("github"), (self.estado or {}).get("fuentes", {}).get("github")
+        if gh and pub and gh["valor"] == pub["valor"] == "ok" and gh["fuente"] == pub["fuente"] and \
+                (fecha(gh["observado_en"]) - fecha(pub["observado_en"])).total_seconds() < self.umbral_viejo_s / 3:
+            sin_hora["fuentes"] = dict(sin_hora["fuentes"], github=pub)
         huella = hashlib.sha256(json.dumps(sin_hora, sort_keys=True).encode("utf-8")).hexdigest()
         with self.cambio:
             if huella != self._huella:
@@ -430,7 +438,7 @@ class Relay:
                 with self.lock:
                     estado_antes = self.sondeo.estado
                 cambio = self.sondeo.sondear()
-                if cambio:
+                if cambio and hasattr(self.sondeo, "a_disco"):
                     with self.lock:
                         foto = self.sondeo.a_disco()
                     tmp = os.path.join(self.carpeta, "github.json.tmp")
@@ -648,7 +656,12 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
         raise SystemExit(f"hk-os relay: {ip} no es 127.0.0.1, una IP privada de LAN ni una de Tailscale; "
                          "el relay no escucha ahí (R-32). Indica otra con --ip.")
     personas = equipo(equipo_md)
-    sondeo = sondeo_de(os_md, equipo_md, personas, aviso) if con_github else None
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(equipo_md)))
+    es_repo = _git(repo, "rev-parse", "--git-dir") is not None
+    if os_md and compilar.sin_github(os_md):        # M8h, K-80: las tareas, de plan.md de origin/main
+        sondeo = compilar.SondeoPlan(repo, personas, aviso=aviso) if es_repo else None
+    else:
+        sondeo = sondeo_de(os_md, equipo_md, personas, aviso) if con_github else None
     try:
         umbral = 60 * float(conf(os_md, "umbral_parada_min") or 20) if os_md else 1200
     except ValueError:
@@ -657,8 +670,6 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
         viejo = float(conf(os_md, "umbral_viejo_s") or 300) if os_md else 300
     except ValueError:
         viejo = 300
-    repo = os.path.dirname(os.path.dirname(os.path.abspath(equipo_md)))
-    es_repo = _git(repo, "rev-parse", "--git-dir") is not None
     novedades = Novedades(repo, viejo, aviso=aviso) if es_repo else None
     wip = None
     if es_repo and os_md and colisiones_merge.modo_publicar(conf(os_md, "publicar_wip"))[0]:
@@ -671,7 +682,10 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
     threading.Thread(target=relay.bucle, args=(parar,), daemon=True).start()
     if sondeo:
         threading.Thread(target=relay.bucle_github, args=(parar,), daemon=True).start()
-        aviso(f"Sondeo de GitHub: {sondeo.c.repo}, cada {SONDEO_GITHUB_S} s.")
+        if isinstance(sondeo, compilar.SondeoPlan):
+            aviso(f"Sin GitHub (github: no): las tareas salen de .hackathon/plan.md de origin/main, cada {SONDEO_GITHUB_S} s.")
+        else:
+            aviso(f"Sondeo de GitHub: {sondeo.c.repo}, cada {SONDEO_GITHUB_S} s.")
     if novedades:
         threading.Thread(target=relay.bucle_novedades, args=(parar,), daemon=True).start()
     if wip:

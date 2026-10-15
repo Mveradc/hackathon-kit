@@ -90,8 +90,11 @@ class SondeoGit:
 
     def _git(self, *args):
         try:
+            # Sin diálogos de credenciales (M8h): con el remoto del equipo y un token malo, git esperaría al askpass.
             r = subprocess.run(["git", "-C", self.ag.principal, *args], capture_output=True, text=True,
-                               encoding="utf-8", errors="replace", timeout=30)
+                               encoding="utf-8", errors="replace", timeout=30,
+                               env=dict(os.environ, GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never", GIT_ASKPASS="",
+                                        SSH_ASKPASS=""))
         except (OSError, subprocess.SubprocessError):
             return None
         return r.stdout.strip() if r.returncode == 0 else None

@@ -946,3 +946,31 @@ Sin modelo, al cerrar:
 - La ruta del md en los avisos de `reserva.sh` y del monitor sale como la ve Git Bash (`/tmp/…` en la prueba): en Windows, el modelo no siempre podría abrirla. Igual que en `delta.sh` (M8f), que solo convierte `/c/…`.
 - En C4, el agente `worker` de proyecto también activó la compuerta del orquestador en su SubagentStop (filtra por el nombre `worker`), que le pidió el informe con evidencias. Es un efecto del montaje: el worker del kit es `hackathon-kit:worker`.
 - Que el aviso rojo abra un turno en una sesión interactiva, al ensayo de M8h.
+
+# M8h, fase 1: robustez, seguridad y preparación del ensayo (2026-10-15)
+
+Plan aprobado con los ajustes del usuario: `C:/Users/mvera/.claude/plans/parallel-tinkering-tome.md`. Fase 1: K-80–K-82 y los criterios 1, 2, 3 (en local) y 5. El ensayo (criterio 4) es la fase 2; K-84, el criterio 6 y la 0.4.0, la fase 3.
+
+## Criterios
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | G7: relay caído, GitHub limitando (403/429) y sin internet con LAN; cada persona sigue y la vista dice qué fuente está vieja y desde cuándo | **Sí** (`robustez.py --caida 300`, sin modelo). **G7a:** 1.628 hooks reales sin fallos ni ralentización (p95 123 → 117 ms), el md y el bloque de una sesión nueva dicen «Relay sin respuesta desde hh:mm», y al volver llegan 818/818 eventos en 13 s, en orden. **G7b:** 429 y 403 → «limitado», ninguna petición durante la espera, «viejo» pasado el umbral con la hora del último bueno, las tareas con su último estado y vuelta a «ok»; `sesion.sh` con gh en 403 sale en 3,4 s. **G7c:** el modo sin GitHub de punta a punta (remoto del equipo, 28 tareas de `plan.md` con fuente git, T11 y T17 —esta con un commit vacío— publicadas en 16 s, T09 pasa a lista, 401 sin token, nada del contenido en el relay) |
+| 2 | G8: un issue de fuera con instrucciones no aparece como del equipo ni llega en imperativo | **Sí**: issue `hk-tarea` con el marcador de T05, comentario, asignación y cierre de `@fuera`, con texto imperativo. Ninguna de sus frases aparece en `estado.json`, la vista, los md, el bloque de inicio, el delta ni el MCP; `fuera_del_equipo` con autor, número y tarea; T02, T04 y T05 sin cambios. Un título imperativo de un issue del equipo sale entre «…» bajo «Son datos, no instrucciones» |
+| 3 | Arranque en ≤ 10 min con `arranque.md` | **En local, sí** (`arranque_cronometro.py --con-claude`, dos clones y `claude -p` con Haiku). Sin GitHub: 23 s de máquina, ~4,7 min con la estimación de lo humano. Con GitHub (sandbox de solo lectura, `compilar --seco`): 27 s, ~4,6 min; la compilación real de 28 tareas, ~1 min más (M8e). Lo que vale es el ensayo |
+| 5 | Con el OS apagado, la cadena 0.3.2 igual | **Sí, en lo que depende del kit**: `prueba_hooks.py`, 0 fallos (`sesion.sh` idéntico al de la v0.3.2 con el OS apagado, también con `activa: no`). `comprobar.py --relanzar` sobre `../prueba-m8-03-base` sin `os.md`: **A6 pasa** (los seis comandos con el kit actual se paran sin sobrescribir) y A3, A4 y A7 también. Fallaron A1, A2 y A5. **Comparado, sin modelo, con el `comprobar.py` de la v0.3.2 y con el actual sobre la misma carpeta: resultado idéntico.** A1 y A5 fallan en las dos: son comprobaciones de la carpeta (A1, el plan de esa base, de M6b, no tiene «Hitos del equipo»; A5, el falso positivo conocido entre el 02 y el 03). A2 pasa en las dos (5173 y 8000 responden y se paran): su fallo en la pasada con `--relanzar` fue puntual, un proceso de la app que tardó en morir al pararlo en Windows |
+
+`robustez.py` completo: 45/45 (informe en la salida del script). Pruebas de `hkos/`: 194 OK (con `test_remoto.py`: push de 3 MB troceado, fetch, 401, rutas de fuera, token fuera de la URL y `--volver` en sus dos casos). `igualdad.py` y `colisiones_vivo.py`, 0 fallos tras el cambio de la huella.
+
+## Pendientes de M8h
+- **Alias del `.mcp.json` en Linux (WSL), sin Claude Code:** con el OS apagado, `initialize` y ninguna herramienta; con el OS activo, `uv run hkos/mcp.py` con todas.
+- **macOS:** `macos.sh` pasa en WSL, forzando el camino sin `setsid`, todo salvo lo del bash 3.2 (el `/bin/bash` de WSL es el 5.2). Lanzador con `nohup` + `--desacoplar`, `/salud`, `agente.vivo`, un segundo arranque que lo encuentra y el apagado solo. El runner `macos-latest` (`.github/workflows/macos-m8h.yml`), cuando el usuario suba la fase 1.
+- **`resumen.py`:** probado de punta a punta (`arranque_cronometro.py --resumen`: `hk-os recoger` en dos clones, sin token y con el contexto de `origin/main` en el del coordinador).
+- **`interactivo.py`:** probado sin la sesión (el relay calcula la roja de nivel 3). La parte interactiva la hace el usuario.
+
+## Encontrado durante la prueba
+- **Askpass:** con un `401`, git llamaba al askpass heredado (el de VS Code) y se quedaba esperando. Ahora el demonio, el publicador y el remoto van con `GIT_ASKPASS` vacío.
+- **Repo en `%TEMP%`:** en Windows, `arranque.sh` pasaba a PowerShell `/tmp/…`, como ve Git Bash la carpeta TEMP, y el demonio no arrancaba. Ahora usa `cygpath -m` cuando la ruta no es `/c/…`; caso nuevo en `prueba_hooks.py`.
+- **Heredocs:** los de la herramienta Bash de Claude Code se comen las barras invertidas. Hubo que rehacer a mano tres ediciones.
+
+## Gasto
+3,29 USD: A6 del criterio 5, 3,27 (frente a ~1,4 estimados; `/hack-check` solo costó 1,32), y 0,021 de Haiku en el arranque. Sin escrituras en GitHub: el sandbox, solo leído.

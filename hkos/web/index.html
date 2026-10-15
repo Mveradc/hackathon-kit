@@ -158,8 +158,10 @@ function pintar(v) {
   const fuentes = document.getElementById("fuentes");
   fuentes.replaceChildren();
   for (const [k, f] of Object.entries(v.fuentes)) {
-    const s = el("span", "", `${k}: ${f.valor} · `);
-    s.append(edad(f.observado_en, k === "git" ? 0 : v.umbrales.fuente_s));
+    // Modo sin GitHub (M8h): las tareas salen de plan.md; la hora es la del commit del plan y no envejece.
+    const sin = k === "github" && f.valor === "no";
+    const s = el("span", "", sin ? "sin GitHub (tareas de plan.md) · plan " : `${k}: ${f.valor} · `);
+    s.append(edad(f.observado_en, k === "git" || sin ? 0 : v.umbrales.fuente_s));
     fuentes.append(s);
   }
   const col = document.getElementById("colisiones");

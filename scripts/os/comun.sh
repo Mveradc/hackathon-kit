@@ -62,7 +62,14 @@ os_head() {
 
 # ¿Está activo el OS? `activa: sí|si|yes` en .hackathon/os.md de la copia principal (api.md §0).
 # Tolera BOM, \r, un comentario detrás y UTF-16 (read descarta los NUL; «sí» queda como «s\xed»).
+# M8h: los hooks del OS necesitan bash ≥ 5 ($EPOCHREALTIME, read -N, ${v,,}…). Con el bash 3.2 de macOS, el OS se
+# queda apagado (la 0.3.2) y arranque.sh lo avisa una vez por sesión; os_md_activo dice si os.md lo pide.
 os_activo() {
+  (( BASH_VERSINFO[0] >= 5 )) || return 1
+  os_md_activo
+}
+
+os_md_activo() {
   os_raiz || return 1
   local f=$OS_PRINCIPAL/.hackathon/os.md l LC_ALL=C
   [[ -f $f ]] || return 1
@@ -80,8 +87,13 @@ os_activo() {
 os_persona() {
   local f p uno=
   OS_PERSONA=
+  if [[ -s $OS_COMUN/hackathon/yo-fijo ]]; then   # M8h: la persona declarada con hk-os unir --persona manda
+    IFS= read -r p < "$OS_COMUN/hackathon/yo-fijo"
+    p=${p//$'\r'/}; p=${p// /}; p=${p,,}
+    [[ $p =~ ^[a-z0-9-]+$ ]] && { OS_PERSONA=$p; return 0; }
+  fi
   for f in "$OS_COMUN"/hackathon/yo-*; do
-    [[ -f $f && $f != *.tmp ]] || continue
+    [[ -f $f && $f != *.tmp && $f != */yo-fijo* ]] || continue
     IFS= read -r p < "$f" || [[ -n $p ]] || continue
     p=${p//$'\r'/}; p=${p,,}
     [[ -z $uno || $uno == "$p" ]] || return 0

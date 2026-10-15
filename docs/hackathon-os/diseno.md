@@ -237,7 +237,7 @@ Definiciones (M8g; código en `hkos/colisiones.py`, `hkos/contratos.py` y `hkos/
 | Demonio no arrancado | Hooks escriben JSONL local; nada se pierde. Inyección: solo lo de la 0.3.2. |
 | Relay caído | Demonio guarda y reintenta; proyección local (mi estado + último `estado.json` recibido, marcado viejo). |
 | GitHub caído o limitando | Relay sigue con presencia, eventos y git; tareas con el último estado conocido, marcadas viejas. |
-| Sin internet, con LAN | Relay por LAN; git por un remoto `bare` en el portátil coordinador (contingencia de M8h). |
+| Sin internet, con LAN | Relay por LAN; git por el remoto del equipo (`hk-os remoto`, un `bare` en el portátil coordinador servido con el token, `api.md` §9); tareas de `plan.md` con `github: no` (M8h). |
 | Sin nada | La 0.3.2 tal cual. |
 
 ## 10. Cambios en piezas existentes del kit (M8a)

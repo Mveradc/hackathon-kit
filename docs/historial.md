@@ -266,6 +266,39 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Decisiones del usuario:** el ADR de colisiones, ampliado (y siete ajustes de seguridad al aprobar); nivel 3 por rutas y por bloque; consumidores = el resto del equipo; `reclamar`, a M8h; un aviso de reserva por sesión; el nivel 2 tapa al 1; `--no-verify` en el push del WIP; el amarillo que se queda tras un push desde la terminal, a Pendiente; el turno del monitor en interactivo, al ensayo de M8h.
 - **Resultados** en `evals/coordinacion/prueba.md` («M8g»): los siete criterios cumplidos (el 4 por dos vías; el 5 sin modelo, con el turno para M8h). En vivo y sin modelo, el amarillo llega a los 2,6 s y el rojo de nivel 2 a los 79–82 s, sin tocar el índice ni el status de nadie y sin subir secretos. Gasto: 0,018 USD; sin escrituras en GitHub.
 
+## M8h — Robustez, seguridad y ensayo: fase 1 (2026-10-15)
+- **Fases** (decisión del usuario):
+  - fase 1 (Claude): K-80–K-82, criterios 1, 2, 3 (en local) y 5, y preparar el ensayo;
+  - fase 2 (el usuario y su equipo): el ensayo, criterio 4;
+  - fase 3: K-84, criterio 6 y la 0.4.0.
+- **K-80, modo sin GitHub** (`github: no`):
+  - tareas de `plan.md` de `origin/main` (`compilar.SondeoPlan`), con fuente `git`;
+  - `hk-os remoto`, un proceso aparte que sirve un `bare` con `git http-backend` detrás del token, que va en `http.<url>.extraHeader` y nunca en la URL;
+  - `remoto --volver` (si `main` divergió, para); `unir --persona` (`yo-fijo`, con aviso si gh dice otra cosa) y `--remoto`, y su deshacer;
+  - `hk-os recoger`;
+  - «sin GitHub» en el md y en la web;
+  - la guarda de bash < 5 (el 3.2 de macOS deja el OS apagado y avisa una vez).
+  - De paso: la hora de GitHub ya no saca versión nueva en cada sondeo (Pendiente de M8f).
+- **K-81:** `evals/coordinacion/robustez.py` (G7a, G7b, G7c, G8, G9 y G10, un comando y un informe).
+- **K-82:**
+  - `docs/hackathon-os/arranque.md` y `arranque_cronometro.py`;
+  - el ensayo, en `evals/coordinacion/ensayo/` (guion del día, hoja, cuestionario y `resumen.py`, anonimizado por defecto);
+  - `interactivo.py` (lo de las sesiones interactivas, antes del ensayo);
+  - `macos.sh` y `.github/workflows/macos-m8h.yml`.
+- **Encontrado:**
+  - con un `401`, git llamaba al askpass heredado (el de VS Code) y se quedaba esperando: ahora el demonio, el publicador y el remoto van sin askpass;
+  - en Windows, un repo dentro de `%TEMP%` (Git Bash lo ve como `/tmp/…`) dejaba sin arrancar al demonio, porque `arranque.sh` solo traducía `/c/…`: ahora usa `cygpath -m` para el resto;
+  - los heredocs de la herramienta Bash de Claude Code se comen las barras invertidas: el código, con Edit/Write.
+- **Decisiones del usuario:**
+  - activación explícita;
+  - remoto aparte, la vuelta a GitHub como comando y el token fuera de la URL;
+  - `--persona`;
+  - control dentro del ensayo, con el reto 03;
+  - macOS con un workflow del kit, cuando el usuario haya subido la fase 1;
+  - los 10 minutos cuentan desde un repo con el plan;
+  - lo interactivo lo hace el usuario antes del ensayo.
+- **Resultados** en `evals/coordinacion/prueba.md` («M8h, fase 1»).
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

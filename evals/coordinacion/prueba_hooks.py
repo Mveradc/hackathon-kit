@@ -445,6 +445,10 @@ def prueba_arranque(tmp):
               s.stdout == antes and len(l) == 1 and f"--persona persona-a --puerto {puerto}" in l[0] and "hkos/agente.py" in l[0],
               f"{l} (puerto esperado {puerto})")
     if os.name == "nt":
+        # M8h: el repo de esta prueba está en TEMP, que Git Bash ve como /tmp/…; uv y PowerShell necesitan C:/….
+        m = re.search(r"--repo (\S+)", l[0] if l else "")
+        comprueba("Windows: --repo y el script del demonio, con rutas de Windows (también en TEMP, que bash ve como /tmp)",
+                  m is not None and re.match(r"^[A-Za-z]:/", m.group(1)) is not None and " /tmp/" not in l[0], str(l))
         # Con MSYS_NO_PATHCONV=1 heredado (headless desde Git Bash), git.exe no entiende rutas /c/…: falló en vivo (M8d).
         s = sesion(e=dict(env, MSYS_NO_PATHCONV="1"))
         l = lanzados()
@@ -513,6 +517,61 @@ def prueba_arranque(tmp):
         s = sesion("s7")
         comprueba("agente.vivo viejo (demonio muerto) y el puerto libre: lo lanza", s.stdout == antes and len(lanzados()) == 1)
     os.remove(os.path.join(r, ".hackathon", "os.md"))
+
+
+def prueba_persona_fija(tmp):
+    """M8h (K-80): sin GitHub, `hk-os unir --persona` deja yo-fijo, que manda sobre gh en hk_yo y en la persona de los
+    eventos. sesion.sh avisa una vez por clon si gh, cuando responde, dice otro usuario. Sin yo-fijo, nada cambia (lo
+    comprueba prueba_proyeccion contra la 0.3.2)."""
+    print("\n== persona declarada sin GitHub (yo-fijo, M8h)")
+    base = os.path.join(tmp, "persona"); os.makedirs(base)
+    r = repo_os(base, "clon", os_md="activa: sí\npuerto_agente: 47998\n")
+    open(os.path.join(r, ".hackathon", "coordinacion.md"), "w", encoding="utf-8").write(
+        "activa: sí\nrepo: equipo/reto\n\n| Persona | GitHub |\n|---|---|\n| A | @persona-a |\n| B | @persona-b |\n")
+    gh = os.path.join(base, "gh-falso").replace("\\", "/")
+    respuesta = os.path.join(base, "gh-dice").replace("\\", "/")
+    open(gh, "w", newline="\n").write('#!/usr/bin/env bash\ncase "$*" in *"api user"*) [ -s "%s" ] || exit 1; cat "%s" ;; esac\n'
+                                     'exit 0\n' % (respuesta, respuesta))
+    env = dict(ENV, HK_GH=gh, HKOS_LANZAR=os.path.join(base, "lanzado.txt").replace("\\", "/"))
+    estado = os.path.join(r, ".git", "hackathon")
+    os.makedirs(estado, exist_ok=True)
+    SES = KIT + "/scripts/coordinacion/sesion.sh"
+
+    def sesion(sid):
+        return lanza(SES, json.dumps({"hook_event_name": "SessionStart", "session_id": sid, "source": "startup", "cwd": r}), r, env)
+
+    def gh_dice(login):
+        open(respuesta, "w", newline="\n").write(login + "\n" if login else "")
+
+    open(os.path.join(estado, "yo-fijo"), "w", newline="\n").write("Persona-A\r\n")
+    gh_dice("")                                                     # sin red: gh no responde
+    s = sesion("p1")
+    comprueba("yo-fijo sin red: la sesión es de @persona-a, sin aviso ni comprobación hecha",
+              "agente de @persona-a" in s.stdout and "gh dice" not in s.stdout
+              and not os.path.exists(os.path.join(estado, "yo-fijo.comprobado")), s.stdout[:200])
+    gh_dice("persona-b")                                            # vuelve la red y gh es otra persona
+    s = sesion("p2")
+    try:
+        d = json.loads(s.stdout)
+    except ValueError:
+        d = {}
+    comprueba("gh responde con otro usuario: aviso en systemMessage y en el contexto",
+              "gh dice que eres @persona-b" in d.get("systemMessage", "")
+              and "agente de @persona-a" in d.get("hookSpecificOutput", {}).get("additionalContext", ""), s.stdout[:300])
+    s = sesion("p3")
+    comprueba("…una sola vez por clon", "gh dice" not in s.stdout and "agente de @persona-a" in s.stdout, s.stdout[:200])
+    os.remove(os.path.join(estado, "yo-fijo.comprobado"))
+    gh_dice("persona-a")
+    s = sesion("p4")
+    comprueba("gh coincide: sin aviso, y queda comprobado",
+              "gh dice" not in s.stdout and os.path.exists(os.path.join(estado, "yo-fijo.comprobado")), s.stdout[:200])
+    # La persona de los eventos: yo-fijo manda aunque haya una caché de gh con otra.
+    open(os.path.join(estado, "yo-12345"), "w", newline="\n").write("persona-b\n")
+    e = lanza(KIT + "/scripts/os/emite.sh", json.dumps({"hook_event_name": "SessionStart", "session_id": "p5",
+                                                         "source": "startup", "cwd": r}), r)
+    ls = lineas(r).get("p5", [])
+    comprueba("emite.sh: la persona del evento es la de yo-fijo",
+              e.returncode == 0 and len(ls) == 1 and json.loads(ls[0])["persona"] == "persona-a", repr(ls))
 
 
 def prueba_reservas(tmp):
@@ -1092,6 +1151,7 @@ try:
     prueba_arranque(tmp)
     prueba_proyeccion(tmp)
     prueba_reservas(tmp)
+    prueba_persona_fija(tmp)
 finally:
     subprocess.run(["git", "worktree", "prune"], cwd=os.path.join(tmp, "repo"), capture_output=True)
     shutil.rmtree(tmp, ignore_errors=True)

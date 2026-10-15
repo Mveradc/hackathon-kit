@@ -28,7 +28,8 @@ import time
 from datetime import datetime, timezone
 
 ENTORNO = {"GIT_OPTIONAL_LOCKS": "0", "GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never",
-           "GIT_SSH_COMMAND": "ssh -o BatchMode=yes", "LC_ALL": "C"}
+           "GIT_SSH_COMMAND": "ssh -o BatchMode=yes", "LC_ALL": "C",
+           "GIT_ASKPASS": "", "SSH_ASKPASS": ""}   # M8h: un 401 del remoto del equipo no espera a ningún askpass
 SIN_CREDENCIALES = ["-c", "credential.interactive=false", "-c", "core.quotepath=false"]
 TOPE_BYTES = 1024 * 1024
 SECRETOS = (".env*", "*.pem", "*.key", "id_rsa*", "*.p12", "*.pfx", "credentials*.json", "secrets*")

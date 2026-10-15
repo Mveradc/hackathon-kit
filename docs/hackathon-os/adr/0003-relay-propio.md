@@ -20,3 +20,10 @@ El estado efímero (presencia, ficheros tocados, reservas) cambia cada pocos seg
 
 ## Consecuencias
 - Un punto único: si el portátil coordinador se duerme, cae lo efímero (R-29 cubre la degradación). Mitigación: `hk-os relay` se puede arrancar en otro portátil con el JSONL copiado.
+
+## Nota (M8h, 2026-10-15): el remoto del equipo es un proceso aparte (decisión del usuario)
+Sin internet y con LAN, el código viaja por un remoto `bare` en el portátil de quien coordina, servido por `hk-os remoto` (`git http-backend` detrás del token del equipo; `api.md` §9). Es un proceso y un puerto distintos de los del relay (7778), así que el relay sigue sin transportar código (constitución IX). Descartados:
+- dentro del relay: obligaba a una nota en la constitución IX;
+- `git daemon`: sin autenticación, y en Windows el push tiene fama de colgarse;
+- una carpeta compartida por SMB: solo sirve entre Windows y hay que configurarla a mano.
+El token viaja en claro por HTTP, como en el relay: en una red que no sea de confianza, Tailscale o ZeroTier.

@@ -143,6 +143,42 @@ class Modelo(Base):
         r.recalcular()
         self.assertEqual(r.version, v + 1)
 
+
+    def test_hora_de_github_no_es_version_nueva_hasta_un_tercio_del_umbral(self):
+        """M8h (Pendiente de M8f): un sondeo bueno sin cambios solo mueve fuentes.github.observado_en."""
+        class Sondeo:
+            estado, ultimo_ok = "ok", 1795168800.0      # 2026-11-20T10:00:00Z
+
+            def resultado(self, ahora=None):
+                return [], {}, [], 0
+        s = Sondeo()
+        r = relay_mod.Relay(self.dir, self.PERSONAS, ahora=self.reloj, sondeo=s, umbral_viejo_s=300)
+        v = r.version
+        for paso in (30, 60, 90):                       # < 100 s: misma versión
+            s.ultimo_ok = 1795168800.0 + paso
+            r.recalcular()
+            self.assertEqual(r.version, v, paso)
+        s.ultimo_ok = 1795168800.0 + 120                # ≥ 100 s desde la publicada
+        r.recalcular()
+        self.assertEqual(r.version, v + 1)
+        s.estado = "limitado"                           # un cambio de estado sí es versión nueva
+        r.recalcular()
+        self.assertEqual(r.version, v + 2)
+
+    def test_sin_github_fuente_git_valor_no(self):
+        class Plan:
+            estado, ultimo_ok, fuente = "no", 1795165200.0, "git"
+
+            def resultado(self, ahora=None):
+                return ([{"id": "T01", "titulo": "Uno", "dueno": "persona-a", "depende_de": []}],
+                        {"T01": {"creado_en": "2026-11-20T09:00:00Z", "acciones": [], "fuente": "git"}}, [], 0)
+        r = relay_mod.Relay(self.dir, self.PERSONAS, ahora=self.reloj, sondeo=Plan())
+        self.assertEqual(r.estado["fuentes"]["github"]["valor"], "no")
+        self.assertEqual(r.estado["fuentes"]["github"]["fuente"], "git")
+        self.assertEqual(r.estado["tareas"][0]["estado"]["valor"], "lista")
+        self.assertFalse(os.path.exists(os.path.join(self.dir, "github.json")))
+        self.assertFalse(r.vista["fuentes"]["github"]["viejo"])
+
     def test_reloj_adelantado_no_oculta_eventos(self):
         r = self.nuevo()
         r.recibir({"eventos": [evento(1, tipo="sesion.inicio", ts="2026-11-20T10:05:00.000000Z")]})

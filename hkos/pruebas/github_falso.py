@@ -32,6 +32,8 @@ class GitHubFalso:
         self.escrituras = []                     # (hora, usuario, método, ruta)
         self.lecturas = {"200": 0, "304": 0}
         self.limitar = 0                         # >0: las siguientes peticiones dan 429 (se descuenta)
+        self.limitar_403 = 0                     # >0: las siguientes dan 403 con X-RateLimit-Remaining: 0 (M8h)
+        self.peticiones = 0                      # todas las que llegan con usuario, también las limitadas (M8h)
         self.lock = threading.Lock()
         self._n, self._ev = 0, 0
         self.srv = ThreadingHTTPServer(("127.0.0.1", 0), self._manejador())
@@ -128,9 +130,15 @@ class GitHubFalso:
                 if not usuario:
                     self._responde(401, {"message": "Bad credentials"})
                     return None
+                gh.peticiones += 1
                 if gh.limitar > 0:
                     gh.limitar -= 1
                     self._responde(429, {"message": "secondary rate limit"}, [("Retry-After", "60")])
+                    return None
+                if gh.limitar_403 > 0:          # M8h (G7b): el límite primario, 403 con el contador a cero
+                    gh.limitar_403 -= 1
+                    self._responde(403, {"message": "API rate limit exceeded"},
+                                   [("X-RateLimit-Remaining", "0"), ("X-RateLimit-Reset", str(int(gh.reloj()) + 120))])
                     return None
                 return usuario
 

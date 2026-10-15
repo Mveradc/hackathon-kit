@@ -23,3 +23,6 @@ Estado: **aceptada** (2026-10-14, por el usuario al abrir M8b).
 ## Consecuencias
 - Hay que regenerar los ejemplos de `skills/hack-plan/examples/` y repetir la validación de `/hack-plan` con los retos 02 y 03 (M8a).
 - La prueba de reinicio en frío del orquestador (M7c, criterio 5) se repite con el nombre nuevo del estado.
+
+## Nota (M8h, 2026-10-15): persona declarada sin GitHub (decisión del usuario)
+Sin internet, `gh api user` no responde, y un clon hecho durante el evento se quedaría sin persona. `hk-os unir … --persona <usuario>` (un usuario de la tabla de `coordinacion.md`) deja `<git común>/hackathon/yo-fijo`, que manda sobre gh en `hk_yo` y en la persona de los eventos (`os_persona`). La persona se **declara**, no se verifica: con el token del equipo, alguien podría hacerse pasar por otra (`docs/limitaciones.md`). Cuando gh vuelve a responder, `sesion.sh` lo compara una vez por clon y, si no coincide, lo avisa (`systemMessage` y una línea factual). Sin `yo-fijo`, como siempre.

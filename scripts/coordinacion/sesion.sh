@@ -12,6 +12,15 @@ entrada=$(cat)
 origen=$(printf '%s' "$entrada" | sed -n 's/.*"source" *: *"\([a-z]*\)".*/\1/p')
 sesion_id=$(printf '%s' "$entrada" | sed -n 's/.*"session_id" *: *"\([A-Za-z0-9_-]*\)".*/\1/p' | head -1)
 aviso_os=$(bash "$(dirname "$0")/../os/arranque.sh" "$sesion_id" "$HK_YO" 2>/dev/null)
+# Hackathon OS sin GitHub (M8h): la persona de `hk-os unir --persona` se compara una vez por clon con la de gh, en
+# cuanto gh responde. Sin yo-fijo (siempre con el OS apagado), no hace nada.
+if [ -s "$HK_ESTADO/yo-fijo" ] && [ ! -f "$HK_ESTADO/yo-fijo.comprobado" ]; then
+  gh_yo=$(hk_minus "$(timeout 5 "$HK_GH" api user --jq .login 2>/dev/null | tr -d '\r')")
+  if [ -n "$gh_yo" ]; then
+    printf '%s\n' "$gh_yo" > "$HK_ESTADO/yo-fijo.comprobado"
+    [ "$gh_yo" != "$HK_YO" ] && aviso_os="${aviso_os:+$aviso_os }Hackathon OS: este clon se unió como @$HK_YO (hk-os unir --persona), pero gh dice que eres @$gh_yo. Si no eres @$HK_YO, vuelve a unirte con tu usuario: hk-os unir <relay> <token> --persona <usuario>."
+  fi
+fi
 equipo_os=$(bash "$(dirname "$0")/../os/delta.sh" inicio "$sesion_id" 2>/dev/null)
 estado=$(ls .hackathon/estado/*.md 2>/dev/null | grep -i "/$HK_YO.md$" | head -1)
 

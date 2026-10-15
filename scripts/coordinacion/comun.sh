@@ -56,8 +56,14 @@ hk_conf_activa() {
 }
 
 # Quién soy: el usuario de la sesión de gh (GH_TOKEN, o la cuenta de GH_CONFIG_DIR), en caché por esa combinación.
+# Hackathon OS sin GitHub (M8h): `hk-os unir … --persona <usuario>` deja $HK_ESTADO/yo-fijo y manda sobre gh. Sin ese
+# fichero (siempre con el OS apagado), igual que en la 0.3.2.
 hk_yo() {
   local clave cache
+  if [ -s "$HK_ESTADO/yo-fijo" ]; then
+    HK_YO=$(hk_minus "$(head -1 "$HK_ESTADO/yo-fijo" | tr -d '[:space:]')")
+    [ -n "$HK_YO" ] && return 0
+  fi
   clave=$(printf '%s|%s' "${GH_TOKEN:-keyring}" "${GH_CONFIG_DIR:-}" | cksum | cut -d' ' -f1)
   cache="$HK_ESTADO/yo-$clave"
   if [ ! -s "$cache" ]; then

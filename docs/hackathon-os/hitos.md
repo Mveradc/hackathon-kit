@@ -128,6 +128,14 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 5. Con el OS apagado, la cadena 0.3.2 se comporta igual (`comprobar.py` con un reto, `prueba_hooks.py`).
 6. README y `docs/limitaciones.md` actualizados (experimental, lo validado y lo que no); publicación como 0.4.0.
 
+*Nota (M8h, decisiones del usuario al abrirlo):*
+- **Fases.**
+  - Fase 1 (Claude): K-80–K-82 y los criterios 1, 2, 3 (cronometrado en local con dos clones, como ensayo del ensayo) y 5; además, preparar el ensayo.
+  - Fase 2 (el usuario y su equipo): el ensayo, criterio 4.
+  - Fase 3: K-84 y criterio 6.
+- **Criterio 3.** Los 10 minutos cuentan desde un repo con la cadena hecha (`plan.md` en `main`) y los requisitos instalados el día antes (`arranque.md`).
+- **Criterio 4.** Reto 03. El control va dentro del ensayo: 60 minutos con el OS apagado tras la cadena, el arranque del OS cronometrado y ≥ 3 horas con el OS. Se comparan tasas por persona y hora, con HackSpain como referencia secundaria. Con este N, el resultado es una tendencia, no una estadística.
+
 ---
 
 ## Después del M8 (Pendiente)

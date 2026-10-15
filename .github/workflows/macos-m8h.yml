@@ -1,0 +1,36 @@
+# M8h: el Hackathon OS en macOS sin Claude Code (lanzador, alias de git del .mcp.json, bin/hk-os, pruebas de hkos/ y
+# hooks con el bash de Homebrew; con el /bin/bash 3.2 de serie, el OS apagado sin errores). Solo a mano.
+name: macOS (Hackathon OS, M8h)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  macos:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # prueba_hooks.py compara sesion.sh con el de la etiqueta v0.3.2
+      - name: uv (como en arranque.md) y bash de Homebrew
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          brew list bash >/dev/null 2>&1 || brew install bash
+          echo "$(brew --prefix)/bin" >> "$GITHUB_PATH"
+      - name: Versiones
+        run: |
+          sw_vers; git --version; uv --version; bash --version | head -1; /bin/bash --version | head -1
+          command -v setsid || echo "sin setsid"
+      - name: Lanzador, MCP, bin/hk-os y bash 3.2 (evals/coordinacion/macos.sh)
+        run: bash evals/coordinacion/macos.sh "$(brew --prefix)/bin/bash"
+      - name: Pruebas de hkos/
+        if: always()
+        run: uv run --no-project --with "jsonschema[format-nongpl]" -m unittest discover -s hkos/pruebas
+      - name: Hooks (prueba_hooks.py, con el bash de Homebrew)
+        if: always()
+        env:
+          HK_RONDAS: "2"
+          PYTHONIOENCODING: utf-8
+        run: uv run --no-project evals/coordinacion/prueba_hooks.py

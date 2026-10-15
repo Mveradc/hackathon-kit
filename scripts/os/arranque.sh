@@ -7,8 +7,17 @@
 # En las pruebas, HKOS_LANZAR=<fichero> escribe ahí el lanzamiento en vez de hacerlo; HKOS_SIN_SETSID=1 fuerza el
 # camino de los sistemas sin setsid (macOS).
 . "$(dirname "$0")/comun.sh"
-os_activo || exit 0
 sesion=$1 persona=$2
+if (( BASH_VERSINFO[0] < 5 )); then   # M8h: el bash 3.2 de macOS; una vez por sesión, sin lanzar nada
+  os_md_activo || exit 0
+  [[ $sesion =~ ^[A-Za-z0-9_-]+$ ]] || exit 0
+  marca=$OS_COMUN/hackathon/os/entregado/$sesion
+  [[ -f $marca ]] && grep -x bash_viejo "$marca" >/dev/null 2>&1 && exit 0
+  { mkdir -p "${marca%/*}" && echo bash_viejo >> "$marca"; } 2>/dev/null
+  echo "Hackathon OS: este bash es el $BASH_VERSION y el OS necesita bash 5 o más (en macOS: brew install bash). Sigue apagado en este portátil; el kit funciona como siempre."
+  exit 0
+fi
+os_activo || exit 0
 [[ $sesion =~ ^[A-Za-z0-9_-]+$ ]] || sesion=
 [[ $persona =~ ^[a-z0-9-]+$ ]] || exit 0
 kit=$(cd "$(dirname "$0")/../.." && pwd)
@@ -76,6 +85,10 @@ if [[ -n $win ]]; then
   # /c/x → C:/x, sin lanzar cygpath.
   [[ $script =~ ^/([A-Za-z])/(.*)$ ]] && script=${BASH_REMATCH[1]^^}:/${BASH_REMATCH[2]}
   [[ $repo =~ ^/([A-Za-z])/(.*)$ ]] && repo=${BASH_REMATCH[1]^^}:/${BASH_REMATCH[2]}
+  # Otras rutas de MSYS (/tmp/… es la carpeta TEMP de Windows): PowerShell y uv no las entienden y el demonio no
+  # arrancaba (M8h). cygpath cuesta un proceso, pero solo aquí, al lanzar.
+  [[ $script == /* ]] && script=$(cygpath -m "$script" 2>/dev/null || printf '%s' "$script")
+  [[ $repo == /* ]] && repo=$(cygpath -m "$repo" 2>/dev/null || printf '%s' "$repo")
 fi
 argumentos=(run --no-project "$script" --repo "$repo" --persona "$persona" --puerto "$puerto")
 

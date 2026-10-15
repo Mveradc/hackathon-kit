@@ -146,5 +146,58 @@ class Lector(unittest.TestCase):
         self.assertEqual((t["T03"]["hasta"], t["T03"]["bloque"], t["T03"]["dueno"]), ("Vie", "B1", "pa"))
 
 
+class SinGitHub(unittest.TestCase):
+    """M8h, K-80: modo sin GitHub. Las tareas salen de plan.md de origin/main, con fuente git y sin issues."""
+    TS = "2026-11-20T09:00:00Z"
+
+    def test_tareas_de_plan_tiene_la_forma_de_las_de_issues(self):
+        tareas, motor, numeros, disc = compilar.tareas_de_plan(leer_texto(PLAN), TABLA, self.TS)
+        self.assertEqual(len(tareas), 28)
+        self.assertEqual((numeros, disc), ({}, []))
+        self.assertEqual([t["id"] for t in tareas], sorted((t["id"] for t in tareas), key=lambda x: int(x[1:])))
+        for t in tareas:
+            self.assertEqual(set(t) - {"bloque"}, {"id", "titulo", "dueno", "depende_de"})
+            self.assertEqual(motor[t["id"]], {"creado_en": self.TS, "acciones": [], "fuente": "git"})
+        por_id = {t["id"]: t for t in tareas}
+        de_issues = {t["id"]: t for t in compilar.leer_plan(leer_texto(PLAN), TABLA)}
+        self.assertEqual({k: v["depende_de"] for k, v in por_id.items()}, {k: v["depende_de"] for k, v in de_issues.items()})
+
+    def test_estado_con_fuente_git_y_sin_reclamada(self):
+        from modelo import calcular
+        tareas, motor, _, _ = compilar.tareas_de_plan(leer_texto(PLAN), TABLA, self.TS)
+        e = calcular(tareas, motor, [], TABLA, "2026-11-20T10:00:00Z")
+        estados = {t["id"]: t["estado"] for t in e["tareas"]}
+        self.assertTrue(any(x["valor"] == "pendiente" for x in estados.values()))
+        for x in estados.values():
+            self.assertIn(x["valor"], ("pendiente", "lista"))
+            self.assertIn(x["fuente"], ("git", "derivado"))
+
+    def test_sondeo_plan(self):
+        plan = leer_texto(PLAN)
+        repo = {"blob": "a1", "texto": plan, "ct": "1800000000"}
+        avisos = []
+
+        def git(*a):
+            if a[0] == "rev-parse":
+                return repo["blob"]
+            if a[0] == "show":
+                return repo["texto"]
+            return repo["ct"]
+        s = compilar.SondeoPlan(".", TABLA, git=git, aviso=avisos.append)
+        self.assertEqual(s.resultado(), ([], {}, [], 0))
+        self.assertTrue(s.sondear())
+        self.assertFalse(s.sondear())                        # mismo blob: nada
+        self.assertEqual((s.estado, s.fuente, s.ultimo_ok), ("no", "git", 1800000000))
+        tareas, motor, disc, escrituras = s.resultado()
+        self.assertEqual((len(tareas), escrituras, motor["T01"]["creado_en"]), (28, 0, "2027-01-15T08:00:00Z"))
+        repo.update(blob="b2", texto="## Por persona\n| T01 | x | y | z | w |\n")   # fila fuera de una persona
+        self.assertFalse(s.sondear())
+        self.assertFalse(s.sondear())
+        self.assertEqual(len(avisos), 1)                     # se avisa una vez
+        self.assertEqual(len(s.resultado()[0]), 28)          # y se queda el último bueno
+        repo.update(blob=None)
+        self.assertFalse(s.sondear())                        # sin plan en origin/main: nada cambia
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -166,6 +166,18 @@ class Markdown(unittest.TestCase):
         self.assertIn("> Relay sin respuesta desde 10:31", md)
         self.assertIn("> GitHub (tareas): sin datos nuevos desde 10:29", md)
 
+
+    def test_sin_github(self):
+        """M8h: `github: no` no envejece; el md lo dice en la cabecera y en una línea, y la web en su fuente."""
+        e = estado_base()
+        e["fuentes"]["github"] = dato("no", "git", "2026-11-20T08:00:00Z")
+        v = p.vista(e, ahora="2026-11-20T10:40:00Z")
+        self.assertFalse(v["fuentes"]["github"]["viejo"])
+        md = p.markdown(v, "persona-b", "x", tz=timezone.utc)
+        self.assertIn(" relay=ok github=no ", md)
+        self.assertIn("> Sin GitHub: las tareas salen de plan.md de main (08:00); sin asignar ni cerrar issues.", md)
+        self.assertNotIn("GitHub (tareas): sin datos", md)
+
     def test_tarea_del_mcp(self):
         e = estado_base()
         v = p.vista(e, ahora="2026-11-20T10:31:00Z")
