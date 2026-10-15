@@ -983,3 +983,13 @@ Plan aprobado con los ajustes del usuario: `C:/Users/mvera/.claude/plans/paralle
 
 ## Gasto
 3,29 USD: A6 del criterio 5, 3,27 (frente a ~1,4 estimados; `/hack-check` solo costó 1,32), y 0,021 de Haiku en el arranque. Sin escrituras en GitHub: el sandbox, solo leído.
+
+## Prueba interactiva antes del ensayo (`interactivo.py`, el usuario, 2026-10-15)
+| Qué | Resultado |
+|---|---|
+| `hk-os` en el PATH de una sesión de Claude Code (`! command -v hk-os`) | **Sí**: `…/hackathon-kit/bin/hk-os` (Pendiente de M8d). Va en `arranque.md` |
+| Una roja nueva abre un turno por el monitor (criterio 5 de M8g) | **Sí, sola y una vez**: nivel 3 en `motor/api.py`, contrato «motor → web» |
+| El delta en el turno siguiente | **Sí**, como dato: la colisión, con contrato, personas y horas, sin actuar por su cuenta |
+| El bloque «Estado del equipo» al empezar | **No en la primera pasada**. En la primera sesión de un clon recién unido, el SessionStart lanza el demonio y aún no hay `estado-equipo.md`. Arreglado en `2f9609a`: `hk-os unir` lo deja escrito. **En la segunda pasada, sí**: «nada abierto a tu nombre, sin colisiones ni reservas, @hk-persona-b sin sesión», con el aviso de que el estado puede estar viejo (escrito por `unir` más de 2 min antes) |
+
+Gasto: el de la sesión del usuario.
