@@ -288,7 +288,7 @@ def prueba_os(tmp, repo, informe, handback):
             d["agent_id"] = agente
         lanza(ARBOL, json.dumps(d), r)
         return lineas(r).get("s-arbol", [])
-    subprocess.run([BASH, "-c", "sed -i 's/uno/dos/' a.txt && echo nuevo > generado.txt"], cwd=r, check=True)
+    subprocess.run([BASH, "-c", "sed -i.bak 's/uno/dos/' a.txt && rm a.txt.bak && echo nuevo > generado.txt"], cwd=r, check=True)
     ls = arbol()
     l1 = valida("arbol", ls[-1]) if ls else None
     comprueba("un fichero cambiado solo por Bash (sed) y uno generado aparecen en el arbol",

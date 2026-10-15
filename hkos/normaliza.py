@@ -38,6 +38,10 @@ def relativa(ruta, raiz):
         return ""
     if r.lower().startswith(b.lower() + "/"):
         return r[len(b) + 1:]
+    # M8h: con un enlace en medio (en macOS, /var es /private/var), con las rutas reales.
+    rr, bb = _barras(os.path.realpath(ruta)), _barras(os.path.realpath(raiz))
+    if rr.lower().startswith(bb.lower() + "/"):
+        return rr[len(bb) + 1:]
     return r
 
 

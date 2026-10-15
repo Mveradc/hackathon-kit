@@ -60,7 +60,7 @@ done
 estado=$(campo Estado)
 if [[ ${#motivos[@]} -eq 0 && $estado == hecho* ]]; then
   # Salida de la comprobación: alguna línea no vacía entre «Comprobación:» y «Pendiente o dudas:».
-  salida=$(printf '%s\n' "$informe" | sed -nE '/^[[:space:]*-]*Comprobación:/,/^[[:space:]*-]*Pendiente/{/Comprobación:|Pendiente/d;p}' | grep -v '^[[:space:]`]*$')
+  salida=$(printf '%s\n' "$informe" | sed -nE '/^[[:space:]*-]*Comprobación:/,/^[[:space:]*-]*Pendiente/{/Comprobación:|Pendiente/d;p;}' | grep -v '^[[:space:]`]*$')
   [ -n "$salida" ] || motivos+=("no hay salida de la comprobación debajo de «Comprobación:» (copia las últimas líneas que imprimió)")
 
   rama=$(campo Rama); rama=${rama%% *}
