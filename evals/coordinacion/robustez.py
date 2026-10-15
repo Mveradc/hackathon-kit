@@ -581,6 +581,7 @@ def g10(tmp):
     gh_sh = os.path.join(tmp, "g10-gh").replace("\\", "/")
     with open(gh_sh, "w", newline="\n") as f:
         f.write('#!/usr/bin/env bash\ncase "$*" in *"api user"*) echo persona-b ;; *) echo "[]" ;; esac\nexit 0\n')
+    os.chmod(gh_sh, 0o755)                                           # en macOS y Linux, sin esto no se ejecuta
     salida_f = os.path.join(tmp, "g10-escucha.out")
     esc = os.path.join(KIT, "scripts", "coordinacion", "escucha.sh").replace("\\", "/")
     p = subprocess.Popen([cv.BASH, "-c", f"bash '{esc}'; :"], cwd=clon, stdout=open(salida_f, "wb"),

@@ -61,6 +61,11 @@ def comprueba(nombre, ok, detalle=""):
     print(f"{'OK   ' if ok else 'FALLO'} {nombre}" + (f"\n        {detalle}" if detalle and not ok else ""))
 
 
+def ejecutable(ruta):
+    """Los gh falsos se lanzan como programa: en macOS y Linux necesitan el permiso de ejecución (en Windows, no)."""
+    os.chmod(ruta, 0o755)
+
+
 def lanza(script, texto, cwd, env=None):
     return subprocess.run([BASH, script], input=texto, capture_output=True, text=True, encoding="utf-8", cwd=cwd, env=env or ENV)
 
@@ -129,6 +134,7 @@ def prueba_os(tmp, repo, informe, handback):
     os.makedirs(falsos)
     for p in ("gh", "curl"):
         open(os.path.join(falsos, p), "w", newline="\n").write(f"#!/bin/sh\necho {p} >> '{rastro}'\n")
+        ejecutable(os.path.join(falsos, p))
     env_falsos = dict(ENV, PATH=falsos + os.pathsep + ENV.get("PATH", ""))
 
     print("\n== Hackathon OS: apagado (criterio 1)")
@@ -391,6 +397,7 @@ def prueba_arranque(tmp):
     gh = os.path.join(base, "gh-falso").replace("\\", "/")
     open(gh, "w", newline="\n").write('#!/usr/bin/env bash\ncase "$*" in *"api user"*) echo Persona-A ;; esac\nexit 0\n')
     registro = os.path.join(base, "lanzado.txt").replace("\\", "/")
+    ejecutable(gh)
     env = dict(ENV, HK_GH=gh, HKOS_LANZAR=registro)
     # El sesion.sh del commit anterior, con el resto de scripts tal cual, para comparar la salida.
     viejo = os.path.join(base, "kit-viejo")
@@ -532,6 +539,7 @@ def prueba_persona_fija(tmp):
     respuesta = os.path.join(base, "gh-dice").replace("\\", "/")
     open(gh, "w", newline="\n").write('#!/usr/bin/env bash\ncase "$*" in *"api user"*) [ -s "%s" ] || exit 1; cat "%s" ;; esac\n'
                                      'exit 0\n' % (respuesta, respuesta))
+    ejecutable(gh)
     env = dict(ENV, HK_GH=gh, HKOS_LANZAR=os.path.join(base, "lanzado.txt").replace("\\", "/"))
     estado = os.path.join(r, ".git", "hackathon")
     os.makedirs(estado, exist_ok=True)
@@ -677,6 +685,7 @@ def prueba_reservas(tmp):
     llamadas = os.path.join(base, "gh-llamadas.txt").replace("\\", "/")
     open(gh, "w", newline="\n").write('#!/usr/bin/env bash\necho "$*" >> "' + llamadas + '"\n'
                                       'case "$*" in *"api user"*) echo persona-b ;; esac\nexit 0\n')
+    ejecutable(gh)
     coord = os.path.join(r, ".hackathon", "coordinacion.md")
     md_ruta = os.path.join(osdir, "estado-equipo.md")
 
@@ -761,6 +770,7 @@ def prueba_proyeccion(tmp):
     gh = os.path.join(base, "gh-falso").replace("\\", "/")
     open(gh, "w", newline="\n").write('#!/usr/bin/env bash\ncase "$*" in *"api user"*) echo persona-b ;; esac\nexit 0\n')
     registro = os.path.join(base, "lanzado.txt").replace("\\", "/")
+    ejecutable(gh)
     env = dict(ENV, HK_GH=gh, HKOS_LANZAR=registro)
     DELTA, SES = KIT + "/scripts/os/delta.sh", KIT + "/scripts/coordinacion/sesion.sh"
     osdir = os.path.join(r, ".git", "hackathon", "os")

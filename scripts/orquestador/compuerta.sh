@@ -38,7 +38,10 @@ informe=${informe//$'\r'/}
 motivos=()
 if [[ $informe =~ Informe:[[:space:]]*([^$'\n']+) ]]; then
   ruta=$(printf '%s' "${BASH_REMATCH[1]}" | tr -d '`' | sed 's/[[:space:]]*$//'); ruta=${ruta//\\//}
-  abs() { if command -v cygpath >/dev/null; then cygpath -m -a "$1" 2>/dev/null; else realpath -m "$1"; fi; }
+  # macOS no trae `realpath -m`: con la carpeta del fichero, si existe, y `pwd -P` (también resuelve /var → /private/var).
+  abs_bash() { local d=${1%/*} b=${1##*/}; [[ $1 == /* ]] || d=$PWD/$d
+    if [ -d "$d" ]; then printf '%s/%s' "$(cd "$d" && pwd -P)" "$b"; else printf '%s' "$1"; fi; }
+  abs() { if command -v cygpath >/dev/null; then cygpath -m -a "$1" 2>/dev/null; else realpath -m "$1" 2>/dev/null || abs_bash "$1"; fi; }
   carpeta=$(abs "$comun/hackathon/informes")
   if [[ $ruta == *..* ]]; then
     motivos+=("la ruta del informe «$ruta» lleva «..»")
