@@ -26,6 +26,15 @@ hk_leer() {
 }
 
 hk_minus() { printf '%s' "$1" | tr '[:upper:]' '[:lower:]'; }
+
+# hk_tiempo <segundos> <orden…>: con tope de tiempo. macOS no trae `timeout` (con Homebrew, `gtimeout`); sin ninguno,
+# la orden va sin tope en vez de no ejecutarse (M8h).
+hk_tiempo() {
+  local s=$1; shift
+  if command -v timeout >/dev/null 2>&1; then timeout "$s" "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then gtimeout "$s" "$@"
+  else "$@"; fi
+}
 hk_handle() { hk_minus "${1#@}"; }
 
 # Valor de una línea «clave: valor» de coordinacion.md.
