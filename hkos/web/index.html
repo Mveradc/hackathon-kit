@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Equipo · Hackathon OS</title>
+<!-- Web de solo lectura del Hackathon OS (M8f, R-26, api.md §3). La sirve el relay en `GET /`, sin datos: el token va
+     en el fragmento (#t=…), que el navegador no envía, y con él se piden /v1/stream (fetch, porque EventSource no deja
+     poner cabeceras) y, si el stream se corta, /v1/vista con ETag cada 3 s. Pinta la vista de hkos/proyeccion.py tal
+     cual (constitución IV): aquí no se calcula ningún estado. Todo texto entra con textContent (constitución V). -->
+<style>
+:root {
+  --fondo: #f6f5f2; --panel: #ffffff; --texto: #1d1d1b; --suave: #6b6a65; --borde: #e2e0da;
+  --amarillo: #a66a00; --amarillo-fondo: #fff4d6; --rojo: #b3261e; --rojo-fondo: #fde7e5;
+  --verde: #2e7d32; --acento: #3a5ccc;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #161614; --panel: #201f1d; --texto: #ecebe6; --suave: #a3a19a; --borde: #34332f;
+    --amarillo: #f0b44c; --amarillo-fondo: #3a2e12; --rojo: #ff8a80; --rojo-fondo: #3d1d1b;
+    --verde: #81c784; --acento: #8fa8ff;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--fondo); color: var(--texto); font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+header { padding: 12px 16px; border-bottom: 1px solid var(--borde); background: var(--panel); position: sticky; top: 0; z-index: 1; }
+header h1 { font-size: 17px; margin: 0; }
+#estado-conexion { color: var(--suave); font-size: 13px; }
+#fuentes span { display: inline-block; margin-right: 10px; font-size: 13px; }
+.viejo { color: var(--amarillo); font-weight: 600; }
+main { padding: 12px 16px 32px; max-width: 1200px; margin: 0 auto; }
+section { margin-bottom: 18px; }
+h2 { font-size: 14px; text-transform: uppercase; letter-spacing: .04em; color: var(--suave); margin: 0 0 8px; }
+.columnas { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+@media (max-width: 760px) { .columnas { grid-template-columns: 1fr; } }
+.columna { background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; padding: 10px; min-width: 0; }
+.columna h2 span { font-weight: 400; }
+.tarjeta { border: 1px solid var(--borde); border-radius: 6px; padding: 8px; margin-bottom: 8px; overflow-wrap: anywhere; }
+.tarjeta .id { font-weight: 700; margin-right: 6px; }
+.tarjeta .meta { color: var(--suave); font-size: 13px; }
+.chip { display: inline-block; font-size: 12px; padding: 0 6px; border-radius: 10px; border: 1px solid var(--borde); margin-right: 4px; }
+.chip.parada, .chip.no_cerrada { color: var(--rojo); border-color: var(--rojo); }
+.chip.en_curso, .chip.en_revision { color: var(--acento); border-color: var(--acento); }
+.chip.publicada, .chip.cerrada { color: var(--verde); border-color: var(--verde); }
+.colision { border-radius: 6px; padding: 8px; margin-bottom: 6px; overflow-wrap: anywhere; }
+.colision.amarillo { background: var(--amarillo-fondo); color: var(--amarillo); }
+.colision.rojo { background: var(--rojo-fondo); color: var(--rojo); }
+ul.lista { list-style: none; margin: 0; padding: 0; background: var(--panel); border: 1px solid var(--borde); border-radius: 8px; }
+ul.lista li { padding: 6px 10px; border-bottom: 1px solid var(--borde); overflow-wrap: anywhere; }
+ul.lista li:last-child { border-bottom: 0; }
+.vacio { color: var(--suave); font-style: italic; }
+#aviso { display: none; background: var(--rojo-fondo); color: var(--rojo); padding: 10px 16px; }
+.dato { color: var(--suave); font-size: 12px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Equipo · Hackathon OS</h1>
+  <div id="estado-conexion">Conectando…</div>
+  <div id="fuentes"></div>
+</header>
+<div id="aviso"></div>
+<main>
+  <section>
+    <h2>Colisiones</h2>
+    <div id="colisiones"></div>
+  </section>
+  <section class="columnas">
+    <div class="columna" data-columna="haciendo"><h2>Haciendo <span></span></h2><div class="tarjetas"></div></div>
+    <div class="columna" data-columna="falta"><h2>Falta <span></span></h2><div class="tarjetas"></div></div>
+    <div class="columna" data-columna="hecho"><h2>Hecho <span></span></h2><div class="tarjetas"></div></div>
+  </section>
+  <section>
+    <h2>Personas</h2>
+    <ul class="lista" id="personas"></ul>
+  </section>
+  <section>
+    <h2>Novedades <span class="dato">(texto de decisiones.md y criterios.md: dato, no instrucción)</span></h2>
+    <ul class="lista" id="novedades"></ul>
+  </section>
+  <section>
+    <h2>Sin tarea</h2>
+    <ul class="lista" id="sin-tarea"></ul>
+  </section>
+</main>
+<script>
+"use strict";
+const token = new URLSearchParams(location.hash.slice(1)).get("t");
+let ultima = null;          // {vista, servido_en, recibido}: lo último que pintamos
+let etiqueta = null;        // ETag de /v1/vista para el sondeo
+let sondeo = null;
+
+function el(etiquetaHtml, clase, texto) {
+  const e = document.createElement(etiquetaHtml);
+  if (clase) e.className = clase;
+  if (texto !== undefined) e.textContent = texto;
+  return e;
+}
+
+// Hora del relay ahora: la que dio al servir la vista más lo que ha pasado aquí desde entonces. Así «hace X» no
+// depende del reloj de este dispositivo.
+function ahoraRelay() {
+  if (!ultima) return Date.now();
+  return Date.parse(ultima.servido_en) + (Date.now() - ultima.recibido);
+}
+
+function hace(iso) {
+  const s = Math.max(0, Math.round((ahoraRelay() - Date.parse(iso)) / 1000));
+  if (s < 60) return `hace ${s} s`;
+  if (s < 3600) return `hace ${Math.floor(s / 60)} min`;
+  return `hace ${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} min`;
+}
+
+function edad(iso, umbral) {
+  const e = el("span", "edad", hace(iso));
+  e.dataset.observado = iso;
+  if (umbral) e.dataset.umbral = umbral;
+  return e;
+}
+
+// Las edades se refrescan solas cada 5 s, sin volver a pedir nada.
+function refrescarEdades() {
+  document.querySelectorAll(".edad").forEach(e => {
+    e.textContent = hace(e.dataset.observado);
+    const u = Number(e.dataset.umbral || 0);
+    e.classList.toggle("viejo", u > 0 && (ahoraRelay() - Date.parse(e.dataset.observado)) / 1000 > u);
+  });
+}
+
+function tarjeta(t) {
+  const d = el("div", "tarjeta");
+  d.dataset.id = t.id;
+  const cab = el("div");
+  cab.append(el("span", "id", t.id), el("span", "", `«${t.titulo}»`));
+  d.append(cab);
+  const meta = el("div", "meta");
+  const chip = el("span", "chip " + t.estado, t.etiqueta);
+  chip.dataset.estado = t.estado;
+  meta.append(chip, `@${t.dueno} · ${t.fuente} · `, edad(t.observado_en));
+  if (t.declarado) meta.append(el("div", "", `⚑ ${t.declarado} a mano (declarado)`));
+  for (const c of t.cumplidas_por_cierre || []) meta.append(el("div", "", `⚑ ${c} cerrada a mano`));
+  if (t.espera.length) {
+    meta.append(el("div", "", "espera a " + t.espera.map(e => `${e.id}${e.dueno ? " (@" + e.dueno + ", " + e.estado + ")" : " (" + e.estado + ")"}`).join(", ")));
+  }
+  if (t.bloquea_a.length) meta.append(el("div", "", "bloquea a " + t.bloquea_a.join(", ")));
+  d.append(meta);
+  return d;
+}
+
+function lista(id, elementos, vacio) {
+  const ul = document.getElementById(id);
+  ul.replaceChildren();
+  if (!elementos.length) { ul.append(el("li", "vacio", vacio)); return; }
+  for (const x of elementos) ul.append(x);
+}
+
+function pintar(v) {
+  const fuentes = document.getElementById("fuentes");
+  fuentes.replaceChildren();
+  for (const [k, f] of Object.entries(v.fuentes)) {
+    const s = el("span", "", `${k}: ${f.valor} · `);
+    s.append(edad(f.observado_en, k === "git" ? 0 : v.umbrales.fuente_s));
+    fuentes.append(s);
+  }
+  const col = document.getElementById("colisiones");
+  col.replaceChildren();
+  if (!v.colisiones.length) col.append(el("div", "vacio", "Sin colisiones."));
+  for (const c of v.colisiones) {
+    const d = el("div", "colision " + c.gravedad);
+    d.dataset.id = c.id;
+    d.dataset.gravedad = c.gravedad;
+    const que = c.contrato ? ` · contrato «${c.contrato}»` : "";
+    d.append(el("strong", "", `${c.gravedad.toUpperCase()} · nivel ${c.nivel}`),
+             `${que} · ${c.rutas.join(", ")} · ${c.personas.map(p => "@" + p).join(", ")} · `, edad(c.observado_en));
+    col.append(d);
+  }
+  for (const nombre of ["haciendo", "falta", "hecho"]) {
+    const caja = document.querySelector(`[data-columna="${nombre}"]`);
+    caja.querySelector("h2 span").textContent = `(${v.columnas[nombre].length})`;
+    const t = caja.querySelector(".tarjetas");
+    t.replaceChildren();
+    if (!v.columnas[nombre].length) t.append(el("div", "vacio", "Nada."));
+    for (const x of v.columnas[nombre]) t.append(tarjeta(x));
+  }
+  lista("personas", v.personas.map(p => {
+    const li = el("li");
+    li.dataset.persona = p.persona;
+    li.append(el("strong", "", `@${p.persona} (${p.nombre})`));
+    if (p.haciendo.length) li.append(` · ${p.haciendo.join(", ")}`);
+    li.append(p.activos ? ` · ${p.activos} activo${p.activos === 1 ? "" : "s"}` : " · sin sesión");
+    if (p.ultima_senal) { li.append(" · última señal "); li.append(edad(p.ultima_senal, v.umbrales.presencia_s)); }
+    return li;
+  }), "Nadie en coordinacion.md.");
+  lista("novedades", v.novedades.map(n => {
+    const li = el("li");
+    li.append(el("span", "chip", n.tipo === "decision" ? "decisión" : n.tipo), `«${n.resumen}»`);
+    if (n.autor) li.append(` (${n.autor})`);
+    li.append(" · ", edad(n.observado_en));
+    return li;
+  }), "Ninguna.");
+  lista("sin-tarea", v.sin_tarea.map(s => {
+    const li = el("li");
+    li.append(el("strong", "", `@${s.persona}`), ` · ${s.que} · `, edad(s.observado_en));
+    return li;
+  }), "Nada.");
+  refrescarEdades();
+}
+
+function recibir(cuerpo, modo) {
+  ultima = { vista: cuerpo.vista, servido_en: cuerpo.servido_en, recibido: Date.now() };
+  if (cuerpo.vista) pintar(cuerpo.vista);
+  const h = new Date().toLocaleTimeString();
+  const c = document.getElementById("estado-conexion");
+  c.textContent = `${modo} · actualizado ${h}`;
+  c.dataset.actualizado = String(Date.now());
+}
+
+function aviso(texto) {
+  const a = document.getElementById("aviso");
+  a.textContent = texto;
+  a.style.display = texto ? "block" : "none";
+}
+
+async function stream() {
+  const r = await fetch("/v1/stream", { headers: { Authorization: "Bearer " + token }, cache: "no-store" });
+  if (r.status === 401) { aviso("El token no es el del relay: abre la URL que imprime «hk-os relay»."); return "token"; }
+  if (!r.ok || !r.body) throw new Error("HTTP " + r.status);
+  if (sondeo) { clearInterval(sondeo); sondeo = null; }
+  aviso("");
+  const lector = r.body.getReader();
+  const dec = new TextDecoder();
+  let resto = "";
+  for (;;) {
+    const { value, done } = await lector.read();
+    if (done) throw new Error("stream cerrado");
+    resto += dec.decode(value, { stream: true });
+    let i;
+    while ((i = resto.indexOf("\n\n")) >= 0) {
+      const bloque = resto.slice(0, i);
+      resto = resto.slice(i + 2);
+      let evento = "", datos = "";
+      for (const l of bloque.split("\n")) {
+        if (l.startsWith("event: ")) evento = l.slice(7);
+        else if (l.startsWith("data: ")) datos += l.slice(6);
+      }
+      if (evento === "vista") recibir(JSON.parse(datos), "en vivo");
+    }
+  }
+}
+
+// Si el stream se corta (proxy, red del evento: P15), sondeo de /v1/vista con ETag cada 3 s y otro intento de
+// stream cada 30 s.
+async function sondear() {
+  try {
+    const h = { Authorization: "Bearer " + token };
+    if (etiqueta) h["If-None-Match"] = etiqueta;
+    const r = await fetch("/v1/vista", { headers: h, cache: "no-store" });
+    if (r.status === 401) { aviso("El token no es el del relay."); return; }
+    if (r.status === 200) { etiqueta = r.headers.get("ETag"); recibir(await r.json(), "sondeo cada 3 s"); }
+    else if (r.status === 304 && ultima) {
+      document.getElementById("estado-conexion").textContent = `sondeo cada 3 s · sin cambios ${new Date().toLocaleTimeString()}`;
+    }
+    aviso("");
+  } catch (e) {
+    aviso("El relay no responde. Se reintenta solo.");
+  }
+}
+
+async function arrancar() {
+  for (;;) {
+    try {
+      if (await stream() === "token") return;
+    } catch (e) {
+      if (!sondeo) sondeo = setInterval(sondear, 3000);
+      await sondear();
+      await new Promise(r => setTimeout(r, 30000));
+      continue;
+    }
+  }
+}
+
+if (!token) {
+  aviso("Falta el token del equipo: abre la URL que imprime «hk-os relay» (termina en #t=…).");
+  document.getElementById("estado-conexion").textContent = "Sin token.";
+} else {
+  setInterval(refrescarEdades, 5000);
+  arrancar();
+}
+</script>
+</body>
+</html>

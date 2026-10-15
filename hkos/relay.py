@@ -4,7 +4,8 @@
 # ///
 """Relay del Hackathon OS (M8d, api.md §3): recibe eventos y latidos de los demonios, calcula estado.json con
 modelo.py y lo sirve por GET /v1/estado y por SSE. Desde M8e, sondea GitHub (las tareas `hk-tarea`, api.md §8) con
-el gh de quien coordina. Solo biblioteca estándar (ADR-0005).
+el gh de quien coordina. Desde M8f, sirve la web de solo lectura (`GET /`), la vista de proyeccion.py (`GET /v1/vista`
+y el evento SSE `vista`) y las novedades (decisiones y criterios de origin/main). Solo biblioteca estándar (ADR-0005).
 
 Uso normal: `hk-os relay` (cli.py). Directo, para pruebas:
   uv run --no-project hkos/relay.py --dir <carpeta> --equipo <coordinacion.md> [--ip 127.0.0.1] [--puerto 7777]
@@ -15,8 +16,10 @@ import hmac
 import ipaddress
 import json
 import os
+import re
 import secrets
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -25,6 +28,7 @@ from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import github  # noqa: E402
+import proyeccion  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from estados import fecha, iso  # noqa: E402
 from modelo import calcular  # noqa: E402
@@ -36,6 +40,8 @@ RECALCULO_MIN_S = 0.25          # como mucho 4 recálculos por segundo
 RECALCULO_RELOJ_S = 5           # y uno cada 5 s, para que la presencia caduque sola (R-18)
 PING_S = 20
 SONDEO_GITHUB_S = 30            # api.md §8
+NOVEDADES_S = 60                # git fetch y lectura de decisiones y criterios (M8f)
+WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "index.html")
 TAILNET = ipaddress.ip_network("100.64.0.0/10")
 PRIVADAS = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
 
@@ -72,12 +78,93 @@ def iso_us(t):
     return iso(datetime.fromtimestamp(t, timezone.utc))
 
 
+def _git(repo, *args, timeout=30):
+    try:
+        r = subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", timeout=timeout)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
+DECISION = re.compile(r"^- (\d{4}-\d\d-\d\d \d\d:\d\d) ([+-]\d{4}) · \[#(\d+)\]\([^)]*\) · @([\w-]+) ↔ @([\w-]+) · "
+                      r"nivel: [^·]*· (.+)$")
+CRITERIO = re.compile(r"^## (\d{4}-\d\d-\d\d \d\d:\d\d) · (.+)$")
+
+
+def novedades_de(decisiones, criterios, tz=None):
+    """Las entradas de decisiones.md (las escribe `buzon.sh acordar`) y de criterios.md (`/hack-note`) como
+    `novedades` de estado.json. Su texto es dato: el resumen va recortado y las vistas lo entrecomillan con su autor."""
+    tz = tz or datetime.now().astimezone().tzinfo
+    salida = []
+    for linea in decisiones.splitlines():
+        m = DECISION.match(linea.strip())
+        if m:
+            cuando = datetime.strptime(f"{m.group(1)} {m.group(2)}", "%Y-%m-%d %H:%M %z")
+            salida.append({"tipo": "decision", "resumen": f"#{m.group(3)}: {m.group(6).strip()}"[:200],
+                           "autor": f"@{m.group(4)} ↔ @{m.group(5)}", "observado_en": iso(cuando)})
+    nota = None
+    for linea in criterios.splitlines() + ["## fin"]:
+        linea = linea.strip()
+        if linea.startswith("## "):
+            if nota:
+                salida.append(nota)
+            m = CRITERIO.match(linea)
+            nota = None
+            if m:
+                cuando = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M").replace(tzinfo=tz)
+                nota = {"tipo": "criterio", "resumen": m.group(2)[:200], "observado_en": iso(cuando)}
+        elif nota and linea.startswith("- Qué dijo:"):
+            nota["resumen"] = f"{nota['resumen']}: {linea[len('- Qué dijo:'):].strip()}"[:200]
+        elif nota and linea.startswith("- Anotado por:"):
+            autor = linea[len("- Anotado por:"):].strip()
+            if autor and autor != "—":
+                nota["autor"] = autor[:60]
+    return salida
+
+
+class Novedades:
+    """Decisiones y criterios de origin/main del clon del relay (M8f), para que todos vean lo mismo (constitución IV).
+    `git fetch` cada NOVEDADES_S: si falla (red, refs bloqueadas por un `git pull` de la persona), en silencio, y se
+    reintenta en la vuelta siguiente. Solo si dura más de `umbral_s` se refleja en fuentes.git."""
+
+    def __init__(self, repo, umbral_s=300, reloj=time.time, git=_git):
+        self.repo, self.umbral_s, self.reloj, self.git = repo, umbral_s, reloj, git
+        self.lista, self.ultimo_ok, self.fallando = [], None, False
+
+    def _leer(self, ruta):
+        for ref in ("refs/remotes/origin/main", "HEAD"):
+            if self.git(self.repo, "rev-parse", "--verify", "-q", ref) is not None:
+                return self.git(self.repo, "show", f"{ref}:{ruta}") or ""
+        return ""
+
+    def sondear(self):
+        """True si cambió la lista o el estado del fetch."""
+        antes = (self.lista, self.fallando)
+        if self.git(self.repo, "fetch", "--quiet", "origin", timeout=20) is None:
+            self.fallando = True
+        else:
+            self.fallando, self.ultimo_ok = False, self.reloj()
+        if self.ultimo_ok is None:
+            self.ultimo_ok = self.reloj()        # sin un fetch bueno aún, el plazo cuenta desde el arranque
+        self.lista = novedades_de(self._leer(".hackathon/decisiones.md"), self._leer(".hackathon/criterios.md"))
+        return (self.lista, self.fallando) != antes
+
+    def fuente(self):
+        """El dato de fuentes.git si el fetch lleva fallando más de umbral_s; None si no."""
+        if self.fallando and self.reloj() - self.ultimo_ok > self.umbral_s:
+            return {"valor": "sin fetch", "fuente": "git", "observado_en": iso_us(self.ultimo_ok)}
+        return None
+
+
 class Relay:
     """El estado del relay, sin HTTP. `ahora` se puede inyectar en las pruebas."""
 
-    def __init__(self, carpeta, personas, ahora=ahora_iso, sondeo=None, umbral_parada_s=1200):
+    def __init__(self, carpeta, personas, ahora=ahora_iso, sondeo=None, umbral_parada_s=1200, novedades=None,
+                 umbral_viejo_s=300):
         self.carpeta, self.personas, self.ahora = carpeta, personas, ahora
         self.sondeo, self.umbral_parada_s = sondeo, umbral_parada_s
+        self.novedades, self.umbral_viejo_s = novedades, umbral_viejo_s
         os.makedirs(carpeta, exist_ok=True)
         self.esquema = Esquema("eventos.schema.json")
         self.token = self._token()
@@ -89,6 +176,7 @@ class Relay:
         self.cambio = threading.Condition(self.lock)
         self.sucio = threading.Event()
         self.version, self.estado, self.texto, self._huella = 0, None, b"", None
+        self.vista = None
         self._cargar()
         if self.sondeo:                           # sin GitHub al arrancar, el último estado conocido (constitución VIII)
             try:
@@ -225,7 +313,14 @@ class Relay:
         de_git = [e["ts"] for e in eventos if e.get("fuente") == "git"]
         if de_git:
             fuentes["git"] = {"valor": "ok", "fuente": "git", "observado_en": max(de_git, key=fecha)}
-        estado = calcular(tareas, issues, eventos, self.personas, ahora, self.umbral_parada_s, fuentes, disc)
+        novedades = None
+        if self.novedades:
+            with self.lock:
+                novedades = list(self.novedades.lista)
+                sin_fetch = self.novedades.fuente()
+            if sin_fetch:
+                fuentes["git"] = sin_fetch
+        estado = calcular(tareas, issues, eventos, self.personas, ahora, self.umbral_parada_s, fuentes, disc, novedades)
         for p, c in sorted(corruptas.items()):
             estado["discrepancias"].append({"tipo": "linea_corrupta", "persona": p, "veces": c["veces"],
                                             "primera_vez": c["primera_vez"], "ultima_vez": c.get("ultima_vez", c["primera_vez"]),
@@ -239,6 +334,7 @@ class Relay:
                 self.version += 1
                 self.estado = estado
                 self.texto = json.dumps(estado, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+                self.vista = proyeccion.vista(estado, umbral_viejo_s=self.umbral_viejo_s)
                 self.cambio.notify_all()
 
     def bucle(self, parar):
@@ -272,9 +368,27 @@ class Relay:
                 print(f"relay: error al sondear GitHub: {ex!r}", file=sys.stderr, flush=True)
             parar.wait(SONDEO_GITHUB_S)
 
+    def bucle_novedades(self, parar):
+        """Decisiones y criterios de origin/main cada NOVEDADES_S (M8f)."""
+        while not parar.is_set():
+            try:
+                if self.novedades.sondear():
+                    self.sucio.set()
+            except Exception as ex:  # las novedades no tumban el relay
+                print(f"relay: error al leer las novedades: {ex!r}", file=sys.stderr, flush=True)
+            parar.wait(NOVEDADES_S)
+
     def actual(self):
         with self.lock:
             return self.version, self.texto
+
+    def vista_servida(self):
+        """(versión, cuerpo de /v1/vista): la vista y la hora del relay al servirla, con la que la web calcula «hace X»
+        sin fiarse del reloj del dispositivo."""
+        with self.lock:
+            version, v = self.version, self.vista
+        cuerpo = proyeccion.con_hora(v, self.ahora())
+        return version, json.dumps(cuerpo, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
 
 
 def manejador(relay):
@@ -333,10 +447,43 @@ def manejador(relay):
                     err["indice"] = ex.indice
                 self._json(400, err)
 
+        def _web(self):
+            """La web de solo lectura (api.md §3): HTML estático, sin datos. El token va en el fragmento (#t=…), que
+            el navegador no envía; los datos se piden con él a /v1/stream y /v1/vista."""
+            try:
+                with open(WEB, "rb") as f:
+                    datos = f.read()
+            except OSError:
+                self._json(404, {"error": "web"})
+                return
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Security-Policy", "default-src 'none'; script-src 'unsafe-inline'; "
+                             "style-src 'unsafe-inline'; connect-src 'self'")
+            self.send_header("Content-Length", str(len(datos)))
+            self.end_headers()
+            self.wfile.write(datos)
+
         def do_GET(self):
+            if self.path == "/" or self.path.startswith("/?"):
+                self._web()
+                return
             if not self._autorizado():
                 return
-            if self.path == "/v1/estado":
+            if self.path == "/v1/vista":
+                version, texto = relay.vista_servida()
+                etiqueta = f'"{version}"'
+                if self.headers.get("If-None-Match") == etiqueta:
+                    self._json(304, cabeceras=[("ETag", etiqueta)])
+                    return
+                self.send_response(200)
+                self.send_header("Content-Type", "application/json; charset=utf-8")
+                self.send_header("ETag", etiqueta)
+                self.send_header("Content-Length", str(len(texto)))
+                self.end_headers()
+                self.wfile.write(texto)
+            elif self.path == "/v1/estado":
                 version, texto = relay.actual()
                 etiqueta = f'"{version}"'
                 if self.headers.get("If-None-Match") == etiqueta:
@@ -367,6 +514,8 @@ def manejador(relay):
                         version, texto = relay.version, relay.texto
                     if version != enviada:
                         self.wfile.write(b"id: %d\nevent: estado\ndata: " % version + texto + b"\n\n")
+                        _, vista = relay.vista_servida()
+                        self.wfile.write(b"id: %d\nevent: vista\ndata: " % version + vista + b"\n\n")
                         enviada = version
                     else:
                         self.wfile.write(b"event: ping\ndata: \n\n")
@@ -402,18 +551,27 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
         umbral = 60 * float(conf(os_md, "umbral_parada_min") or 20) if os_md else 1200
     except ValueError:
         umbral = 1200
-    relay = Relay(carpeta, personas, sondeo=sondeo, umbral_parada_s=umbral)
+    try:
+        viejo = float(conf(os_md, "umbral_viejo_s") or 300) if os_md else 300
+    except ValueError:
+        viejo = 300
+    repo = os.path.dirname(os.path.dirname(os.path.abspath(equipo_md)))
+    novedades = Novedades(repo, viejo) if _git(repo, "rev-parse", "--git-dir") is not None else None
+    relay = Relay(carpeta, personas, sondeo=sondeo, umbral_parada_s=umbral, novedades=novedades, umbral_viejo_s=viejo)
     servidor = Servidor((ip, puerto), manejador(relay))
     parar = threading.Event()
     threading.Thread(target=relay.bucle, args=(parar,), daemon=True).start()
     if sondeo:
         threading.Thread(target=relay.bucle_github, args=(parar,), daemon=True).start()
         aviso(f"Sondeo de GitHub: {sondeo.c.repo}, cada {SONDEO_GITHUB_S} s.")
+    if novedades:
+        threading.Thread(target=relay.bucle_novedades, args=(parar,), daemon=True).start()
     url = f"http://{ip}:{servidor.server_address[1]}"
     aviso(f"Relay del Hackathon OS en {url} ({len(personas)} personas en coordinacion.md, "
           f"{len(relay.eventos)} eventos guardados).")
     aviso(f"Token: {relay.token}")
     aviso(f"Cada persona, en su clon: hk-os unir {url} {relay.token}")
+    aviso(f"Web (solo lectura, desde un navegador de la misma red): {url}/#t={relay.token}")
     try:
         servidor.serve_forever(poll_interval=0.5)
     except KeyboardInterrupt:

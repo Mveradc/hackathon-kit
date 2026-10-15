@@ -244,6 +244,15 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Pasada real del orquestador:** T19 y T14, hasta `publicada`. El orquestador no subió por un merge de la persona, como manda su regla.
 - **Resultados** en `evals/coordinacion/prueba.md` («M8e»): los seis criterios cumplidos. Gasto: 1,84 USD, más 48 escrituras en el sandbox.
 
+## M8f — Proyección (2026-10-15)
+- **K-60:** `hkos/proyeccion.py`, el único código de las tres vistas: `vista`, `markdown` (`estado-equipo.md`), `firmas` por sección sin horas y `tarea`. El demonio pide `GET /v1/estado` con ETag cada 3 s y escribe `estado.json` y el md; `agente.vivo` lleva la hora.
+- **K-61:** la web (`hkos/web/index.html`), sin dependencias: pinta la vista que sirve el relay (`GET /v1/vista` y el evento SSE `vista`), con «hace X» a la hora del relay; el token va en el fragmento.
+- **K-62:** `scripts/os/delta.sh`: el bloque «Equipo» de `sesion.sh` (≤ 2.500, en el orden de R-24) y los deltas de `UserPromptSubmit` (≤ 600, con las líneas nuevas delante; solo rojas pasados 6.000). Relanza el demonio si no da señales (Pendiente de M8d).
+- **K-63:** el MCP (`estado`, `tarea`, `colisiones`): `.mcp.json` con un envoltorio bash que, con el OS apagado o sin uv, responde sin herramientas. Se lanza con un alias de git, porque en Windows el `bash` del PATH puede ser el de WSL. El orquestador lo tiene en su `tools:`.
+- **Además:** novedades de `decisiones.md` y `criterios.md` de `origin/main` en el relay, y el ruido de `.hackathon/` y `.claude/worktrees/` fuera de `sin_tarea` (Pendiente de M8e).
+- **Decisiones del usuario:** vista calculada en Python; firmas de tres secciones (con la compactación y la dependencia parada); 2.500 solo para el bloque del OS; igualdad en G1–G4 y un estado sintético, con G5 y G6 como criterio 7 de M8g; MCP con tres herramientas (`reclamar` y `reservar`, a M8g).
+- **Resultados** en `evals/coordinacion/prueba.md` («M8f»): los cinco criterios cumplidos. La web, vista por el usuario desde su portátil por ZeroTier, refleja un cambio en 2–3 s. Gasto: 0,077 USD; sin escrituras en GitHub.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

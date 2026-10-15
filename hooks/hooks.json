@@ -1,5 +1,5 @@
 {
-  "description": "Coordinación entre agentes (opcional): reinyecta estado y buzón al empezar o reanudar la sesión. Ningún agente publica «hk confirmo». Orquestador (M7): no edita código; compuerta de evidencias de los workers. Hackathon OS (M8, opcional): emite.sh y arbol.sh escriben eventos locales solo con .hackathon/os.md activo.",
+  "description": "Coordinación entre agentes (opcional): reinyecta estado y buzón al empezar o reanudar la sesión. Ningún agente publica «hk confirmo». Orquestador (M7): no edita código; compuerta de evidencias de los workers. Hackathon OS (M8, opcional): emite.sh y arbol.sh escriben eventos locales y delta.sh inyecta el estado del equipo, solo con .hackathon/os.md activo.",
   "hooks": {
     "PreToolUse": [
       {
@@ -71,6 +71,13 @@
         "hooks": [
           { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/coordinacion/sesion.sh\"", "timeout": 15 },
           { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/os/emite.sh\"", "timeout": 10, "async": true }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/os/delta.sh\"", "timeout": 10 }
         ]
       }
     ],

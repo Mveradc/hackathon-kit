@@ -5,6 +5,7 @@ Uso: uv run --no-project --with "jsonschema[format-nongpl]" -m unittest discover
 import json
 import os
 import shutil
+import subprocess
 import sys
 import tempfile
 import threading
@@ -224,11 +225,124 @@ class Http(Base):
                 campos[k] = v
         m = mensaje()
         self.assertEqual((m["event"], m["id"]), ("estado", str(self.relay.version)))
+        # M8f: tras cada `estado`, la `vista` de la misma versión, con la hora del relay al servirla.
+        m = mensaje()
+        self.assertEqual((m["event"], m["id"]), ("vista", str(self.relay.version)))
+        self.assertEqual(set(json.loads(m["data"])), {"servido_en", "vista"})
         self.pide("/v1/eventos", {"eventos": [evento(1, tipo="sesion.inicio", ts=relay_mod.ahora_iso())]})
         self.relay.recalcular()
         m = mensaje()
         self.assertEqual(m["event"], "estado")
         self.assertEqual(json.loads(m["data"])["personas"][1]["actores"][0]["sesion"], "s1")
+        m = mensaje()
+        self.assertEqual(m["event"], "vista")
+        self.assertEqual(json.loads(m["data"])["vista"]["personas"][1]["activos"], 1)
+
+    def test_web_sin_token_y_datos_con_token(self):
+        """M8f: `GET /` es el HTML estático, sin datos y sin token (api.md §3); /v1/vista exige el token y usa ETag."""
+        codigo, cuerpo, h = self.pide("/", token=False)
+        self.assertEqual(codigo, 200)
+        self.assertTrue(h["Content-Type"].startswith("text/html"))
+        self.assertIn(b"/v1/stream", cuerpo)
+        self.assertNotIn(self.relay.token.encode(), cuerpo)
+        self.assertEqual(self.pide("/v1/vista", token=False)[0], 401)
+        codigo, cuerpo, h = self.pide("/v1/vista")
+        self.assertEqual(codigo, 200)
+        self.assertEqual(json.loads(cuerpo)["vista"]["v"], 1)
+        self.assertEqual(self.pide("/v1/vista", cabeceras={"If-None-Match": h["ETag"]})[0], 304)
+        self.assertEqual(h["ETag"], self.pide("/v1/estado")[2]["ETag"])
+
+
+class Novedades(unittest.TestCase):
+    """M8f: decisiones y criterios de origin/main del clon del relay; el fetch que falla no hace ruido."""
+    DECISIONES = ("# Decisiones\n\n- 2026-11-20 11:05 +0100 · [#12](https://github.com/x/y/issues/12) · @persona-a ↔ "
+                  "@persona-b · nivel: 2 · La ficha devuelve `moneda` en ISO 4217\n")
+    CRITERIOS = ("# Criterios del jurado\n\n<!-- Formato de cada nota:\n## <AAAA-MM-DD HH:MM> · <quién lo dijo> -->\n\n"
+                 "## 2026-11-20 10:30 · Lucía (jurado)\n- Dónde: apertura\n- Qué dijo: «El pitch son cinco minutos»\n"
+                 "- Fuerza: dato\n- Anotado por: Persona B\n")
+
+    def test_parseo(self):
+        from datetime import timezone as tz
+        n = relay_mod.novedades_de(self.DECISIONES, self.CRITERIOS, tz.utc)
+        self.assertEqual(n, [
+            {"tipo": "decision", "resumen": "#12: La ficha devuelve `moneda` en ISO 4217", "autor": "@persona-a ↔ @persona-b",
+             "observado_en": "2026-11-20T10:05:00Z"},
+            {"tipo": "criterio", "resumen": "Lucía (jurado): «El pitch son cinco minutos»", "autor": "Persona B",
+             "observado_en": "2026-11-20T10:30:00Z"}])
+
+    def git(self, cmd, *args):
+        return subprocess.run(["git", *args], cwd=cmd, capture_output=True, text=True, check=True).stdout
+
+    def repos(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        remoto, uno, otro = (os.path.join(d, n) for n in ("remoto.git", "relay", "persona"))
+        self.git(d, "init", "-q", "--bare", "-b", "main", remoto)
+        for r in (uno, otro):
+            self.git(d, "clone", "-q", remoto, r)
+            self.git(r, "config", "user.email", "x@y")
+            self.git(r, "config", "user.name", "x")
+        os.makedirs(os.path.join(otro, ".hackathon"))
+        with open(os.path.join(otro, ".hackathon", "decisiones.md"), "w", encoding="utf-8", newline="\n") as f:
+            f.write(self.DECISIONES)
+        self.git(otro, "add", ".")
+        self.git(otro, "commit", "-qm", "Acuerdo #12")
+        self.git(otro, "push", "-q", "origin", "HEAD:main")
+        return remoto, uno, otro
+
+    def test_fetch_y_lectura_de_origin(self):
+        remoto, repo, _ = self.repos()
+        reloj = Reloj(1000.0)
+        n = relay_mod.Novedades(repo, 300, reloj=reloj)
+        self.assertTrue(n.sondear())
+        self.assertEqual([x["tipo"] for x in n.lista], ["decision"])
+        self.assertIsNone(n.fuente())
+        self.assertFalse(n.sondear())                 # sin cambios: nada nuevo
+
+    def test_fetch_que_falla_es_silencioso_hasta_el_umbral(self):
+        remoto, repo, otro = self.repos()
+        reloj = Reloj(1000.0)
+        n = relay_mod.Novedades(repo, 300, reloj=reloj)
+        n.sondear()
+        lista = list(n.lista)
+        # Un commit nuevo en el remoto y la ref de origin bloqueada (un `git pull` de la persona a la vez): el fetch
+        # no puede actualizarla y falla.
+        with open(os.path.join(otro, ".hackathon", "decisiones.md"), "a", encoding="utf-8", newline="\n") as f:
+            f.write(self.DECISIONES.splitlines()[-1].replace("#12", "#13") + "\n")
+        self.git(otro, "commit", "-qam", "Acuerdo #13")
+        self.git(otro, "push", "-q", "origin", "HEAD:main")
+        bloqueo = os.path.join(repo, ".git", "refs", "remotes", "origin", "main.lock")
+        os.makedirs(os.path.dirname(bloqueo), exist_ok=True)
+        open(bloqueo, "w").close()
+        self.addCleanup(lambda: os.path.exists(bloqueo) and os.remove(bloqueo))
+        reloj.ts = 1200.0
+        self.assertTrue(n.sondear())                  # cambia el estado del fetch (para recalcular), no la lista
+        self.assertTrue(n.fallando)
+        self.assertEqual(n.lista, lista)              # se queda con lo último
+        self.assertIsNone(n.fuente())                 # 200 s < 300: en silencio
+        # Después, sin red (el remoto no está): sigue fallando y, pasado el umbral, se ve en fuentes.git.
+        os.remove(bloqueo)
+        self.git(repo, "remote", "set-url", "origin", os.path.join(remoto, "no-existe"))
+        reloj.ts = 1301.0
+        n.sondear()
+        self.assertEqual(n.fuente(), {"valor": "sin fetch", "fuente": "git", "observado_en": relay_mod.iso_us(1000.0)})
+        self.git(repo, "remote", "set-url", "origin", remoto)
+        reloj.ts = 1360.0
+        n.sondear()                                   # se reintenta en la vuelta siguiente y se recupera
+        self.assertIsNone(n.fuente())
+        self.assertEqual(len(n.lista), 2)
+
+    def test_estado_lleva_novedades_y_fuente_git(self):
+        remoto, repo, _ = self.repos()
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        n = relay_mod.Novedades(repo, 300, reloj=Reloj(1000.0))
+        n.sondear()
+        r = relay_mod.Relay(d, Base.PERSONAS, ahora=Reloj("2026-11-20T12:00:00.000000Z"), novedades=n)
+        r.recalcular()
+        self.assertEqual(r.estado["novedades"][0]["resumen"][:4], "#12:")
+        self.assertIsNone(Esquema("estado.schema.json").error(r.estado))
+        self.assertEqual(r.vista["novedades"][0]["tipo"], "decision")
 
 
 if __name__ == "__main__":

@@ -12,6 +12,9 @@ from estados import ATRIBUIBLES, derivar, fecha, iso, ordenar
 TTL_PRESENCIA_S = 90                       # R-18
 SIN_TAREA_ATRIBUIBLE = {"edicion", "arbol", "commit"}   # commit desde M8e (diseno.md §5.1, regla 9)
 PAPELES_ACTOR = {"principal", "orquestador", "worker", "revisor", "humano"}
+# Rutas que no son trabajo de una tarea (M8f, ruido de M8e): el estado del orquestador y los informes en .hackathon/,
+# y los worktrees de los workers y del revisor, que `arbol` de la copia principal ve como carpetas sin seguimiento.
+RUIDO = (".hackathon/", ".claude/worktrees/")
 # Eventos que no sacan de reclamada/en_curso/parada a una tarea que ya está en uno de esos estados (reglas 1, 2 y 7):
 # con ellos, una tarea atribuible lo sigue siendo. Los demás (fusion.*, veredictos) y los push pueden sacarla.
 MENORES = {"edicion", "arbol", "latido", "encargo.lanzado", "worker.inicio", "worker.fin", "compuerta.ok", "compuerta.ko",
@@ -24,11 +27,17 @@ def _hasta(issues, ts):
     return {k: dict(v, acciones=[a for a in v.get("acciones", []) if fecha(a["ts"]) <= t]) for k, v in issues.items()}
 
 
+def _ruido(e):
+    """Un edicion o arbol cuyas rutas son todas ruido no es actividad sin tarea: no va a sin_tarea (M8f)."""
+    rutas = e.get("rutas", [])
+    return e["tipo"] in ("edicion", "arbol") and bool(rutas) and all(r.replace("\\", "/").startswith(RUIDO) for r in rutas)
+
+
 def _que(e):
     if e["tipo"] == "commit":
         rama = e.get("datos", {}).get("rama")
         return f"commit: {rama}" if rama else "commit"
-    rutas = e.get("rutas", [])
+    rutas = [r for r in e.get("rutas", []) if not r.replace("\\", "/").startswith(RUIDO)]
     texto = ", ".join(rutas[:3]) + (f" (+{len(rutas) - 3})" if len(rutas) > 3 else "")
     return f"{e['tipo']}: {texto}" if texto else e["tipo"]
 
@@ -104,7 +113,7 @@ def atribuir(tareas, issues, eventos, equipo):
         elif candidatas:
             disc.append({"tipo": "atribucion_ambigua", "persona": persona, "ts": e["ts"],
                          "detalle": f"{_que(e)} sin tarea; {persona} tiene varias abiertas: {', '.join(candidatas)}"})
-        else:
+        elif not _ruido(e):
             sin_tarea.append({"persona": persona, "que": _que(e), "observado_en": e["ts"]})
         salida.append(e)
         indice.anade(e)
@@ -163,11 +172,13 @@ def _personas(personas, eventos, ahora):
     return salida
 
 
-def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, fuentes=None, discrepancias=()):
+def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, fuentes=None, discrepancias=(),
+             novedades=None):
     """estado.json a `ahora` con los eventos e issues observados hasta entonces.
 
     tareas: [{id, titulo, bloque?, dueno, depende_de}]; issues: {ID: {creado_en, numero?, acciones}};
-    personas: [{persona, nombre}] de coordinacion.md (el equipo); fuentes: {relay|github|git: dato}; discrepancias: las de GitHub, sin agrupar (M8e).
+    personas: [{persona, nombre}] de coordinacion.md (el equipo); fuentes: {relay|github|git: dato}; discrepancias: las de GitHub, sin agrupar (M8e);
+    novedades: decisiones y criterios de origin/main (M8f, las lee el relay), hasta `ahora`.
     """
     t_ahora = fecha(ahora)
     equipo = {p["persona"] for p in personas}
@@ -218,6 +229,9 @@ def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, fue
     for s in sin_tarea:
         ultimo_sin_tarea[(s["persona"], s["que"])] = s
 
-    return {"v": 1, "generado_en": iso(t_ahora), "fuentes": dict(fuentes or {}),
-            "personas": _personas(personas, eventos, ahora), "tareas": salida_tareas,
-            "sin_tarea": list(ultimo_sin_tarea.values()), "discrepancias": _agrupar(disc), "colisiones": []}
+    estado = {"v": 1, "generado_en": iso(t_ahora), "fuentes": dict(fuentes or {}),
+              "personas": _personas(personas, eventos, ahora), "tareas": salida_tareas,
+              "sin_tarea": list(ultimo_sin_tarea.values()), "discrepancias": _agrupar(disc), "colisiones": []}
+    if novedades is not None:
+        estado["novedades"] = [n for n in novedades if fecha(n["observado_en"]) <= t_ahora]
+    return estado

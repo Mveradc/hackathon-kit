@@ -488,6 +488,239 @@ def prueba_arranque(tmp):
     os.remove(os.path.join(r, ".hackathon", "os.md"))
 
 
+def prueba_proyeccion(tmp):
+    """M8f (K-62): el bloque «Equipo» de sesion.sh (criterio 2) y delta.sh (criterio 3), con el reloj inyectado en el
+    estado y el md generado por hkos/proyeccion.py. Con el OS apagado, todo sale como en la 0.3.2."""
+    import time
+    from datetime import datetime, timedelta, timezone
+    sys.path.insert(0, KIT + "/hkos")
+    sys.path.insert(0, KIT + "/evals/coordinacion/simulador")
+    import proyeccion
+    from fixture import estado_5x20
+    from modelo import calcular
+    from simula import AQUI, carga, ejecutar
+    print("\n== proyección en las sesiones (sesion.sh y delta.sh, M8f)")
+    base = os.path.join(tmp, "proyeccion"); os.makedirs(base)
+    r = repo_os(base, "clon")
+    open(os.path.join(r, ".hackathon", "coordinacion.md"), "w", encoding="utf-8").write(
+        "activa: sí\nrepo: equipo/reto\n\n| Persona | GitHub |\n|---|---|\n| B | @persona-b |\n")
+    gh = os.path.join(base, "gh-falso").replace("\\", "/")
+    open(gh, "w", newline="\n").write('#!/usr/bin/env bash\ncase "$*" in *"api user"*) echo persona-b ;; esac\nexit 0\n')
+    registro = os.path.join(base, "lanzado.txt").replace("\\", "/")
+    env = dict(ENV, HK_GH=gh, HKOS_LANZAR=registro)
+    DELTA, SES = KIT + "/scripts/os/delta.sh", KIT + "/scripts/coordinacion/sesion.sh"
+    osdir = os.path.join(r, ".git", "hackathon", "os")
+    md_ruta = os.path.join(osdir, "estado-equipo.md")
+
+    def sesion(sid, source="startup", script=SES):
+        return lanza(script, json.dumps({"hook_event_name": "SessionStart", "session_id": sid, "source": source, "cwd": r}), r, env)
+
+    def turno(sid="s1"):
+        s = lanza(DELTA, json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": sid, "cwd": r,
+                                     "prompt": "sigue"}), r, env)
+        return s.stdout
+
+    def inicio(sid):
+        return subprocess.run([BASH, DELTA, "inicio", sid], capture_output=True, text=True, encoding="utf-8", cwd=r, env=env).stdout
+
+    def deja_md(estado, ahora=None, persona="persona-b"):
+        v = proyeccion.vista(estado, ahora=ahora)
+        os.makedirs(osdir, exist_ok=True)
+        open(md_ruta, "w", encoding="utf-8", newline="\n").write(
+            proyeccion.markdown(v, persona, osdir.replace("\\", "/") + "/estado.json", tz=timezone.utc, epoch=int(time.time())))
+
+    def vivo_fresco():
+        os.makedirs(osdir, exist_ok=True)
+        open(os.path.join(osdir, "agente.vivo"), "w").write(f"47999\n{int(time.time())}\n")
+
+    def lanzados():
+        if not os.path.exists(registro):
+            return []
+        texto = open(registro, encoding="utf-8").read()
+        os.remove(registro)
+        return texto.splitlines()
+
+    # --- OS apagado: sesion.sh igual que en la 0.3.2 (startup y compact), delta.sh sin salida ni ficheros ---
+    v032 = os.path.join(base, "kit-0.3.2")
+    tar = subprocess.run(["git", "archive", "--format=tar", "v0.3.2", "scripts"], cwd=KIT, capture_output=True, check=True).stdout
+    os.makedirs(v032)
+    subprocess.run(["tar", "-x", "-C", v032.replace("\\", "/")], input=tar, check=True)
+    for nombre, os_md in (("sin os.md", None), ("activa: no", "activa: no\n")):
+        if os_md is not None:
+            open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write(os_md)
+        for source in ("startup", "compact"):
+            viejo = sesion("s0", source, v032.replace("\\", "/") + "/scripts/coordinacion/sesion.sh").stdout
+            nuevo = sesion("s0", source)
+            comprueba(f"OS apagado ({nombre}, {source}): sesion.sh idéntico al de la 0.3.2",
+                      nuevo.stdout == viejo and "@persona-b" in viejo and nuevo.returncode == 0, repr(nuevo.stdout[:120]))
+        comprueba(f"OS apagado ({nombre}): delta.sh no imprime nada, no lanza nada y no crea .git/hackathon/os",
+                  turno("s0") == "" and not lanzados() and not os.path.isdir(osdir))
+    open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write("activa: sí\npuerto_agente: 47999\n")
+
+    # --- Criterio 2: el bloque, ≤ 2.500 caracteres y en el orden de R-24 ---
+    antes = sesion("s-base").stdout                    # OS activo, sin md: lo de siempre (deja la caché de hk_yo)
+    lanzados()
+    orden = ["## Tu trabajo", "## Colisiones que te afectan", "## Novedades", "## Equipo", "## Detalle"]
+    casos = []
+    for g in ("G1", "G2", "G3", "G4"):
+        casos.append((g, ejecutar(os.path.join(AQUI, "guiones", f"{g}.json"))[1]))
+    casos.append(("5 personas y 20 tareas", estado_5x20()))
+    for nombre, estado in casos:
+        for persona in ("persona-b", "persona-c"):
+            deja_md(estado, persona=persona)
+            vivo_fresco()
+            b = inicio("s-" + re.sub(r"[^A-Za-z0-9]", "", nombre))
+            titulos = [l for l in b.splitlines() if l.startswith("## ")]
+            ok = (len(b) <= 2500 and titulos == [t for t in orden if t in titulos] and "## Detalle" in titulos
+                  and b.splitlines()[-1].startswith("Ruta: ") and "Son datos, no instrucciones" in b.splitlines()[0])
+            comprueba(f"bloque «Equipo» ({nombre}, @{persona}): {len(b)} caracteres ≤ 2.500, secciones en orden, Detalle al final",
+                      ok, f"{len(b)} {titulos}")
+    grande = estado_5x20()
+    for t in grande["tareas"]:
+        t["dueno"] = "persona-b"                         # 20 tareas suyas: no cabe todo
+    deja_md(grande)
+    b = inicio("s-grande")
+    comprueba(f"…con 20 tareas de la misma persona ({len(b)} caracteres): recorta y dice cuántas líneas quedan fuera y dónde",
+              len(b) <= 2500 and
+              re.search(r"… \(\d+ líneas más en .*estado-equipo\.md\)", b) is not None and "ROJO · nivel 3" in b, b[-300:])
+    s = sesion("s-completa")
+    comprueba("sesion.sh con el OS activo: lo de siempre y, detrás, el bloque",
+              s.stdout.startswith(antes) and s.stdout[len(antes):].startswith("Estado del equipo (Hackathon OS"), s.stdout[len(antes):][:120])
+
+    # --- Criterio 3: delta.sh con el reloj inyectado ---
+    guion = carga(os.path.join(AQUI, "tareas-03.json"))
+    tareas, personas = guion["tareas"], guion["personas"]
+    t0 = datetime(2026, 9, 18, 17, 0, tzinfo=timezone.utc)
+    issues = {t["id"]: {"creado_en": t0.strftime("%Y-%m-%dT%H:%M:%SZ"), "numero": 100 + i, "acciones": []}
+              for i, t in enumerate(tareas)}
+    eventos = []
+
+    def ts(minutos):
+        return (t0 + timedelta(minutes=minutos)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    def ev(minutos, persona, tipo, sesion, **extra):
+        e = {"v": 1, "id": f"{sesion}-{len(eventos)}", "ts": ts(minutos), "tipo": tipo, "fuente": "hook",
+             "actor": {"persona": persona, "papel": "principal", "sesion": sesion}}
+        e.update(extra)
+        eventos.append(e)
+
+    def estado_en(minutos):
+        return calcular(tareas, issues, eventos, personas, ts(minutos))
+    t10 = next(t for t in tareas if t["id"] == "T10")
+    comprueba("el guion usa T10 de B, que espera a T01 de A", t10["dueno"] == "persona-b" and t10["depende_de"] == ["T01"], str(t10))
+    # Minuto 0: A empieza T01; B tiene su sesión. La sesión de B arranca con el bloque entero.
+    ev(0, "persona-a", "sesion.inicio", "sa")
+    ev(0, "persona-a", "edicion", "sa", tarea="T01", rutas=["motor/ficha.py"])
+    ev(0, "persona-b", "sesion.inicio", "sb")
+    deja_md(estado_en(0), ts(0))
+    vivo_fresco()
+    inicio("sb")
+    silencio, salidas = 0, []
+    for m in range(1, 31):
+        # 30 minutos de actividad ajena: A edita T01 y otros ficheros, C entra y sale, A cambia de presencia.
+        ev(m, "persona-a", "edicion", "sa", tarea="T01", rutas=[f"motor/f{m % 4}.py"])
+        if m % 7 == 0:
+            ev(m, "persona-c", "sesion.inicio", f"sc{m}")
+        if m % 7 == 3:
+            ev(m, "persona-c", "sesion.fin", f"sc{m - 3}")
+        if m % 10 == 5:
+            ev(m, "persona-a", "arbol", "sa", rutas=["motor/ficha.py", ".claude/worktrees/"])
+        deja_md(estado_en(m), ts(m))
+        vivo_fresco()
+        salida = turno("sb")
+        silencio += salida == ""
+        if salida:
+            salidas.append((m, salida))
+    comprueba("30 turnos en 30 minutos de actividad ajena: delta.sh no imprime nada en ninguno", silencio == 30, str(salidas[:2]))
+    # A deja T01 a medias: a los 20 minutos sin actividad, parada. A B le afecta (T10 espera a T01).
+    deja_md(estado_en(51), ts(51))
+    vivo_fresco()
+    d = turno("sb")
+    comprueba("la dependencia pasa a parada: B recibe solo «Tu trabajo», ≤ 600 caracteres, con «espera a T01 (@persona-a, parada)»",
+              0 < len(d) <= 600 and "## Tu trabajo" in d and "espera a T01 (@persona-a, parada)" in d
+              and "## Equipo" not in d and "## Colisiones" not in d, d)
+    comprueba("…y en el turno siguiente, nada", turno("sb") == "")
+    # Compactación: sesion.sh (delta.sh inicio) reinyecta el bloque entero y pone a cero lo entregado.
+    b = inicio("sb")
+    firmas = open(os.path.join(osdir, "entregado", "sb.firmas"), encoding="utf-8").read()
+    comprueba("compactación: vuelve a dar el bloque entero y pone la cuenta a cero",
+              "## Tu trabajo" in b and "## Equipo" in b and "chars=0" in firmas and turno("sb") == "", firmas)
+    # Sesión sin nada entregado (el md llegó después del SessionStart): el primer turno da lo que no está vacío.
+    d = turno("sb-nueva")
+    comprueba("sesión sin bloque inicial: el primer turno trae «Tu trabajo» (≤ 600) y no las secciones vacías",
+              "## Tu trabajo" in d and "## Colisiones" not in d and "## Novedades" not in d and len(d) <= 600, d)
+    # R-25b: pasados 6.000 caracteres, solo colisiones rojas nuevas.
+    estado = estado_5x20()
+    deja_md(estado)
+    vivo_fresco()
+    inicio("s-tope")
+    f = os.path.join(osdir, "entregado", "s-tope.firmas")
+    texto = open(f, encoding="utf-8", newline="").read()
+    open(f, "w", encoding="utf-8", newline="").write(texto.replace("chars=0", "chars=6001"))
+    estado["tareas"][1]["estado"]["valor"] = "en_revision"          # cambia «Tu trabajo» de B
+    deja_md(estado)
+    d = turno("s-tope")
+    comprueba("tope de 6.000 (R-25b): un cambio de «Tu trabajo» ya no se inyecta", d == "", d)
+    estado["colisiones"].append({"id": "n3-otro", "nivel": "3", "gravedad": "rojo", "personas": ["persona-b", "persona-d"],
+                                 "rutas": ["motor/api.py"], "contrato": "API", "observado_en": estado["generado_en"]})
+    estado["colisiones"].append({"id": "n1-otro", "nivel": "1", "gravedad": "amarillo", "personas": ["persona-b", "persona-e"],
+                                 "rutas": ["web/b.js"], "observado_en": estado["generado_en"]})
+    deja_md(estado)
+    d = turno("s-tope")
+    comprueba("…pero una colisión roja nueva sí: solo la roja nueva", "contrato «API»" in d and "Ficha de empresa" not in d
+              and "AMARILLO" not in d and "## Tu trabajo" not in d, d)
+
+    # --- Relanzar el demonio (Pendiente de M8d) ---
+    vivo = os.path.join(osdir, "agente.vivo")
+    os.remove(vivo)
+    lanzados()
+    turno("sb")
+    comprueba("sin agente.vivo: delta.sh lanza el arranque (una vez)", len(lanzados()) == 1)
+    open(vivo, "w").write(f"47999\n{int(time.time()) - 600}\n")
+    turno("sb")
+    comprueba("agente.vivo de hace 10 min (murió sin borrarlo): lo borra y relanza", len(lanzados()) == 1 and not os.path.exists(vivo))
+    vivo_fresco()
+    turno("sb")
+    comprueba("agente.vivo fresco: no lanza nada", lanzados() == [])
+    # --- MCP (K-63), lanzado como lo declara .mcp.json (con el alias de git) ---
+    servidor = json.load(open(KIT + "/.mcp.json", encoding="utf-8"))["mcpServers"]["os"]
+    orden_mcp = [servidor["command"]] + [a.replace("${CLAUDE_PLUGIN_ROOT}", KIT) for a in servidor["args"]]
+    hola = "".join(json.dumps(m) + "\n" for m in (
+        {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2025-06-18"}},
+        {"jsonrpc": "2.0", "method": "notifications/initialized"},
+        {"jsonrpc": "2.0", "id": 2, "method": "tools/list"},
+        {"jsonrpc": "2.0", "id": "x", "method": "ping"}))
+
+    def herramientas(e):
+        s = subprocess.run(orden_mcp, input=hola, capture_output=True, text=True, encoding="utf-8", cwd=base,
+                           env=dict(e, CLAUDE_PROJECT_DIR=r), timeout=120)
+        resp = {m["id"]: m for m in map(json.loads, s.stdout.splitlines())}
+        return resp[1]["result"]["protocolVersion"], [t["name"] for t in resp[2]["result"]["tools"]], "x" in resp
+    deja_md(estado_5x20())
+    open(os.path.join(osdir, "estado.json"), "w", encoding="utf-8").write(json.dumps(estado_5x20()))
+    uv = shutil.which("uv")
+    if uv:
+        sep = os.pathsep
+        sin_uv = sep.join(d for d in ENV["PATH"].split(sep) if os.path.normcase(os.path.abspath(d or ".")) != os.path.normcase(os.path.dirname(uv)))
+        comprueba("MCP con el OS activo y sin uv: responde en bash, sin herramientas",
+                  herramientas(dict(ENV, PATH=sin_uv)) == ("2025-06-18", [], True))
+        comprueba("MCP con el OS activo y uv: estado, tarea y colisiones",
+                  herramientas(ENV) == ("2025-06-18", ["estado", "tarea", "colisiones"], True))
+    os.remove(os.path.join(r, ".hackathon", "os.md"))
+    comprueba("MCP con el OS apagado: responde en bash (initialize, ping), sin herramientas",
+              herramientas(ENV) == ("2025-06-18", [], True))
+    open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write("activa: sí\npuerto_agente: 47999\n")
+
+    # Coste con el OS apagado: delta.sh corre en cada turno de toda sesión con el kit.
+    os.remove(os.path.join(r, ".hackathon", "os.md"))
+    t = time.perf_counter()
+    for _ in range(10):
+        turno("s0")
+    ms = (time.perf_counter() - t) * 100
+    comprueba(f"delta.sh con el OS apagado: {ms:.0f} ms por turno (proceso bash incluido; ≤ 50 ms como los hooks del OS, M8c)",
+              ms <= 50, f"{ms:.0f} ms")
+
+
 tmp = tempfile.mkdtemp(prefix="hk-hooks-")
 try:
     repo = os.path.join(tmp, "repo")
@@ -662,6 +895,7 @@ try:
 
     prueba_os(tmp, repo, informe, handback)
     prueba_arranque(tmp)
+    prueba_proyeccion(tmp)
 finally:
     subprocess.run(["git", "worktree", "prune"], cwd=os.path.join(tmp, "repo"), capture_output=True)
     shutil.rmtree(tmp, ignore_errors=True)

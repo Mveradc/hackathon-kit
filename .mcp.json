@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "os": {
+      "command": "git",
+      "args": ["-c", "alias.hk-os-mcp=!bash \"${CLAUDE_PLUGIN_ROOT}/scripts/os/mcp.sh\"", "hk-os-mcp"]
+    }
+  }
+}

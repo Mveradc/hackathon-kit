@@ -196,5 +196,78 @@ class Envio(Base):
         self.assertEqual(b.latido()["actores"][0]["tarea"], "T05")
 
 
+class Proyeccion(Base):
+    """M8f: el demonio recibe estado.json (ETag) y escribe estado-equipo.md; agente.vivo lleva la hora."""
+
+    def md(self):
+        with open(os.path.join(self.repo, ".git", "hackathon", "os", "estado-equipo.md"), encoding="utf-8") as f:
+            return f.read()
+
+    def test_estado_md_y_etag(self):
+        self.levantar_relay()
+        a = self.agente()
+        self.escribe(crudo(1, "SessionStart", cwd=self.repo))
+        a.ciclo()                                      # envía; el relay aún no ha recalculado con el evento
+        self.relay.recalcular()
+        self.reloj.t += 3
+        a.ciclo()
+        self.assertEqual(a.estado["personas"][0]["actores"][0]["sesion"], "s1")
+        md = self.md()
+        self.assertTrue(md.startswith("<!-- hk-os v1 persona=persona-b "))
+        self.assertIn(" relay=ok ", md)
+        self.assertIn("## Tu trabajo\n", md)
+        with open(os.path.join(self.repo, ".git", "hackathon", "os", "estado.json"), encoding="utf-8") as f:
+            self.assertEqual(json.load(f), a.estado)
+        # Sin cambios en el relay: 304 y el md no se reescribe hasta MD_S.
+        os.remove(os.path.join(self.repo, ".git", "hackathon", "os", "estado-equipo.md"))
+        self.reloj.t += 3
+        a.ciclo()
+        self.assertFalse(os.path.exists(os.path.join(self.repo, ".git", "hackathon", "os", "estado-equipo.md")))
+        self.reloj.t += agente_mod.MD_S
+        a.ciclo()
+        self.assertIn("persona=persona-b", self.md())
+
+    def test_relay_caido_lo_dice_el_md(self):
+        self.levantar_relay()
+        a = self.agente()
+        a.ciclo()
+        self.assertIn(" relay=ok ", self.md())
+        self.tirar_relay()
+        self.reloj.t += 3
+        a.ciclo()
+        md = self.md()
+        self.assertIn(" relay=viejo ", md)
+        self.assertIn("> Relay sin respuesta desde ", md)
+
+    def test_agente_vivo_lleva_la_hora(self):
+        a = self.agente()
+        a.puerto = 4711
+        a.ciclo()
+        with open(a.vivo, encoding="utf-8") as f:
+            self.assertEqual(f.read(), "4711\n1000\n")
+        self.reloj.t += agente_mod.LATIDO_S
+        a.ciclo()
+        with open(a.vivo, encoding="utf-8") as f:
+            self.assertEqual(f.read(), f"4711\n{int(self.reloj.t)}\n")
+
+    def test_el_apagado_borra_agente_vivo(self):
+        """Ajuste del usuario (M8f): al apagarse por apagado_min, el demonio borra agente.vivo."""
+        with socket.socket() as s:
+            s.bind(("127.0.0.1", 0))
+            puerto = s.getsockname()[1]
+        vivo = os.path.join(self.repo, ".git", "hackathon", "os", "agente.vivo")
+        hecho = []
+        hilo = threading.Thread(target=lambda: hecho.append(agente_mod.main(
+            ["--repo", self.repo, "--persona", "persona-b", "--puerto", str(puerto), "--apagado-min", "0.02"])))
+        hilo.start()
+        hilo.join(30)
+        self.assertEqual(hecho, [0])
+        self.assertFalse(os.path.exists(vivo))
+        with open(os.path.join(self.repo, ".git", "hackathon", "os", "agente.log"), encoding="utf-8") as f:
+            log = f.read()
+        self.assertIn("arranca en 127.0.0.1", log)
+        self.assertIn("se apaga", log)
+
+
 if __name__ == "__main__":
     unittest.main()

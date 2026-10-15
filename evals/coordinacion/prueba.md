@@ -843,3 +843,47 @@ Sin modelo:
 - **Tareas de alguien de fuera de la tabla.** En la copia del criterio 5, las tareas de @hk-persona-b (que en esa tabla no está) cuentan como de un dueño sin GitHub, y la actividad del equipo con su ID contaría. Es un efecto de editar la tabla a mano, no del compilador.
 - **`unassigned`** (desasignar un issue) no lo tiene el motor (M8b). Sin criterio que lo pida.
 - **Lo que queda en el sandbox:** 28 issues `hk-tarea` de la prueba (T27 cerrada como `not_planned`, T08 cerrada), el #49 de fuera con el marcador de T01, y T25 cerrada por @hk-persona-b. No se han limpiado, porque serían más escrituras.
+
+# M8f: proyección (2026-10-15)
+
+Criterios en `docs/hackathon-os/hitos.md` («M8f»); tareas K-60 a K-63; plan aprobado en `C:/Users/mvera/.claude/plans/virtual-exploring-quiche.md` (con los cinco ajustes del usuario). Windows 11 con Git Bash. Sin escrituras en GitHub: el relay de la prueba en vivo solo lee el sandbox.
+
+**Montaje:** casi todo, sin modelo y con reloj inyectado (`prueba_hooks.py`, `simulador/igualdad.py`, `hkos/pruebas`). En vivo:
+- la web: `evals/coordinacion/web_demo.py` (el relay de verdad, con las tareas del reto 03 de `tareas-03.json`, el guion G2 desplazado a la hora actual y dos colisiones del estado sintético), escuchando en la IP de ZeroTier del PC (192.168.193.14) y vista desde el portátil del usuario, en remoto;
+- el MCP: `../prueba-m8f-B`, copia de `../prueba-m8e-B` (B, @Mveradc), con su relay de verdad leyendo el sandbox y el demonio lanzado por el `SessionStart` real.
+
+Gasto en modelos: **0,077 USD** (tres sesiones `-p`: 0,009, 0,005 y 0,063).
+
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | La web abre en otro portátil sin instalar nada, con haciendo/hecho/falta, colisiones y antigüedad, y refleja un cambio del relay en ≤ 5 s | **Sí.** El usuario, con Brave en su portátil por ZeroTier: carga, ve las tres columnas, las dos colisiones, la presencia y los «hace X»; un evento (T02 de @persona-a) aparece en Haciendo en **2–3 s**. Por SSE en la misma IP, la vista nueva llega en menos de 1 s. En el DOM (Chrome, contra la misma IP): columnas, colisiones y `observado_en` de cada tarjeta, iguales que en `/v1/vista` (2/23/2 tarjetas). Sin token, la página lo dice y `/v1/vista` da 401; con un token falso, «El token no es el del relay» |
+| 2 | Una sesión nueva recibe el bloque «Equipo» en ≤ 2.500 caracteres, en el orden de R-24; con 5 personas y 20 tareas no se pasa | **Sí** (`prueba_hooks.py`): G1–G4 para dos personas, 1.104–1.305 caracteres; 5 personas y 20 tareas, 2.011 y 1.978; 20 tareas de la misma persona, 2.422, recortado con «… (N líneas más en <ruta>)». Secciones en orden y Detalle al final. `sesion.sh` con el OS activo da lo de siempre y, detrás, el bloque |
+| 3 | Tras un cambio que la afecta, la sesión recibe solo ese cambio en su siguiente turno; sin cambios, nada (30 minutos sin turnos inducidos) | **Sí**, con reloj inyectado: 30 turnos en 30 minutos de actividad ajena (ediciones de A en T01, sesiones de C que entran y salen, `arbol` con ruido), ninguna salida. A deja T01 a medias: a los 20 min pasa a `parada`, y B (T10 espera a T01) recibe solo «Tu trabajo», ≤ 600, con «espera a T01 (@persona-a, parada)»; en el turno siguiente, nada. Compactación: bloque entero y cuenta a cero. Tope de 6.000: un cambio de trabajo ya no entra; una colisión roja nueva sí, solo ella. `delta.sh` no puede abrir turnos (es `UserPromptSubmit`); el aviso rojo a mitad de turno es de M8g |
+| 4 | El MCP responde `estado`, `tarea` y `colisiones` en una sesión normal y con `--agent hackathon-kit:orquestador`; el worker y el revisor no lo ven | **Sí.** (1) Sesión normal, Haiku: carga las tres con ToolSearch y las llama; T14 `publicada`, de mveradc, fusión `b707221`, issue #34, sin colisiones, igual que `estado.json`. (2) `--agent hackathon-kit:orquestador --model haiku` (el JSON confirma Haiku): llama a `estado` sin ToolSearch, porque su `tools:` nombra el servidor. (3) Un `hackathon-kit:worker` (Sonnet) contesta `TIENE_MCP=no` y sus herramientas son las de su `tools:`. Revisor: su `tools:` no nombra el servidor (P1: `tools:` restringe). Sin modelo, en `prueba_hooks.py`, el servidor lanzado como lo declara `.mcp.json`: con el OS activo y uv, las tres; sin uv o con el OS apagado, responde en bash sin herramientas |
+| 5 | Igualdad: web, `estado-equipo.md` y MCP coinciden en estados, dueños, colisiones y antigüedades (G1–G6) | **Sí, en G1–G4 y en el estado sintético** (`simulador/igualdad.py`, 238 comprobaciones): la vista que sirve el relay por HTTP, el md que escribe el demonio de verdad para cada persona y el MCP por stdio. G5 y G6 (colisiones calculadas) pasan al criterio 7 de M8g, por decisión del usuario |
+
+Sin modelo, al cerrar:
+- `hkos/pruebas`: 146 pruebas OK. Nuevas: `test_proyeccion.py` y `test_mcp.py`; novedades y vista en `test_relay.py`; estado, md y `agente.vivo` en `test_agente.py`.
+- `simulador/prueba_simulador.py`, `simulador/duradero.py` y `simulador/igualdad.py`: OK.
+- `prueba_hooks.py`: 0 fallos. Con el OS apagado, `sesion.sh` sale idéntico al de `v0.3.2` (startup y compact) y `delta.sh` no imprime nada ni crea ficheros (25–27 ms por turno).
+- `claude plugin validate .`: pasa (con el aviso de siempre, por el CLAUDE.md de la raíz).
+
+## Qué se construyó
+- **K-60, `hkos/proyeccion.py`:** `vista` (columnas, colisiones, sin tarea, personas, novedades y fuentes «viejas» según R-12), `markdown` (api.md §6), `firmas` por sección sin horas y `tarea` (para el MCP). El demonio (`hkos/agente.py`) pide `GET /v1/estado` con ETag cada 3 s y escribe `estado.json` y `estado-equipo.md`; con el relay caído, el md lo dice. `agente.vivo` lleva la hora, renovada cada 15 s.
+- **K-61, `hkos/web/index.html`:** HTML y JS en un fichero, sin dependencias, siempre con `textContent`. `fetch` sobre `/v1/stream` (EventSource no admite cabeceras) y, si cae, `/v1/vista` cada 3 s. «Hace X» con la hora del relay. El relay sirve `GET /` (sin token y sin datos), `GET /v1/vista` y el evento SSE `vista`.
+- **K-62, `scripts/os/delta.sh`:** `inicio` (lo llama `sesion.sh`) y el hook `UserPromptSubmit`. Solo builtins, salvo el relanzamiento del demonio (Pendiente de M8d), que borra un `agente.vivo` de más de 60 s y llama a `arranque.sh`.
+- **K-63, MCP:** `.mcp.json` (servidor `os`), `scripts/os/mcp.sh` (envoltorio bash) y `hkos/mcp.py`; `mcp__plugin_hackathon-kit_os` en el `tools:` del orquestador.
+- **Novedades** (relay): `git fetch` cada 60 s en su clon, y `decisiones.md` y `criterios.md` de `origin/main`. El fetch que falla no hace ruido, salvo que dure más de `umbral_viejo_s`.
+- **Ruido de `sin_tarea`** (Pendiente de M8e): `modelo.py` no manda a `sin_tarea` lo que solo toca `.hackathon/` o `.claude/worktrees/`.
+- **Contratos:** §5 y §6 de `api.md`, congelados; notas en §3, §4, §7 y en la regla 9; criterio 7 en M8g (`hitos.md`); una línea en ADR-0006.
+
+## Encontrado durante la prueba
+- **`bash` en `.mcp.json` no vale en Windows:** desde PowerShell, el `bash` del PATH es el de WSL y el servidor no conecta (`CONNECTION_CLOSED`; comprobado con `claude mcp list` y lanzándolo con el PATH de PowerShell). Se lanza con un alias de git, que usa el `sh` de Git. Anotado en `api.md` §5, ADR-0006 y `docs/limitaciones.md`.
+- **Un delta cortaba justo lo que había cambiado:** mandaba la sección entera y, con 600 caracteres, la línea cambiada (una pendiente, al final) no cabía. Ahora pone delante las líneas que la sesión no tenía (comparadas sin horas).
+- **`CLAUDE_PROJECT_DIR` sí llega al servidor MCP** (comprobado), y el envoltorio lo usa para situarse en el proyecto.
+
+## Observaciones (a Pendiente)
+- **El relay saca una versión nueva con cada sondeo bueno de GitHub** (cambia `fuentes.github.observado_en`): con el GitHub real, una cada 30 s, con su mensaje SSE; en la demo, con el sondeo falso, cada 5 s. La web dice «actualizado» aunque no cambie nada visible, y el demonio recibe un 200 en vez de un 304. Es inofensivo; si molesta, se saca la hora de GitHub de la huella, como la del relay.
+- **Comillas dobles en las novedades de `criterios.md`**: «Organización: «Al final sí…»». Cosmético.
+- **El Chrome conectado no llegó a `127.0.0.1`** del PC (`ERR_CONNECTION_REFUSED`, con el relay respondiendo a `curl`), y sí a la IP de ZeroTier. No se investigó.
+- **Ninguna sesión interactiva todavía:** el bloque y los deltas se han probado llamando a los hooks como lo hace Claude Code, no en una sesión de verdad. Se verá en el ensayo de M8h.

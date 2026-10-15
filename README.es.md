@@ -93,6 +93,7 @@ Lo generado es un punto de partida, no un plan cerrado. Las más importantes:
 - **Ejecuta siempre `/hack-check` y revisa a mano.** Sin el check, la cadena da por ciertas inferencias y ambigüedades. Aun con él, un revisor independiente concluyó en los cinco retos de la validación que el equipo empieza antes y mejor solo *en parte*: el calendario, el reparto, las ausencias y las preguntas a la organización hay que cerrarlos vosotros.
 - **Coherencia del plan tras el check.** Cuando el check añade filas al plan, no actualiza el resto (descansos, dependencias, repliegues). Revisa que el plan siga siendo coherente.
 - **Enunciados por URL.** Con una URL, el análisis trabaja sobre un resumen de la página, no sobre el texto literal. Pega el texto si puedes.
+- **Un servidor MCP `os` en `/mcp`.** El servidor del estado del equipo del Hackathon OS (en desarrollo) lo declara el plugin, así que sale en `/mcp` en toda sesión, también con el OS apagado. Entonces no ofrece herramientas, no usa red y no necesita uv.
 
 Lista completa: [docs/limitaciones.md](docs/limitaciones.md).
 

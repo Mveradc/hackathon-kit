@@ -98,6 +98,7 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 3. Tras un cambio que la afecta, la sesión recibe solo ese cambio en su siguiente turno; sin cambios, `delta.sh` no imprime nada (30 minutos sin turnos inducidos por el OS, como el criterio de silencio de M6a).
 4. El MCP responde `estado`, `tarea` y `colisiones` en una sesión normal y en una sesión `--agent hackathon-kit:orquestador` (con el servidor en su `tools:`, ADR-0006); el worker y el revisor no lo ven.
 5. Test de igualdad: en los guiones G1–G6, la web, `estado-equipo.md` y el MCP coinciden en estados, dueños, colisiones y antigüedades.
+   - *Nota (M8f, decisión del usuario):* G5 y G6 son guiones de colisiones, que se calculan en M8g; hasta entonces `colisiones` va vacío. En M8f la igualdad se prueba en G1–G4 y en un estado sintético de 5 personas y 20 tareas con colisiones de nivel 1 y 3 puestas a mano (`evals/coordinacion/simulador/fixture.py`, `igualdad.py`). G5 y G6 pasan a ser el criterio 7 de M8g.
 
 ---
 
@@ -111,6 +112,7 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 4. Un agente que va a editar un fichero reservado por otro recibe el aviso antes de editar; la edición no se bloquea.
 5. Una colisión roja nueva abre un turno en la sesión afectada (monitor) una sola vez; las amarillas solo salen en el siguiente delta.
 6. Con dos workers de la misma persona sobre ficheros distintos, ninguna colisión (no hay falsos positivos dentro de una persona).
+7. Test de igualdad de M8f (`evals/coordinacion/simulador/igualdad.py`) ampliado a G5 y G6: con las colisiones calculadas por el relay, la web, `estado-equipo.md` y el MCP coinciden en estados, dueños, colisiones y antigüedades (lo que el criterio 5 de M8f dejó para aquí).
 
 ---
 

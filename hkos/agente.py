@@ -27,10 +27,13 @@ from http.server import BaseHTTPRequestHandler
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from esquema import Esquema  # noqa: E402
 from estados import fecha  # noqa: E402
+import proyeccion  # noqa: E402
 from normaliza import Contexto, Normalizador, relativa  # noqa: E402
 from red import Servidor, ahora_iso, conf  # noqa: E402
 
 CICLO_S = 1
+ESTADO_S = 3                     # M8f: GET /v1/estado con ETag (P15)
+MD_S = 30                        # M8f: estado-equipo.md se reescribe al menos cada 30 s (horas y «viejo»)
 LATIDO_S = 15
 TTL_S = 90                       # R-18: una sesión sin señales deja de estar activa
 LOTE_MAX = 200
@@ -206,6 +209,10 @@ class Agente:
             self.apagado_s = 60 * float(apagado_min if apagado_min is not None else conf(os_md, "apagado_min") or 30)
         except ValueError:
             self.apagado_s = 30 * 60
+        try:
+            self.umbral_viejo_s = float(conf(os_md, "umbral_viejo_s") or 300)
+        except ValueError:
+            self.umbral_viejo_s = 300
         self.esquema = Esquema("eventos.schema.json")
         base, cache = Contexto(), {}
 
@@ -226,6 +233,12 @@ class Agente:
         self.fusiones = set()                    # shas de fusion.aprobada vistos (para el `incluye` del push de git)
         self.git = SondeoGit(self)
         self.lock = threading.Lock()
+        # Proyección (M8f): el último estado.json del relay, su ETag, y desde cuándo no llega el relay.
+        self.estado, self.etag, self.relay_caido_desde = None, None, None
+        self.ultimo_estado = self.ultimo_md = self.ultimo_vivo = -1e18
+        self.estado_nuevo = False
+        self.tz = None                           # zona de las horas del md; None = la del portátil
+        self.vivo, self.puerto = os.path.join(self.dir, "agente.vivo"), None
 
     # --- posiciones ---
     def _ruta_pos(self):
@@ -436,8 +449,68 @@ class Agente:
         except OSError:
             pass
 
+    # --- proyección (M8f) ---
+    def recibir_estado(self):
+        """Cada ESTADO_S, `GET /v1/estado` con If-None-Match (la alternativa de P15 al SSE: un 304 no cuesta nada).
+        Devuelve True si llegó uno nuevo."""
+        if self.reloj() - self.ultimo_estado < ESTADO_S:
+            return False
+        self.ultimo_estado = self.reloj()
+        url, token = self._relay()
+        if not url:
+            return False
+        cabeceras = {"Authorization": f"Bearer {token}"}
+        if self.etag:
+            cabeceras["If-None-Match"] = self.etag
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url + "/v1/estado", headers=cabeceras), timeout=5) as r:
+                estado = json.loads(r.read())
+                self.etag = r.headers.get("ETag")
+        except urllib.error.HTTPError as ex:
+            if ex.code == 304:
+                self.relay_caido_desde = None
+                return False
+            self.relay_caido_desde = self.relay_caido_desde or self.ahora()
+            return False
+        except (OSError, ValueError):
+            self.relay_caido_desde = self.relay_caido_desde or self.ahora()
+            return False
+        self.relay_caido_desde = None
+        self.estado = estado
+        self._escribe("estado.json", json.dumps(estado, ensure_ascii=False))
+        return True
+
+    def escribir_md(self, nuevo):
+        """estado-equipo.md (api.md §6) al llegar un estado nuevo, al caer o volver el relay, y cada MD_S (las horas y
+        lo «viejo» cambian con el tiempo; las firmas, no)."""
+        if self.estado is None or not (nuevo or self.reloj() - self.ultimo_md >= MD_S):
+            return
+        self.ultimo_md = self.reloj()
+        v = proyeccion.vista(self.estado, ahora=self.ahora(), umbral_viejo_s=self.umbral_viejo_s)
+        relay = ("viejo", self.relay_caido_desde) if self.relay_caido_desde else None
+        texto = proyeccion.markdown(v, self.persona, os.path.join(self.dir, "estado.json").replace("\\", "/"),
+                                    tz=self.tz or datetime.now().astimezone().tzinfo, epoch=int(self.reloj()), relay=relay)
+        self._escribe("estado-equipo.md", texto)
+
+    def _escribe(self, nombre, texto):
+        """Escritura atómica: quien lee (sesion.sh, delta.sh, el MCP) nunca ve un fichero a medias."""
+        ruta = os.path.join(self.dir, nombre)
+        tmp = f"{ruta}.{os.getpid()}.tmp"
+        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+            f.write(texto)
+        os.replace(tmp, ruta)
+
+    def latir_vivo(self):
+        """agente.vivo = puerto y hora (época), renovada cada LATIDO_S. delta.sh da por muerto un demonio cuya hora
+        tiene más de 60 s, aunque el fichero siga ahí (murió sin borrarlo), y lo relanza."""
+        if self.puerto is None or self.reloj() - self.ultimo_vivo < LATIDO_S:
+            return
+        self.ultimo_vivo = self.reloj()
+        self._escribe("agente.vivo", f"{self.puerto}\n{int(self.reloj())}\n")
+
     def ciclo(self):
         with self.lock:
+            self.latir_vivo()
             self.leer()
             for e in self.git.ciclo():
                 if self.esquema.valido(e):
@@ -445,6 +518,9 @@ class Agente:
                 else:
                     self.invalidos += 1
             self.enviar()
+            caido = self.relay_caido_desde
+            nuevo = self.recibir_estado()
+            self.escribir_md(nuevo or caido != self.relay_caido_desde)
 
 
 def manejador(agente):
@@ -502,9 +578,10 @@ def main(argv=None):
         return 0                     # ya hay otro (o el puerto es de otro programa): el arranque lo distingue por /salud
     threading.Thread(target=servidor.serve_forever, kwargs={"poll_interval": 0.5}, daemon=True).start()
     # agente.vivo: el arranque solo conecta directamente si existe (en Windows, conectar a un puerto cerrado tarda ≈2 s).
-    vivo = os.path.join(agente.dir, "agente.vivo")
-    with open(vivo, "w", encoding="utf-8") as f:
-        f.write(f"{a.puerto}\n")
+    # Lleva la hora, renovada en cada latido: delta.sh no se fía de un fichero huérfano (M8f).
+    agente.puerto = a.puerto
+    vivo = agente.vivo
+    agente.latir_vivo()
     agente.log(f"arranca en 127.0.0.1:{a.puerto} para {agente.persona} ({agente.comun}); "
                f"apagado tras {agente.apagado_s / 60:g} min")
     try:

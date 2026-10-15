@@ -15,6 +15,9 @@ Ninguna gasta en modelos (salvo las sesiones que se observen con `presencia.py`)
 | Estado duradero sin red, criterios 4 y 6 de M8e | `uv run --no-project evals/coordinacion/simulador/duradero.py` | 0 OK · 1 falla. Relay, sondeo y compilador de verdad contra el GitHub falso de `hkos/pruebas/github_falso.py`, con reloj inyectado: `parada` a los 20 min, `reclamada` que no cambia, rama sin ID en `sin_tarea`; 2 h simuladas con las escrituras por hora y los 304 |
 | Estado de las tareas en el relay mientras pasan cosas de verdad (criterios 2–4 de M8e) | `uv run --no-project evals/coordinacion/tareas_vivo.py --clon <clon unido> [--segundos 1800] [--tareas T08 …]` | Informe: cada cambio de estado con su fuente, `sin_tarea` y discrepancias. No gasta por sí mismo |
 
+| Igualdad de las tres vistas, criterio 5 de M8f | `uv run --no-project evals/coordinacion/simulador/igualdad.py` | 0 OK · 1 falla. Para G1–G4 y el estado sintético de `simulador/fixture.py`, compara lo que sirve el relay en `/v1/vista`, el `estado-equipo.md` que escribe el demonio para cada persona y el MCP por stdio |
+| Web en vivo, criterio 1 de M8f | `uv run --no-project evals/coordinacion/web_demo.py --ip <IP de LAN, Tailscale o ZeroTier> [--puerto 7777]` y, desde otra consola, `… web_demo.py --evento <url> <token>` | Imprime la URL con el token. El relay de verdad, con las tareas del 03, un guion a la hora actual y dos colisiones de ejemplo; sin GitHub. En Windows, la primera vez pide permiso al cortafuegos |
+
 Con `--python 3.10` detrás de `--no-project`, las de `uv` se ejecutan con la versión mínima (`requires-python >= 3.10`).
 
 ## Qué hay aquí
@@ -24,6 +27,8 @@ Con `--python 3.10` detrás de `--no-project`, las de `uv` se ejecutan con la ve
 - `caidas_relay.py` y `presencia.py`: pruebas de M8d con clones de verdad (relay caído y reiniciado; presencia de sesiones reales). `tareas_vivo.py` (M8e): el estado de las tareas en el relay durante una pasada real.
 - `hkos/pruebas/github_falso.py` (M8e): GitHub falso de la biblioteca estándar (issues, eventos, comentarios, dependencias, ETag/304, 429, contador de escrituras), con el comportamiento observado en GitHub. Lo usan `test_compilar.py`, `test_github.py` y `simulador/duradero.py`. `gh-falso.sh` sigue siendo para el `gh` de bash.
 - `prueba_hooks.py`, desde M8d, también el arranque del demonio (`sesion.sh` y `scripts/os/arranque.sh`): salida idéntica con el OS apagado, puerto por `cksum`, puerto ocupado, sin uv y `agente.vivo`.
+- `prueba_hooks.py`, desde M8f, también la proyección en las sesiones: el bloque «Equipo» de `sesion.sh` (≤ 2.500, orden de R-24), `delta.sh` con reloj inyectado (30 minutos de silencio, dependencia parada, compactación, tope de 6.000, relanzar el demonio) y el MCP lanzado como en `.mcp.json`; con el OS apagado, `sesion.sh` igual al de `v0.3.2`.
+- `simulador/fixture.py` (M8f): estado sintético de 5 personas y 20 tareas con colisiones y novedades. `simulador/igualdad.py`: la prueba de igualdad. `web_demo.py`: la web en vivo.
 - `partida-m8-03/`: estado de partida del orquestador de B para `../prueba-m8-03-base`.
 - `coste.py`: coste en USD de una sesión del orquestador (transcripts). `coste_hooks.py`: ms por llamada de los hooks del OS.
 - `gh-falso.sh`: `gh` de mentira para las pruebas del buzón.

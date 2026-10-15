@@ -13,6 +13,7 @@ Estado: **aceptada** (2026-10-14, tras el Paso 0 de M8.0; hallazgo P1 en `docs/c
   - El **orquestador** añade a su `tools:` el servidor entero (`mcp__plugin_hackathon-kit_<servidor>`), para que una herramienta nueva no obligue a tocar su cabecera.
   - El **worker** y el **revisor** no lo llevan: lo que necesitan (el aviso de reserva o colisión antes de editar) les llega por el hook PreToolUse de Edit/Write.
   - En las sesiones normales, sin `tools:`, está disponible como herramienta diferida (se carga con ToolSearch).
+- **Declaración (M8f):** servidor `os` en el `.mcp.json` del plugin, con un envoltorio bash (`scripts/os/mcp.sh`): con el OS apagado o sin uv responde sin herramientas, sin uv ni red; con el OS activo, `hkos/mcp.py`. Se lanza mediante un alias de git, porque en Windows el `bash` del PATH puede ser el de WSL (`api.md` §5). La web pinta la vista que calcula `hkos/proyeccion.py` en el relay (`GET /v1/vista` y el evento SSE `vista`); no calcula estados.
 
 ## Alternativas descartadas
 - **TUI**: quien no use Claude Code o no esté en su terminal no la ve.
