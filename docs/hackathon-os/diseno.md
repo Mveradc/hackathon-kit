@@ -215,6 +215,14 @@ Niveles (ADR-0007). Todos son avisos.
 
 El trabajo de dos workers de la misma persona no colisiona en este sentido: el orquestador ya los serializa cuando comparten ficheros.
 
+Definiciones (M8g; código en `hkos/colisiones.py`, `hkos/contratos.py` y `hkos/colisiones_merge.py`):
+- **Ficheros de una persona:** por cada árbol en que trabaja (la copia principal o el worktree de un worker), las rutas de su último `arbol` más las de los `edicion` posteriores. Los de un worker dejan de contar con su `worker.fin` (lo suyo pasa a la fusión o se descarta); los de la copia principal cuentan siempre. Sin `.claude/worktrees/` ni entradas de carpeta («?? web/»); `.hackathon/` sí cuenta.
+- **El mismo fichero:** la misma ruta relativa a la raíz de su árbol, con `/`, sin distinguir mayúsculas. Un renombrado cuenta por el nombre nuevo (git no da el viejo en `porcelain` ni en `diff --name-only`).
+- **Nivel 1:** una colisión amarilla por conjunto de personas que comparten ficheros (`1:<a>+<b>`), con todas sus rutas. Deja de estarlo cuando el último `arbol` de una de ellas ya no tiene el fichero (subió, deshizo o descartó). Un fichero en conflicto de nivel 2 entre esas mismas personas sale solo en rojo.
+- **Nivel 2:** `2:<a>+<b>`, con los ficheros que `merge-tree` da en conflicto.
+- **Nivel 3:** `3:<bloque>:<persona>`. Rojo cuando alguien que no es el dueño del bloque tiene cambiada una ruta de su `Vive en:` o trae su título en `datos.contratos` de un `arbol`. Avisa a quien lo toca, al dueño (si tiene GitHub) y al resto del equipo (los consumidores).
+- **Reservas:** las vigentes de las demás personas salen en «Reservas» de `estado-equipo.md` (bloque de inicio y deltas) y en `reservas.tsv`, del que lee `reserva.sh` (PreToolUse y SubagentStart de los workers).
+
 ## 8. Inyección en las sesiones
 
 - **SessionStart** (`sesion.sh`, ya existe): añade, si el OS está activo, el bloque «Equipo» desde `estado-equipo.md`. Presupuesto total de 2.500 caracteres (R-24), en este orden: tarea de la sesión y bloqueos, colisiones que la afectan, decisiones y criterios nuevos desde la última sesión, una línea por persona. El detalle, en la ruta de `estado-equipo.md`.

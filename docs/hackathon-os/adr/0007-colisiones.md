@@ -17,6 +17,16 @@ El trabajo sin subir de cada persona solo existe en su portátil. Para predecir 
 - **Nivel 3 (contratos)**: cada bloque de `docs/contratos.md` lleva `Vive en: <rutas>`; el dueño sale de `autoridad.md`. Cualquier cambio en esas rutas por otra persona es rojo y avisa a dueño y consumidores.
 - **Reservas**: `reservar(rutas, ttl)` por MCP o automáticamente al reclamar una tarea (sus carpetas, compartidas). El hook PreToolUse de Edit/Write informa con `additionalContext`; nunca `deny`.
 
+## Notas de M8g (2026-10-15, decisiones del usuario al implementarlo)
+- **Padre del commit de trabajo en curso:** la merge-base de HEAD con `origin/main`, no HEAD. Con HEAD, un commit local sin subir que lleve un fichero excluido (datos, una clave) viajaría al remoto como ancestro del WIP.
+- **Exclusiones ampliadas** a `*.pem`, `*.key`, `id_rsa*`, `*.p12`, `*.pfx`, `credentials*.json`, `secrets*` y `.claude/worktrees/`, y aplicadas como pathspecs `:(exclude)` del propio `git add`: lo excluido no llega a ser un objeto de git. Lo excluido que ya estaba en el índice o en la base vuelve a su versión de la base (borrarlo daría falsos conflictos modify/delete).
+- **Cerrado ante la duda:** no publica si el repo de GitHub es público (salvo `publicar_wip: sí, incluso público`) ni si no puede saberlo; ni con un merge, rebase o cherry-pick a medias. Git sin diálogos de credenciales; tras un fallo de autenticación, espera 10 min.
+- **`--no-verify` en ese push** (una ref que no es una rama): el `pre-push` de la persona no corre cada minuto.
+- **Lo publicado se ve** en `wip.json`, en la línea `wip:` de `/salud` y en `agente.log`. Ninguna lista de exclusiones es completa (un `config.py` con una clave sube igual): `os.md` y el README lo avisan, y recuerdan que borrar la ref no borra lo subido (GitHub sigue sirviendo los objetos por su sha), así que una clave que suba hay que rotarla.
+- **Solo la copia principal** publica; el trabajo de los workers entra cuando se fusiona en ella.
+- **Reservas:** el `additionalContext` de PreToolUse llega al modelo con el resultado de la edición, no antes (paso 0 de M8g, `docs/coordinacion.md`). El aviso previo sale del bloque de inicio y de los deltas (sesión principal) y del `additionalContext` de SubagentStart (workers); el de PreToolUse queda como aviso al editar. Sigue sin haber `deny`.
+- **Nivel 3:** los consumidores de un contrato son el resto del equipo; el dueño, el de la fila «`docs/contratos.md`: …» de `autoridad.md` o, sin ella, el de la carpeta de `Vive en:`. Con más de una candidata, el bloque se queda sin dueño.
+
 ## Alternativas descartadas
 - **Bloquear ediciones con PreToolUse**: bloqueos mutuos entre agentes que esperan reservas cruzadas; y el hook es una red, no una barrera.
 - **Análisis por símbolos propio con tree-sitter**: caro de hacer bien; Mergiraf cubre la parte útil.

@@ -50,7 +50,7 @@ ENTRADAS = os.path.join(KIT, "evals", "coordinacion", "entradas")
 CAMPOS = {  # lista blanca de api.md §1, por tipo de línea
     "hook": {"v", "ts", "persona", "tipo", "session_id", "cwd", "agent_id", "agent_type", "source", "tool_name", "tool_use_id",
              "ruta", "git", "subagent_type", "id", "base", "transcript_path", "veredicto", "fusion", "truncado"},
-    "arbol": {"v", "ts", "persona", "tipo", "session_id", "cwd", "agent_id", "agent_type", "base", "porcelain", "diff", "truncado"},
+    "arbol": {"v", "ts", "persona", "tipo", "session_id", "cwd", "agent_id", "agent_type", "base", "porcelain", "diff", "truncado", "contratos"},
     "compuerta": {"v", "ts", "persona", "tipo", "session_id", "cwd", "agent_id", "agent_type", "resultado", "tope", "motivos", "truncado"},
 }
 
@@ -311,6 +311,33 @@ def prueba_os(tmp, repo, informe, handback):
     e = nz.eventos(l1, 1)
     comprueba("normaliza.py: el arbol da rutas de porcelain y diff", len(e) == 1 and e[0]["rutas"] == ["a.txt", "generado.txt"], str(e))
 
+    print("\n== arbol.sh: bloques de docs/contratos.md tocados (M8g, nivel 3)")
+    rc = repo_os(base, "arbol-contratos", "activa: sí\n", remoto=True)
+    os.makedirs(os.path.join(rc, "docs"), exist_ok=True)
+    texto = ("# Contratos\n\n## motor → web: ficha\n\nVive en: motor/api.py\n\n| a | b |\n\n"
+             "```json\n## no es un bloque\n```\n\n## Datos de entrada\n\nVive en: datos/\n\nx\n")
+    open(os.path.join(rc, "docs", "contratos.md"), "w", encoding="utf-8", newline="\n").write(texto)
+    git(rc, "add", "-A"); git(rc, "commit", "-qm", "contratos"); git(rc, "push", "-q", "origin", "HEAD:main")
+    def arbol_c():
+        lanza(ARBOL, json.dumps({"hook_event_name": "Stop", "session_id": "s-con", "cwd": rc}), rc)
+        ls = lineas(rc).get("s-con", [])
+        return valida("arbol con contratos", ls[-1]) if ls else None, len(ls)
+    open(os.path.join(rc, "docs", "contratos.md"), "w", encoding="utf-8", newline="\n").write(texto.replace("| a | b |", "| a | b | c |"))
+    l, n1 = arbol_c()
+    comprueba("cambiar una fila de un bloque: «contratos» con su título", l is not None and l.get("contratos") == ["motor → web: ficha"], str(l))
+    open(os.path.join(rc, "docs", "contratos.md"), "w", encoding="utf-8", newline="\n").write(
+        texto.replace("| a | b |", "| a | b | c |").replace("\nx\n", "\ny\n"))
+    l, n2 = arbol_c()
+    comprueba("tocar otro bloque del fichero ya cambiado es un arbol nuevo, con los dos títulos",
+              n2 == n1 + 1 and l.get("contratos") == ["motor → web: ficha", "Datos de entrada"], str(l))
+    nz = Normalizador(Contexto(persona="persona-a", raices=lambda c: (c, c)))
+    e = nz.eventos(l, 1)
+    comprueba("normaliza.py: datos.contratos en el arbol", e[0].get("datos", {}).get("contratos") == ["motor → web: ficha", "Datos de entrada"], str(e))
+    open(os.path.join(rc, "otro.txt"), "w").write("x")
+    git(rc, "checkout", "--", "docs/contratos.md")
+    l, _ = arbol_c()
+    comprueba("sin cambios en contratos.md, el arbol no lleva «contratos»", l is not None and "contratos" not in l, str(l))
+
     print("\n== compuerta.sh con el OS activo (K-33)")
     open(os.path.join(repo, ".hackathon", "os.md") if os.path.isdir(os.path.join(repo, ".hackathon")) else
          (os.makedirs(os.path.join(repo, ".hackathon")) or os.path.join(repo, ".hackathon", "os.md")), "w", encoding="utf-8").write("activa: sí\n")
@@ -488,6 +515,174 @@ def prueba_arranque(tmp):
     os.remove(os.path.join(r, ".hackathon", "os.md"))
 
 
+def prueba_reservas(tmp):
+    """M8g (K-73, criterio 4): reserva.sh avisa de un fichero reservado por otra persona, sin bloquear nunca, una vez
+    por sesión y reserva; la sección «Reservas» llega en el bloque de inicio y en el delta. Con el OS apagado, nada."""
+    import time
+    from datetime import datetime, timedelta, timezone
+    sys.path.insert(0, KIT + "/hkos")
+    import proyeccion
+    print("\n== reserva.sh y la sección «Reservas» (M8g, criterio 4)")
+    RES, DELTA = KIT + "/scripts/os/reserva.sh", KIT + "/scripts/os/delta.sh"
+    base = os.path.join(tmp, "reservas"); os.makedirs(base)
+    r = repo_os(base, "clon")
+    osdir = os.path.join(r, ".git", "hackathon", "os")
+
+    def edit(ruta, sid="s1", agente=None, cwd=None):
+        d = {"session_id": sid, "cwd": cwd or r, "hook_event_name": "PreToolUse", "tool_name": "Edit",
+             "tool_input": {"file_path": ruta, "old_string": "a", "new_string": "b"}, "tool_use_id": "toolu_1"}
+        if agente:
+            d.update(agent_id=agente, agent_type="hackathon-kit:worker")
+        return lanza(RES, json.dumps(d), r)
+
+    def estado_con(reservas):
+        ahora = datetime.now(timezone.utc)
+        return {"v": 1, "generado_en": ahora.strftime("%Y-%m-%dT%H:%M:%SZ"), "fuentes": {},
+                "personas": [{"persona": "persona-a", "nombre": "A", "actores": []},
+                             {"persona": "persona-b", "nombre": "B", "actores": []}],
+                "tareas": [], "sin_tarea": [], "discrepancias": [], "colisiones": [], "reservas": reservas}
+
+    def deja(reservas, persona="persona-b"):
+        v = proyeccion.vista(estado_con(reservas))
+        os.makedirs(osdir, exist_ok=True)
+        open(os.path.join(osdir, "estado-equipo.md"), "w", encoding="utf-8", newline="\n").write(
+            proyeccion.markdown(v, persona, "/x/estado.json", tz=timezone.utc, epoch=int(time.time())))
+        open(os.path.join(osdir, "reservas.tsv"), "w", encoding="utf-8", newline="\n").write(
+            proyeccion.reservas_tsv(v, persona, timezone.utc))
+
+    hasta = (datetime.now(timezone.utc) + timedelta(minutes=15)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    res = [{"id": "reserva-1", "rutas": ["web/src/"], "persona": "persona-a", "hasta": hasta, "modo": "compartida"},
+           {"id": "reserva-2", "rutas": ["motor/api.py"], "persona": "persona-a", "hasta": hasta, "modo": "exclusiva"},
+           {"id": "reserva-3", "rutas": ["pitch/guion.md"], "persona": "persona-b", "hasta": hasta, "modo": "compartida"}]
+    deja(res)
+    abs_win = (r.replace("/", "\\") + "\\web\\src\\App.jsx")
+    for nombre, os_md in (("sin os.md", None), ("activa: no", "activa: no\n")):
+        if os_md:
+            open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write(os_md)
+        s = edit(abs_win)
+        comprueba(f"OS apagado ({nombre}): reserva.sh no imprime nada y sale con 0, aunque haya reservas.tsv",
+                  s.returncode == 0 and s.stdout == "" and s.stderr == "", s.stdout + s.stderr)
+    open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write("activa: sí\n")
+    s = edit(abs_win)
+    try:
+        d = json.loads(s.stdout)
+        o = d["hookSpecificOutput"]
+    except (ValueError, KeyError):
+        d, o = {}, {}
+    comprueba("fichero bajo una carpeta reservada por otra (ruta de Windows): additionalContext con quién y hasta cuándo",
+              s.returncode == 0 and o.get("hookEventName") == "PreToolUse" and "«web/src/»" in o.get("additionalContext", "")
+              and "@persona-a" in o.get("additionalContext", "") and "no se bloquea" in o.get("additionalContext", ""), s.stdout)
+    comprueba("nunca lleva permissionDecision ni decision (no bloquea)",
+              "permissionDecision" not in o and "decision" not in d and "continue" not in d, s.stdout)
+    comprueba("la misma reserva, otra vez en la sesión: sin aviso", edit(abs_win).stdout == "")
+    comprueba("otra sesión sí recibe el aviso", "@persona-a" in edit(abs_win, sid="s2").stdout)
+    comprueba("un worker de la sesión, aparte (su contexto es otro)", "@persona-a" in edit(abs_win, agente="w1").stdout)
+    s = edit(r + "/Motor/API.py", sid="s3")
+    comprueba("fichero reservado (ruta de Git Bash, otras mayúsculas): aviso de la reserva exclusiva",
+              "«motor/api.py»" in s.stdout and "exclusiva" in s.stdout, s.stdout)
+    comprueba("una reserva propia no avisa", edit(r + "/pitch/guion.md", sid="s4").stdout == "")
+    comprueba("un fichero sin reservar no avisa", edit(r + "/web/otro.js", sid="s5").stdout == "")
+    vencida = [dict(res[0], hasta=(datetime.now(timezone.utc) - timedelta(seconds=5)).strftime("%Y-%m-%dT%H:%M:%SZ"))]
+    deja(vencida)
+    comprueba("una reserva vencida (aunque siga en reservas.tsv) no avisa", edit(abs_win, sid="s6").stdout == "")
+    deja(res)
+    w = lanza(RES, json.dumps({"session_id": "s7", "cwd": r, "hook_event_name": "SubagentStart", "agent_id": "w9",
+                               "agent_type": "hackathon-kit:worker"}), r)
+    comprueba("SubagentStart de un worker: las reservas de otras personas, sin las propias",
+              "«web/src/»" in w.stdout and "«motor/api.py»" in w.stdout and "pitch" not in w.stdout
+              and '"hookEventName":"SubagentStart"' in w.stdout, w.stdout)
+    for tipo in ("hackathon-kit:revisor", "Explore", "general-purpose", "otro-plugin:worker"):
+        w = lanza(RES, json.dumps({"session_id": "s7", "cwd": r, "hook_event_name": "SubagentStart", "agent_id": "r1",
+                                   "agent_type": tipo}), r)
+        comprueba(f"SubagentStart de otro subagente ({tipo}): nada", w.stdout == "", w.stdout)
+    w = lanza(RES, json.dumps({"session_id": "s7", "cwd": r, "hook_event_name": "SubagentStart", "agent_id": "w8",
+                               "agent_type": "worker"}), r)
+    comprueba("SubagentStart de un «worker» sin prefijo (como en los hooks de M7): sí", "«web/src/»" in w.stdout, w.stdout)
+    # La sección «Reservas» en el bloque de inicio y en el delta (el agente la tiene delante antes de editar).
+    deja([])
+    subprocess.run([BASH, DELTA, "inicio", "s8"], capture_output=True, text=True, encoding="utf-8", cwd=r, env=ENV)
+    deja(res)
+    t = lanza(DELTA, json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": "s8", "cwd": r, "prompt": "x"}), r).stdout
+    comprueba("una reserva nueva de otra persona llega en el siguiente delta, en «Reservas»",
+              "## Reservas" in t and "«web/src/»" in t and "pitch" not in t, t)
+    t = lanza(DELTA, json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": "s8", "cwd": r, "prompt": "x"}), r).stdout
+    comprueba("…y en el turno siguiente, nada", t == "", t)
+    b = subprocess.run([BASH, DELTA, "inicio", "s9"], capture_output=True, text=True, encoding="utf-8", cwd=r, env=ENV).stdout
+    comprueba("el bloque de inicio lleva «Reservas» detrás de las colisiones",
+              b.index("## Colisiones que te afectan") < b.index("## Reservas") < b.index("## Novedades") and "«motor/api.py»" in b, b)
+    os.remove(os.path.join(r, ".hackathon", "os.md"))
+
+    print("\n== escucha.sh: colisión roja nueva por el monitor (M8g, criterio 5, parte sin modelo)")
+    ESC = KIT + "/scripts/coordinacion/escucha.sh"
+    gh = os.path.join(base, "gh-falso").replace("\\", "/")
+    llamadas = os.path.join(base, "gh-llamadas.txt").replace("\\", "/")
+    open(gh, "w", newline="\n").write('#!/usr/bin/env bash\necho "$*" >> "' + llamadas + '"\n'
+                                      'case "$*" in *"api user"*) echo persona-b ;; esac\nexit 0\n')
+    coord = os.path.join(r, ".hackathon", "coordinacion.md")
+    md_ruta = os.path.join(osdir, "estado-equipo.md")
+
+    def md_con(colisiones):
+        e = estado_con([])
+        e["colisiones"] = colisiones
+        open(md_ruta, "w", encoding="utf-8", newline="\n").write(
+            proyeccion.markdown(proyeccion.vista(e), "persona-b", "/x/estado.json", tz=timezone.utc, epoch=int(time.time())))
+
+    ahora = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    roja1 = {"id": "2:persona-a+persona-b", "nivel": "2", "gravedad": "rojo", "personas": ["persona-a", "persona-b"],
+             "rutas": ["app.py"], "observado_en": ahora}
+    roja2 = {"id": "3:api:persona-a", "nivel": "3", "gravedad": "rojo", "personas": ["persona-a", "persona-b"],
+             "rutas": ["motor/api.py"], "contrato": "motor → web", "observado_en": ahora}
+    amarilla = {"id": "1:persona-a+persona-b", "nivel": "1", "gravedad": "amarillo", "personas": ["persona-a", "persona-b"],
+                "rutas": ["web/a.js"], "observado_en": ahora}
+
+    def escucha(pasos, os_activo=True, coordinacion=True):
+        """Lanza el monitor y aplica `pasos` (funciones) cada ~2,5 s; devuelve lo que imprimió."""
+        if coordinacion:
+            open(coord, "w", encoding="utf-8").write("activa: sí\nrepo: equipo/reto\n\n| Persona | GitHub |\n|---|---|\n| B | @persona-b |\n")
+        elif os.path.exists(coord):
+            os.remove(coord)
+        osmd = os.path.join(r, ".hackathon", "os.md")
+        if os_activo:
+            open(osmd, "w", encoding="utf-8").write("activa: sí\n")
+        elif os.path.exists(osmd):
+            os.remove(osmd)
+        if os.path.exists(llamadas):
+            os.remove(llamadas)
+        salida_f = os.path.join(base, f"escucha-{time.time_ns()}.out")
+        # Dentro de un bash, como lo lanza Claude Code: el monitor sale si su padre (de MSYS) ya no existe.
+        p = subprocess.Popen([BASH, "-c", f"bash '{ESC}'; :"], cwd=r, stdout=open(salida_f, "wb"), stderr=subprocess.DEVNULL,
+                             env=dict(ENV, HK_GH=gh, HK_ESCUCHA_PASO_S="1"))
+        try:
+            # Primero el sondeo del buzón (varios gh: en Windows, segundos); después, la primera mirada al md.
+            fin = time.time() + 30
+            while coordinacion and time.time() < fin and not (os.path.exists(llamadas) and "issues" in open(llamadas).read()):
+                time.sleep(0.2)
+            time.sleep(3)
+            for paso in pasos:
+                paso()
+                time.sleep(2.5)
+        finally:
+            p.kill()
+        time.sleep(1.5)                                   # el monitor ve que su padre ya no está y sale
+        return open(salida_f, encoding="utf-8", errors="replace").read().splitlines()
+
+    md_con([roja1])                                     # ya estaba al arrancar: va en el bloque de inicio
+    salida = escucha([lambda: md_con([roja1, roja2]), lambda: md_con([roja1, dict(roja2, observado_en="2026-11-20T23:59:00Z")]),
+                      lambda: md_con([roja1, roja2, amarilla])])
+    comprueba("una roja nueva: una línea y solo una; la que ya estaba y la amarilla, ninguna",
+              len(salida) == 1 and "ROJA nueva" in salida[0] and "nivel 3" in salida[0] and "motor/api.py" in salida[0]
+              and "no instrucciones" in salida[0], str(salida))
+    salida = escucha([lambda: md_con([roja1, roja2]), lambda: md_con([roja2, amarilla])], os_activo=False)
+    comprueba("coordinación activa y OS apagado: ninguna línea del OS", salida == [], str(salida))
+    salida = escucha([lambda: md_con([roja1, roja2, amarilla])], os_activo=True, coordinacion=False)
+    comprueba("sin coordinación activa: silencio total y ninguna llamada a gh (como en M6a)",
+              salida == [] and not os.path.exists(llamadas), str(salida))
+    if os.path.exists(coord):
+        os.remove(coord)
+    if os.path.exists(os.path.join(r, ".hackathon", "os.md")):
+        os.remove(os.path.join(r, ".hackathon", "os.md"))
+
+
 def prueba_proyeccion(tmp):
     """M8f (K-62): el bloque «Equipo» de sesion.sh (criterio 2) y delta.sh (criterio 3), con el reloj inyectado en el
     estado y el md generado por hkos/proyeccion.py. Con el OS apagado, todo sale como en la 0.3.2."""
@@ -560,7 +755,7 @@ def prueba_proyeccion(tmp):
     # --- Criterio 2: el bloque, ≤ 2.500 caracteres y en el orden de R-24 ---
     antes = sesion("s-base").stdout                    # OS activo, sin md: lo de siempre (deja la caché de hk_yo)
     lanzados()
-    orden = ["## Tu trabajo", "## Colisiones que te afectan", "## Novedades", "## Equipo", "## Detalle"]
+    orden = ["## Tu trabajo", "## Colisiones que te afectan", "## Reservas", "## Novedades", "## Equipo", "## Detalle"]
     casos = []
     for g in ("G1", "G2", "G3", "G4"):
         casos.append((g, ejecutar(os.path.join(AQUI, "guiones", f"{g}.json"))[1]))
@@ -705,7 +900,7 @@ def prueba_proyeccion(tmp):
         comprueba("MCP con el OS activo y sin uv: responde en bash, sin herramientas",
                   herramientas(dict(ENV, PATH=sin_uv)) == ("2025-06-18", [], True))
         comprueba("MCP con el OS activo y uv: estado, tarea y colisiones",
-                  herramientas(ENV) == ("2025-06-18", ["estado", "tarea", "colisiones"], True))
+                  herramientas(ENV) == ("2025-06-18", ["estado", "tarea", "colisiones", "reservar", "liberar"], True))
     os.remove(os.path.join(r, ".hackathon", "os.md"))
     comprueba("MCP con el OS apagado: responde en bash (initialize, ping), sin herramientas",
               herramientas(ENV) == ("2025-06-18", [], True))
@@ -896,6 +1091,7 @@ try:
     prueba_os(tmp, repo, informe, handback)
     prueba_arranque(tmp)
     prueba_proyeccion(tmp)
+    prueba_reservas(tmp)
 finally:
     subprocess.run(["git", "worktree", "prune"], cwd=os.path.join(tmp, "repo"), capture_output=True)
     shutil.rmtree(tmp, ignore_errors=True)

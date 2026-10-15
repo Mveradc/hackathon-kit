@@ -63,7 +63,7 @@ class Mcp(unittest.TestCase):
             llama(6, "colisiones", {"mias": False}), llama(7, "tarea", {"id": "T99"}),
             {"jsonrpc": "2.0", "id": 8, "method": "otro"}])
         self.assertEqual(r[1]["result"]["protocolVersion"], "2025-06-18")
-        self.assertEqual([t["name"] for t in r[2]["result"]["tools"]], ["estado", "tarea", "colisiones"])
+        self.assertEqual([t["name"] for t in r[2]["result"]["tools"]], ["estado", "tarea", "colisiones", "reservar", "liberar"])
         texto = r[3]["result"]["content"][0]["text"]
         self.assertTrue(texto.startswith(md))
         self.assertIn("(generado_en: 2026-11-20T10:30:00Z)", texto)
@@ -73,6 +73,42 @@ class Mcp(unittest.TestCase):
         self.assertEqual([c["id"] for c in json.loads(r[6]["result"]["content"][0]["text"])["colisiones"]], ["c2", "c1"])
         self.assertTrue(r[7]["result"]["isError"])
         self.assertEqual(r[8]["error"]["code"], -32601)
+
+    def test_reservar_y_liberar_con_el_relay(self):
+        """M8g (K-73): reservar y liberar hablan con el relay de verdad (relay.url y token del demonio)."""
+        import threading
+        import relay as relay_mod
+        from red import Servidor
+        self.deja_estado(estado_base())
+        r = relay_mod.Relay(os.path.join(self.tmp, "relay"), [{"persona": "persona-a", "nombre": "A"},
+                                                             {"persona": "persona-b", "nombre": "B"}])
+        srv = Servidor(("127.0.0.1", 0), relay_mod.manejador(r))
+        threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.1}, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        for n, v in (("relay.url", f"http://127.0.0.1:{srv.server_address[1]}"), ("token", r.token)):
+            with open(os.path.join(self.dir, n), "w") as f:
+                f.write(v + chr(10))
+        absoluta = os.path.join(self.repo, "motor", "api.py")
+        res = conversa(self.repo, [llama(1, "reservar", {"rutas": ["web/src/", absoluta], "ttl_s": 600}),
+                                   llama(2, "reservar", {"rutas": ["../fuera.txt"]}),
+                                   llama(3, "reservar", {"rutas": ["C:/otro/x.py"]})])
+        x = json.loads(res[1]["result"]["content"][0]["text"])
+        self.assertEqual(x["rutas"], ["web/src/", "motor/api.py"])
+        self.assertTrue(res[2]["result"]["isError"] and res[3]["result"]["isError"])
+        r.recalcular()
+        self.assertEqual([(y["persona"], y["rutas"]) for y in r.estado["reservas"]], [("persona-b", ["web/src/", "motor/api.py"])])
+        res = conversa(self.repo, [llama(1, "liberar", {"id": x["id"]}), llama(2, "liberar", {"id": x["id"] + "x"})])
+        self.assertFalse(res[1]["result"]["isError"])
+        self.assertTrue(res[2]["result"]["isError"])
+        r.recalcular()
+        self.assertEqual(r.estado["reservas"], [])
+
+    def test_reservar_sin_relay_lo_dice(self):
+        self.deja_estado(estado_base())
+        res = conversa(self.repo, [llama(1, "reservar", {"rutas": ["a.py"]})])
+        self.assertTrue(res[1]["result"]["isError"])
+        self.assertIn("relay", res[1]["result"]["content"][0]["text"])
 
     def test_sin_estado_lo_dice(self):
         r = conversa(self.repo, [llama(1, "estado"), llama(2, "tarea", {"id": "T01"})])

@@ -1,0 +1,168 @@
+{
+ "nombre": "G5-mismo-fichero",
+ "descripcion": "Nivel 1 (R-19): A y B cambian el mismo fichero sin conflicto. Amarillo en las dos desde la segunda edición; la misma ruta con otras mayúsculas es el mismo fichero; dos workers de C sobre ficheros distintos (y luego sobre el mismo) no colisionan entre sí (criterio 6); acaba cuando el árbol de B deja de tenerlo.",
+ "tareas": "tareas-03.json",
+ "pasos": [
+  {
+   "t": 0,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "sesion.inicio",
+   "datos": {
+    "source": "startup"
+   }
+  },
+  {
+   "t": 0,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "sesion.inicio",
+   "datos": {
+    "source": "startup"
+   }
+  },
+  {
+   "t": 10,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/App.jsx"
+   ]
+  },
+  {
+   "t": 12,
+   "persona": "persona-c",
+   "papel": "worker",
+   "sesion": "s-c",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "agente": "w1",
+   "worktree": ".claude/worktrees/agent-w1",
+   "rutas": [
+    "pitch/guion.md"
+   ]
+  },
+  {
+   "t": 13,
+   "persona": "persona-c",
+   "papel": "worker",
+   "sesion": "s-c",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "agente": "w2",
+   "worktree": ".claude/worktrees/agent-w2",
+   "rutas": [
+    "pitch/demo.md"
+   ]
+  },
+  {
+   "t": 20,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/App.jsx"
+   ]
+  },
+  {
+   "t": 22,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "arbol",
+   "rutas": [
+    "web/src/App.jsx",
+    "motor/Ficha.py"
+   ]
+  },
+  {
+   "t": 25,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "arbol",
+   "rutas": [
+    "web/src/App.jsx",
+    "motor/ficha.py"
+   ]
+  },
+  {
+   "t": 26,
+   "persona": "persona-c",
+   "papel": "worker",
+   "sesion": "s-c",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "agente": "w2",
+   "worktree": ".claude/worktrees/agent-w2",
+   "rutas": [
+    "pitch/guion.md"
+   ]
+  },
+  {
+   "t": 60,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "arbol",
+   "rutas": []
+  }
+ ],
+ "esperado": [
+  {
+   "tras": 19,
+   "colisiones": []
+  },
+  {
+   "tras": 20,
+   "colisiones": [
+    {
+     "id": "1:persona-a+persona-b",
+     "nivel": "1",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "web/src/App.jsx"
+     ]
+    }
+   ]
+  },
+  {
+   "tras": 30,
+   "colisiones": [
+    {
+     "id": "1:persona-a+persona-b",
+     "nivel": "1",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "motor/Ficha.py",
+      "web/src/App.jsx"
+     ]
+    }
+   ]
+  },
+  {
+   "tras": 61,
+   "colisiones": []
+  }
+ ]
+}

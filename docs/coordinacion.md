@@ -150,5 +150,15 @@ Preguntas de `docs/hackathon-os/preguntas-abiertas.md`. Entorno: Windows 11 Pro 
   - Contrasta con P13: el hijo de un monitor sí sobrevive con `nohup`. macOS y Linux no se han probado.
 - Las entradas llevan `prompt_id`, `permission_mode` y `effort`, y las de herramientas MCP, `mcp_server: {name, source: "plugin"}`. `Stop` y `SubagentStop` llevan `last_assistant_message`, `background_tasks` y `session_crons`. `SessionEnd`, `reason` (`other` en `-p`).
 
+## Hallazgos M8g (paso 0 de las colisiones, 2026-10-15)
+Plugin de juguete en el scratchpad (`juguete-m8g`: un hook PreToolUse de Edit|Write y uno SubagentStart, cada uno con un `additionalContext` con una marca), una sesión `claude -p` con Haiku que edita un fichero y lanza un subagente (`general-purpose`, Haiku) que edita otro. Claude Code 2.1.x en Windows 11 con Git Bash. Gasto: 0,0099 USD.
+
+| Pregunta | Respuesta | Cómo se comprobó |
+|---|---|---|
+| ¿Cuándo ve el modelo el `additionalContext` de PreToolUse? | **Con el resultado de la herramienta, no antes.** En el transcript, el `hook_additional_context` va detrás del `tool_use` de Edit y delante de su `tool_result`: el modelo ya ha decidido la edición cuando corre el hook y lo lee en su siguiente paso. Igual en la sesión principal y en el subagente. La edición se hace (sin `permissionDecision`). | Orden de las líneas del transcript principal (25–27) y del subagente (21–24); los dos ficheros, editados. |
+| ¿Llega el `additionalContext` de SubagentStart al subagente antes de su primera herramienta? | **Sí.** Va justo detrás de su encargo, antes de su primer mensaje; el subagente escribió la palabra clave de la marca («CORMORAN») como primera frase, antes de usar ninguna herramienta. | Transcript del subagente (líneas 1–2 y 12). |
+
+Consecuencia (decisión del usuario): el aviso de reserva «antes de editar» (R-22, criterio 4 de M8g) sale del bloque de inicio y de los deltas en la sesión principal, y de SubagentStart en los workers; el de PreToolUse se queda como aviso al editar. Comprobado con el plugin de verdad en la prueba de C4 (`evals/coordinacion/prueba.md`, «M8g»).
+
 ## Anexo: informe de investigación (11-10-2026)
 [pegar el informe]

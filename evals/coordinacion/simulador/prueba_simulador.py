@@ -26,7 +26,7 @@ sys.path.insert(0, AQUI)
 from simula import carga, ejecutar  # noqa: E402
 
 CONTRATOS = os.path.join(KIT, "docs", "hackathon-os", "contratos")
-GUIONES = ["G1", "G2", "G3", "G4"]
+GUIONES = ["G1", "G2", "G3", "G4", "G5", "G6"]
 
 
 def validador(nombre):

@@ -17,6 +17,7 @@ from datetime import datetime, timedelta, timezone
 AQUI = os.path.dirname(os.path.abspath(__file__))
 KIT = os.path.dirname(os.path.dirname(os.path.dirname(AQUI)))
 sys.path.insert(0, os.path.join(KIT, "hkos"))
+import contratos as contratos_mod  # noqa: E402
 from estados import iso  # noqa: E402
 from modelo import calcular  # noqa: E402
 
@@ -60,6 +61,15 @@ def montar(guion, base):
     return tareas, personas, issues, eventos, ts
 
 
+def contratos_de(guion, base):
+    """M8g: los bloques con dueño de un guion con `contratos` ({contratos, autoridad}: ficheros junto al guion)."""
+    c = guion.get("contratos")
+    if not c:
+        return None
+    leer = lambda n: open(os.path.join(base, n), encoding="utf-8").read()
+    return contratos_mod.duenos(leer(c["contratos"]), leer(c["autoridad"]))[0]
+
+
 def comparar(estado, esperado):
     """Lista de diferencias entre estado.json y los campos que el guion fija en un punto de control."""
     dif = []
@@ -86,6 +96,15 @@ def comparar(estado, esperado):
             dif.append(f"{persona}: {activos.get(persona)} actores activos, se esperaban {n}")
     if "sin_tarea" in esperado and len(estado.get("sin_tarea", [])) != esperado["sin_tarea"]:
         dif.append(f"sin_tarea: {len(estado.get('sin_tarea', []))}, se esperaban {esperado['sin_tarea']}")
+    if "colisiones" in esperado:                # M8g: sin observado_en, que depende del paso del tiempo
+        real = sorted(({k: c[k] for k in ("id", "nivel", "gravedad", "personas", "rutas", "contrato") if k in c}
+                       for c in estado.get("colisiones", [])), key=lambda c: c["id"])
+        if real != sorted(esperado["colisiones"], key=lambda c: c["id"]):
+            dif.append(f"colisiones: {real}, se esperaban {esperado['colisiones']}")
+    if "reservas" in esperado:
+        real = sorted([r["persona"], r["rutas"]] for r in estado.get("reservas", []))
+        if real != sorted(esperado["reservas"]):
+            dif.append(f"reservas: {real}, se esperaban {esperado['reservas']}")
     if "discrepancias" in esperado:
         real = {}
         for d in estado.get("discrepancias", []):
@@ -99,12 +118,14 @@ def ejecutar(ruta, valida_evento=None, valida_estado=None):
     """Corre un guion. Devuelve (diferencias por punto de control, último estado.json)."""
     guion = carga(ruta)
     tareas, personas, issues, eventos, ts = montar(guion, AQUI)
+    contratos = contratos_de(guion, AQUI)
     resultado, estado = [], None
     for e in eventos:
         if valida_evento:
             valida_evento(e)
     for punto in guion["esperado"]:
-        estado = calcular(tareas, issues, eventos, personas, ts(punto["tras"]), guion.get("umbral_parada_s", 1200))
+        estado = calcular(tareas, issues, eventos, personas, ts(punto["tras"]), guion.get("umbral_parada_s", 1200),
+                          contratos=contratos)
         if valida_estado:
             valida_estado(estado)
         resultado.append((punto["tras"], comparar(estado, punto)))

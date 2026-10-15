@@ -1,11 +1,11 @@
 # Pruebas de la coordinación y del Hackathon OS
 
-Ninguna gasta en modelos (salvo las sesiones que se observen con `presencia.py`). Se lanzan desde la raíz del kit. En Windows, con Git for Windows instalado (los hooks se ejecutan con su `bash`).
+Ninguna gasta en modelos (salvo las sesiones que se observen con `presencia.py`). El paso 0 y C4 de M8g (Haiku) se hicieron con scripts en el scratchpad: su resultado está en `docs/coordinacion.md` («Hallazgos M8g») y en `prueba.md` («M8g»). Se lanzan desde la raíz del kit. En Windows, con Git for Windows instalado (los hooks se ejecutan con su `bash`).
 
 | Qué | Comando | Salida |
 |---|---|---|
 | Motor de estados, modelo, esquemas, relay y demonio (`hkos/`) | `uv run --no-project --with "jsonschema[format-nongpl]" -m unittest discover -s hkos/pruebas -v` | 0 OK · 1 falla. Sin jsonschema (o con uno que no funciona del todo, como la 3.2, la 4.0 o la 4.10 del sistema de Ubuntu), las pruebas de esquema salen como *skipped* y el resto se ejecuta |
-| Simulador, guiones G1–G4 | `uv run --no-project --with "jsonschema[format-nongpl]" evals/coordinacion/simulador/prueba_simulador.py` | 0 OK · 1 falla · **77 saltada** (sin jsonschema utilizable) |
+| Simulador, guiones G1–G6 (G5 y G6, colisiones: M8g) | `uv run --no-project --with "jsonschema[format-nongpl]" evals/coordinacion/simulador/prueba_simulador.py` | 0 OK · 1 falla · **77 saltada** (sin jsonschema utilizable) |
 | Un guion suelto | `uv run --no-project evals/coordinacion/simulador/simula.py evals/coordinacion/simulador/guiones/G2.json [--salida estado.json]` | 0 OK · 1 algún punto de control no coincide |
 | Hooks (orquestador, buzón y Hackathon OS) | `python evals/coordinacion/prueba_hooks.py` | 0 OK · 1 algún caso falla. Tarda 1–2 min: la prueba de escrituras simultáneas lanza 50 rondas de 20 hooks; `HK_RONDAS=2` la acorta |
 | Coste por llamada de los hooks del OS | `python evals/coordinacion/coste_hooks.py [N]` | Informe en ms; no compara con un umbral |
@@ -15,7 +15,8 @@ Ninguna gasta en modelos (salvo las sesiones que se observen con `presencia.py`)
 | Estado duradero sin red, criterios 4 y 6 de M8e | `uv run --no-project evals/coordinacion/simulador/duradero.py` | 0 OK · 1 falla. Relay, sondeo y compilador de verdad contra el GitHub falso de `hkos/pruebas/github_falso.py`, con reloj inyectado: `parada` a los 20 min, `reclamada` que no cambia, rama sin ID en `sin_tarea`; 2 h simuladas con las escrituras por hora y los 304 |
 | Estado de las tareas en el relay mientras pasan cosas de verdad (criterios 2–4 de M8e) | `uv run --no-project evals/coordinacion/tareas_vivo.py --clon <clon unido> [--segundos 1800] [--tareas T08 …]` | Informe: cada cambio de estado con su fuente, `sin_tarea` y discrepancias. No gasta por sí mismo |
 
-| Igualdad de las tres vistas, criterio 5 de M8f | `uv run --no-project evals/coordinacion/simulador/igualdad.py` | 0 OK · 1 falla. Para G1–G4 y el estado sintético de `simulador/fixture.py`, compara lo que sirve el relay en `/v1/vista`, el `estado-equipo.md` que escribe el demonio para cada persona y el MCP por stdio |
+| Igualdad de las tres vistas, criterio 5 de M8f y 7 de M8g | `uv run --no-project evals/coordinacion/simulador/igualdad.py` | 0 OK · 1 falla. Para G1–G6 (en G5 y G6, con las colisiones que calcula el relay) y el estado sintético de `simulador/fixture.py`, compara lo que sirve el relay en `/v1/vista`, el `estado-equipo.md` que escribe el demonio para cada persona y el MCP por stdio |
+| Colisiones en vivo, criterios 1, 2 y 6 de M8g | `uv run --no-project evals/coordinacion/colisiones_vivo.py` | 0 OK · 1 falla. Dos clones de un `bare` local, hooks reales, un demonio por clon y el relay con `publicar_wip: sí`, sin red ni GitHub: dos workers de A sin colisión, el amarillo en ≤ 30 s, el rojo de nivel 2 sin tocar el índice ni subir secretos, y la ref WIP borrada al limpiar. Tarda unos 3 min |
 | Web en vivo, criterio 1 de M8f | `uv run --no-project evals/coordinacion/web_demo.py --ip <IP de LAN, Tailscale o ZeroTier> [--puerto 7777]` y, desde otra consola, `… web_demo.py --evento <url> <token>` | Imprime la URL con el token. El relay de verdad, con las tareas del 03, un guion a la hora actual y dos colisiones de ejemplo; sin GitHub. En Windows, la primera vez pide permiso al cortafuegos |
 
 Con `--python 3.10` detrás de `--no-project`, las de `uv` se ejecutan con la versión mínima (`requires-python >= 3.10`).
@@ -28,6 +29,7 @@ Con `--python 3.10` detrás de `--no-project`, las de `uv` se ejecutan con la ve
 - `hkos/pruebas/github_falso.py` (M8e): GitHub falso de la biblioteca estándar (issues, eventos, comentarios, dependencias, ETag/304, 429, contador de escrituras), con el comportamiento observado en GitHub. Lo usan `test_compilar.py`, `test_github.py` y `simulador/duradero.py`. `gh-falso.sh` sigue siendo para el `gh` de bash.
 - `prueba_hooks.py`, desde M8d, también el arranque del demonio (`sesion.sh` y `scripts/os/arranque.sh`): salida idéntica con el OS apagado, puerto por `cksum`, puerto ocupado, sin uv y `agente.vivo`.
 - `prueba_hooks.py`, desde M8f, también la proyección en las sesiones: el bloque «Equipo» de `sesion.sh` (≤ 2.500, orden de R-24), `delta.sh` con reloj inyectado (30 minutos de silencio, dependencia parada, compactación, tope de 6.000, relanzar el demonio) y el MCP lanzado como en `.mcp.json`; con el OS apagado, `sesion.sh` igual al de `v0.3.2`.
+- `prueba_hooks.py`, desde M8g, también `arbol.sh` con los bloques de `docs/contratos.md` tocados, `reserva.sh` (PreToolUse y SubagentStart; con el OS apagado, nada), la sección «Reservas» en el inicio y en el delta, y el aviso rojo de `escucha.sh` (una vez; en silencio con el OS apagado o sin coordinación). `coste_hooks.py` mide también `reserva.sh`.
 - `simulador/fixture.py` (M8f): estado sintético de 5 personas y 20 tareas con colisiones y novedades. `simulador/igualdad.py`: la prueba de igualdad. `web_demo.py`: la web en vivo.
 - `partida-m8-03/`: estado de partida del orquestador de B para `../prueba-m8-03-base`.
 - `coste.py`: coste en USD de una sesión del orquestador (transcripts). `coste_hooks.py`: ms por llamada de los hooks del OS.

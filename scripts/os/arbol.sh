@@ -26,9 +26,39 @@ if [[ -n $base ]] && ! { os_head && [[ $OS_HEAD == "$base" ]]; }; then
   diff=$(git diff --name-only "$base...HEAD" 2>/dev/null)
 fi
 
+# Nivel 3 (M8g): si docs/contratos.md está cambiado, los títulos «## » de los bloques que tocan los cambios
+# (git diff -U0 contra la base: un proceso más, solo en ese caso). Van en la firma: tocar otro bloque del mismo
+# fichero, ya cambiado, es un arbol nuevo.
+contratos=()
+toca=
+while IFS= read -r l; do
+  [[ ${l#?? } == docs/contratos.md || $l == docs/contratos.md ]] && toca=1
+done <<< "$porcelain"$'\n'"$diff"
+if [[ -n $toca && -f $OS_TOP/docs/contratos.md ]]; then
+  declare -A cambiadas=() vistos_t=()
+  while IFS= read -r l; do
+    [[ $l =~ ^@@\ -[0-9]+(,[0-9]+)?\ \+([0-9]+)(,([0-9]+))?\ @@ ]] || continue
+    ini=${BASH_REMATCH[2]} n=${BASH_REMATCH[4]:-1}
+    if (( n == 0 )); then (( ini > 0 )) && cambiadas[$ini]=1; continue; fi
+    for (( i = ini; i < ini + n; i++ )); do cambiadas[$i]=1; done
+  done < <(git diff -U0 --no-color --no-ext-diff "${base:-HEAD}" -- ':(top)docs/contratos.md' 2>/dev/null)
+  n=0 titulo= codigo=
+  while IFS= read -r l || [[ -n $l ]]; do
+    (( n++ ))
+    l=${l%$'\r'}
+    if [[ $l == '```'* ]]; then [[ -n $codigo ]] && codigo= || codigo=1; fi
+    [[ -z $codigo && $l == '## '* ]] && titulo=${l#'## '}
+    if [[ -n ${cambiadas[$n]} && -n $titulo ]]; then
+      t=${titulo:0:80}
+      [[ -n ${vistos_t[$t]} ]] || { vistos_t[$t]=1; contratos+=("$t"); }
+    fi
+  done < "$OS_TOP/docs/contratos.md"
+fi
+
 # ¿Ha cambiado desde el último arbol de este actor?
 dir=$OS_COMUN/hackathon/os/arbol
 firma=$base$'\n'$porcelain$'\n--\n'$diff
+(( ${#contratos[@]} )) && firma+=$'\n--contratos\n'"$(printf '%s\n' "${contratos[@]}")"
 previa=
 [[ -f $dir/$OS_SESION-$actor ]] && IFS= read -r -d '' previa < "$dir/$OS_SESION-$actor"
 [[ $previa == "$firma" ]] && exit 0
@@ -38,6 +68,11 @@ printf '%s' "$firma" > "$dir/$OS_SESION-$actor"
 os_sobre arbol
 linea=$OS_SOBRE
 [[ -n $base ]] && linea+=',"base":"'$base'"'
+if (( ${#contratos[@]} )); then
+  items=
+  for t in "${contratos[@]:0:5}"; do os_json "$t"; items+=${items:+,}'"'$OS_V'"'; done
+  linea+=',"contratos":['$items']'
+fi
 truncado=
 # Añade a la lista mientras quepa (deja sitio para cerrar la línea).
 lista() {

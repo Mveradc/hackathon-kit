@@ -53,6 +53,22 @@ try:
              ("emite.sh, Bash con git commit", f"{KIT}/scripts/os/emite.sh", bash, activo),
              (f"emite.sh, Edit con {len(edit_grande.encode()) // 1024} KB de entrada", f"{KIT}/scripts/os/emite.sh", edit_grande, activo),
              ("arbol.sh (git status; sin cambios, no escribe)", f"{KIT}/scripts/os/arbol.sh", arbol, activo)]
+    # M8g: reserva.sh es síncrono (PreToolUse de cada Edit/Write): con el OS apagado, sin reservas, con 50 reservas que
+    # no coinciden y con una que coincide (la primera vez avisa; las demás, ya avisada en la sesión, no).
+    def pre_edit(repo, ruta):
+        return json.dumps({"session_id": "s-coste", "cwd": repo, "hook_event_name": "PreToolUse", "tool_name": "Edit",
+                           "tool_input": {"file_path": os.path.join(repo, ruta), "old_string": "a", "new_string": "b"}})
+    con_res = repo("reservas", True)
+    d_os = os.path.join(con_res, ".git", "hackathon", "os")
+    os.makedirs(d_os, exist_ok=True)
+    hasta = int(time.time()) + 3600
+    open(os.path.join(d_os, "reservas.tsv"), "w", newline="\n").write(
+        "".join(f"reserva-{i}\tcarpeta{i}/fichero.py\tpersona-a\t{hasta}\t18:55\tcompartida\n" for i in range(50)) +
+        f"reserva-x\tweb/\tpersona-a\t{hasta}\t18:55\tcompartida\n")
+    filas += [("reserva.sh, OS apagado", f"{KIT}/scripts/os/reserva.sh", pre_edit(apagado, "a.txt"), apagado),
+              ("reserva.sh, OS encendido sin reservas.tsv", f"{KIT}/scripts/os/reserva.sh", pre_edit(activo, "a.txt"), activo),
+              ("reserva.sh, 51 reservas, ninguna coincide", f"{KIT}/scripts/os/reserva.sh", pre_edit(con_res, "a.txt"), con_res),
+              ("reserva.sh, coincide (avisada ya en la sesión)", f"{KIT}/scripts/os/reserva.sh", pre_edit(con_res, "web/a.js"), con_res)]
     print(f"{N} llamadas por fila; bash: {BASH}")
     for nombre, script, texto, cwd in filas:
         print(f"  {mide(script, texto, cwd):6.1f} ms  {nombre}")

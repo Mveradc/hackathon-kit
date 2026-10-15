@@ -3,7 +3,8 @@
 Las tres vistas salen de aquí (constitución IV):
   - vista(estado, ahora): lo que pinta la web (el relay la sirve en /v1/vista y por SSE) y de lo que salen las otras dos;
   - markdown(vista, persona): estado-equipo.md (api.md §6), que escribe el demonio y leen sesion.sh y delta.sh;
-  - firmas(vista, persona): una huella por sección, solo de lo que importa a la persona (sin horas), para delta.sh.
+  - firmas(vista, persona): una huella por sección, solo de lo que importa a la persona (sin horas), para delta.sh;
+  - reservas_tsv(vista, persona): las reservas de las demás personas, para el aviso de reserva.sh (M8g).
 El texto que viene del plan o de los issues (títulos, novedades) es dato: va entre «» y con su autor (constitución V).
 """
 import hashlib
@@ -27,6 +28,7 @@ PRESENCIA_VIEJA_S = 180                 # R-12: presencia con más de 3 minutos
 FUENTE_VIEJA_S = 300                    # R-12: GitHub o relay con más de 5 (umbral_viejo_s de os.md)
 NOVEDADES_MAX = 5
 LINEA_MAX = 160                         # api.md §6
+SEP, SALTO = chr(9), chr(10)            # reservas.tsv: tabulador entre campos, una ruta por línea
 
 
 def _edad(ts, ahora):
@@ -93,7 +95,8 @@ def vista(estado, ahora=None, umbral_viejo_s=FUENTE_VIEJA_S):
             "umbrales": {"presencia_s": PRESENCIA_VIEJA_S, "fuente_s": umbral_viejo_s},
             "columnas": columnas, "colisiones": [dict(c) for c in colisiones],
             "sin_tarea": sorted(estado.get("sin_tarea", []), key=lambda s: fecha(s["observado_en"]), reverse=True),
-            "personas": personas, "nombres": nombres, "novedades": novedades[:NOVEDADES_MAX]}
+            "personas": personas, "nombres": nombres, "novedades": novedades[:NOVEDADES_MAX],
+            "reservas": sorted(estado.get("reservas", []), key=lambda r: (r["hasta"], r.get("id", "")))}
 
 
 # --- vistas de una persona ---
@@ -106,6 +109,11 @@ def trabajo(v, persona):
 
 def colisiones_de(v, persona):
     return [c for c in v["colisiones"] if persona in c["personas"]]
+
+
+def reservas_de_otros(v, persona):
+    """Las reservas vigentes de las demás personas (M8g): las que pueden avisar a esta."""
+    return [r for r in v.get("reservas", []) if r["persona"] != persona]
 
 
 def _huella(obj):
@@ -122,6 +130,7 @@ def firmas(v, persona):
         "colisiones": _huella([[c["id"], c["nivel"], c["gravedad"], sorted(c["personas"]), sorted(c["rutas"]),
                                 c.get("contrato")] for c in colisiones_de(v, persona)]),
         "novedades": _huella([[n.get("tipo"), n.get("resumen"), n.get("autor"), n["observado_en"]] for n in v["novedades"]]),
+        "reservas": _huella([[sorted(r["rutas"]), r["persona"], r["modo"]] for r in reservas_de_otros(v, persona)]),
     }
 
 
@@ -166,6 +175,23 @@ def linea_colision(c, tz):
                          f"({_hora(c['observado_en'], tz)})")
 
 
+def linea_reserva(r, tz):
+    rutas = ", ".join(f"«{x}»" for x in r["rutas"][:4]) + (f" (+{len(r['rutas']) - 4})" if len(r["rutas"]) > 4 else "")
+    return "- " + _linea(f"{rutas} · @{r['persona']} · hasta {_hora(r['hasta'], tz)} · {r['modo']}")
+
+
+def reservas_tsv(v, persona, tz):
+    """reservas.tsv (M8g, api.md §7): una línea por ruta reservada por otra persona, para reserva.sh, que solo usa
+    builtins de bash: id, ruta, persona, hasta (época), hasta (HH:MM) y modo, separados por tabuladores."""
+    lineas = []
+    for r in reservas_de_otros(v, persona):
+        hasta = fecha(r["hasta"])
+        for ruta in r["rutas"]:
+            campos = [r.get("id", ""), ruta, r["persona"], str(int(hasta.timestamp())), _hora(r["hasta"], tz), r["modo"]]
+            lineas.append(SEP.join(c.replace(SEP, " ").replace(SALTO, " ") for c in campos))
+    return "".join(l + SALTO for l in lineas)
+
+
 def linea_novedad(n, tz):
     tipo = {"decision": "decisión", "criterio": "criterio", "escalado": "escalado"}.get(n.get("tipo"), n.get("tipo", ""))
     autor = f" ({n['autor']})" if n.get("autor") else ""
@@ -207,10 +233,11 @@ def avisos(v, tz):
     return salida
 
 
-def markdown(v, persona, ruta_detalle, tz=None, epoch=None, relay=None):
+def markdown(v, persona, ruta_detalle, tz=None, epoch=None, relay=None, avisos_locales=None):
     """estado-equipo.md de una persona (api.md §6). `relay` = (estado, desde) si el demonio no llega al relay: el md
     lo dice aunque estado.json no lo sepa (es la última copia que recibió). `epoch` = cuándo se escribió (para que
-    sesion.sh sepa si el demonio sigue vivo)."""
+    sesion.sh sepa si el demonio sigue vivo). `avisos_locales`: líneas «>» del demonio que no están en estado.json (M8g:
+    por qué no publica el trabajo en curso)."""
     tz = tz or timezone.utc
     f = firmas(v, persona)
     relay_ok = "ok" if relay is None else "viejo"
@@ -218,15 +245,19 @@ def markdown(v, persona, ruta_detalle, tz=None, epoch=None, relay=None):
     cabecera = (f"<!-- hk-os v1 persona={persona} generado_en={v['generado_en']} hora={_hora(v['ahora'], tz)} "
                 f"epoch={epoch if epoch is not None else int(fecha(v['ahora']).timestamp())} relay={relay_ok} "
                 f"github={'viejo' if github and github['viejo'] else 'ok'} "
-                f"firmas=trabajo:{f['trabajo']},colisiones:{f['colisiones']},novedades:{f['novedades']} -->")
+                f"firmas=trabajo:{f['trabajo']},colisiones:{f['colisiones']},novedades:{f['novedades']},"
+                f"reservas:{f['reservas']} -->")
     lineas = [cabecera]
     if relay is not None:
         lineas.append(f"> Relay sin respuesta desde {_hora(relay[1], tz)}: lo efímero (presencia, ficheros) puede estar viejo.")
     lineas += avisos(v, tz)
+    lineas += [_linea(a) for a in avisos_locales or []]
     lineas.append("## Tu trabajo")
     lineas += [lineas_tarea(t, v, tz) for t in trabajo(v, persona)] or ["- nada abierto"]
     lineas.append("## Colisiones que te afectan")
     lineas += [linea_colision(c, tz) for c in colisiones_de(v, persona)] or ["- ninguna"]
+    lineas.append("## Reservas")
+    lineas += [linea_reserva(r, tz) for r in reservas_de_otros(v, persona)] or ["- ninguna"]
     lineas.append("## Novedades")
     lineas += [linea_novedad(n, tz) for n in v["novedades"]] or ["- ninguna"]
     lineas.append("## Equipo")

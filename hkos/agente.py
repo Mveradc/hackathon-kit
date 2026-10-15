@@ -25,6 +25,7 @@ from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from colisiones_merge import Publicador  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from estados import fecha  # noqa: E402
 import proyeccion  # noqa: E402
@@ -239,6 +240,8 @@ class Agente:
         self.estado_nuevo = False
         self.tz = None                           # zona de las horas del md; None = la del portátil
         self.vivo, self.puerto = os.path.join(self.dir, "agente.vivo"), None
+        # Nivel 2 (M8g): la publicación del trabajo en curso, con `publicar_wip: sí`. La lanza main() en su hilo.
+        self.wip = Publicador(self.principal, self.dir, self.persona, lambda k: conf(os_md, k), log=self.log)
 
     # --- posiciones ---
     def _ruta_pos(self):
@@ -434,7 +437,7 @@ class Agente:
 
     def salud(self):
         return (f"hk-os {self.comun}\npendientes: {len(self.cola)}\nlineas_corruptas: {self.corruptas}\n"
-                f"invalidos: {self.invalidos}\nrelay: {self.relay_estado}\n")
+                f"invalidos: {self.invalidos}\nrelay: {self.relay_estado}\nwip: {self.wip.salud}\n")
 
     def log(self, texto):
         ruta = os.path.join(self.dir, "agente.log")
@@ -489,8 +492,11 @@ class Agente:
         v = proyeccion.vista(self.estado, ahora=self.ahora(), umbral_viejo_s=self.umbral_viejo_s)
         relay = ("viejo", self.relay_caido_desde) if self.relay_caido_desde else None
         texto = proyeccion.markdown(v, self.persona, os.path.join(self.dir, "estado.json").replace("\\", "/"),
-                                    tz=self.tz or datetime.now().astimezone().tzinfo, epoch=int(self.reloj()), relay=relay)
+                                    tz=self.tz or datetime.now().astimezone().tzinfo, epoch=int(self.reloj()), relay=relay,
+                                    avisos_locales=[self.wip.aviso] if self.wip.aviso else None)
         self._escribe("estado-equipo.md", texto)
+        # M8g: las reservas de las demás personas, para el aviso de reserva.sh (solo builtins de bash).
+        self._escribe("reservas.tsv", proyeccion.reservas_tsv(v, self.persona, self.tz or datetime.now().astimezone().tzinfo))
 
     def _escribe(self, nombre, texto):
         """Escritura atómica: quien lee (sesion.sh, delta.sh, el MCP) nunca ve un fichero a medias."""
@@ -584,6 +590,17 @@ def main(argv=None):
     agente.latir_vivo()
     agente.log(f"arranca en 127.0.0.1:{a.puerto} para {agente.persona} ({agente.comun}); "
                f"apagado tras {agente.apagado_s / 60:g} min")
+    parar = threading.Event()
+
+    def publicar():
+        """Nivel 2 (M8g): en su hilo, para que un push lento no frene los eventos."""
+        while not parar.is_set():
+            try:
+                agente.wip.ciclo()
+            except Exception as ex:  # la publicación no tumba al demonio
+                agente.log(f"wip: error: {ex!r}")
+            parar.wait(5)
+    threading.Thread(target=publicar, daemon=True).start()
     try:
         while True:
             try:
@@ -595,6 +612,7 @@ def main(argv=None):
                 break
             time.sleep(CICLO_S)
     finally:
+        parar.set()
         servidor.shutdown()
         servidor.server_close()
         try:

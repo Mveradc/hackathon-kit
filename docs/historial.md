@@ -253,6 +253,19 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Decisiones del usuario:** vista calculada en Python; firmas de tres secciones (con la compactación y la dependencia parada); 2.500 solo para el bloque del OS; igualdad en G1–G4 y un estado sintético, con G5 y G6 como criterio 7 de M8g; MCP con tres herramientas (`reclamar` y `reservar`, a M8g).
 - **Resultados** en `evals/coordinacion/prueba.md` («M8f»): los cinco criterios cumplidos. La web, vista por el usuario desde su portátil por ZeroTier, refleja un cambio en 2–3 s. Gasto: 0,077 USD; sin escrituras en GitHub.
 
+## M8g — Colisiones (2026-10-15)
+- **K-70:** `hkos/colisiones.py`, dentro de `modelo.calcular`: los ficheros de cada persona por árbol y el nivel 1 (amarillo) por conjunto de personas; dentro de una persona, nunca.
+- **K-71:** `hkos/colisiones_merge.py`. El demonio publica el trabajo en curso con un índice temporal (`publicar_wip: sí`): padre en la merge-base, exclusiones como pathspecs de `git add`, sin diálogos de credenciales, nada con el repo público o con un merge a medias, y lo publicado visible en `/salud` y `wip.json`. El relay calcula el nivel 2 con `merge-tree`.
+- **K-72:** `hkos/contratos.py`: nivel 3 por las rutas de `Vive en:` y por el bloque de `docs/contratos.md`, que da `arbol.sh`. El dueño sale de `autoridad.md` y los consumidores son el resto del equipo.
+- **K-73:**
+  - reservas en el relay y en el MCP (`reservar`, `liberar`);
+  - sección «Reservas» en el md (inicio y deltas);
+  - `reserva.sh` en PreToolUse y SubagentStart, sin bloquear nunca;
+  - aviso rojo del monitor una sola vez.
+- **Paso 0 (Haiku):** el `additionalContext` de PreToolUse llega con la edición, no antes; el de SubagentStart sí llega antes. Por eso el aviso previo va por el bloque de inicio y los deltas, y en los workers por SubagentStart.
+- **Decisiones del usuario:** el ADR de colisiones, ampliado (y siete ajustes de seguridad al aprobar); nivel 3 por rutas y por bloque; consumidores = el resto del equipo; `reclamar`, a M8h; un aviso de reserva por sesión; el nivel 2 tapa al 1; `--no-verify` en el push del WIP; el amarillo que se queda tras un push desde la terminal, a Pendiente; el turno del monitor en interactivo, al ensayo de M8h.
+- **Resultados** en `evals/coordinacion/prueba.md` («M8g»): los siete criterios cumplidos (el 4 por dos vías; el 5 sin modelo, con el turno para M8h). En vivo y sin modelo, el amarillo llega a los 2,6 s y el rojo de nivel 2 a los 79–82 s, sin tocar el índice ni el status de nadie y sin subir secretos. Gasto: 0,018 USD; sin escrituras en GitHub.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

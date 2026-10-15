@@ -1,0 +1,183 @@
+{
+ "nombre": "G6-contrato-y-reserva",
+ "descripcion": "Nivel 3 (R-21): B cambia una ruta de «Vive en:» de un contrato de A y C cambia su bloque de docs/contratos.md: rojo para quien lo toca, la dueña y el resto. A reserva web/src/ (R-22): vigente hasta su ttl. Lo que toca A, dueña, no avisa.",
+ "tareas": "tareas-03.json",
+ "contratos": {
+  "contratos": "contratos-g6.md",
+  "autoridad": "autoridad-g6.md"
+ },
+ "pasos": [
+  {
+   "t": 0,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/api.py"
+   ]
+  },
+  {
+   "t": 10,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/api.py"
+   ]
+  },
+  {
+   "t": 20,
+   "persona": "persona-c",
+   "papel": "principal",
+   "sesion": "s-c",
+   "fuente": "hook",
+   "tipo": "arbol",
+   "rutas": [
+    "docs/contratos.md"
+   ],
+   "datos": {
+    "contratos": [
+     "motor → web: ficha de empresa"
+    ]
+   }
+  },
+  {
+   "t": 30,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "mcp",
+   "tipo": "reserva",
+   "rutas": [
+    "web/src/"
+   ],
+   "datos": {
+    "ttl_s": 300,
+    "modo": "compartida"
+   }
+  },
+  {
+   "t": 100,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "arbol",
+   "rutas": []
+  }
+ ],
+ "esperado": [
+  {
+   "tras": 5,
+   "colisiones": []
+  },
+  {
+   "tras": 10,
+   "colisiones": [
+    {
+     "id": "3:motor web ficha de empresa:persona-b",
+     "nivel": "3",
+     "gravedad": "rojo",
+     "personas": [
+      "persona-b",
+      "persona-a",
+      "persona-c"
+     ],
+     "rutas": [
+      "motor/api.py"
+     ],
+     "contrato": "motor → web: ficha de empresa"
+    },
+    {
+     "id": "1:persona-a+persona-b",
+     "nivel": "1",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "motor/api.py"
+     ]
+    }
+   ]
+  },
+  {
+   "tras": 40,
+   "colisiones": [
+    {
+     "id": "3:motor web ficha de empresa:persona-b",
+     "nivel": "3",
+     "gravedad": "rojo",
+     "personas": [
+      "persona-b",
+      "persona-a",
+      "persona-c"
+     ],
+     "rutas": [
+      "motor/api.py"
+     ],
+     "contrato": "motor → web: ficha de empresa"
+    },
+    {
+     "id": "3:motor web ficha de empresa:persona-c",
+     "nivel": "3",
+     "gravedad": "rojo",
+     "personas": [
+      "persona-c",
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "docs/contratos.md"
+     ],
+     "contrato": "motor → web: ficha de empresa"
+    },
+    {
+     "id": "1:persona-a+persona-b",
+     "nivel": "1",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "motor/api.py"
+     ]
+    }
+   ],
+   "reservas": [
+    [
+     "persona-a",
+     [
+      "web/src/"
+     ]
+    ]
+   ]
+  },
+  {
+   "tras": 331,
+   "colisiones": [
+    {
+     "id": "3:motor web ficha de empresa:persona-c",
+     "nivel": "3",
+     "gravedad": "rojo",
+     "personas": [
+      "persona-c",
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "docs/contratos.md"
+     ],
+     "contrato": "motor → web: ficha de empresa"
+    }
+   ],
+   "reservas": []
+  }
+ ]
+}

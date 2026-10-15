@@ -887,3 +887,62 @@ Sin modelo, al cerrar:
 - **Comillas dobles en las novedades de `criterios.md`**: «Organización: «Al final sí…»». Cosmético.
 - **El Chrome conectado no llegó a `127.0.0.1`** del PC (`ERR_CONNECTION_REFUSED`, con el relay respondiendo a `curl`), y sí a la IP de ZeroTier. No se investigó.
 - **Ninguna sesión interactiva todavía:** el bloque y los deltas se han probado llamando a los hooks como lo hace Claude Code, no en una sesión de verdad. Se verá en el ensayo de M8h.
+
+# M8g: colisiones (2026-10-15)
+
+Criterios en `docs/hackathon-os/hitos.md` («M8g»); tareas K-70 a K-73; plan aprobado en `C:/Users/mvera/.claude/plans/wiggly-splashing-swing.md`, con las decisiones del usuario y los siete ajustes al aprobarlo. Windows 11 con Git Bash, Git 2.49 (WSL: 2.43). Sin escrituras en GitHub: todo con remotos `bare` locales y un `gh` falso.
+
+**Montaje:** casi todo, sin modelo:
+- `hkos/pruebas`, con `test_colisiones.py` y `test_colisiones_merge.py` (repos de verdad con un `bare`);
+- `prueba_hooks.py`;
+- los guiones G5 y G6 del simulador, con reloj inyectado;
+- `simulador/igualdad.py`;
+- `evals/coordinacion/colisiones_vivo.py`: dos clones de un `bare`, hooks reales (`emite.sh`, `arbol.sh`) con entradas con la forma de las de Claude Code, un demonio por clon y el relay con `publicar_wip: sí`.
+
+Con modelo: el paso 0 y C4, en el scratchpad, con Haiku en `-p`.
+
+Gasto en modelos: **0,018 USD** (paso 0: 0,0099; C4: 0,0078). Un primer intento de C4 no llegó a lanzar `claude` (en Windows es `claude.CMD`) y no gastó.
+
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | G5 (dos personas en el mismo fichero sin conflicto): nivel 1 amarillo en ambas, en ≤ 30 s desde la segunda edición | **Sí.** En vivo (`colisiones_vivo.py`), «AMARILLO · nivel 1 · app.py · @persona-a, @persona-b» en el `estado-equipo.md` de las dos a los **2,6 s** de la segunda edición, en dos pasadas. G5 en el simulador: nada antes de la segunda edición; las mismas rutas con otras mayúsculas son el mismo fichero; cuando el árbol de B ya no lo tiene, desaparece |
+| 2 | G5b (`publicar_wip: sí`, cambios incompatibles en las mismas líneas): nivel 2 rojo con el fichero antes de cualquier fusión o push; `git status` y el índice de las dos copias no cambian | **Sí.** «ROJO · nivel 2 · app.py» en las dos a los **79–82 s** (publicación cada 60 s y `merge-tree` cada 30 s), con `main` del remoto sin tocar. El rojo tapa el amarillo de ese fichero. Bytes del índice, `git status --porcelain=v2`, stash y HEAD de las dos copias, iguales antes y después. Además: el WIP de A tiene `app.py` y no `.env`, `data/` ni `datos/`; ningún blob de esos ficheros ni del commit local con datos en el remoto, y `.env` tampoco es un objeto en la copia de A; el `pre-push` que falla de B no frena la publicación (`--no-verify`); `/salud` (`wip: <sha> · N ficheros · hh:mm`) y `wip.json` dicen qué se publicó; al limpiar, la ref de B desaparece del remoto y el rojo se va. Ajustes del usuario, en `test_colisiones_merge.py` (10 pruebas): no publica con el repo público (salvo «sí, incluso público») ni si no sabe si lo es; no publica con un merge a medias, tampoco sin `MERGE_HEAD` pero con entradas sin fusionar; tras un fallo de autenticación, espera 10 min; un `git add` que falla por otro motivo (el índice temporal bloqueado) no publica, y una salida 1 solo vale si lo único que dice git es que nuestras exclusiones nombran rutas ya ignoradas |
+| 3 | G6 (contrato tocado por quien no es su dueño): nivel 3 rojo al dueño y a los consumidores, con el bloque de contrato | **Sí.** G6 con un `contratos.md` y un `autoridad.md` de juguete: B cambia `motor/api.py` (de «Vive en:» de un contrato de A) y C cambia su bloque de `docs/contratos.md` (`datos.contratos` del `arbol`). Salen dos rojos con «motor → web: ficha de empresa», cada uno para quien lo toca, la dueña y el resto del equipo; lo que toca A, la dueña, no avisa. En `prueba_hooks.py`, `arbol.sh` saca los títulos de los bloques tocados (no los de dentro de un bloque de código) y tocar otro bloque del fichero ya cambiado es un `arbol` nuevo. Dueño por su fila de `autoridad.md` o por la carpeta; con dos candidatas, sin dueño (`test_colisiones.py`) |
+| 4 | Un agente que va a editar un fichero reservado por otro recibe el aviso antes de editar; la edición no se bloquea | **Sí, por dos vías según quién edita, no por PreToolUse.** El paso 0 (`docs/coordinacion.md`, «Hallazgos M8g») comprobó que el `additionalContext` de PreToolUse llega al modelo con el resultado de la edición, no antes: el modelo ya ha decidido editar cuando corre el hook. Por eso: **(a) sesión principal**: la reserva sale en la sección «Reservas» del bloque de inicio y del delta del turno. Solo vale para reservas creadas antes de ese turno; una creada a mitad de turno se ve al editar (PreToolUse) o en el turno siguiente. **(b) workers**: `reserva.sh` en SubagentStart les da las reservas vigentes de otras personas antes de su primera herramienta. En las dos, el aviso de PreToolUse llega además con la edición, una vez por sesión (o worker) y reserva, y nunca lleva `permissionDecision`. **C4 con el plugin de verdad** (Haiku, `-p`, reserva de A sobre `web/src/` creada por la API del relay antes de la sesión de B y demonio de B en marcha): (a) el modelo dijo, antes de usar ninguna herramienta, que su contexto de inicio traía «web/src/» reservada por @persona-a hasta las 16:41; editó `App.jsx` y el aviso de PreToolUse llegó con la edición; (b) el worker (un agente `worker` de proyecto con Haiku) recibió por SubagentStart «ficheros reservados por otras personas… «web/src/» (@persona-a, hasta las 16:41, compartida)» antes de su primer mensaje, lo dijo y editó `api.js`. Las dos ediciones se hicieron. Sin modelo, en `prueba_hooks.py`: rutas de Windows y de Git Bash, mayúsculas, carpeta reservada, reserva vencida, la propia no avisa, el revisor no recibe nada, y con el OS apagado no imprime nada |
+| 5 | Una colisión roja nueva abre un turno en la sesión afectada (monitor) una sola vez; las amarillas solo salen en el siguiente delta | **Sí, sin modelo; el turno, en M8h.** `prueba_hooks.py` lanza `escucha.sh` con un `gh` falso: una roja nueva da una línea y solo una (la misma con otra hora no se repite); la que ya estaba al arrancar y la amarilla, ninguna. Con la coordinación activa y el OS apagado, ninguna línea del OS; sin coordinación, silencio total y ninguna llamada a `gh`, como en M6a. Las amarillas salen en el delta (M8f, y aquí en G5 por `igualdad.py`). Que la línea abra un turno ya se vio en M6a. Los monitores no arrancan en `-p`, así que verlo en una sesión interactiva pasa al ensayo de M8h, por decisión del usuario |
+| 6 | Con dos workers de la misma persona sobre ficheros distintos, ninguna colisión | **Sí.** En vivo: dos worktrees de A con sus `agent_id`, ediciones por los hooks reales en ficheros distintos y luego en el mismo, más el `arbol` de la copia principal que ve `.claude/worktrees/`: ningún aviso en el relay. También en G5 y en `test_colisiones.py` |
+| 7 | Igualdad (web, `estado-equipo.md`, MCP) en G5 y G6 con las colisiones calculadas por el relay | **Sí.** `simulador/igualdad.py` con G1–G6 y el estado sintético: 0 fallos (326 comprobaciones). En G5 y G6, el relay calcula las colisiones a partir de los eventos y los contratos del guion |
+
+Coste por llamada (`coste_hooks.py`, N=100, Windows), frente a un presupuesto de bash vacío + 3 ms con el OS apagado y ≤ 50 ms encendido: bash vacío 24,3 ms; `reserva.sh` con el OS apagado 26,1–26,8 ms; encendido sin `reservas.tsv`, 26,6–27,0; con 51 reservas sin coincidencia, 46,5 ms; con coincidencia ya avisada, 47,3 ms. La primera versión daba 54 ms con 51 reservas: leía línea a línea y usaba here-strings; ahora usa `mapfile` y expansiones. Es síncrono: en una sesión de 50 ediciones, ≈1,3 s con el OS apagado.
+
+Sin modelo, al cerrar:
+- `hkos/pruebas`: 180 pruebas OK.
+- `simulador/prueba_simulador.py` (G1–G6), `simulador/duradero.py` y `simulador/igualdad.py`: OK.
+- `prueba_hooks.py`: 0 fallos (190 OK). Con el OS apagado, `reserva.sh` no imprime nada y `escucha.sh` sigue en silencio.
+- `colisiones_vivo.py`: 0 fallos.
+- `claude plugin validate .`: pasa, con el aviso de siempre.
+
+## Qué se construyó
+- **K-70, `hkos/colisiones.py`:** los ficheros de cada persona por árbol (copia principal y worktrees de workers hasta su `worker.fin`), el nivel 1 por conjunto de personas, el nivel 2 a partir de los conflictos (tapa al 1) y las reservas vigentes. Lo llama `modelo.calcular`, así que el relay, el simulador e `igualdad.py` usan el mismo cálculo.
+- **K-71, `hkos/colisiones_merge.py`:** `Publicador`, en un hilo del demonio, y `Calculo`, en un hilo del relay: `fetch` a `refs/hackathon/relay-wip/*` y `merge-tree` por pares con caché. Con Git < 2.38 lo dice y sigue sin el nivel 2.
+- **K-72, `hkos/contratos.py`:** bloques y `Vive en:`, el dueño de `autoridad.md` y el nivel 3. El relay lee `docs/contratos.md` y `autoridad.md` de `origin/main` en el bucle de las novedades. `arbol.sh` añade `contratos` y `normaliza.py` lo pasa a `datos.contratos`.
+- **K-73:**
+  - relay: `POST /v1/reservas` y `DELETE /v1/reservas/{id}`, guardadas como eventos;
+  - MCP: `reservar` y `liberar`;
+  - `proyeccion.py`: la sección «Reservas», la firma `reservas:` y `reservas.tsv`, que el demonio escribe con el md; `delta.sh` incluye la sección;
+  - `scripts/os/reserva.sh`, en PreToolUse y SubagentStart;
+  - `escucha.sh`: el aviso rojo cada 5 s, solo con builtins.
+- **Contratos:** notas en `api.md` §1–§7, `id` opcional en las reservas de `estado.schema.json`, notas en ADR-0007, definiciones en `diseno.md` §7 y una nota en los criterios de M8g (`hitos.md`). Aviso de `publicar_wip` en la plantilla de `os.md`, en los dos README y en `docs/limitaciones.md`.
+
+## Encontrado durante la prueba
+- **El `additionalContext` de PreToolUse llega con la edición, no antes** (paso 0). De ahí las dos vías del criterio 4.
+- **Una exclusión que nombra una carpeta ya ignorada hace que `git add` salga con 1**, aunque añade todo lo demás. Con `datos/` en `.gitignore`, el WIP de A no se publicaba («no se pudo hacer el árbol»). Ahora esa salida solo se acepta en ese caso exacto, con su prueba, y la del fallo de verdad.
+- **`colisiones_vivo.py` dejaba relays vivos**: `terminate()` solo mata a `uv`, no al Python hijo. Ahora mata el árbol con `taskkill /T`. Los que quedaron de las primeras pasadas se pararon.
+- **El monitor lanzado directamente desde Python en Windows sale al instante**: su `$PPID` no es un proceso de MSYS. En la prueba se lanza dentro de un `bash -c`, como lo hace Claude Code.
+- **El filtro de SubagentStart era más laxo que el de M7** (revisión del usuario): aceptaba `<cualquier plugin>:worker`. Ahora es el de los hooks del orquestador, `(hackathon-kit:)?worker`, y va antes de leer `reservas.tsv`. Prueba: el revisor, Explore, `general-purpose` y `otro-plugin:worker` no reciben nada; `worker` y `hackathon-kit:worker`, sí.
+- **`reserva.sh` no reconocía el fichero** cuando `$PWD` venía con otro nombre que el `cwd` de la entrada (en Git Bash, `/tmp` por `C:/…/Temp`). Ahora parte del `cwd` de la entrada.
+
+## Observaciones (a Pendiente)
+- La ruta del md en los avisos de `reserva.sh` y del monitor sale como la ve Git Bash (`/tmp/…` en la prueba): en Windows, el modelo no siempre podría abrirla. Igual que en `delta.sh` (M8f), que solo convierte `/c/…`.
+- En C4, el agente `worker` de proyecto también activó la compuerta del orquestador en su SubagentStop (filtra por el nombre `worker`), que le pidió el informe con evidencias. Es un efecto del montaje: el worker del kit es `hackathon-kit:worker`.
+- Que el aviso rojo abra un turno en una sesión interactiva, al ensayo de M8h.

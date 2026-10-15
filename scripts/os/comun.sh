@@ -6,13 +6,15 @@
 
 # Del git común y la copia principal, sin lanzar git: sube desde $PWD hasta el primer .git. En un worktree,
 # .git es un fichero con «gitdir: <git común>/worktrees/<nombre>», y ese directorio tiene «commondir».
+# OS_TOP: la raíz del árbol en que se está (la copia principal o el worktree).
 os_raiz() {
   local d=${PWD//\\//} linea gd c
   while :; do
     if [[ -d $d/.git ]]; then
-      OS_COMUN=$d/.git OS_GITDIR=$d/.git
+      OS_COMUN=$d/.git OS_GITDIR=$d/.git OS_TOP=$d
       break
     elif [[ -f $d/.git ]]; then
+      OS_TOP=$d
       IFS= read -r linea < "$d/.git" || return 1
       gd=${linea#gitdir: }; gd=${gd%$'\r'}; gd=${gd//\\//}
       [[ $gd == /* || $gd == [A-Za-z]:* ]] || gd=$d/$gd

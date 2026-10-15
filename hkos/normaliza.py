@@ -172,6 +172,10 @@ class Normalizador:
                 if ruta not in rutas:
                     rutas.append(ruta)
             datos = {k: crudo[k] for k in ("base", "truncado") if crudo.get(k)}
+            if isinstance(crudo.get("contratos"), list):          # M8g: bloques de docs/contratos.md tocados
+                contratos = [str(c)[:120] for c in crudo["contratos"] if c][:5]
+                if contratos:
+                    datos["contratos"] = contratos
             ev("arbol", rutas=rutas, datos=datos)
         elif tipo == "compuerta":
             datos = {"motivos": [m[:300] for m in crudo.get("motivos", [])]}

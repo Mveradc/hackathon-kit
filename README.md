@@ -2,6 +2,8 @@
 
 **English** · [Español](README.es.md)
 
+> `main` is in development (Hackathon OS); the stable version is [v0.3.2](https://github.com/Mveradc/hackathon-kit/releases/tag/v0.3.2).
+
 A Claude Code plugin that takes a hackathon challenge statement and gets your team ready to code: it analyses the challenge, proposes approaches for you to choose from, generates the repo, a per-person plan and a pitch outline, and checks all of it against the statement.
 
 **Who it's for:** hackathon teams that use Claude Code and want to go from the challenge statement to the first commit without losing the first hour. Prompts and templates are in Spanish, and the kit has only been validated in Spanish.
@@ -94,6 +96,7 @@ What it generates is a starting point, not a finished plan. The most important l
 - **Plan coherence after the check.** When the check adds rows to the plan, it doesn't update the rest (breaks, dependencies, fallbacks). Make sure the plan is still consistent.
 - **Statements given as a URL.** With a URL, the analysis works on a summary of the page, not the literal text. Paste the text if you can.
 - **An `os` MCP server in `/mcp`.** The team-status server of the Hackathon OS (in development) is declared by the plugin, so it shows up in `/mcp` in every session, even with the OS off. Then it offers no tools, uses no network and does not need uv.
+- **`publicar_wip: sí` uploads your uncommitted work.** In the Hackathon OS (in development), this option in `.hackathon/os.md` pushes tracked changes and new files that `.gitignore` doesn't ignore to the remote. It excludes `.env*`, common keys, data folders and large files, but no list is complete: check your `.gitignore` first. Deleting the ref doesn't delete what was uploaded; rotate any key that gets pushed. It's off by default.
 
 Full list (in Spanish): [docs/limitaciones.md](docs/limitaciones.md).
 

@@ -113,6 +113,7 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 5. Una colisión roja nueva abre un turno en la sesión afectada (monitor) una sola vez; las amarillas solo salen en el siguiente delta.
 6. Con dos workers de la misma persona sobre ficheros distintos, ninguna colisión (no hay falsos positivos dentro de una persona).
 7. Test de igualdad de M8f (`evals/coordinacion/simulador/igualdad.py`) ampliado a G5 y G6: con las colisiones calculadas por el relay, la web, `estado-equipo.md` y el MCP coinciden en estados, dueños, colisiones y antigüedades (lo que el criterio 5 de M8f dejó para aquí).
+   - *Nota (M8g, decisión del usuario):* el criterio 4 se cumple por dos vías según quién edita, porque el `additionalContext` de PreToolUse llega con la edición y no antes (paso 0 de M8g): en la sesión principal, por el bloque de inicio y los deltas (para reservas creadas antes del turno); en los workers, por SubagentStart. El criterio 5 se prueba sin modelo (`prueba_hooks.py`); que la línea abra un turno en una sesión interactiva pasa al ensayo de M8h.
 
 ---
 

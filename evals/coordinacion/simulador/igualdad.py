@@ -4,14 +4,13 @@
 # ///
 """Criterio 5 de M8f (R-28, constitución IV): las tres vistas coinciden en estados, dueños, colisiones y antigüedades.
 
-Para cada guion G1–G4 (estado calculado por el relay de verdad a partir de los eventos del guion, con las tareas del
-plan del 03) y para el estado sintético de 5 personas y 20 tareas con colisiones (fixture.py, que el relay sirve tal
-cual, porque calcular colisiones es de M8g):
+Para cada guion G1–G6 (estado calculado por el relay de verdad a partir de los eventos del guion, con las tareas del
+plan del 03; en G5 y G6, con las colisiones que calcula el relay desde M8g, criterio 7 de M8g) y para el estado
+sintético de 5 personas y 20 tareas con colisiones puestas a mano (fixture.py, que el relay sirve tal cual):
   - web: lo que el relay sirve en GET /v1/vista por HTTP (lo que pinta hkos/web/index.html);
   - estado-equipo.md: lo escribe el demonio de verdad (hkos/agente.py), que pide GET /v1/estado al relay, una vez por
     persona del equipo;
   - MCP: hkos/mcp.py por stdio sobre lo que deja el demonio (`tarea` de cada ID y `colisiones` sin filtrar).
-G5 y G6 (colisiones calculadas) se añaden aquí en M8g (hitos.md).
 
 Uso: uv run --no-project evals/coordinacion/simulador/igualdad.py   (0 OK · 1 falla)
 """
@@ -35,7 +34,7 @@ import relay as relay_mod  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from fixture import estado_5x20  # noqa: E402
 from red import Servidor  # noqa: E402
-from simula import carga, montar  # noqa: E402
+from simula import carga, contratos_de, montar  # noqa: E402
 
 DE_ETIQUETA = {v: k for k, v in proyeccion.ETIQUETAS.items()}
 fallos = 0
@@ -148,14 +147,15 @@ def main():
         repo = os.path.join(tmp, "clon").replace("\\", "/")
         subprocess.run(["git", "init", "-q", repo], check=True)
         os.makedirs(os.path.join(repo, ".git", "hackathon", "os"), exist_ok=True)
-        for g in ("G1", "G2", "G3", "G4"):
+        for g in ("G1", "G2", "G3", "G4", "G5", "G6"):
             guion = carga(os.path.join(AQUI, "guiones", f"{g}.json"))
             tareas, personas, issues, eventos, ts = montar(guion, AQUI)
+            contratos = contratos_de(guion, AQUI)
             for punto in guion["esperado"]:
                 ahora = ts(punto["tras"])
                 r = relay_mod.Relay(os.path.join(tmp, f"relay-{g}-{punto['tras']}"), personas, ahora=lambda a=ahora: a,
                                     sondeo=SondeoFijo(tareas, issues, datetime.fromisoformat(ahora.replace("Z", "+00:00")).timestamp()),
-                                    umbral_parada_s=guion.get("umbral_parada_s", 1200))
+                                    umbral_parada_s=guion.get("umbral_parada_s", 1200), contratos=contratos)
                 vistos = [e for e in eventos if e["ts"] <= ahora]
                 for i in range(0, len(vistos), 200):
                     r.recibir({"eventos": vistos[i:i + 200]})

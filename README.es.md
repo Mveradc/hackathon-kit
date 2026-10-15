@@ -2,6 +2,8 @@
 
 [English](README.md) · **Español**
 
+> `main` está en desarrollo (Hackathon OS); la versión estable es la [v0.3.2](https://github.com/Mveradc/hackathon-kit/releases/tag/v0.3.2).
+
 Plugin de Claude Code que, a partir del enunciado de un reto de hackathon, deja al equipo listo para programar: analiza el reto, propone enfoques para que elijáis, genera el repositorio, el plan por persona y el guion del pitch, y lo verifica todo contra el enunciado.
 
 **Para quién:** equipos de hackathon que usan Claude Code y quieren pasar del enunciado al primer commit sin perder la primera hora. Los prompts y las plantillas están en español, y el kit solo se ha validado en español.
@@ -94,6 +96,7 @@ Lo generado es un punto de partida, no un plan cerrado. Las más importantes:
 - **Coherencia del plan tras el check.** Cuando el check añade filas al plan, no actualiza el resto (descansos, dependencias, repliegues). Revisa que el plan siga siendo coherente.
 - **Enunciados por URL.** Con una URL, el análisis trabaja sobre un resumen de la página, no sobre el texto literal. Pega el texto si puedes.
 - **Un servidor MCP `os` en `/mcp`.** El servidor del estado del equipo del Hackathon OS (en desarrollo) lo declara el plugin, así que sale en `/mcp` en toda sesión, también con el OS apagado. Entonces no ofrece herramientas, no usa red y no necesita uv.
+- **`publicar_wip: sí` sube tu trabajo sin commit.** En el Hackathon OS (en desarrollo), esa opción de `.hackathon/os.md` sube al remoto lo versionado cambiado y lo nuevo que `.gitignore` no ignora. Excluye `.env*`, claves comunes, carpetas de datos y ficheros grandes, pero ninguna lista es completa: revisa el `.gitignore` antes. Borrar la ref no borra lo subido; una clave que suba hay que rotarla. Viene apagada.
 
 Lista completa: [docs/limitaciones.md](docs/limitaciones.md).
 

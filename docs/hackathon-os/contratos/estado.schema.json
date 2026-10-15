@@ -151,6 +151,7 @@
         "required": ["rutas", "persona", "hasta", "modo"],
         "additionalProperties": false,
         "properties": {
+          "id": { "type": "string", "description": "El del evento reserva (M8g): lo usan liberar y el aviso de una vez por sesión." },
           "rutas": { "type": "array", "items": { "type": "string" } },
           "persona": { "type": "string" },
           "actor": { "type": "string" },

@@ -1,5 +1,5 @@
 {
-  "description": "Coordinación entre agentes (opcional): reinyecta estado y buzón al empezar o reanudar la sesión. Ningún agente publica «hk confirmo». Orquestador (M7): no edita código; compuerta de evidencias de los workers. Hackathon OS (M8, opcional): emite.sh y arbol.sh escriben eventos locales y delta.sh inyecta el estado del equipo, solo con .hackathon/os.md activo.",
+  "description": "Coordinación entre agentes (opcional): reinyecta estado y buzón al empezar o reanudar la sesión. Ningún agente publica «hk confirmo». Orquestador (M7): no edita código; compuerta de evidencias de los workers. Hackathon OS (M8, opcional): emite.sh y arbol.sh escriben eventos locales, delta.sh inyecta el estado del equipo y reserva.sh avisa (sin bloquear) de los ficheros reservados por otras personas, solo con .hackathon/os.md activo.",
   "hooks": {
     "PreToolUse": [
       {
@@ -24,6 +24,12 @@
         "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell|Agent",
         "hooks": [
           { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/os/emite.sh\"", "timeout": 10, "async": true }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/os/reserva.sh\"", "timeout": 5 }
         ]
       }
     ],
@@ -52,7 +58,8 @@
     "SubagentStart": [
       {
         "hooks": [
-          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/os/emite.sh\"", "timeout": 10, "async": true }
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/os/emite.sh\"", "timeout": 10, "async": true },
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/os/reserva.sh\"", "timeout": 5 }
         ]
       }
     ],

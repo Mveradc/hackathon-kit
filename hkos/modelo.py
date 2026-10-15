@@ -1,12 +1,13 @@
 """Modelo del equipo: eventos normalizados + issues → estado.json (contratos/estado.schema.json). Puro, sin E/S.
 
 Dos pasos (diseno.md §5): la atribución de los eventos sin tarea (regla 9) y el motor de estados tarea por tarea.
-En M8b lo usa el simulador; en M8d y M8e, el relay. Las colisiones y las reservas llegan en M8g.
+En M8b lo usa el simulador; en M8d y M8e, el relay. Desde M8g, también las colisiones y las reservas (colisiones.py).
 """
 import heapq
 from bisect import bisect_right
 from datetime import timedelta
 
+import colisiones
 from estados import ATRIBUIBLES, derivar, fecha, iso, ordenar
 
 TTL_PRESENCIA_S = 90                       # R-18
@@ -173,12 +174,14 @@ def _personas(personas, eventos, ahora):
 
 
 def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, fuentes=None, discrepancias=(),
-             novedades=None):
+             novedades=None, contratos=None, conflictos=None):
     """estado.json a `ahora` con los eventos e issues observados hasta entonces.
 
     tareas: [{id, titulo, bloque?, dueno, depende_de}]; issues: {ID: {creado_en, numero?, acciones}};
     personas: [{persona, nombre}] de coordinacion.md (el equipo); fuentes: {relay|github|git: dato}; discrepancias: las de GitHub, sin agrupar (M8e);
-    novedades: decisiones y criterios de origin/main (M8f, las lee el relay), hasta `ahora`.
+    novedades: decisiones y criterios de origin/main (M8f, las lee el relay), hasta `ahora`;
+    contratos: bloques de docs/contratos.md con su dueño (contratos.duenos, M8g); conflictos: los de merge-tree entre
+    las refs de trabajo en curso (colisiones_merge.py, M8g), [{personas, rutas, desde}].
     """
     t_ahora = fecha(ahora)
     equipo = {p["persona"] for p in personas}
@@ -232,6 +235,10 @@ def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, fue
     estado = {"v": 1, "generado_en": iso(t_ahora), "fuentes": dict(fuentes or {}),
               "personas": _personas(personas, eventos, ahora), "tareas": salida_tareas,
               "sin_tarea": list(ultimo_sin_tarea.values()), "discrepancias": _agrupar(disc), "colisiones": []}
+    estado["colisiones"], reservas = colisiones.calcular(eventos, personas, ahora, contratos,
+                                                         [c for c in conflictos or [] if fecha(c["desde"]) <= t_ahora])
+    if reservas or any(e["tipo"] in ("reserva", "liberacion") for e in eventos):
+        estado["reservas"] = reservas
     if novedades is not None:
         estado["novedades"] = [n for n in novedades if fecha(n["observado_en"]) <= t_ahora]
     return estado

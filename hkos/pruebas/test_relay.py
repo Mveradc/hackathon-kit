@@ -204,6 +204,55 @@ class Http(Base):
         self.assertEqual((codigo, json.loads(cuerpo)), (200, {"aceptados": 1, "repetidos": 0}))
         self.assertEqual(self.pide("/v1/latido", {"persona": "persona-b", "actores": []})[0], 204)
 
+    def borra(self, ruta, token=True):
+        h = {"Authorization": f"Bearer {self.relay.token}"} if token else {}
+        req = urllib.request.Request(self.url + ruta, headers=h, method="DELETE")
+        try:
+            with urllib.request.urlopen(req, timeout=5) as r:
+                return r.status
+        except urllib.error.HTTPError as ex:
+            return ex.code
+
+    def test_reservas_crear_liberar_y_errores(self):
+        """M8g (K-73, api.md §3): reserva con la hora del relay, en estado.json, y liberación solo por quien reservó."""
+        codigo, cuerpo, _ = self.pide("/v1/reservas", {"persona": "persona-a", "rutas": ["web\\src/", "./a.py"],
+                                                        "ttl_s": 600, "modo": "exclusiva", "actor": "s-a"})
+        self.assertEqual(codigo, 200)
+        r = json.loads(cuerpo)
+        self.assertTrue(r["id"].startswith("reserva-") and r["hasta"])
+        self.relay.recalcular()
+        res = json.loads(self.pide("/v1/estado")[1])["reservas"]
+        self.assertEqual([(x["id"], x["rutas"], x["persona"], x["modo"], x["actor"]) for x in res],
+                         [(r["id"], ["web/src/", "a.py"], "persona-a", "exclusiva", "s-a")])
+        self.assertIsNone(Esquema("estado.schema.json").error(self.relay.estado))
+        for malo in ({"persona": "fuera", "rutas": ["a"]}, {"persona": "persona-a", "rutas": []},
+                     {"persona": "persona-a", "rutas": ["../x"]}, {"persona": "persona-a", "rutas": ["C:/x"]},
+                     {"persona": "persona-a", "rutas": ["/etc/x"]}, {"persona": "persona-a", "rutas": ["a"], "ttl_s": 5},
+                     {"persona": "persona-a", "rutas": ["a"], "modo": "otro"}):
+            with self.subTest(malo=malo):
+                self.assertEqual(self.pide("/v1/reservas", malo)[0], 400)
+        self.assertEqual(self.pide("/v1/reservas", {"persona": "persona-a", "rutas": ["a"]}, token=False)[0], 401)
+        self.assertEqual(self.borra(f"/v1/reservas/{r['id']}?persona=persona-b"), 404)   # no es suya
+        self.assertEqual(self.borra(f"/v1/reservas/{r['id']}?persona=persona-a", token=False), 401)
+        self.assertEqual(self.borra(f"/v1/reservas/{r['id']}?persona=persona-a"), 204)
+        self.relay.recalcular()
+        self.assertEqual(json.loads(self.pide("/v1/estado")[1])["reservas"], [])
+        # Persisten como eventos: tras reiniciar, la liberada sigue liberada.
+        otro = relay_mod.Relay(self.dir, self.PERSONAS)
+        self.assertEqual(otro.estado.get("reservas"), [])
+
+    def test_reserva_caduca_con_el_reloj_del_relay(self):
+        reloj = Reloj("2026-11-20T10:00:00.000000Z")
+        r = relay_mod.Relay(tempfile.mkdtemp(dir=self.dir), self.PERSONAS, ahora=reloj)
+        x = r.reservar({"persona": "persona-b", "rutas": ["a.py"], "ttl_s": 60})
+        self.assertEqual(x["hasta"], "2026-11-20T10:01:00Z")
+        reloj.ts = "2026-11-20T10:00:59.000000Z"
+        r.recalcular()
+        self.assertEqual(len(r.estado["reservas"]), 1)
+        reloj.ts = "2026-11-20T10:01:01.000000Z"
+        r.recalcular()
+        self.assertEqual(r.estado["reservas"], [])
+
     def test_etag_304(self):
         codigo, cuerpo, h = self.pide("/v1/estado")
         self.assertEqual(codigo, 200)

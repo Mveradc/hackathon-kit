@@ -7,6 +7,9 @@ modelo.py y lo sirve por GET /v1/estado y por SSE. Desde M8e, sondea GitHub (las
 el gh de quien coordina. Desde M8f, sirve la web de solo lectura (`GET /`), la vista de proyeccion.py (`GET /v1/vista`
 y el evento SSE `vista`) y las novedades (decisiones y criterios de origin/main). Solo biblioteca estándar (ADR-0005).
 
+Desde M8g, las colisiones (colisiones.py: niveles 1 y 3 en modelo.calcular, nivel 2 con colisiones_merge.Calculo si
+os.md tiene `publicar_wip: sí`) y las reservas (`POST /v1/reservas`, `DELETE /v1/reservas/{id}`).
+
 Uso normal: `hk-os relay` (cli.py). Directo, para pruebas:
   uv run --no-project hkos/relay.py --dir <carpeta> --equipo <coordinacion.md> [--ip 127.0.0.1] [--puerto 7777]
 """
@@ -23,10 +26,12 @@ import subprocess
 import sys
 import threading
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import colisiones_merge  # noqa: E402
+import contratos as contratos_mod  # noqa: E402
 import github  # noqa: E402
 import proyeccion  # noqa: E402
 from esquema import Esquema  # noqa: E402
@@ -126,11 +131,14 @@ def novedades_de(decisiones, criterios, tz=None):
 class Novedades:
     """Decisiones y criterios de origin/main del clon del relay (M8f), para que todos vean lo mismo (constitución IV).
     `git fetch` cada NOVEDADES_S: si falla (red, refs bloqueadas por un `git pull` de la persona), en silencio, y se
-    reintenta en la vuelta siguiente. Solo si dura más de `umbral_s` se refleja en fuentes.git."""
+    reintenta en la vuelta siguiente. Solo si dura más de `umbral_s` se refleja en fuentes.git.
+    Desde M8g, también los contratos de docs/contratos.md con su dueño de .hackathon/autoridad.md (nivel 3): un bloque
+    sin dueño, o con más de una candidata, se dice una vez por `aviso`."""
 
-    def __init__(self, repo, umbral_s=300, reloj=time.time, git=_git):
+    def __init__(self, repo, umbral_s=300, reloj=time.time, git=_git, aviso=None):
         self.repo, self.umbral_s, self.reloj, self.git = repo, umbral_s, reloj, git
         self.lista, self.ultimo_ok, self.fallando = [], None, False
+        self.contratos, self.aviso, self._avisados = [], aviso, set()
 
     def _leer(self, ruta):
         for ref in ("refs/remotes/origin/main", "HEAD"):
@@ -140,7 +148,7 @@ class Novedades:
 
     def sondear(self):
         """True si cambió la lista o el estado del fetch."""
-        antes = (self.lista, self.fallando)
+        antes = (self.lista, self.fallando, self.contratos)
         if self.git(self.repo, "fetch", "--quiet", "origin", timeout=20) is None:
             self.fallando = True
         else:
@@ -148,7 +156,12 @@ class Novedades:
         if self.ultimo_ok is None:
             self.ultimo_ok = self.reloj()        # sin un fetch bueno aún, el plazo cuenta desde el arranque
         self.lista = novedades_de(self._leer(".hackathon/decisiones.md"), self._leer(".hackathon/criterios.md"))
-        return (self.lista, self.fallando) != antes
+        self.contratos, avisos = contratos_mod.duenos(self._leer("docs/contratos.md"), self._leer(".hackathon/autoridad.md"))
+        for a in avisos:
+            if a not in self._avisados and self.aviso:
+                self._avisados.add(a)
+                self.aviso(f"Nivel 3: {a}.")
+        return (self.lista, self.fallando, self.contratos) != antes
 
     def fuente(self):
         """El dato de fuentes.git si el fetch lleva fallando más de umbral_s; None si no."""
@@ -161,10 +174,12 @@ class Relay:
     """El estado del relay, sin HTTP. `ahora` se puede inyectar en las pruebas."""
 
     def __init__(self, carpeta, personas, ahora=ahora_iso, sondeo=None, umbral_parada_s=1200, novedades=None,
-                 umbral_viejo_s=300):
+                 umbral_viejo_s=300, contratos=None, wip=None):
         self.carpeta, self.personas, self.ahora = carpeta, personas, ahora
         self.sondeo, self.umbral_parada_s = sondeo, umbral_parada_s
         self.novedades, self.umbral_viejo_s = novedades, umbral_viejo_s
+        # M8g: los contratos con dueño (fijos en las pruebas; si no, los de `novedades`) y el nivel 2 (Calculo).
+        self.contratos, self.wip = contratos, wip
         os.makedirs(carpeta, exist_ok=True)
         self.esquema = Esquema("eventos.schema.json")
         self.token = self._token()
@@ -230,6 +245,11 @@ class Relay:
             if err:
                 self.descartados += 1
                 raise Invalido(err[1], err[0] or "/", i)
+        nuevos = self._anadir(lote)
+        return {"aceptados": len(nuevos), "repetidos": len(lote) - len(nuevos)}
+
+    def _anadir(self, lote):
+        """Guarda en disco (antes de responder) y en memoria los eventos del lote que no ha visto."""
         with self.lock:
             nuevos, vistos = [], set()
             for e in lote:
@@ -248,7 +268,56 @@ class Relay:
                 self.eventos += nuevos
         if nuevos:
             self.sucio.set()
-        return {"aceptados": len(nuevos), "repetidos": len(lote) - len(nuevos)}
+        return nuevos
+
+    # --- reservas (M8g, api.md §3) ---
+    def reservar(self, cuerpo):
+        """POST /v1/reservas: `{persona, actor?, rutas, ttl_s, modo}` → evento `reserva` con la hora del relay (así
+        caduca con un solo reloj). Devuelve {id, hasta}. Las rutas: relativas a la raíz del repo, con «/»."""
+        if not isinstance(cuerpo, dict):
+            raise Invalido("se espera un objeto")
+        persona = cuerpo.get("persona")
+        if not isinstance(persona, str) or persona.lower() not in {p["persona"] for p in self.personas}:
+            raise Invalido("persona fuera de la tabla de coordinacion.md", "persona")
+        rutas = cuerpo.get("rutas")
+        if not isinstance(rutas, list) or not 1 <= len(rutas) <= 50:
+            raise Invalido("rutas: de 1 a 50", "rutas")
+        limpias = []
+        for i, r in enumerate(rutas):
+            r = r.replace("\\", "/").strip() if isinstance(r, str) else ""
+            while r.startswith("./"):
+                r = r[2:]
+            if not r or len(r) > 300 or r.startswith("/") or re.match(r"^[A-Za-z]:", r) or ".." in r.split("/"):
+                raise Invalido("ruta no relativa al repo", "rutas", i)
+            limpias.append(r)
+        ttl = cuerpo.get("ttl_s", 900)
+        if isinstance(ttl, bool) or not isinstance(ttl, int) or not 30 <= ttl <= 7200:
+            raise Invalido("ttl_s: entero de 30 a 7200", "ttl_s")
+        modo = cuerpo.get("modo", "compartida")
+        if modo not in ("exclusiva", "compartida"):
+            raise Invalido("modo: exclusiva o compartida", "modo")
+        ts = self.ahora()
+        actor = {"persona": persona.lower(), "papel": "principal"}
+        if isinstance(cuerpo.get("actor"), str) and cuerpo["actor"]:
+            actor["sesion"] = cuerpo["actor"][:100]
+        e = {"v": 1, "id": f"reserva-{secrets.token_hex(6)}", "ts": ts, "actor": actor, "tipo": "reserva",
+             "rutas": limpias, "fuente": "mcp", "datos": {"ttl_s": ttl, "modo": modo}}
+        err = self.esquema.error(e)
+        if err:
+            raise Invalido(err[1], err[0])
+        self._anadir([e])
+        return {"id": e["id"], "hasta": iso(fecha(ts) + timedelta(seconds=ttl))}
+
+    def liberar(self, rid, persona):
+        """DELETE /v1/reservas/{id}?persona=…: solo quien reservó. False si no existe o no es suya."""
+        with self.lock:
+            r = next((e for e in self.eventos if e["id"] == rid and e["tipo"] == "reserva"), None)
+        if r is None or r["actor"]["persona"] != (persona or "").lower():
+            return False
+        e = {"v": 1, "id": f"liberacion-{rid}", "ts": self.ahora(), "actor": dict(r["actor"]), "tipo": "liberacion",
+             "fuente": "mcp", "datos": {"reserva": rid}}
+        self._anadir([e])
+        return True
 
     def latido(self, cuerpo):
         """POST /v1/latido: la lista completa de actores abiertos de una persona, cada uno con su última señal."""
@@ -313,14 +382,20 @@ class Relay:
         de_git = [e["ts"] for e in eventos if e.get("fuente") == "git"]
         if de_git:
             fuentes["git"] = {"valor": "ok", "fuente": "git", "observado_en": max(de_git, key=fecha)}
-        novedades = None
+        novedades, contratos, conflictos = None, self.contratos, None
         if self.novedades:
             with self.lock:
                 novedades = list(self.novedades.lista)
                 sin_fetch = self.novedades.fuente()
+                if contratos is None:
+                    contratos = list(self.novedades.contratos)
             if sin_fetch:
                 fuentes["git"] = sin_fetch
-        estado = calcular(tareas, issues, eventos, self.personas, ahora, self.umbral_parada_s, fuentes, disc, novedades)
+        if self.wip:
+            with self.lock:
+                conflictos = list(self.wip.conflictos)
+        estado = calcular(tareas, issues, eventos, self.personas, ahora, self.umbral_parada_s, fuentes, disc, novedades,
+                          contratos=contratos, conflictos=conflictos)
         for p, c in sorted(corruptas.items()):
             estado["discrepancias"].append({"tipo": "linea_corrupta", "persona": p, "veces": c["veces"],
                                             "primera_vez": c["primera_vez"], "ultima_vez": c.get("ultima_vez", c["primera_vez"]),
@@ -377,6 +452,16 @@ class Relay:
             except Exception as ex:  # las novedades no tumban el relay
                 print(f"relay: error al leer las novedades: {ex!r}", file=sys.stderr, flush=True)
             parar.wait(NOVEDADES_S)
+
+    def bucle_wip(self, parar):
+        """Nivel 2 (M8g): refs de trabajo en curso y merge-tree por pares cada colisiones_merge.Calculo.CADA_S."""
+        while not parar.is_set():
+            try:
+                if self.wip.sondear():
+                    self.sucio.set()
+            except Exception as ex:  # el nivel 2 no tumba el relay
+                print(f"relay: error en el nivel 2: {ex!r}", file=sys.stderr, flush=True)
+            parar.wait(colisiones_merge.Calculo.CADA_S)
 
     def actual(self):
         with self.lock:
@@ -439,6 +524,8 @@ def manejador(relay):
                 elif self.path == "/v1/latido":
                     relay.latido(self._cuerpo())
                     self._json(204)
+                elif self.path == "/v1/reservas":
+                    self._json(200, relay.reservar(self._cuerpo()))
                 else:
                     self._json(404, {"error": "ruta"})
             except Invalido as ex:
@@ -446,6 +533,21 @@ def manejador(relay):
                 if ex.indice is not None:
                     err["indice"] = ex.indice
                 self._json(400, err)
+
+        def do_DELETE(self):
+            """DELETE /v1/reservas/{id}?persona=<usuario> (M8g): solo quien reservó la libera."""
+            if not self._autorizado():
+                return
+            ruta, _, consulta = self.path.partition("?")
+            m = re.fullmatch(r"/v1/reservas/([A-Za-z0-9_-]{1,80})", ruta)
+            if not m:
+                self._json(404, {"error": "ruta"})
+                return
+            persona = dict(x.partition("=")[::2] for x in consulta.split("&") if x).get("persona", "")
+            if relay.liberar(m.group(1), persona):
+                self._json(204)
+            else:
+                self._json(404, {"error": "reserva", "campo": "id"})
 
         def _web(self):
             """La web de solo lectura (api.md §3): HTML estático, sin datos. El token va en el fragmento (#t=…), que
@@ -556,8 +658,14 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
     except ValueError:
         viejo = 300
     repo = os.path.dirname(os.path.dirname(os.path.abspath(equipo_md)))
-    novedades = Novedades(repo, viejo) if _git(repo, "rev-parse", "--git-dir") is not None else None
-    relay = Relay(carpeta, personas, sondeo=sondeo, umbral_parada_s=umbral, novedades=novedades, umbral_viejo_s=viejo)
+    es_repo = _git(repo, "rev-parse", "--git-dir") is not None
+    novedades = Novedades(repo, viejo, aviso=aviso) if es_repo else None
+    wip = None
+    if es_repo and os_md and colisiones_merge.modo_publicar(conf(os_md, "publicar_wip"))[0]:
+        wip = colisiones_merge.Calculo(repo, {p["persona"] for p in personas}, aviso=aviso)
+        wip = wip if wip.activo else None
+    relay = Relay(carpeta, personas, sondeo=sondeo, umbral_parada_s=umbral, novedades=novedades, umbral_viejo_s=viejo,
+                  wip=wip)
     servidor = Servidor((ip, puerto), manejador(relay))
     parar = threading.Event()
     threading.Thread(target=relay.bucle, args=(parar,), daemon=True).start()
@@ -566,6 +674,9 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
         aviso(f"Sondeo de GitHub: {sondeo.c.repo}, cada {SONDEO_GITHUB_S} s.")
     if novedades:
         threading.Thread(target=relay.bucle_novedades, args=(parar,), daemon=True).start()
+    if wip:
+        threading.Thread(target=relay.bucle_wip, args=(parar,), daemon=True).start()
+        aviso(f"Nivel 2 (publicar_wip): merge-tree de refs/hackathon/wip/* cada {colisiones_merge.Calculo.CADA_S} s.")
     url = f"http://{ip}:{servidor.server_address[1]}"
     aviso(f"Relay del Hackathon OS en {url} ({len(personas)} personas en coordinacion.md, "
           f"{len(relay.eventos)} eventos guardados).")
