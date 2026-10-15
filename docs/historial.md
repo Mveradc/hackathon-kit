@@ -223,6 +223,27 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **macOS:** no comprobado. Alternativa a `setsid`: `nohup` y el demonio se desacopla solo (`--desacoplar`); el camino se probó en WSL.
 - **Resultados** en `evals/coordinacion/prueba.md` («M8d»): los criterios 1–6 cumplidos; el 7, en Linux sí y en macOS no comprobado. Gasto: 0,04 USD.
 
+## M8e — Estado duradero (2026-10-14 y 2026-10-15)
+- **K-50:** `hk-os compilar` (`hkos/compilar.py`): el plan pasa a issues `hk-tarea` de forma idempotente, con marcador y hash por fila, dependencias nativas y quitadas como `not_planned`. Compila cualquiera de la tabla, con el plan subido. La compilación inicial va a ≤ 1 escritura/s, exenta del tope de R-30.
+- **K-51:** `hkos/github.py`: sondeo de tres consultas con ETag cada 30 s y filtro de autores. La cuenta de escrituras del equipo sale de lo que muestra GitHub, no de cada clon.
+- **K-52:**
+  - el sondeo, dentro del relay, con `fuentes`;
+  - el recálculo, indexado por tarea (de 18 s a ~0,4 s con 20.000 eventos y 30 tareas, mismos resultados);
+  - `commit` en la regla 9;
+  - en las tareas de dueño sin GitHub, el ID manda;
+  - sondeo de git del demonio (`commit` y `push` de fuente git).
+- **Contratos:** `api.md` §8 (nuevo, congelado); notas en §4, R-30 y ADR-0001; E53–E60 en `diseno.md` §5.2; `dependencias_distintas` e `issue_duplicado` en el esquema.
+- **De GitHub real:**
+  - una dependencia no cambia el `updated_at` (limitación en ADR-0001), pero deja `blocked_by_added`;
+  - las etiquetas de una creación llegan hasta 2 s después.
+- **Fallos en vivo, corregidos:**
+  - el demonio tomaba como propios los commits de otra persona que llegaban por `origin/main`;
+  - la tarea se sacaba de cualquier ID del asunto (ahora, del principio);
+  - un merge salía como commit;
+  - la hora de los commits iba en la zona local.
+- **Pasada real del orquestador:** T19 y T14, hasta `publicada`. El orquestador no subió por un merge de la persona, como manda su regla.
+- **Resultados** en `evals/coordinacion/prueba.md` («M8e»): los seis criterios cumplidos. Gasto: 1,84 USD, más 48 escrituras en el sandbox.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

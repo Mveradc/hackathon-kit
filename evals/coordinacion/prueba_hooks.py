@@ -396,6 +396,19 @@ def prueba_arranque(tmp):
                   s.stdout == antes and s.returncode == 0 and not lanzados() and not os.path.isdir(os.path.join(r, ".git", "hackathon", "os")),
                   repr(s.stdout[:200]))
 
+    # M8e: hk-os compilar con el OS apagado sale sin red (un gh falso en el PATH deja rastro si lo llaman).
+    uv = shutil.which("uv")
+    if uv:
+        rastro_dir = os.path.join(base, "gh-rastro"); os.makedirs(rastro_dir)
+        rastro = os.path.join(base, "rastro-gh.txt").replace("\\", "/")
+        open(os.path.join(rastro_dir, "gh"), "w", newline="\n").write(f'#!/usr/bin/env bash\necho "$*" >> "{rastro}"\nexit 1\n')
+        if os.name == "nt":
+            open(os.path.join(rastro_dir, "gh.cmd"), "w").write(f'@echo %* >> "{rastro}"\r\n@exit /b 1\r\n')
+        e = dict(ENV, PATH=rastro_dir + os.pathsep + ENV["PATH"], HKOS_GITHUB_API="http://127.0.0.1:9")
+        c = subprocess.run([uv, "run", "--no-project", "--quiet", KIT + "/hkos/cli.py", "compilar"], cwd=r, env=e,
+                           capture_output=True, text=True, encoding="utf-8")
+        comprueba("hk-os compilar con el OS apagado: sale con 1, lo dice y no llama a gh ni a la red",
+                  c.returncode == 1 and "no está activo" in c.stdout and not os.path.exists(rastro), c.stdout + c.stderr)
     open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write("activa: sí\n")
     s = sesion()
     comun = git(r, "rev-parse", "--path-format=absolute", "--git-common-dir")

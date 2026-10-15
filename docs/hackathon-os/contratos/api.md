@@ -8,6 +8,7 @@ Un contrato congelado solo cambia subiendo `v` o con una nota aquí con su motiv
 | §0 y §7 | **Congelados** (M8c, 2026-10-14) |
 | §3 y §4 | **Congelados** (M8d, 2026-10-14) |
 | §5 y §6 | Estables; se congelan al abrir M8f |
+| §8 | **Congelado** (M8e, 2026-10-15) |
 
 Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reglas que el código aún no usaba):
 - 2026-10-14, M8c, §1: `transcript_path` en `SubagentStart`. Sin él, el demonio tendría que adivinar la carpeta de la sesión a partir del `cwd`, y M8.0 vio que eso se rompe con las mayúsculas de la ruta. Es una ruta local, no contenido.
@@ -17,6 +18,9 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
 - 2026-10-14, M8c, §1: `ts` con microsegundos (`2026-11-25T18:02:11.123456Z`), de `$EPOCHREALTIME` con `TZ=UTC0`, sin procesos. Varios hooks caen en el mismo segundo: el orden de los eventos es (`ts`, nº de línea). Sigue siendo `date-time` del esquema (RFC 3339 admite fracciones), así que el esquema no cambia.
 - 2026-10-14, M8c, §1 y §2: la compuerta marca con `"tope": true` (y `datos.tope`) el tercer intento, que deja pasar sin evidencias.
 - 2026-10-14, M8d, [estado.schema.json](estado.schema.json): `linea_corrupta` en el enum de `discrepancias` (las líneas rotas de los JSONL que cuenta cada demonio, §2). Solo añade un valor.
+- 2026-10-15, M8e, [estado.schema.json](estado.schema.json): `dependencias_distintas` (las nativas de GitHub no coinciden con la línea «Depende de:» del cuerpo; manda la nativa, ADR-0001) e `issue_duplicado` (dos issues del equipo con el mismo ID; manda el de número menor) en el enum de `discrepancias`. Solo añade valores.
+- 2026-10-15, M8e, §4: el sondeo de git, implementado en lo que exige M8e (`commit` y `push` de fuente git; abajo). Lo demás de esa viñeta queda aplazado.
+- 2026-10-15, M8e, §2 y §4: la `tarea` de un `commit` de git es el ID con que **empieza** su asunto, no cualquier ID que cite. En vivo, el commit del plan «Ajuste del plan: T14 …» de A contaba como trabajo de T14 y salía `actividad_ajena`. Los merges no salen como `commit` (traer `origin` no es trabajo de una tarea).
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -147,7 +151,14 @@ TTL: actor sin latido en 90 s → `activo: false` (R-18). Reserva vencida → se
 - **Persona.** Una línea con `persona` vacía (el primer `SessionStart` de un clon, `api.md` §1) toma la persona del clon, que le pasa `sesion.sh` al lanzarlo (`--persona`, de `hk_yo`).
 - **Envío.** Junta lo nuevo de todos los JSONL, lo ordena por (`ts`, `id`), valida cada evento contra [eventos.schema.json](eventos.schema.json) y lo manda en lotes de ≤ 200. Solo avanza la posición cuando el relay responde `200`. Si el relay no responde o da error, reintenta con espera creciente (hasta 30 s), sin perder la posición. Cada 15 s manda un latido con sus actores abiertos (los que tienen una señal en los últimos 90 s y no han cerrado) y la cuenta de líneas rotas.
 - **Relay y token** de `<git común>/hackathon/os/relay.url` y `…/token`, que deja `hk-os unir` (la carpeta `…/os/relay/` es la del registro del relay, §7); si no está el primero, el `relay:` de `os.md`. Sin token, no envía nada (todo sigue en disco).
-- Cada 15 s: `git worktree list --porcelain`; por worktree, `git status --porcelain` y `git diff --name-only <origin/main>...HEAD`; `git for-each-ref refs/hackathon/`; si hay `origin`, `git fetch --quiet` cada 60 s y `git merge-base --is-ancestor` de las fusiones aprobadas. (Se implementa en M8e.)
+- Cada 15 s: `git worktree list --porcelain`; por worktree, `git status --porcelain` y `git diff --name-only <origin/main>...HEAD`; `git for-each-ref refs/hackathon/`; si hay `origin`, `git fetch --quiet` cada 60 s y `git merge-base --is-ancestor` de las fusiones aprobadas.
+- **Implementado en M8e** (lo que exigen sus criterios):
+  - cada 15 s, y `git fetch --quiet origin` cada 60 s;
+  - **`commit`** por cada commit nuevo de una rama local que no está en `origin/main` (fuente `git`, actor `humano`; en una rama `worktree-agent-<id>`, actor `worker` con la tarea de su encargo), con `tarea` si el asunto **empieza** por un `Txx` (`T07 · …`, ADR-0002; una mención en medio no cuenta) y `datos` = `{sha, rama, alcanzable: false}`. Los merges no se emiten como commits;
+  - **cuando cambia `origin/main`**, primero los `commit` del tramo nuevo que son de esta persona y aún no ha emitido (`alcanzable: true`). Son de esta persona si el correo de quien hizo el commit es el `user.email` del clon, o, sin él, si los alcanza una rama local. Los commits de otras personas no se emiten como suyos. Después, `push` (actor `demonio`, `datos.sha` = punta nueva, `datos.incluye` = los shas del tramo que citan un ID o son fusiones aprobadas que ha visto);
+  - horas en UTC con `Z`; IDs deterministas (`git-<persona>-commit-<sha12>`, `git-<persona>-push-<sha12>`). Un commit o la punta nueva solo quedan vistos (`<git común>/hackathon/os/git.json`) cuando el relay los confirma: si el demonio se reinicia antes, los vuelve a emitir con el mismo ID y el relay los descarta;
+  - la primera vez, lo que ya estaba en `origin/main` no es un push nuevo.
+- **Aplazado:** el `arbol` de git por worktree (en las sesiones lo da `arbol.sh`), `refs/hackathon/` y la reconciliación de `fusion.*` por refs.
 - Con `publicar_wip: sí`: cada 60 s, commit del árbol con un índice temporal (`GIT_INDEX_FILE`, `add -A`, exclusiones de ADR-0007, `write-tree`, `commit-tree -p HEAD`; `HEAD` si no hay cambios) y `git push --force origin <sha>:refs/hackathon/wip/<persona>` **solo** si cambió el sha. (M8g.)
 - Escribe `<git común>/hackathon/os/estado-equipo.md` (formato §6) y `estado.json` local cada vez que recibe uno del relay. (M8f.)
 - Sin relay: sigue con lo local y marca `fuentes.relay` como viejo.
@@ -206,3 +217,69 @@ Cada línea, como mucho 160 caracteres. `sesion.sh` inyecta las secciones en ord
 | Refs de trabajo en curso | `refs/hackathon/wip/<persona>` en el remoto (opt-in) | Refs, no ramas |
 
 `<git común>` (`git rev-parse --git-common-dir`) es compartido entre la copia principal y todos los worktrees de esa persona, así que los hooks de los workers leen y escriben lo mismo que los de la sesión principal. El estado propio de los scripts del buzón sigue en `<git dir>/hackathon/` como en la 0.3.2.
+
+## 8. Issues `hk-tarea` (M8e; ADR-0001)
+Los escribe `hk-os compilar` (`hkos/compilar.py`) y los lee el relay (`hkos/github.py`). En el repo de `repo_tareas:` de `os.md`, o en el de `coordinacion.md`.
+
+**Issue de una tarea:**
+- Título: `Txx · <tarea>`.
+- Etiquetas: `hk-tarea` y `hk-tarea:<usuario>`. La segunda falta si el dueño no tiene GitHub en la tabla de `coordinacion.md`, y entonces el dueño en `estado.json` es su nombre («C»).
+- Cuerpo:
+  ```
+  <!-- hk-tarea id=T07 hash=<12 hex> plan=<12 hex del blob de plan.md> -->
+  **Dueño:** @usuario (A)            ·  o: **Dueño:** C (sin GitHub)
+  **Bloque:** … · **Hasta:** …
+  **Cómo se comprueba:** …
+  Depende de: T17, T05               ·  solo si tiene dependencias
+
+  _Generado por hk-os compilar desde .hackathon/plan.md: la definición se cambia en el plan, no aquí._
+  ```
+- `hash`: los 12 primeros hex del sha256 de `[ID, tarea, dueño, bloque, hasta, comprobación, dependencias ordenadas]` en JSON. Es la marca de idempotencia: si coincide, el issue no se toca.
+- Dependencias: la línea `Depende de:` y la relación nativa `blocked_by`, con las mismas tareas.
+
+**Lectura del plan:**
+- Secciones `### <Nombre> · …` de «## Por persona». El nombre se convierte en usuario con la tabla de `coordinacion.md`.
+- Filas `| ID | Hasta | Bloque | Tarea | Cómo se comprueba |`. Una celda vacía de Hasta o Bloque hereda la de la fila de arriba.
+- «Quién espera a quién»: `- Txx espera a Tyy[, Tzz | y Tzz | Tyy–Tzz]…`, también en negrita.
+- Un ID repetido o una fila fuera de una persona es un plan mal formado: no se escribe nada.
+
+**Reglas de la compilación:**
+- **Quién:** cualquiera de la tabla de `coordinacion.md` (`GET /user`), con el OS y la coordinación activos, y con `.hackathon/plan.md` commiteado e igual al de `origin/main` (tras `git fetch`). `--seco` lee y enseña sin escribir.
+- **Solo cuenta lo del equipo:** solo cuentan los issues con marcador cuyo autor está en la tabla. Si hay dos para un ID, el de número menor.
+- **Por tarea:**
+  - si no existe, se crea;
+  - si su `hash` cambió, se editan título, cuerpo y etiquetas;
+  - si estaba quitada y vuelve al plan, se reabre;
+  - las dependencias nativas que sobran o faltan, se quitan o se añaden.
+- **Tarea quitada del plan:** comentario «Quitada del plan en <plan>» y cierre con `state_reason: not_planned` (2 escrituras). El relay la saca de `estado.json` y no cumple dependencias. Una tarea ya cerrada que sale del plan se queda como está.
+- **Ritmo y tope (R-30):**
+  - la compilación inicial (el repo no tenía ningún issue del equipo con marcador) va a ≤ 1 escritura/s y está exenta del tope;
+  - una recompilación lee antes la cuenta del equipo y escribe solo lo que cabe en 60 por hora. Dice cuánto queda pendiente, y la siguiente compilación sigue donde se quedó.
+
+**Cuenta de escrituras del equipo** (`github.escrituras_del_equipo`): sale de lo que GitHub muestra a todos, no de cada clon, y la usan el relay y el compilador. En la última hora, sobre issues `hk-tarea` y de cuentas de la tabla:
+- una creación cuenta 1, con las etiquetas que pone su autor (GitHub las fecha hasta ~2 s después; margen de 10 s);
+- una edición de etiquetas o título (`labeled`, `unlabeled`, `renamed` del mismo actor e issue, dentro del margen) cuenta 1;
+- cada `assigned`, `unassigned`, `closed`, `reopened`, `blocked_by_added` y `blocked_by_removed` cuenta 1 (`blocking_added` es la otra cara de la misma petición y no se cuenta);
+- cada comentario cuenta 1;
+- una edición del cuerpo no deja evento: un `updated_at` en la ventana sin otra escritura de ese issue dentro del margen cuenta 1.
+- Crear una etiqueta en el repo no es una escritura sobre un issue y no se cuenta.
+
+**Sondeo del relay:**
+- Cada 30 s, con el `gh` de quien coordina y `If-None-Match` en cada consulta (un 304 no gasta cuota):
+  1. `GET /issues?labels=hk-tarea&state=all&per_page=100`: definición y estado de las tareas;
+  2. `GET /issues/events?per_page=100`: `assigned`, `closed`, `reopened` con su actor, que son las acciones del motor. Es la lista de todo el repo, que también trae el buzón: se filtra por número;
+  3. `GET /issues/comments?sort=created&direction=desc&per_page=100`: solo para marcar los comentarios de fuera.
+- **Dependencias nativas:** se piden las de un issue (`/issues/{n}/dependencies/blocked_by`) cuando su `total_blocked_by` no cuadra con lo último visto o con su línea, o cuando cambia su `updated_at`. Manda la nativa, con `dependencias_distintas`.
+- **Backoff:** ante 403/429 de límite, `Retry-After` o `X-RateLimit-Reset`; sin respuesta, 30 s. Mientras dura, no pregunta.
+- **Arranque:** la última instantánea, en `<git común>/hackathon/os/relay/github.json`, para arrancar sin GitHub.
+- **Lo de fuera de la tabla no cambia ningún estado** (R-31):
+  - un issue `hk-tarea` de fuera no define tareas;
+  - una asignación, un cierre o una reapertura de fuera se ignoran;
+  - un comentario de fuera solo se anota.
+  Los tres salen como `fuera_del_equipo`, con autor, número y tarea, nunca con su texto.
+- **Fuentes en `estado.json`:**
+  - `fuentes.github` = estado del sondeo (`ok`, `limitado` o `sin respuesta`) y hora del último sondeo bueno;
+  - `fuentes.git` = hora del último evento de fuente git;
+  - `fuentes.relay` = hora del cálculo (no cuenta para la versión ni para el SSE).
+  Marcar «viejo» en las vistas es de M8f.
+

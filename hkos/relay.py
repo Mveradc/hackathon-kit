@@ -3,7 +3,8 @@
 # dependencies = []
 # ///
 """Relay del Hackathon OS (M8d, api.md §3): recibe eventos y latidos de los demonios, calcula estado.json con
-modelo.py y lo sirve por GET /v1/estado y por SSE. Solo biblioteca estándar (ADR-0005).
+modelo.py y lo sirve por GET /v1/estado y por SSE. Desde M8e, sondea GitHub (las tareas `hk-tarea`, api.md §8) con
+el gh de quien coordina. Solo biblioteca estándar (ADR-0005).
 
 Uso normal: `hk-os relay` (cli.py). Directo, para pruebas:
   uv run --no-project hkos/relay.py --dir <carpeta> --equipo <coordinacion.md> [--ip 127.0.0.1] [--puerto 7777]
@@ -19,19 +20,22 @@ import socket
 import sys
 import threading
 import time
+from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import github  # noqa: E402
 from esquema import Esquema  # noqa: E402
-from estados import fecha  # noqa: E402
+from estados import fecha, iso  # noqa: E402
 from modelo import calcular  # noqa: E402
-from red import Servidor, ahora_iso, equipo  # noqa: E402
+from red import Servidor, ahora_iso, conf, equipo  # noqa: E402
 
 LOTE_MAX = 200
 CUERPO_MAX = 2 * 1024 * 1024
 RECALCULO_MIN_S = 0.25          # como mucho 4 recálculos por segundo
 RECALCULO_RELOJ_S = 5           # y uno cada 5 s, para que la presencia caduque sola (R-18)
 PING_S = 20
+SONDEO_GITHUB_S = 30            # api.md §8
 TAILNET = ipaddress.ip_network("100.64.0.0/10")
 PRIVADAS = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
 
@@ -63,11 +67,17 @@ def ip_de_lan():
         s.close()
 
 
+def iso_us(t):
+    """Segundos de época → ISO 8601 en UTC."""
+    return iso(datetime.fromtimestamp(t, timezone.utc))
+
+
 class Relay:
     """El estado del relay, sin HTTP. `ahora` se puede inyectar en las pruebas."""
 
-    def __init__(self, carpeta, personas, ahora=ahora_iso):
+    def __init__(self, carpeta, personas, ahora=ahora_iso, sondeo=None, umbral_parada_s=1200):
         self.carpeta, self.personas, self.ahora = carpeta, personas, ahora
+        self.sondeo, self.umbral_parada_s = sondeo, umbral_parada_s
         os.makedirs(carpeta, exist_ok=True)
         self.esquema = Esquema("eventos.schema.json")
         self.token = self._token()
@@ -80,6 +90,12 @@ class Relay:
         self.sucio = threading.Event()
         self.version, self.estado, self.texto, self._huella = 0, None, b"", None
         self._cargar()
+        if self.sondeo:                           # sin GitHub al arrancar, el último estado conocido (constitución VIII)
+            try:
+                with open(os.path.join(carpeta, "github.json"), encoding="utf-8") as f:
+                    self.sondeo.de_disco(json.load(f))
+            except (OSError, ValueError):
+                pass
         self.recalcular()
 
     # --- persistencia ---
@@ -195,12 +211,27 @@ class Relay:
             ultimo = max(eventos, key=lambda e: fecha(e["ts"]))["ts"]
             if fecha(ultimo) > fecha(ahora):
                 ahora = ultimo
-        estado = calcular([], {}, eventos, self.personas, ahora)
+        fuentes = {"relay": {"valor": "ok", "fuente": "derivado", "observado_en": ahora}}
+        tareas, issues, disc = [], {}, []
+        if self.sondeo:
+            with self.lock:
+                tareas, issues, disc, escrituras = self.sondeo.resultado(fecha(ahora))
+                visto = self.sondeo.ultimo_ok
+                fuentes["github"] = {"valor": self.sondeo.estado, "fuente": "github",
+                                     "observado_en": iso_us(visto) if visto else ahora}
+            if escrituras >= github.TOPE_HORA:
+                print(f"relay: {escrituras} escrituras del equipo a GitHub en la última hora (tope {github.TOPE_HORA}, R-30)",
+                      file=sys.stderr, flush=True)
+        de_git = [e["ts"] for e in eventos if e.get("fuente") == "git"]
+        if de_git:
+            fuentes["git"] = {"valor": "ok", "fuente": "git", "observado_en": max(de_git, key=fecha)}
+        estado = calcular(tareas, issues, eventos, self.personas, ahora, self.umbral_parada_s, fuentes, disc)
         for p, c in sorted(corruptas.items()):
             estado["discrepancias"].append({"tipo": "linea_corrupta", "persona": p, "veces": c["veces"],
                                             "primera_vez": c["primera_vez"], "ultima_vez": c.get("ultima_vez", c["primera_vez"]),
                                             "detalle": f"{c['veces']} líneas rotas en los JSONL de {p}"})
-        sin_hora = dict(estado, generado_en=None)
+        # Sin la hora del cálculo ni la del relay: solo hay versión nueva (y SSE) si cambia algo de verdad.
+        sin_hora = dict(estado, generado_en=None, fuentes={k: v for k, v in estado["fuentes"].items() if k != "relay"})
         huella = hashlib.sha256(json.dumps(sin_hora, sort_keys=True).encode("utf-8")).hexdigest()
         with self.cambio:
             if huella != self._huella:
@@ -220,6 +251,26 @@ class Relay:
             except Exception as ex:  # un fallo de cálculo no tumba el relay
                 print(f"relay: error al recalcular: {ex!r}", file=sys.stderr, flush=True)
             parar.wait(RECALCULO_MIN_S)
+
+    def bucle_github(self, parar):
+        """Sondeo de GitHub cada SONDEO_GITHUB_S (api.md §8). Guarda la instantánea para arrancar sin GitHub."""
+        while not parar.is_set():
+            try:
+                with self.lock:
+                    estado_antes = self.sondeo.estado
+                cambio = self.sondeo.sondear()
+                if cambio:
+                    with self.lock:
+                        foto = self.sondeo.a_disco()
+                    tmp = os.path.join(self.carpeta, "github.json.tmp")
+                    with open(tmp, "w", encoding="utf-8") as f:
+                        json.dump(foto, f)
+                    os.replace(tmp, os.path.join(self.carpeta, "github.json"))
+                if cambio or self.sondeo.estado != estado_antes:
+                    self.sucio.set()
+            except Exception as ex:  # el sondeo no tumba el relay
+                print(f"relay: error al sondear GitHub: {ex!r}", file=sys.stderr, flush=True)
+            parar.wait(SONDEO_GITHUB_S)
 
     def actual(self):
         with self.lock:
@@ -326,15 +377,38 @@ def manejador(relay):
     return Manejador
 
 
-def servir(carpeta, equipo_md, ip, puerto, aviso=print):
+def sondeo_de(os_md, equipo_md, personas, aviso):
+    """El sondeo de GitHub del relay: repo de `repo_tareas:` (os.md) o `repo:` (coordinacion.md) y el gh de quien
+    coordina. Sin repo o sin sesión de gh, el relay sigue sin GitHub (constitución VIII) y lo dice."""
+    repo = (conf(os_md, "repo_tareas") if os_md else "") or conf(equipo_md, "repo")
+    if not repo or "<" in repo:
+        aviso("Sin GitHub: no hay repo en coordinacion.md ni repo_tareas en os.md.")
+        return None
+    token = github.token_de_gh()
+    if not token:
+        aviso("Sin GitHub: gh no tiene sesión en este portátil (gh auth login).")
+        return None
+    cliente = github.Cliente(repo, token, base=os.environ.get("HKOS_GITHUB_API", github.API))
+    return github.Sondeo(cliente, {p["persona"] for p in personas})
+
+
+def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=True):
     if not ip_permitida(ip):
         raise SystemExit(f"hk-os relay: {ip} no es 127.0.0.1, una IP privada de LAN ni una de Tailscale; "
                          "el relay no escucha ahí (R-32). Indica otra con --ip.")
     personas = equipo(equipo_md)
-    relay = Relay(carpeta, personas)
+    sondeo = sondeo_de(os_md, equipo_md, personas, aviso) if con_github else None
+    try:
+        umbral = 60 * float(conf(os_md, "umbral_parada_min") or 20) if os_md else 1200
+    except ValueError:
+        umbral = 1200
+    relay = Relay(carpeta, personas, sondeo=sondeo, umbral_parada_s=umbral)
     servidor = Servidor((ip, puerto), manejador(relay))
     parar = threading.Event()
     threading.Thread(target=relay.bucle, args=(parar,), daemon=True).start()
+    if sondeo:
+        threading.Thread(target=relay.bucle_github, args=(parar,), daemon=True).start()
+        aviso(f"Sondeo de GitHub: {sondeo.c.repo}, cada {SONDEO_GITHUB_S} s.")
     url = f"http://{ip}:{servidor.server_address[1]}"
     aviso(f"Relay del Hackathon OS en {url} ({len(personas)} personas en coordinacion.md, "
           f"{len(relay.eventos)} eventos guardados).")
@@ -355,11 +429,13 @@ def main(argv=None):
     p.add_argument("--equipo", required=True, help="ruta de .hackathon/coordinacion.md")
     p.add_argument("--ip", help="IP de escucha (por defecto, la de la LAN)")
     p.add_argument("--puerto", type=int, default=7777)
+    p.add_argument("--os", help="ruta de .hackathon/os.md (repo_tareas, umbral_parada_min)")
+    p.add_argument("--sin-github", action="store_true", help="no sondear GitHub")
     a = p.parse_args(argv)
     ip = a.ip or ip_de_lan()
     if not ip:
         raise SystemExit("hk-os relay: no encuentro la IP de la LAN; indícala con --ip.")
-    servir(a.dir, a.equipo, ip, a.puerto, aviso=lambda s: print(s, flush=True))
+    servir(a.dir, a.equipo, ip, a.puerto, aviso=lambda s: print(s, flush=True), os_md=a.os, con_github=not a.sin_github)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,7 @@ import argparse
 import glob
 import json
 import os
+import re
 import subprocess
 import sys
 import threading
@@ -20,7 +21,7 @@ import time
 import urllib.error
 import urllib.request
 from collections import deque
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -54,6 +55,143 @@ class Fichero:
         self.lineas = deque()       # [bytes al final de la línea, nº de línea, ids sin confirmar]
 
 
+# La tarea de un commit es el ID con que empieza su asunto («T07 · …», ADR-0002), no cualquier mención: un commit
+# del plan que dice «Ajuste del plan: T14 …» no es trabajo de T14 (en vivo, M8e).
+ID_EN_MENSAJE = re.compile(r"^\s*\[?(T\d{2,3})\b")
+
+
+class SondeoGit:
+    """Sondeo de git del demonio (api.md §4, M8e): commits nuevos de las ramas locales y cambios de origin/main, como
+    eventos de fuente git. Lo que pide M8e: `commit` (con la tarea si el mensaje cita un ID, o la del encargo en una
+    rama de worker) y `push` (con `incluye`), para que una tarea llegue a `publicada` y una rama sin ID salga en
+    `sin_tarea`. Un commit o la punta nueva solo quedan vistos cuando el relay los confirma: si el demonio se reinicia
+    antes, se vuelven a emitir con el mismo ID y el relay los descarta. El `arbol` de git por worktree y la
+    reconciliación de `fusion.*` por refs quedan para más adelante."""
+    CADA_S, FETCH_S, MAX_VISTOS = 15, 60, 5000
+
+    def __init__(self, ag):
+        self.ag = ag
+        self.ruta = os.path.join(ag.dir, "git.json")
+        try:
+            with open(self.ruta, encoding="utf-8") as f:
+                d = json.load(f)
+        except (OSError, ValueError):
+            d = {}
+        self.punta = d.get("punta")
+        self.vistos = list(d.get("vistos", []))
+        self._vistos = set(self.vistos)
+        self.pendientes = {}                     # id del evento → ("commit", sha) | ("push", punta)
+        self.correo = None                       # user.email del clon, para saber qué commits son de esta persona
+        self.ultimo = self.ultimo_fetch = -1e18
+
+    def _git(self, *args):
+        try:
+            r = subprocess.run(["git", "-C", self.ag.principal, *args], capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return r.stdout.strip() if r.returncode == 0 else None
+
+    def _log(self, rango, *mas):
+        """[(sha, hora en UTC, correo de quien hizo el commit, asunto)] del más viejo al más nuevo; None si git no puede
+        (punta desconocida)."""
+        t = self._git("log", "--reverse", "--format=%H%x1f%cI%x1f%ce%x1f%s", *mas, rango)
+        if t is None:
+            return None
+        salida = []
+        for l in t.splitlines():
+            if l.count("\x1f") == 3:
+                sha, ts, correo, asunto = l.split("\x1f", 3)
+                ts = datetime.fromisoformat(ts).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+                salida.append((sha, ts, correo.lower(), asunto))
+        return salida
+
+    def _propio(self, sha, correo):
+        """¿Es de esta persona un commit que llega por origin/main? Por el correo del clon (`user.email`); sin él, si lo
+        alcanza una rama local. Un commit de otra persona entra en el `incluye` del push, pero no como commit suyo."""
+        if self.correo is None:
+            self.correo = (self._git("config", "user.email") or "").lower()
+        if self.correo:
+            return correo == self.correo
+        return bool(self._git("for-each-ref", "--contains", sha, "--format=%(refname)", "refs/heads"))
+
+    def _guardar(self):
+        self.vistos = self.vistos[-self.MAX_VISTOS:]
+        self._vistos = set(self.vistos)
+        tmp = self.ruta + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump({"punta": self.punta, "vistos": self.vistos}, f)
+        os.replace(tmp, self.ruta)
+
+    def _en_espera(self, sha):
+        return ("commit", sha) in self.pendientes.values()
+
+    def _commit(self, sha, ts, asunto, rama, alcanzable):
+        actor = {"persona": self.ag.persona, "papel": "humano"}
+        m = ID_EN_MENSAJE.search(asunto)
+        tarea = m.group(1) if m else None
+        if rama.startswith("worktree-agent-"):
+            agente = rama[len("worktree-agent-"):]
+            actor = {"persona": self.ag.persona, "papel": "worker", "agente": agente}
+            tarea = tarea or next((f.nz.tarea_de_agente[agente] for f in self.ag.ficheros.values()
+                                   if agente in f.nz.tarea_de_agente), None)
+        e = {"v": 1, "id": f"git-{self.ag.persona}-commit-{sha[:12]}", "ts": ts, "actor": actor, "tipo": "commit",
+             "fuente": "git", "datos": {"sha": sha, "rama": rama, "alcanzable": alcanzable}}
+        if tarea:
+            e["tarea"] = tarea
+        self.pendientes[e["id"]] = ("commit", sha)
+        return e
+
+    def ciclo(self):
+        ahora = self.ag.reloj()
+        if ahora - self.ultimo < self.CADA_S:
+            return []
+        self.ultimo = ahora
+        if self._git("rev-parse", "--verify", "-q", "refs/remotes/origin/main") is None:
+            return []
+        if ahora - self.ultimo_fetch >= self.FETCH_S:
+            self.ultimo_fetch = ahora
+            self._git("fetch", "--quiet", "origin")
+        punta = self._git("rev-parse", "refs/remotes/origin/main")
+        eventos = []
+        for rama in (self._git("for-each-ref", "--format=%(refname:short)", "refs/heads") or "").split():
+            for sha, ts, _, asunto in self._log(f"refs/remotes/origin/main..refs/heads/{rama}", "--no-merges") or []:
+                if sha not in self._vistos and not self._en_espera(sha):
+                    eventos.append(self._commit(sha, ts, asunto, rama, False))
+        if self.punta is None:                   # primera vez: lo que ya estaba subido no es un push nuevo
+            self.punta = punta
+            self._guardar()
+        elif punta != self.punta and ("push", punta) not in self.pendientes.values():
+            tramo = self._log(f"{self.punta}..{punta}")
+            if tramo is None:                    # punta anterior desconocida (push forzado): los últimos commits
+                tramo = self._log(punta, "-n", "50") or []
+            # Un merge (traer origin, por ejemplo) no es trabajo de una tarea: no sale como commit (en vivo, M8e).
+            merges = set((self._git("rev-list", "--merges", f"{self.punta}..{punta}") or "").split())
+            for sha, ts, correo, asunto in tramo:
+                if sha not in self._vistos and not self._en_espera(sha) and sha not in merges and self._propio(sha, correo):
+                    eventos.append(self._commit(sha, ts, asunto, "origin/main", True))
+            incluye = [sha for sha, _, _, asunto in tramo if ID_EN_MENSAJE.search(asunto) or sha in self.ag.fusiones]
+            e = {"v": 1, "id": f"git-{self.ag.persona}-push-{punta[:12]}", "ts": self.ag.ahora(),
+                 "actor": {"persona": self.ag.persona, "papel": "demonio"}, "tipo": "push", "fuente": "git",
+                 "datos": {"sha": punta, "incluye": incluye}}
+            self.pendientes[e["id"]] = ("push", punta)
+            eventos.append(e)
+        return eventos
+
+    def confirmar(self, ids):
+        cambio = False
+        for i in list(ids & set(self.pendientes)):
+            tipo, valor = self.pendientes.pop(i)
+            if tipo == "commit" and valor not in self._vistos:
+                self.vistos.append(valor)
+                self._vistos.add(valor)
+            elif tipo == "push":
+                self.punta = valor
+            cambio = True
+        if cambio:
+            self._guardar()
+
+
 class Agente:
     def __init__(self, repo, persona, apagado_min=None, reloj=time.time, ahora=ahora_iso):
         self.repo = repo
@@ -85,6 +223,8 @@ class Agente:
         self.relay_estado = "sin token"
         self.ultimo_latido = 0
         self.posiciones = self._cargar_posiciones()
+        self.fusiones = set()                    # shas de fusion.aprobada vistos (para el `incluye` del push de git)
+        self.git = SondeoGit(self)
         self.lock = threading.Lock()
 
     # --- posiciones ---
@@ -136,6 +276,9 @@ class Agente:
         except Exception:  # una línea rara no para al demonio: cuenta como rota
             self.corruptas += 1
             return []
+        for e in eventos:
+            if e["tipo"] == "fusion.aprobada" and e.get("datos", {}).get("sha"):
+                self.fusiones.add(e["datos"]["sha"])
         if not enviar:
             return []
         buenos = []
@@ -205,6 +348,8 @@ class Agente:
                 cambio = True
         if cambio:
             self._guardar_posiciones()
+        if ids:
+            self.git.confirmar(ids)
 
     # --- relay ---
     def _relay(self):
@@ -294,6 +439,11 @@ class Agente:
     def ciclo(self):
         with self.lock:
             self.leer()
+            for e in self.git.ciclo():
+                if self.esquema.valido(e):
+                    self.cola.append(e)
+                else:
+                    self.invalidos += 1
             self.enviar()
 
 

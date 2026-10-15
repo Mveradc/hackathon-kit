@@ -117,7 +117,7 @@
         "required": ["tipo", "detalle", "veces", "primera_vez", "ultima_vez"],
         "additionalProperties": false,
         "properties": {
-          "tipo": { "enum": ["hook_frente_a_git", "veredicto_sha", "dependencia_inexistente", "fuera_del_equipo", "actividad_ajena", "atribucion_ambigua", "linea_corrupta"] },
+          "tipo": { "enum": ["hook_frente_a_git", "veredicto_sha", "dependencia_inexistente", "fuera_del_equipo", "actividad_ajena", "atribucion_ambigua", "linea_corrupta", "dependencias_distintas", "issue_duplicado"] },
           "tarea": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
           "persona": { "type": "string", "description": "Quién produjo la señal (en fuera_del_equipo, la cuenta de fuera)." },
           "detalle": { "type": "string", "maxLength": 300, "description": "El de la última vez." },

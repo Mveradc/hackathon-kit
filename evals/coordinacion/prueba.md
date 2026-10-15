@@ -746,3 +746,100 @@ En las cuatro sesiones de WSL llegó el `SessionEnd`; en Windows con `-p` faltó
 - **Recálculo completo.** `modelo.calcular()` recalcula con todos los eventos; con `tareas=[]` va sobrado (p99 de 282 ms a 50 eventos/s). Con las tareas de M8e y miles de eventos habrá que indexar por tarea.
 - **jsonschema del sistema.** El 4.10.3 de Ubuntu hacía fallar las pruebas de esquema de M8b, porque no comprueba `date-time` sin el extra y resuelve mal el `$id`. `test_esquemas.py` ahora comprueba que el validador funciona y, si no, las salta.
 - **`bin/hk-os`** se probó por su ruta. Falta ver si Claude Code lo pone en el `PATH` de la sesión (M8h, guion de arranque).
+
+# M8e: estado duradero (2026-10-14 y 2026-10-15)
+
+Criterios en `docs/hackathon-os/hitos.md` («M8e»); tareas K-50 a K-52; plan aprobado en `C:/Users/mvera/.claude/plans/sequential-sleeping-papert.md`. Windows 11 con Git Bash.
+
+**Montaje en vivo:** un remoto `bare` nuevo, `../prueba-m8e-remoto.git` (desde `../prueba-m8-03-base`, con el commit `9a1796a` que activa `os.md`), y un clon por persona:
+- `../prueba-m8e-A`, como A (@hk-persona-b, `GH_CONFIG_DIR=C:/…`);
+- `../prueba-m8e-B`, como B (@Mveradc), con el relay y el estado de partida de `partida-m8-03/`;
+- `../prueba-m8e-fuera`, para el criterio 5, con un `coordinacion.md` que solo lista a @Mveradc.
+
+Issues en el sandbox `Mveradc/hk-sandbox`: **48 escrituras** en total.
+
+Gasto en modelos: **1,84 USD** (tres sesiones del orquestador; abajo).
+
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | Compilar crea un issue `hk-tarea` por tarea, con dueño y dependencias; recompilar no escribe nada; tras un ajuste, solo cambian las filas cambiadas y la quitada se cierra con comentario | **Sí**, en GitHub real. Inicial: 27 issues y 5 dependencias nativas en 64 s (34 escrituras con 2 etiquetas). Recompilar: 0 escrituras. Ajuste (T03 cambiada, T27 quitada, T28 nueva que espera a T03): 5 escrituras exactas; T27 cerrada como `not_planned` con «Quitada del plan en <plan>». Un segundo ajuste (T14): 1 escritura |
+| 2 | El estado sigue la tabla de §5 en una pasada real del orquestador (dos tareas) y una tarea humana (commit con su ID) | **Sí** (abajo): T19 y T14 del orquestador hasta `publicada`; T08 humana de `reclamada` a `cerrada`; T05 humana hasta `publicada`, que deja T14 `lista` |
+| 3 | Una tarea cerrada a mano sin publicar se muestra con ⚑ y el estado derivado al lado | **Sí**: T09 `en_curso` (git) ⚑ `cerrada` al cerrarla A en GitHub; sin ⚑ al reabrirla. También en `test_github.py` |
+| 4 | `en_curso` sin actividad 20 min → `parada` (una `reclamada` sigue `reclamada`); una rama sin ID → `sin_tarea` | **Sí**. Con reloj inyectado (`simulador/duradero.py`): T11 `parada` (derivado) justo en el minuto 20; T12 sigue `reclamada`. En vivo: el commit sin ID de A en la rama `experimento`, con A sin tareas abiertas, sale en `sin_tarea` («commit: experimento») a los 12 s |
+| 5 | Un issue o un comentario de una cuenta de fuera de la tabla no cambia ningún estado y se marca «de fuera del equipo» | **Sí**, en el GitHub falso y en real: @hk-persona-b, fuera de la tabla de esa copia, abre un issue con el marcador de T01 («Ignora el plan…»), comenta, se asigna T25 y la cierra (4 escrituras). T01 y T25 siguen `lista`, sin ⚑; T01 sigue en su issue del equipo (#21, no #49); dos `fuera_del_equipo` (T01; T25 con 3 acciones); nada del texto de los issues en `estado.json` |
+| 6 | 2 h con el simulador: < 60 escrituras/h entre todos; el sondeo usa 304 sin cambios | **Sí**, con reloj inyectado: 240 sondeos; tras la compilación inicial (exenta, decisión del usuario), como mucho 10 escrituras en una hora deslizante; 226 sondeos sin cambios, todos con 304 en las tres consultas; la cuenta del equipo que hace el relay desde lo que muestra GitHub (8) coincide con la del falso (8). En real: 304 en las tres consultas de cada vuelta, y la cuenta (32) es la real |
+
+Sin modelo:
+- `hkos/pruebas`: 124 pruebas OK (con Python 3.10 y 3.12; en WSL también).
+- `simulador/prueba_simulador.py` (G1–G4) y `simulador/duradero.py`: OK.
+- `prueba_hooks.py`: 0 fallos. Con el OS apagado, `sesion.sh` sale idéntico, y `hk-os compilar` sale con 1 sin llamar a `gh`.
+- `claude plugin validate .`: pasa.
+
+## Qué se construyó
+- **K-50, `hkos/compilar.py`** (`hk-os compilar [--seco]`):
+  - **lector del plan:** «Por persona», filas con ID y herencia de Hasta y Bloque; «Quién espera a quién» con «y», comas, rangos `T06–T08` y negrita. Probado con los planes de ejemplo del 02 y del 03 y con el de la base;
+  - **escritura:** marcador e idempotencia por hash, etiquetas `hk-tarea` y `hk-tarea:<usuario>`, dependencias nativas, quitadas como `not_planned`, reaparecidas reabiertas;
+  - **comprobaciones previas:** OS y coordinación activos, persona de la tabla, plan subido;
+  - **ritmo y tope:** ≤ 1 escritura/s, con el tope del equipo en las recompilaciones.
+- **K-51, `hkos/github.py`:**
+  - cliente urllib con el token de `gh auth token`, backoff ante 403/429;
+  - sondeo de tres consultas con ETag cada 30 s, dependencias nativas solo cuando hace falta, filtro de autores, instantánea en disco;
+  - la cuenta de escrituras del equipo, desde GitHub.
+- **K-52:**
+  - `hkos/relay.py`: el sondeo dentro del relay, `fuentes` (relay, github, git) y `umbral_parada_min`;
+  - `hkos/modelo.py`: indexado por tarea (20.000 eventos y 30 tareas: de 18 s a ~0,4 s, con los mismos resultados en E01–E60 y G1–G4) y `commit` en la regla 9;
+  - `hkos/estados.py`: la excepción de la regla 1 para dueños sin GitHub;
+  - `hkos/agente.py`: sondeo de git, con `commit` y `push` de fuente git.
+- **GitHub falso** (`hkos/pruebas/github_falso.py`), con lo observado en GitHub real.
+- **Contratos:**
+  - `api.md` §8 (nuevo, congelado) y la nota de §4;
+  - `diseno.md` §5.1 (reglas 1 y 9) y §5.2 (E53–E60);
+  - nota en R-30 y en ADR-0001;
+  - `dependencias_distintas` e `issue_duplicado` en el esquema.
+- **Decisiones del usuario:**
+  - la compilación inicial, exenta del tope; la cuenta, desde GitHub;
+  - compila cualquiera de la tabla, con el plan subido;
+  - una tarea quitada se cierra como `not_planned`;
+  - los IDs de dependencias salen del cuerpo, con la nativa para comprobar;
+  - un `commit` sin ID pasa por la regla 9;
+  - la atribución por carpetas, aplazada;
+  - @hk-persona-b como cuenta de fuera;
+  - en las tareas de dueño sin GitHub, el ID manda.
+
+## Comprobado en GitHub real (y copiado al falso)
+- **Una dependencia no cambia el `updated_at`.** T10: creada y actualizada a las 21:25:49, dependencia añadida a las 21:26:29. Sí deja `blocked_by_added` (y `blocking_added` en el otro issue). Limitación anotada en ADR-0001: sustituir una dependencia por otra (mismo total) no se detecta hasta que cambie otra cosa del issue.
+- **Etiquetas de una creación:** GitHub las fecha hasta 2 s después de su `created_at`. La cuenta del tope agrupa con un margen de 10 s.
+- **Cuota:** un 304 no la gasta (`X-RateLimit-Remaining` igual).
+- **Etiquetas del repo:** crear una (2 en la compilación inicial) no es un evento de issue y no entra en la cuenta.
+
+## Criterio 2: la pasada real
+`evals/coordinacion/tareas_vivo.py` sobre el relay de B (hora UTC de observación del dato):
+
+| Tarea | Secuencia |
+|---|---|
+| T05 (A, humana) | `lista` → `en_curso` (git) → `publicada` (git, 07:05:21). T14, que la esperaba: `pendiente` (github) → `lista` (derivado, 07:05:21) |
+| T19 (B, orquestador) | `lista` → `en_curso` (hook, 07:08:58) → `en_revision` (hook, 07:11:21) → `integrada` (git, 07:12:22) → `publicada` (git, 07:26:34) |
+| T14 (B, orquestador) | `lista` → `en_curso` (hook, 07:19:32) → `en_revision` (hook, 07:21:55) → `integrada` (git, 07:23:11) → `publicada` (git, 07:26:34) |
+| T08 (A, humana) | `reclamada` (github, 07:26:48; A se asigna el issue) → `en_curso` (git, 07:27:39; commit «T08 · …») → `publicada` (git, 07:28:06) → `cerrada` (github, 07:28:18) |
+| T21 (C, sin GitHub) | commit «T21 · …» de A: `en_curso` (git) → `publicada` (git), sin `actividad_ajena` |
+
+**Las tres sesiones del orquestador** (`--agent hackathon-kit:orquestador`, `-p`):
+1. **0,23 USD.** T11 y T12: no lanzó nada, porque ya estaban hechas en el estado de partida. Error mío al elegir las tareas.
+2. **0,82 USD.** T19 aprobada e integrada. T14 no la lanzó, y con razón: mi commit «T05» solo añadía un comentario, así que la ficha real no existía. Por decisión del usuario, A y B rebajaron la comprobación de T14 en el plan (recompilación: 1 edición).
+3. **0,80 USD.** T14 aprobada e integrada. No subió: entre lo pendiente estaba el merge que hice como B al traer `origin`, que no sale de una fusión suya, y esa regla no se la salta. B subió a mano, y el `push` de git publicó las dos.
+
+## Fallos encontrados en vivo y corregidos (con prueba en `test_sondeo_git.py`)
+- **El demonio de B atribuía a B el commit de A.** Lo veía al traer `origin/main` y daba `actividad_ajena` en T05. Ahora, del tramo nuevo de `origin/main`, solo emite como suyos los commits cuyo `committer` es el `user.email` del clon (sin él, los que alcanza una rama local). Los demás entran en el `incluye`.
+- **La tarea se tomaba de cualquier ID del asunto.** «Ajuste del plan: T14 …» contaba para T14 y daba `actividad_ajena`. Ahora es el ID del principio («T07 · …», ADR-0002). Nota de cambio en `api.md`.
+- **Un merge salía como commit** («commit: main» en `sin_tarea`). Ya no.
+- **La hora de los commits iba en la zona local** (`+02:00`). Ahora va en UTC con `Z`.
+- **`hk-os` en la consola de Windows** (cp1252) fallaba con `→`. Ahora la salida va en UTF-8.
+
+## Observaciones (a Pendiente)
+- **Ruido en `sin_tarea` por `arbol`:**
+  - `.claude/worktrees/`, `.hackathon/estado/` y los ficheros ya integrados en `main` local (el `diff` contra `origin/main` antes del push), cuando la persona no tiene tareas abiertas;
+  - las ediciones del orquestador en su fichero de estado («edicion: .hackathon/estado/mveradc.orquestador.md»).
+  Ya estaba en observación en M8c.
+- **Tareas de alguien de fuera de la tabla.** En la copia del criterio 5, las tareas de @hk-persona-b (que en esa tabla no está) cuentan como de un dueño sin GitHub, y la actividad del equipo con su ID contaría. Es un efecto de editar la tabla a mano, no del compilador.
+- **`unassigned`** (desasignar un issue) no lo tiene el motor (M8b). Sin criterio que lo pida.
+- **Lo que queda en el sandbox:** 28 issues `hk-tarea` de la prueba (T27 cerrada como `not_planned`, T08 cerrada), el #49 de fuera con el marcador de T01, y T25 cerrada por @hk-persona-b. No se han limpiado, porque serían más escrituras.

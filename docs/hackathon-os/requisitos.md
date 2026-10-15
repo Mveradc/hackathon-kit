@@ -64,6 +64,7 @@ Cada criterio es comprobable y lo cubre al menos un guion de `simulador.md` o un
 ## Robustez y seguridad (N)
 - **R-29** SI el relay no responde, ENTONCES cada persona DEBE seguir viendo su estado local y lo duradero de GitHub, con el aviso «efímero no disponible desde hh:mm».
 - **R-30** SI GitHub no responde o limita, ENTONCES el sistema DEBE seguir con el relay y git, aplicar el backoff existente (`hk_gh`) y no superar en ningún caso 60 escrituras por hora a GitHub entre todo el equipo.
+  - *Nota (M8e, decisión del usuario):* la compilación inicial del plan (`hk-os compilar` sobre un repo sin tareas) está exenta del tope y va a ≤ 1 escritura/s, el límite secundario de GitHub (80/min). Las recompilaciones sí cuentan. La cuenta «entre todo el equipo» sale de lo que GitHub muestra a todos, no de cada clon: `api.md` §8.
 - **R-31** El sistema DEBE ignorar, en lo que inyecta y en lo que deriva, cualquier issue o comentario de alguien que no esté en la tabla de `coordinacion.md`, y mostrarlo como «de fuera del equipo».
 - **R-32** El relay DEBE escuchar solo en LAN o Tailscale, exigir el token del equipo en cada petición y no guardar contenido de ficheros.
 

@@ -94,7 +94,7 @@ Estados derivados, en orden de avance. Cada uno con la señal que lo produce (co
 
 ### 5.1 Reglas del motor
 Recorre los eventos de la tarea en orden de `ts`, sin repetidos (`id`), y lleva una fase: ninguna, `en_curso`, `en_revision`, `integrada`, `no_cerrada` o `publicada`.
-1. **Actividad**: todo evento de un actor del dueño con la tarea (o atribuido a ella, regla 9) renueva la hora de la última actividad. Sin fase, pasa a `en_curso`. La actividad de otra persona no cambia nada y va a `discrepancias` (`actividad_ajena`).
+1. **Actividad**: todo evento de un actor del dueño con la tarea (o atribuido a ella, regla 9) renueva la hora de la última actividad. Sin fase, pasa a `en_curso`. La actividad de otra persona no cambia nada y va a `discrepancias` (`actividad_ajena`). **Excepción (M8e):** si el dueño no tiene GitHub en la tabla de `coordinacion.md` (dueño «C», no un usuario), cuenta la actividad de cualquier persona del equipo que traiga el ID de la tarea: el ID manda sobre quién lo escribe. Lo atribuido por la regla 9 nunca llega a esas tareas, porque solo atribuye a tareas de la propia persona.
 2. **`encargo.lanzado`**: desde ninguna fase, `integrada` o `publicada`, pasa a `en_curso` (un encargo nuevo de la misma tarea, como `T18 (2/2)`). Desde `no_cerrada`, pasa a `en_curso` y pone a cero la cuenta de CAMBIOS (la persona reintenta). Un encargo relanzado tras el primer CAMBIOS **no** la pone a cero.
 3. **`fusion.creada`**: pasa a `en_revision` con esa fusión como la actual y sin veredicto.
 4. **`revision.veredicto`** sobre un sha que no es la fusión actual: se ignora (`veredicto_sha`). Sobre la actual:
@@ -104,7 +104,7 @@ Recorre los eventos de la tarea en orden de `ts`, sin repetidos (`id`), y lleva 
 6. **`fusion.aprobada`** (confirmada por git, `api.md` §2): pasa a `integrada` aunque falte el veredicto, que va a `discrepancias` (`hook_frente_a_git`).
 7. **`commit`** con la tarea: su sha pasa a ser el último que hay que publicar; desde `publicada`, vuelve a `en_curso`. Salvo que ese sha ya esté en algún `incluye` visto, o que el commit traiga `datos.alcanzable: true` (el demonio lo ve alcanzable desde `origin/main`): entonces no hace retroceder la tarea.
 8. **`push`**: solo cuenta con fuente `git`. Si su `incluye` tiene la última fusión aprobada o el último commit, pasa a `publicada`. Si tiene una fusión todavía en revisión, también (gana git, `hook_frente_a_git`). Un `push` de hook sin el de git no publica.
-9. **Atribución** (paso previo, en `modelo.py`): un evento sin `tarea` (`edicion`, `arbol`) cuenta para la tarea de su persona si esta tiene exactamente una tarea `reclamada`, `en_curso` o `parada` en ese momento. Con varias, no cuenta y va a `discrepancias` (`atribucion_ambigua`). Con ninguna, no cuenta y va a `sin_tarea`. El mapeo por carpetas queda para M8e.
+9. **Atribución** (paso previo, en `modelo.py`): un evento sin `tarea` (`edicion`, `arbol` y, desde M8e, `commit`: un commit es la misma señal que una edición) cuenta para la tarea de su persona si esta tiene exactamente una tarea `reclamada`, `en_curso` o `parada` en ese momento. Con varias, no cuenta y va a `discrepancias` (`atribucion_ambigua`). Con ninguna, no cuenta y va a `sin_tarea` (un commit, como «commit: <rama>»: así sale una rama sin ID, R-15). Un commit de una rama de worker ya trae la tarea de su encargo (la pone el demonio). El mapeo por carpetas queda aplazado: el plan da carpetas por persona, no por tarea, así que no distingue entre dos tareas de la misma persona.
 10. **Sin fase**: `reclamada` si el issue está asignado al dueño o hay un `reclamo` suyo; si no, `lista` o `pendiente` según las dependencias. Una dependencia se cumple si está `publicada` o `cerrada`, o si su issue lo ha cerrado alguien del equipo aunque no esté publicada (tareas sin código: preguntas, decisiones, pitch). En ese caso va en `cumplidas_por_cierre` de la dependiente, para que las vistas muestren «⚑ T02 cerrada a mano». `integrada` no la cumple. Una dependencia con un ID que no existe no se cumple (`dependencia_inexistente`).
 11. **`parada`**: con fase `en_curso` y `ahora` − última actividad > umbral.
 12. **Issue cerrado** por alguien del equipo: con `publicada`, el estado es `cerrada`; si no, el estado sigue siendo el derivado y `declarado` = `cerrada` (⚑). Reabrirlo quita la marca. Una asignación, un cierre o una reapertura de alguien de fuera del equipo se ignora (`fuera_del_equipo`).
@@ -173,6 +173,16 @@ B es la dueña de la tarea T10; A es otra persona del equipo; `@fuera` no está 
 | E47 | B sin tareas reclamadas · `edicion` de B sin tarea | T10 `lista` | entrada en `sin_tarea` |
 | E48 | T10 `en_curso` desde t=0 · t=15 `arbol` de B sin tarea · `ahora` t=30 | `en_curso` (hook, t=15) | un `arbol` atribuido renueva la actividad |
 | E49 | `reclamo` de B en T10 · T11 de B `publicada` · `edicion` de B sin tarea | T10 `en_curso` (hook) | una tarea publicada no cuenta para la atribución |
+| E55 | `reclamo` de B en T10 · `commit` c1 de B sin tarea (rama `ficha`) | T10 `en_curso` (git) | un commit sin ID se atribuye como una edición |
+| E56 | `reclamo` de B en T10 y en T11 · `commit` c1 de B sin tarea | T10 y T11 `reclamada` | `atribucion_ambigua` |
+| E57 | B sin tareas abiertas · `commit` c1 de B sin tarea (rama `experimento`) | T10 `lista` | `sin_tarea` «commit: experimento» (R-15) |
+| E58 | `commit` c1 de B con T10 en la rama `worktree-agent-x` (tarea del encargo, puesta por el demonio), sin reclamar | T10 `en_curso` (git) | |
+| **Tareas sin dueño de GitHub (M8e; dueño «C», que no está en el equipo)** ||||
+| E53 | `commit` c1 de A con T10 | `en_curso` (git) | sin `actividad_ajena`: el ID manda |
+| E54 | E53 · `push` (git) con `incluye` = [c1] | `publicada` (git) | |
+| **Issues (M8e, `hkos/github.py`: de issues a tareas)** ||||
+| E59 | Issue `hk-tarea` con el marcador de T10 abierto por `@fuera`, sin issue del equipo | T10 no está en `tareas` | `fuera_del_equipo` |
+| E60 | T02 cerrada como `not_planned` (quitada del plan) · T10 depende de T02 | T02 no está en `tareas`; T10 `pendiente` (github) | `dependencia_inexistente` |
 
 ## 6. Cómo se detectan los eventos del orquestador
 

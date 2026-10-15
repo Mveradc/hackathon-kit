@@ -4,6 +4,7 @@ derivar(tarea, issue, eventos, dependencias, equipo, ahora) da el estado de una 
 Los eventos llegan ya atribuidos (la atribución, regla 9, va en modelo.py) y son los de la tarea más los `push`.
 """
 from datetime import datetime, timedelta, timezone
+from functools import lru_cache
 
 # Tipos que cuentan como actividad del dueño (regla 1). `reclamo` no: una tarea reclamada no tiene actividad aún.
 ACTIVIDAD = {"edicion", "arbol", "latido", "encargo.lanzado", "worker.inicio", "worker.fin", "compuerta.ok",
@@ -12,8 +13,10 @@ CUMPLEN = {"publicada", "cerrada"}          # estados derivados que cumplen una 
 ATRIBUIBLES = {"reclamada", "en_curso", "parada"}   # regla 9
 
 
+@lru_cache(maxsize=1 << 16)
 def fecha(s):
-    """ISO 8601 → datetime con zona. `fromisoformat` de 3.10 no acepta «Z»."""
+    """ISO 8601 → datetime con zona. `fromisoformat` de 3.10 no acepta «Z». En caché: el recálculo convierte las mismas
+    horas una y otra vez (M8e)."""
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
 
 
@@ -103,7 +106,9 @@ def derivar(tarea, issue, eventos, dependencias, equipo, ahora, umbral_parada_s=
                 fase, fase_dato, por_publicar, fusion = "publicada", (fuente, ts), None, fusion_actual
             continue
 
-        if persona != dueno:                       # regla 1
+        # Regla 1. Excepción (M8e): si el dueño no tiene GitHub (no está en el equipo), cuenta cualquiera del equipo que
+        # traiga el ID; lo atribuido por la regla 9 nunca llega aquí, porque solo atribuye a tareas de la propia persona.
+        if persona != dueno and not (dueno not in equipo and persona in equipo):
             anota("actividad_ajena", persona, f"{tipo} en {tid}, que es de {dueno}", ts)
             continue
 

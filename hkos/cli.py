@@ -6,6 +6,7 @@
 
   hk-os relay [--ip IP] [--puerto 7777]   quien coordina: arranca el relay e imprime la línea para los demás
   hk-os unir <url> <token>                cada persona, una vez: guarda el relay y el token y prueba la conexión
+  hk-os compilar [--seco]                 lleva las tareas de .hackathon/plan.md a issues hk-tarea (M8e)
   hk-os agente …                          el demonio (lo lanza sesion.sh; ver agente.py)
 """
 import json
@@ -16,6 +17,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import agente  # noqa: E402
+import compilar  # noqa: E402
 import relay  # noqa: E402
 
 USO = __doc__.split("\n\n", 1)[1]
@@ -50,6 +52,9 @@ def unir(url, token, cwd="."):
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
+    for flujo in (sys.stdout, sys.stderr):         # la consola de Windows (cp1252) no escribe «→» ni otros del plan
+        if hasattr(flujo, "reconfigure"):
+            flujo.reconfigure(encoding="utf-8", errors="replace")
     if not argv or argv[0] in ("-h", "--help"):
         print(USO)
         return 0
@@ -60,8 +65,11 @@ def main(argv=None):
         comun = agente.git_comun(".")
         principal = comun[:-len("/.git")] if comun.endswith("/.git") else "."
         relay.main(["--dir", os.path.join(comun, "hackathon", "os", "relay"),
-                    "--equipo", os.path.join(principal, ".hackathon", "coordinacion.md"), *resto])
+                    "--equipo", os.path.join(principal, ".hackathon", "coordinacion.md"),
+                    "--os", os.path.join(principal, ".hackathon", "os.md"), *resto])
         return 0
+    if orden == "compilar":
+        return compilar.main(resto)
     if orden == "agente":
         return agente.main(resto)
     print(USO, file=sys.stderr)

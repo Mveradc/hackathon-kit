@@ -3,13 +3,19 @@
 Dos pasos (diseno.md §5): la atribución de los eventos sin tarea (regla 9) y el motor de estados tarea por tarea.
 En M8b lo usa el simulador; en M8d y M8e, el relay. Las colisiones y las reservas llegan en M8g.
 """
+import heapq
+from bisect import bisect_right
 from datetime import timedelta
 
 from estados import ATRIBUIBLES, derivar, fecha, iso, ordenar
 
 TTL_PRESENCIA_S = 90                       # R-18
-SIN_TAREA_ATRIBUIBLE = {"edicion", "arbol"}
+SIN_TAREA_ATRIBUIBLE = {"edicion", "arbol", "commit"}   # commit desde M8e (diseno.md §5.1, regla 9)
 PAPELES_ACTOR = {"principal", "orquestador", "worker", "revisor", "humano"}
+# Eventos que no sacan de reclamada/en_curso/parada a una tarea que ya está en uno de esos estados (reglas 1, 2 y 7):
+# con ellos, una tarea atribuible lo sigue siendo. Los demás (fusion.*, veredictos) y los push pueden sacarla.
+MENORES = {"edicion", "arbol", "latido", "encargo.lanzado", "worker.inicio", "worker.fin", "compuerta.ok", "compuerta.ko",
+           "commit", "reclamo"}
 
 
 def _hasta(issues, ts):
@@ -19,38 +25,89 @@ def _hasta(issues, ts):
 
 
 def _que(e):
+    if e["tipo"] == "commit":
+        rama = e.get("datos", {}).get("rama")
+        return f"commit: {rama}" if rama else "commit"
     rutas = e.get("rutas", [])
     texto = ", ".join(rutas[:3]) + (f" (+{len(rutas) - 3})" if len(rutas) > 3 else "")
     return f"{e['tipo']}: {texto}" if texto else e["tipo"]
 
 
+class _Indice:
+    """Los eventos de cada tarea (sin los push) y los push, cada uno con su posición en el orden global. El motor recibe
+    la mezcla de los dos en ese orden, el mismo que daba filtrar la lista entera (M8b), sin recorrerla por cada tarea."""
+
+    def __init__(self, ids):
+        self.propios = {t: [] for t in ids}
+        self.mayores = {t: 0 for t in ids}       # eventos de la tarea que no son MENORES
+        self.pushes = []
+        self.n = 0
+        self.de_sha = {}                         # sha de un commit o una fusión → tareas
+        self.pushes_suyos = {t: 0 for t in ids}  # push cuyo incluye tiene un sha de la tarea (los únicos que la mueven)
+
+    def anade(self, e):
+        self.n += 1
+        if e["tipo"] == "push":
+            self.pushes.append((self.n, e))
+            for t in {t for sha in e.get("datos", {}).get("incluye", []) for t in self.de_sha.get(sha, ())}:
+                self.pushes_suyos[t] += 1
+        elif e.get("tarea") in self.propios:
+            self.propios[e["tarea"]].append((self.n, e))
+            self.mayores[e["tarea"]] += e["tipo"] not in MENORES
+            sha = e.get("datos", {}).get("sha")
+            if sha:
+                self.de_sha.setdefault(sha, set()).add(e["tarea"])
+
+    def de(self, tid):
+        return [e for _, e in heapq.merge(self.propios[tid], self.pushes, key=lambda x: x[0])]
+
+
 def atribuir(tareas, issues, eventos, equipo):
-    """Regla 9: pone `tarea` a los edicion/arbol que no la traen, según el estado de las tareas de su persona en ese
-    momento. Devuelve (eventos, sin_tarea, discrepancias sin agrupar)."""
+    """Regla 9: pone `tarea` a los edicion/arbol/commit que no la traen, según el estado de las tareas de su persona en
+    ese momento. Devuelve (eventos, sin_tarea, discrepancias sin agrupar).
+
+    Indexado (M8e): el estado de una tarea solo se vuelve a derivar cuando ha podido cambiar si es atribuible. El paso
+    del tiempo no lo cambia (reclamada, en_curso y parada lo son las tres). Si ya lo es, tampoco un evento MENORES suyo;
+    sí uno de los demás, una acción de su issue o un push que incluya un sha suyo (reglas 7 y 8: un push solo mueve
+    una tarea por sus commits y fusiones). Si no lo es, cualquier evento suyo."""
     salida, sin_tarea, disc = [], [], []
+    por_persona = {}
+    for t in tareas:
+        por_persona.setdefault(t["dueno"], []).append(t)
+    indice = _Indice([t["id"] for t in tareas])
+    marcas = {k: sorted(fecha(a["ts"]) for a in v.get("acciones", [])) for k, v in issues.items()}
+    cache = {}                                   # tarea → (clave, atribuible)
     for e in ordenar(eventos):
         if e.get("tarea") or e["tipo"] not in SIN_TAREA_ATRIBUIBLE:
             salida.append(e)
+            indice.anade(e)
             continue
-        persona = e["actor"]["persona"]
-        suyas = [t for t in tareas if t["dueno"] == persona]
-        vigentes = _hasta(issues, e["ts"])
+        persona, t_e = e["actor"]["persona"], fecha(e["ts"])
         candidatas = []
-        for t in suyas:
-            # Sin dependencias: la atribución solo mira reclamada/en_curso/parada, que no dependen de ellas.
-            r = derivar(dict(t, depende_de=[]), vigentes[t["id"]], [x for x in salida if x.get("tarea") == t["id"] or x["tipo"] == "push"],
-                        {}, equipo, e["ts"])
-            if r["estado"]["valor"] in ATRIBUIBLES:
-                candidatas.append(t["id"])
+        for t in por_persona.get(persona, []):
+            tid = t["id"]
+            previo = cache.get(tid)
+            suyos = indice.mayores[tid] if previo and previo[1] else len(indice.propios[tid])
+            clave = (bool(previo and previo[1]), suyos, indice.pushes_suyos[tid], bisect_right(marcas.get(tid, []), t_e))
+            if not previo or previo[0] != clave:
+                issue = issues[tid]
+                vigente = dict(issue, acciones=[a for a in issue.get("acciones", []) if fecha(a["ts"]) <= t_e])
+                # Sin dependencias: la atribución solo mira reclamada/en_curso/parada, que no dependen de ellas.
+                r = derivar(dict(t, depende_de=[]), vigente, indice.de(tid), {}, equipo, e["ts"])
+                atribuible = r["estado"]["valor"] in ATRIBUIBLES
+                suyos = indice.mayores[tid] if atribuible else len(indice.propios[tid])
+                cache[tid] = ((atribuible, suyos, clave[2], clave[3]), atribuible)
+            if cache[tid][1]:
+                candidatas.append(tid)
         if len(candidatas) == 1:
-            salida.append(dict(e, tarea=candidatas[0]))
+            e = dict(e, tarea=candidatas[0])
+        elif candidatas:
+            disc.append({"tipo": "atribucion_ambigua", "persona": persona, "ts": e["ts"],
+                         "detalle": f"{_que(e)} sin tarea; {persona} tiene varias abiertas: {', '.join(candidatas)}"})
         else:
-            salida.append(e)
-            if candidatas:
-                disc.append({"tipo": "atribucion_ambigua", "persona": persona, "ts": e["ts"],
-                             "detalle": f"{_que(e)} sin tarea; {persona} tiene varias abiertas: {', '.join(candidatas)}"})
-            else:
-                sin_tarea.append({"persona": persona, "que": _que(e), "observado_en": e["ts"]})
+            sin_tarea.append({"persona": persona, "que": _que(e), "observado_en": e["ts"]})
+        salida.append(e)
+        indice.anade(e)
     return salida, sin_tarea, disc
 
 
@@ -106,17 +163,21 @@ def _personas(personas, eventos, ahora):
     return salida
 
 
-def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200):
+def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, fuentes=None, discrepancias=()):
     """estado.json a `ahora` con los eventos e issues observados hasta entonces.
 
     tareas: [{id, titulo, bloque?, dueno, depende_de}]; issues: {ID: {creado_en, numero?, acciones}};
-    personas: [{persona, nombre}] de coordinacion.md (el equipo).
+    personas: [{persona, nombre}] de coordinacion.md (el equipo); fuentes: {relay|github|git: dato}; discrepancias: las de GitHub, sin agrupar (M8e).
     """
     t_ahora = fecha(ahora)
     equipo = {p["persona"] for p in personas}
     eventos = [e for e in eventos if fecha(e["ts"]) <= t_ahora]
     issues = _hasta(issues, ahora)
     eventos, sin_tarea, disc = atribuir(tareas, issues, eventos, equipo)
+    disc = list(discrepancias) + disc           # las de GitHub (M8e: fuera_del_equipo, issue_duplicado…), sin agrupar
+    indice = _Indice([t["id"] for t in tareas])
+    for e in eventos:
+        indice.anade(e)
 
     por_id = {t["id"]: t for t in tareas}
     resultados, en_proceso = {}, set()
@@ -133,8 +194,7 @@ def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200):
                 deps[d] = {"estado": r["estado"], "declarado": r["declarado"]}
             elif d in por_id:
                 deps[d] = {"estado": {"valor": "pendiente", "fuente": "derivado", "observado_en": ahora}, "declarado": None}
-        propios = [e for e in eventos if e.get("tarea") == tid or e["tipo"] == "push"]
-        resultados[tid] = derivar(t, issues[tid], propios, deps, equipo, ahora, umbral_parada_s)
+        resultados[tid] = derivar(t, issues[tid], indice.de(tid), deps, equipo, ahora, umbral_parada_s)
         en_proceso.discard(tid)
         return resultados[tid]
 
@@ -158,6 +218,6 @@ def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200):
     for s in sin_tarea:
         ultimo_sin_tarea[(s["persona"], s["que"])] = s
 
-    return {"v": 1, "generado_en": iso(t_ahora), "fuentes": {},
+    return {"v": 1, "generado_en": iso(t_ahora), "fuentes": dict(fuentes or {}),
             "personas": _personas(personas, eventos, ahora), "tareas": salida_tareas,
             "sin_tarea": list(ultimo_sin_tarea.values()), "discrepancias": _agrupar(disc), "colisiones": []}

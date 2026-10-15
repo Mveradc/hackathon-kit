@@ -1,5 +1,6 @@
-"""Tabla de casos del motor de estados (diseno.md §5.2). Un método test_Exx por fila; E45–E49, sobre la atribución
-de modelo.py. Una prueba más comprueba que la tabla y estas pruebas tienen los mismos IDs.
+"""Tabla de casos del motor de estados (diseno.md §5.2). Un método test_Exx por fila; E45–E49 y E55–E58, sobre la
+atribución de modelo.py; E59 y E60, sobre el paso de issues a tareas de github.py. Una prueba más comprueba que la
+tabla y estas pruebas tienen los mismos IDs.
 
 Uso: uv run --no-project -m unittest discover -s hkos/pruebas -v
 """
@@ -13,6 +14,7 @@ from datetime import datetime, timedelta, timezone
 HKOS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HKOS)
 from estados import derivar, iso  # noqa: E402
+from github import tareas_de_issues  # noqa: E402
 from modelo import atribuir, calcular  # noqa: E402
 
 DISENO = os.path.join(os.path.dirname(HKOS), "docs", "hackathon-os", "diseno.md")
@@ -53,14 +55,14 @@ def dep(valor, declarado=None):
             "declarado": {"valor": declarado, "fuente": "github", "observado_en": ts(-4), "declarado": True} if declarado else None}
 
 
-def corre(eventos=(), acciones=(), depende_de=(), deps=None, ahora=None):
+def corre(eventos=(), acciones=(), depende_de=(), deps=None, ahora=None, dueno=B):
     marcas = [e["ts"] for e in eventos] + [a["ts"] for a in acciones]
     if ahora is None:
         ahora = (max(marcas) if marcas else ts(0))
         ahora = iso(datetime.fromisoformat(ahora.replace("Z", "+00:00")) + timedelta(minutes=1))
     else:
         ahora = ts(ahora)
-    tarea = {"id": "T10", "dueno": B, "depende_de": list(depende_de)}
+    tarea = {"id": "T10", "dueno": dueno, "depende_de": list(depende_de)}
     return derivar(tarea, {"creado_en": ts(-10), "acciones": list(acciones)}, list(eventos), deps or {}, EQUIPO, ahora)
 
 
@@ -163,6 +165,12 @@ class Motor(unittest.TestCase):
         self.estado(r, "lista", "derivado"); self.assertEqual(r["cumplidas_por_cierre"], ["T02"])
     def test_E51(self): self.estado(corre(E22() + [push(20, X), commit(25, X)]), "publicada", "git", 20)
     def test_E52(self): self.estado(corre(E39() + [commit(10, C2, alcanzable=True)]), "publicada", "git", 6)
+    # Dueño sin GitHub («C», que no está en EQUIPO): el ID manda sobre quién lo escribe (M8e, regla 1).
+    def test_E53(self):
+        r = corre([commit(0, C1, persona=A)], dueno="C"); self.estado(r, "en_curso", "git", 0); self.assertEqual(r["discrepancias"], [])
+    def test_E54(self): self.estado(corre([commit(0, C1, persona=A), push(1, C1)], dueno="C"), "publicada", "git", 1)
+    def test_E13_sigue_igual_con_dueno_de_github(self):
+        self.disc(corre([ev(0, "edicion", persona=A)]), "actividad_ajena")
 
 
 class Atribucion(unittest.TestCase):
@@ -203,17 +211,79 @@ class Atribucion(unittest.TestCase):
         estados, _ = self.calcula(eventos, 3)
         self.assertEqual((estados["T10"]["valor"], estados["T11"]["valor"]), ("en_curso", "publicada"))
 
+    # M8e: un commit sin ID pasa por la regla 9 como una edición.
+    def test_E55(self):
+        estados, _ = self.calcula([ev(0, "reclamo", fuente="mcp"), commit(2, C1, tarea=None, rama="ficha")], 3)
+        self.assertEqual((estados["T10"]["valor"], estados["T10"]["fuente"]), ("en_curso", "git"))
+
+    def test_E56(self):
+        estados, e = self.calcula([ev(0, "reclamo", fuente="mcp"), ev(0, "reclamo", tarea="T11", fuente="mcp"),
+                                   commit(2, C1, tarea=None, rama="ficha")], 3)
+        self.assertEqual((estados["T10"]["valor"], estados["T11"]["valor"]), ("reclamada", "reclamada"))
+        self.assertEqual([d["tipo"] for d in e["discrepancias"]], ["atribucion_ambigua"])
+
+    def test_E57(self):
+        estados, e = self.calcula([commit(2, C1, tarea=None, rama="experimento")], 3)
+        self.assertEqual(estados["T10"]["valor"], "lista")
+        self.assertEqual([(s["persona"], s["que"]) for s in e["sin_tarea"]], [(B, "commit: experimento")])
+
+    def test_E58(self):
+        estados, e = self.calcula([commit(2, C1, rama="worktree-agent-x")], 3)
+        self.assertEqual((estados["T10"]["valor"], estados["T10"]["fuente"]), ("en_curso", "git"))
+        self.assertEqual(e["sin_tarea"], [])
+
     def test_atribuir_no_toca_eventos_con_tarea(self):
         e = [ev(0, "edicion", tarea="T11")]
         salida, sin_tarea, disc = atribuir(self.TAREAS, self.issues(), e, EQUIPO)
         self.assertEqual(salida[0]["tarea"], "T11"); self.assertEqual((sin_tarea, disc), ([], []))
 
 
+def issue(numero, tid, autor=B, estado="open", razon=None, depende=(), dueno=B, creado=-10):
+    cuerpo = (f"<!-- hk-tarea id={tid} hash=0123456789ab plan=abcdef0 -->\n**Dueño:** @{dueno} (B)\n"
+              f"**Bloque:** Ficha · **Hasta:** Vie 23:00\n**Cómo se comprueba:** algo\n")
+    if depende:
+        cuerpo += f"Depende de: {', '.join(depende)}\n"
+    return {"number": numero, "title": f"{tid} · Tarea {tid}", "body": cuerpo, "user": {"login": autor}, "state": estado,
+            "state_reason": razon, "labels": [{"name": "hk-tarea"}, {"name": f"hk-tarea:{dueno}"}], "created_at": ts(creado)}
+
+
+class Issues(unittest.TestCase):
+    """E59 y E60: de issues hk-tarea a tareas (github.tareas_de_issues) y después el modelo."""
+    PERSONAS = [{"persona": A, "nombre": "A"}, {"persona": B, "nombre": "B"}]
+
+    def calcula(self, issues):
+        tareas, motor, _, disc = tareas_de_issues(issues, EQUIPO)
+        return calcular(tareas, motor, [], self.PERSONAS, ts(1), discrepancias=disc)
+
+    def test_E59(self):
+        e = self.calcula([issue(30, "T10", autor=FUERA)])
+        self.assertEqual(e["tareas"], [])
+        self.assertEqual([(d["tipo"], d.get("persona")) for d in e["discrepancias"]], [("fuera_del_equipo", FUERA)])
+
+    def test_E60(self):
+        e = self.calcula([issue(30, "T02", estado="closed", razon="not_planned"), issue(31, "T10", depende=["T02"])])
+        self.assertEqual([t["id"] for t in e["tareas"]], ["T10"])
+        self.assertEqual((e["tareas"][0]["estado"]["valor"], e["tareas"][0]["estado"]["fuente"]), ("pendiente", "github"))
+        self.assertEqual([d["tipo"] for d in e["discrepancias"]], ["dependencia_inexistente"])
+
+    def test_issue_del_equipo_y_duplicado(self):
+        tareas, motor, numeros, disc = tareas_de_issues([issue(31, "T10"), issue(30, "T10", autor=A)], EQUIPO)
+        self.assertEqual((len(tareas), motor["T10"]["numero"], tareas[0]["dueno"], tareas[0]["bloque"]), (1, 30, B, "Ficha"))
+        self.assertEqual([d["tipo"] for d in disc], ["issue_duplicado"])
+
+    def test_dueno_sin_github(self):
+        i = issue(30, "T21")
+        i["labels"] = [{"name": "hk-tarea"}]
+        i["body"] = i["body"].replace("**Dueño:** @persona-b (B)", "**Dueño:** C (sin GitHub)")
+        tareas, *_ = tareas_de_issues([i], EQUIPO)
+        self.assertEqual(tareas[0]["dueno"], "C")
+
+
 class Tabla(unittest.TestCase):
     def test_mismos_ids_en_la_tabla_y_en_las_pruebas(self):
         with open(DISENO, encoding="utf-8") as f:
             tabla = set(re.findall(r"^\| (E\d\d) \|", f.read(), re.M))
-        pruebas = {n[5:] for c in (Motor, Atribucion) for n in dir(c) if re.fullmatch(r"test_E\d\d", n)}
+        pruebas = {n[5:] for c in (Motor, Atribucion, Issues) for n in dir(c) if re.fullmatch(r"test_E\d\d", n)}
         self.assertEqual(tabla, pruebas)
 
 

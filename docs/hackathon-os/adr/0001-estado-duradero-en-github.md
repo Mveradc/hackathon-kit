@@ -20,6 +20,14 @@ El estado duradero (tareas, dependencias, asignación, cierre) tiene que verlo t
 - **plan.md como única fuente**: el estado solo viaja con commit y push; es justo el problema.
 - **Ida y vuelta completa plan ↔ issues**: dos documentos editables a la vez. Fuera de la v1.
 
+## Nota (M8e, 2026-10-15): de dónde salen las dependencias al leer
+- **La lista de issues no dice cuáles son los bloqueos.** Trae `issue_dependencies_summary` con el número de bloqueos (abiertos y en total), no cuáles. Saber cuáles cuesta una petición por issue (`GET /issues/{n}/dependencies/blocked_by`).
+- **Decisión del usuario:** el relay toma los IDs de la línea `Depende de:`, que el compilador escribe junto a la nativa. Pide las nativas de un issue solo si su `total_blocked_by` no cuadra o si cambió su `updated_at`. Cuando las pide, manda la nativa, con la discrepancia `dependencias_distintas` (`api.md` §8).
+- **Comprobado en el sandbox:**
+  - añadir una dependencia **no** cambia el `updated_at` del issue (T10: creado y actualizado a las 21:25:49, dependencia añadida a las 21:26:29);
+  - sí deja un evento `blocked_by_added` en ese issue y `blocking_added` en el otro.
+- **Limitación:** se detecta que alguien ha añadido o quitado una dependencia a mano en GitHub, porque cambia el total. No se detecta que la haya **sustituido** por otra (mismo total) hasta que algo más cambie el `updated_at` del issue.
+
 ## Consecuencias
 - Hace falta un ID estable por tarea (ADR-0002).
 - El jurado verá issues `hk-tarea` si mira el repo: son legibles por personas (título = tarea, cuerpo = comprobación y dueño).
