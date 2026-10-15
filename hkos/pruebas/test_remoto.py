@@ -198,5 +198,37 @@ class Remoto(unittest.TestCase):
             self.assertFalse(remoto.autorizado(mala, TOKEN), mala)
 
 
+class Unir(unittest.TestCase):
+    """M8h: `hk-os unir` deja ya estado.json y estado-equipo.md, para que la primera sesión tras unirse reciba el bloque
+    (en la prueba interactiva, el demonio que lanza ese SessionStart aún no había escrito nada)."""
+
+    def test_unir_deja_el_md_de_la_persona(self):
+        import relay as relay_mod
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        repo = os.path.join(d, "clon")
+        git(d, "init", "-q", "-b", "main", repo)
+        os.makedirs(os.path.join(repo, ".hackathon"))
+        with open(os.path.join(repo, ".hackathon", "coordinacion.md"), "w", encoding="utf-8") as f:
+            f.write("activa: sí\nrepo: equipo/reto\n\n| Persona | GitHub |\n|---|---|\n| A | @persona-a |\n| B | @persona-b |\n")
+        r = relay_mod.Relay(os.path.join(d, "relay"), [{"persona": "persona-a", "nombre": "A"},
+                                                       {"persona": "persona-b", "nombre": "B"}])
+        srv = Servidor(("127.0.0.1", 0), relay_mod.manejador(r))
+        threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.1}, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        salida = []
+        rc = cli.unir(f"http://127.0.0.1:{srv.server_address[1]}", r.token, cwd=repo, persona="persona-a",
+                      salida=salida.append)
+        self.assertEqual(rc, 0, salida)
+        osdir = os.path.join(repo, ".git", "hackathon", "os")
+        md = leer(os.path.join(osdir, "estado-equipo.md"))
+        self.assertTrue(md.startswith("<!-- hk-os v1 persona=persona-a "), md[:120])
+        self.assertIn("## Tu trabajo", md)
+        self.assertIn("@persona-b (B)", md)
+        self.assertTrue(os.path.exists(os.path.join(osdir, "estado.json")))
+        self.assertEqual(cli.persona_del_clon(os.path.join(repo, ".git")), "persona-a")   # la de yo-fijo
+
+
 if __name__ == "__main__":
     unittest.main()

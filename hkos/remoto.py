@@ -192,6 +192,8 @@ def manejador(raiz, token, registro=None):
                 shutil.copyfileobj(p.stdout, self.wfile, 1 << 16)
                 err = p.stderr.read().decode("utf-8", "replace").strip()
                 p.wait()
+                p.stdout.close()
+                p.stderr.close()
             registro(f"{self.client_address[0]} {metodo} {sub} {codigo}" + (f" · {err[:200]}" if err else ""))
 
         def do_GET(self):

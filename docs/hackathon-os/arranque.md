@@ -49,7 +49,7 @@ Las tareas salen de `.hackathon/plan.md` y el código va por un remoto en el por
 - **La web no carga desde otro portátil**: el cortafuegos de quien coordina (paso 7 del día antes), o la red aísla los clientes: usad la IP de Tailscale o ZeroTier (`hk-os relay --ip <esa IP>`, y lo mismo en `hk-os remoto`). Sin ninguna de las dos, el móvil de alguien como punto de acceso, aunque no tenga datos.
 - **«el puerto N está ocupado por otro programa»** al abrir la sesión: pon `puerto_agente: <otro>` en `os.md`.
 - **No apareces en la web**: ¿has abierto una sesión **nueva** después de `hk-os unir`? ¿`hk-os unir` dijo «Unido a…»? El demonio deja lo que hace en `.git/hackathon/os/agente.log`.
-- **`hk-os: command not found`**: el alias del día antes (paso 5), o la ruta completa: `uv run --no-project <carpeta del kit>/hkos/cli.py …`.
+- **`hk-os: command not found`**: el alias del día antes (paso 5), o la ruta completa: `uv run --no-project <carpeta del kit>/hkos/cli.py …`. Dentro de una sesión de Claude Code no hace falta: el kit pone `bin/hk-os` en su PATH (`! hk-os unir …`, comprobado en M8h). Para el relay y el remoto, mejor una terminal aparte: no acaban nunca.
 - **macOS sin `brew install bash`**: la sesión avisa una vez y el OS sigue apagado en ese portátil; el resto del equipo no se entera de lo suyo.
 
 ## Al terminar

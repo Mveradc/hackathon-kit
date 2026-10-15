@@ -106,6 +106,59 @@ def _quitar_remoto(principal, salida):
                "git remote set-url origin <url del repo en GitHub>.")
 
 
+def persona_del_clon(comun):
+    """La persona del clon sin preguntar a nadie si se puede (como os_persona): yo-fijo, o la caché de hk_yo si solo
+    hay una; si no, `gh api user`. None si no se sabe."""
+    carpeta = os.path.join(comun, "hackathon")
+    vistos = set()
+    try:
+        nombres = sorted(os.listdir(carpeta))
+    except OSError:
+        nombres = []
+    for n in ["yo-fijo"] + [n for n in nombres if n.startswith("yo-") and n != "yo-fijo" and "." not in n]:
+        try:
+            with open(os.path.join(carpeta, n), encoding="utf-8") as f:
+                p = f.read().strip().lower()
+        except OSError:
+            continue
+        if n == "yo-fijo" and p:
+            return p
+        if p:
+            vistos.add(p)
+    if len(vistos) == 1:
+        return vistos.pop()
+    try:
+        r = subprocess.run(["gh", "api", "user", "--jq", ".login"], capture_output=True, text=True, timeout=10)
+        return r.stdout.strip().lower() or None if r.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def estado_inicial(comun, principal, estado, persona):
+    """M8h: estado.json y estado-equipo.md con el estado que acaba de dar el relay, igual que los escribe el demonio
+    (agente.escribir_md). Así la primera sesión tras unirse ya recibe el bloque «Estado del equipo»: sin esto, el
+    demonio que lanza su SessionStart aún no había escrito nada."""
+    from datetime import datetime  # noqa: PLC0415
+    import proyeccion  # noqa: PLC0415
+    from red import conf  # noqa: PLC0415
+    carpeta = os.path.join(comun, "hackathon", "os")
+    try:
+        viejo = float(conf(os.path.join(principal, ".hackathon", "os.md"), "umbral_viejo_s") or 300)
+    except ValueError:
+        viejo = 300
+    tz = datetime.now().astimezone().tzinfo
+    v = proyeccion.vista(estado, ahora=agente.ahora_iso(), umbral_viejo_s=viejo)
+    textos = {"estado.json": json.dumps(estado, ensure_ascii=False),
+              "estado-equipo.md": proyeccion.markdown(v, persona, os.path.join(carpeta, "estado.json").replace("\\", "/"),
+                                                      tz=tz, epoch=int(time.time())),
+              "reservas.tsv": proyeccion.reservas_tsv(v, persona, tz)}
+    for nombre, texto in textos.items():
+        ruta = os.path.join(carpeta, nombre)
+        with open(ruta + ".tmp", "w", encoding="utf-8", newline="\n") as f:
+            f.write(texto)
+        os.replace(ruta + ".tmp", ruta)
+
+
 def unir(url, token, cwd=".", persona=None, remoto=None, salida=print):
     comun = agente.git_comun(cwd)
     principal = _principal(comun)
@@ -155,6 +208,11 @@ def unir(url, token, cwd=".", persona=None, remoto=None, salida=print):
         return 1
     personas = ", ".join("@" + p["persona"] for p in estado.get("personas", []))
     salida(f"Unido a {url} (equipo: {personas or 'vacío'}). El demonio envía los eventos desde la próxima sesión.")
+    quien = persona or persona_del_clon(comun)
+    if quien and any(p["persona"] == quien for p in estado.get("personas", [])):
+        estado_inicial(comun, principal, estado, quien)
+    else:
+        salida("No sé de quién es este clon todavía: el estado del equipo llegará con la primera sesión.")
     d = desfase(url, token)
     if d is not None:
         salida(f"Reloj: {d:+d} s respecto del relay" + (" (más de 30 s: ajusta la hora del portátil)." if abs(d) > 30 else "."))
