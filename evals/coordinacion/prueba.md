@@ -963,7 +963,16 @@ Plan aprobado con los ajustes del usuario: `C:/Users/mvera/.claude/plans/paralle
 
 ## Pendientes de M8h
 - **Alias del `.mcp.json` en Linux (WSL), sin Claude Code:** con el OS apagado, `initialize` y ninguna herramienta; con el OS activo, `uv run hkos/mcp.py` con todas.
-- **macOS:** `macos.sh` pasa en WSL, forzando el camino sin `setsid`, todo salvo lo del bash 3.2 (el `/bin/bash` de WSL es el 5.2). Lanzador con `nohup` + `--desacoplar`, `/salud`, `agente.vivo`, un segundo arranque que lo encuentra y el apagado solo. El runner `macos-latest` (`.github/workflows/macos-m8h.yml`), cuando el usuario suba la fase 1.
+- **macOS: comprobado en parte, sin Claude Code.** El runner `macos-latest` (`.github/workflows/macos-m8h.yml`; macOS en arm64, bash 5.3 de Homebrew y 3.2 de serie) está en verde en la cuarta pasada (run 38792039920):
+  - `macos.sh`: lanzador con `nohup` + `--desacoplar` (sigue vivo, `/salud`, `agente.vivo`, un segundo arranque lo encuentra y se apaga solo), el alias de git del `.mcp.json` con el OS apagado y encendido, `bin/hk-os`, y con el bash 3.2 los hooks del OS salen con 0, sin salida ni eventos, y `arranque.sh` avisa una vez;
+  - las 194 pruebas de `hkos/` y `prueba_hooks.py` con 0 fallos.
+  - Las tres primeras pasadas sacaron fallos de portabilidad de verdad, algunos de antes del M8:
+    - la compuerta del orquestador rechazaba en macOS todos los informes, porque el `sed` de BSD no acepta `{…;p}` (desde la 0.3.0) y no hay `realpath -m` (informes en fichero, desde la 0.3.1);
+    - sin `timeout`, `sesion.sh` no leía nunca el buzón al empezar (desde la 0.2.0) ni comprobaba `yo-fijo`;
+    - el demonio dejaba rutas absolutas con un enlace en medio (`/var` → `/private/var`);
+    - las pruebas usaban `sed -i` de GNU y `gh` falsos sin permiso de ejecución.
+  - Arreglado en `a82183b`, `f8a3916` y `4dd6fca`. Sin comprobar en macOS: Claude Code de verdad (hooks lanzados por él, monitor, MCP en una sesión).
+- **Ruido de tiempos:** en este portátil, al final de la sesión, «delta.sh con el OS apagado ≤ 50 ms» dio 53–58 ms en `prueba_hooks.py`. Con la versión de M8g da lo mismo (148 ms en un bucle de 40 llamadas, las dos), así que es la carga de la máquina, no el cambio. Antes, en la misma sesión, pasaba.
 - **`resumen.py`:** probado de punta a punta (`arranque_cronometro.py --resumen`: `hk-os recoger` en dos clones, sin token y con el contexto de `origin/main` en el del coordinador).
 - **`interactivo.py`:** probado sin la sesión (el relay calcula la roja de nivel 3). La parte interactiva la hace el usuario.
 
