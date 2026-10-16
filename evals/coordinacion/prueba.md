@@ -993,3 +993,26 @@ Plan aprobado con los ajustes del usuario: `C:/Users/mvera/.claude/plans/paralle
 | El bloque «Estado del equipo» al empezar | **No en la primera pasada**. En la primera sesión de un clon recién unido, el SessionStart lanza el demonio y aún no hay `estado-equipo.md`. Arreglado en `2f9609a`: `hk-os unir` lo deja escrito. **En la segunda pasada, sí**: «nada abierto a tu nombre, sin colisiones ni reservas, @hk-persona-b sin sesión», con el aviso de que el estado puede estar viejo (escrito por `unir` más de 2 min antes) |
 
 Gasto: el de la sesión del usuario.
+
+# Arreglos del Pendiente mientras espera el ensayo (2026-10-16)
+El ensayo (fase 2 de M8h) se aplaza: hacen falta varias personas con Claude Code. Mientras, arreglos del Pendiente sin modelo, decididos por el usuario. M8h sigue abierto.
+
+## Qué se arregló
+| Pendiente | Arreglo | Prueba |
+|---|---|---|
+| M8g: ruta del md como la ve Git Bash (`/tmp/…`) en los avisos de `reserva.sh`, del monitor y de `delta.sh` | `os_ruta_ver` en `scripts/os/comun.sh`: `/c/x` sin procesos; otras rutas de MSYS, con `cygpath -m` (solo con el repo en una de ellas) | A mano: `/tmp/a/b` → `C:/Users/…/Temp/a/b` |
+| M8g: un amarillo se queda tras un push desde la terminal hasta el siguiente `arbol` de esa persona | El demonio emite el `arbol` de la copia principal cuando ve moverse `origin/main` (`api.md` §4, nota del 2026-10-16); no se atribuye a tareas; `colisiones.py` conserva los bloques de contrato mientras `docs/contratos.md` siga cambiado | `test_sondeo_git` (push desde la terminal, renombrado sin commit, sin repetir), `test_colisiones` (bloques del demonio) |
+| M8e: ruido en `sin_tarea` por lo integrado en `main` local antes del push | `datos.solo_diff` en el `arbol` normalizado; a `sin_tarea` solo va lo que no tiene commit (`diseno.md` §5.1) | `test_estados` |
+| M6b-2: `buzon.sh avisar` no deduplica | La misma nota (por su contenido, que lleva autor y hora) no abre otro issue: dice el de antes. Registro local en `$(git rev-parse --git-dir)/hackathon/avisos` | `prueba_hooks.py`, «buzon.sh avisar no repite la misma nota» |
+| `comprobar.py`: A4 sin pesos sin unidad | Los pesos en negrita sin unidad («**35**») cuentan como rúbrica | `prueba-m5-02`: antes «pesos: N/A», ahora 7 menciones comprobadas y pasa |
+| A5: falso positivo 02/03 por la cabecera del evento | Frente a los ejemplos, las palabras del enunciado no cuentan como propias; `equipo.md` y `criterios.md` (de personas) no se miran (`rubrica.md`) | `prueba-m6b-03` y `prueba-m5-02` pasan; una línea copiada del ejemplo del 02 en el CLAUDE.md del 03 se sigue cazando |
+| A7: «fuente desconocida «—»» y recuento de veredictos | Una celda «— (anotación)» sin fuente no es una cita; el veredicto es el primero de los cuatro de `/hack-check` que aparece en la celda («sin veredicto» si ninguno) | `prueba-m5-02` pasa (antes fallaba); veredictos del 03: quitar 2, sin veredicto 3, sostenida 49, supuesto 14 |
+
+**No se hizo:** registrar el MCP solo al unirse (propuesta de M8f). Decisión del usuario: se queda como está; el motivo, en `docs/limitaciones.md`.
+
+## Encontrado durante la prueba
+- **`os_json` partía «…» y «—»** en los avisos con `systemMessage`: con `LC_ALL=C`, el `[[:cntrl:]]` de MSYS toma los bytes 0x80–0x9F por controles (e2 80 a6 → e2 a6). `prueba_hooks.py` fallaba también en `95376f1` («puerto ocupado por otro programa»: la salida no era UTF-8). Ahora `os_json` va con `LC_ALL=C.UTF-8`. Coste de los hooks sin cambios (`emite.sh` 33–39 ms).
+
+## Resultados
+- `hkos/pruebas`: 198 OK. `prueba_hooks.py`: 0 fallos. Simulador G1–G6 e igualdad de vistas: OK. `colisiones_vivo.py`: 0 fallos. `robustez.py`: 45/45.
+- Gasto: 0 USD, sin escrituras en GitHub.

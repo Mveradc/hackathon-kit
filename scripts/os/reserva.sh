@@ -23,8 +23,7 @@ if [[ $evento == SubagentStart ]]; then
 fi
 actor=sesion
 os_crudo agent_id "$OS_CABEZA" && [[ $OS_V =~ ^[A-Za-z0-9_-]+$ ]] && actor=$OS_V
-md=$OS_COMUN/hackathon/os/estado-equipo.md
-[[ $md =~ ^/([A-Za-z])/(.*)$ ]] && md=${BASH_REMATCH[1]^^}:/${BASH_REMATCH[2]}
+os_ruta_ver "$OS_COMUN/hackathon/os/estado-equipo.md"; md=$OS_V
 
 # Una ruta de Windows o de Git Bash, sin escapes de JSON, en minúsculas y con «/»: /c/x y C:\x son lo mismo.
 plana() {

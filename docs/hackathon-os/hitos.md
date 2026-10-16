@@ -139,7 +139,14 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 ---
 
 ## Después del M8 (Pendiente)
-- Escritura desde la web respetando `autoridad.md` (R-33).
+- **Web de trabajo (nivel A).** Cubre R-33 y va más allá: la web pasa a ser donde se trabaja y la terminal se usa lo menos posible, porque es donde más cosas se rompen por accidente. Claude Code sigue abierto en la terminal o el IDE de cada persona; la web es su mando.
+  - **Rediseño en React + Vite, detrás de un interruptor.** El código fuente, en su propia carpeta; el compilado, subido en `hkos/web/`, para que nadie instale Node (principio VII). Sin CDN: todo dentro del repo (principio VIII; en un evento puede haber solo LAN). Necesita un ADR que reformule el principio IV («misma fuente y mismos campos» en lugar de «mismo código») y una prueba de igualdad web/md como la de `simulador/igualdad.py`.
+  - **Reclamar una tarea desde la web** y que la sesión de esa persona se ponga con ella. Camino propuesto: clic → demonio local de la persona (asigna el issue con su `gh`) → línea para su monitor → el monitor abre un turno con un texto fijo («reclamada T12 desde la web»), o la tarea pasa a su orquestador si está activo. Reutiliza el mecanismo de la roja, comprobado con `interactivo.py`. Respeta `autoridad.md` y `hk confirmo` (R-33).
+  - **Notas desde la web**, con la misma propagación que `/hack-note`: el demonio añade la nota a `criterios.md` con autor y hora, hace commit y push y avisa por el relay, sin modelo. Por decidir: si `/hack-note` hace algo con el modelo y, si lo hace, si eso se pierde o se hace después.
+  - **Botones para las operaciones de terminal que se rompen** (commit y push de `.hackathon/`, `hk-os unir`, confirmar). Cada botón ejecuta un comando ya comprobado; nada de comandos libres.
+  - **Seguridad, en un ADR que amplíe el principio V y ADR-0008.** Las acciones solo van de la web de una persona a **su** demonio, en `127.0.0.1`, con token local y protección contra peticiones de otras páginas del navegador. Nunca por el relay: con el token del equipo, cualquiera podría poner a trabajar al Claude de otro. El texto que llega a la sesión es fijo, y el contenido de los issues sigue siendo dato entrecomillado. Lo que se hace desde la web se muestra como declarado, no derivado (principio II), y cuenta para el tope de 60 escrituras por hora a GitHub (R-30).
+  - **Nivel B, solo como idea (fuera de alcance por ahora):** la web como cabina, con el demonio lanzando sesiones en segundo plano (`claude -p` o el Agent SDK) por tarea y worktree; permisos, preguntas, gasto y fallos, en la web. Es lo que hace Vibe Kanban; el kit se diferencia por la sincronización del equipo. Se replantea cuando el nivel A esté probado.
+  - **Orden:** después del ensayo y de la 0.4.0. Qué botones van primero lo decide lo que mida el ensayo (sección 7 de `evals/coordinacion/ensayo/hoja.md`, idas a la terminal).
 - Nivel 2b con Mergiraf (R-34).
 - Vista de jurado: cobertura de `criterios.md` por tareas y evidencias (R-35).
 - Ruta crítica y riesgo de entrega (R-36).

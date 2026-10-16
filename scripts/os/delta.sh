@@ -15,8 +15,7 @@ source "${d%/*}/comun.sh"
 os_activo || exit 0
 dir=$OS_COMUN/hackathon/os
 md=$dir/estado-equipo.md
-ver=$md   # la ruta que se enseña: en Windows, C:/… y no /c/…, para que el modelo la pueda abrir
-[[ $ver =~ ^/([A-Za-z])/(.*)$ ]] && ver=${BASH_REMATCH[1]^^}:/${BASH_REMATCH[2]}
+os_ruta_ver "$md"; ver=$OS_V   # la ruta que se enseña: en Windows, C:/… y no /c/…
 PRESUPUESTO=2500   # R-24: el bloque del OS al empezar
 DELTA=600          # R-25: cada delta
 TOPE=6000          # R-25b: pasado esto, solo colisiones rojas nuevas

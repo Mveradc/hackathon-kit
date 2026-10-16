@@ -28,9 +28,21 @@ def _hasta(issues, ts):
     return {k: dict(v, acciones=[a for a in v.get("acciones", []) if fecha(a["ts"]) <= t]) for k, v in issues.items()}
 
 
-def _ruido(e):
-    """Un edicion o arbol cuyas rutas son todas ruido no es actividad sin tarea: no va a sin_tarea (M8f)."""
+def _sin_commit(e):
+    """Las rutas de un edicion o arbol que no tienen commit. Las de un `arbol` que solo salen del diff contra
+    origin/main (`datos.solo_diff`, las últimas) ya cuentan por su `commit`: lo integrado en main local antes del push
+    no es actividad sin tarea (ruido de M8e)."""
     rutas = e.get("rutas", [])
+    n = e.get("datos", {}).get("solo_diff", 0) if e["tipo"] == "arbol" else 0
+    return rutas[:len(rutas) - n] if n else rutas
+
+
+def _ruido(e):
+    """Un edicion o arbol cuyas rutas sin commit son todas ruido (o ninguna, si tenía alguna con commit) no es
+    actividad sin tarea: no va a sin_tarea (M8f)."""
+    rutas = _sin_commit(e)
+    if e["tipo"] == "arbol" and not rutas and e.get("rutas"):
+        return True
     return e["tipo"] in ("edicion", "arbol") and bool(rutas) and all(r.replace("\\", "/").startswith(RUIDO) for r in rutas)
 
 
@@ -38,7 +50,7 @@ def _que(e):
     if e["tipo"] == "commit":
         rama = e.get("datos", {}).get("rama")
         return f"commit: {rama}" if rama else "commit"
-    rutas = [r for r in e.get("rutas", []) if not r.replace("\\", "/").startswith(RUIDO)]
+    rutas = [r for r in _sin_commit(e) if not r.replace("\\", "/").startswith(RUIDO)]
     texto = ", ".join(rutas[:3]) + (f" (+{len(rutas) - 3})" if len(rutas) > 3 else "")
     return f"{e['tipo']}: {texto}" if texto else e["tipo"]
 
@@ -88,7 +100,9 @@ def atribuir(tareas, issues, eventos, equipo):
     marcas = {k: sorted(fecha(a["ts"]) for a in v.get("acciones", [])) for k, v in issues.items()}
     cache = {}                                   # tarea → (clave, atribuible)
     for e in ordenar(eventos):
-        if e.get("tarea") or e["tipo"] not in SIN_TAREA_ATRIBUIBLE:
+        # El `arbol` del demonio (al cambiar origin/main, también por el push de otra persona) solo cuenta para las
+        # colisiones: no es actividad de nadie, ni va a sin_tarea.
+        if e.get("tarea") or e["tipo"] not in SIN_TAREA_ATRIBUIBLE or e["actor"]["papel"] == "demonio":
             salida.append(e)
             indice.anade(e)
             continue

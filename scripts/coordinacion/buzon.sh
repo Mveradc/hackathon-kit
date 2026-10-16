@@ -187,11 +187,17 @@ case $cmd in
     [ $# -eq 2 ] || { echo "Uso: avisar <asunto> <fichero>" >&2; exit 1; }
     asunto=$1; f=$2
     hk_sin_confirmo "$f" || exit 2
+    # La misma nota dos veces (un reintento del agente) no abre otro issue (M6b-2: #11 y #12 del sandbox). La nota
+    # lleva su autor y su hora, así que una nota nueva con el mismo texto no es la misma.
+    clave=$(hk_leer "$f" | cksum | cut -d' ' -f1)
+    previo=$(awk -F'\t' -v c="$clave" '$1 == c { print $2; exit }' "$HK_ESTADO/avisos" 2>/dev/null)
+    [ -n "$previo" ] && { echo "Esta nota ya se avisó: $previo (no se abre otro issue)."; exit 0; }
     etiqueta hk 0e8a16; etiqueta hk:tipo-nota; etiqueta hk:para-todos 1d76db
     cuerpo=$(mktemp)
     { hk_cabecera "$HK_YO-$(date +%s)" "$HK_YO" todos nota humano "" 1 1; echo; hk_leer "$f"; } > "$cuerpo"
     url=$(g issue create -R "$R" --title "[hk] Nota: $asunto" --body-file "$cuerpo" --label hk --label hk:tipo-nota --label hk:para-todos) || { rm -f "$cuerpo"; exit 1; }
     rm -f "$cuerpo"
+    printf '%s\t%s\n' "$clave" "$url" >> "$HK_ESTADO/avisos"
     g issue close "${url##*/}" -R "$R" >/dev/null
     echo "Aviso ${url##*/} para todo el equipo: $url"
     ;;

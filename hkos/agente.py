@@ -11,6 +11,7 @@ hay otro y sale. Se apaga solo tras `apagado_min` sin eventos nuevos y sin sesio
 """
 import argparse
 import glob
+import hashlib
 import json
 import os
 import re
@@ -69,9 +70,11 @@ class SondeoGit:
     eventos de fuente git. Lo que pide M8e: `commit` (con la tarea si el mensaje cita un ID, o la del encargo en una
     rama de worker) y `push` (con `incluye`), para que una tarea llegue a `publicada` y una rama sin ID salga en
     `sin_tarea`. Un commit o la punta nueva solo quedan vistos cuando el relay los confirma: si el demonio se reinicia
-    antes, se vuelven a emitir con el mismo ID y el relay los descarta. El `arbol` de git por worktree y la
-    reconciliación de `fusion.*` por refs quedan para más adelante."""
-    CADA_S, FETCH_S, MAX_VISTOS = 15, 60, 5000
+    antes, se vuelven a emitir con el mismo ID y el relay los descarta. Cuando cambia origin/main, además, el `arbol`
+    de la copia principal: tras un push desde la terminal, el amarillo seguía hasta el siguiente `arbol` de una sesión
+    (Pendiente de M8g). El `arbol` de git por worktree y la reconciliación de `fusion.*` por refs quedan para más
+    adelante."""
+    CADA_S, FETCH_S, MAX_VISTOS, MAX_RUTAS = 15, 60, 5000, 200
 
     def __init__(self, ag):
         self.ag = ag
@@ -86,9 +89,10 @@ class SondeoGit:
         self._vistos = set(self.vistos)
         self.pendientes = {}                     # id del evento → ("commit", sha) | ("push", punta)
         self.correo = None                       # user.email del clon, para saber qué commits son de esta persona
+        self.firma_arbol = None                  # el último `arbol` emitido por el demonio (no se repite igual)
         self.ultimo = self.ultimo_fetch = -1e18
 
-    def _git(self, *args):
+    def _git(self, *args, crudo=False):
         try:
             # Sin diálogos de credenciales (M8h): con el remoto del equipo y un token malo, git esperaría al askpass.
             r = subprocess.run(["git", "-C", self.ag.principal, *args], capture_output=True, text=True,
@@ -97,7 +101,9 @@ class SondeoGit:
                                         SSH_ASKPASS=""))
         except (OSError, subprocess.SubprocessError):
             return None
-        return r.stdout.strip() if r.returncode == 0 else None
+        if r.returncode != 0:
+            return None
+        return r.stdout if crudo else r.stdout.strip()   # crudo: `status --porcelain` empieza por un espacio
 
     def _log(self, rango, *mas):
         """[(sha, hora en UTC, correo de quien hizo el commit, asunto)] del más viejo al más nuevo; None si git no puede
@@ -149,6 +155,43 @@ class SondeoGit:
         self.pendientes[e["id"]] = ("commit", sha)
         return e
 
+    def _arbol(self, punta):
+        """`arbol` de la copia principal, como el de arbol.sh: `git status` y el diff contra origin/main, sin los
+        contratos (colisiones.ficheros conserva los del último `arbol` mientras docs/contratos.md siga cambiado).
+        None si git no puede o si no ha cambiado desde el último que emitió el demonio."""
+        estado = self._git("-c", "core.quotepath=false", "status", "--porcelain", "-z", crudo=True)
+        if estado is None:
+            return None
+        rutas, trozos = [], estado.split("\0")
+        i = 0
+        while i < len(trozos):
+            t = trozos[i]
+            i += 1
+            if len(t) < 4:
+                continue
+            if t[0] in "RC":                     # renombrado o copia: tras el nuevo va el viejo, que no cuenta
+                i += 1
+            if t[3:] not in rutas:
+                rutas.append(t[3:])
+        sin_commit = len(rutas)
+        if self._git("rev-parse", "HEAD") != punta:
+            for r in (self._git("-c", "core.quotepath=false", "diff", "--name-only", f"{punta}...HEAD") or "").splitlines():
+                if r and r not in rutas:
+                    rutas.append(r)
+        datos = {"base": punta}
+        if len(rutas) > self.MAX_RUTAS:
+            rutas, datos["truncado"] = rutas[:self.MAX_RUTAS], True
+        if len(rutas) > sin_commit:              # las últimas, solo del diff (como en normaliza.py)
+            datos["solo_diff"] = len(rutas) - sin_commit
+        firma = (punta, tuple(rutas))
+        if firma == self.firma_arbol:
+            return None
+        self.firma_arbol = firma
+        resumen = hashlib.sha256("\n".join(rutas).encode("utf-8")).hexdigest()[:8]
+        return {"v": 1, "id": f"git-{self.ag.persona}-arbol-{punta[:12]}-{resumen}", "ts": self.ag.ahora(),
+                "actor": {"persona": self.ag.persona, "papel": "demonio", "worktree": ""}, "tipo": "arbol",
+                "fuente": "git", "rutas": rutas, "datos": datos}
+
     def ciclo(self):
         ahora = self.ag.reloj()
         if ahora - self.ultimo < self.CADA_S:
@@ -183,6 +226,9 @@ class SondeoGit:
                  "datos": {"sha": punta, "incluye": incluye}}
             self.pendientes[e["id"]] = ("push", punta)
             eventos.append(e)
+            a = self._arbol(punta)
+            if a:
+                eventos.append(a)
         return eventos
 
     def confirmar(self, ids):

@@ -227,6 +227,14 @@ class Atribucion(unittest.TestCase):
         self.assertEqual(estados["T10"]["valor"], "lista")
         self.assertEqual([(s["persona"], s["que"]) for s in e["sin_tarea"]], [(B, "commit: experimento")])
 
+    def test_arbol_solo_con_lo_integrado_no_va_a_sin_tarea(self):
+        """Ruido de M8e: lo ya integrado en main local (diff contra origin/main, antes del push) cuenta por su
+        `commit`; el `arbol` solo lleva a sin_tarea lo que no tiene commit."""
+        estados, e = self.calcula([ev(2, "arbol", tarea=None, rutas=["b.py"], solo_diff=1),
+                                   ev(3, "arbol", tarea=None, rutas=["a.py", "b.py"], solo_diff=1)], 4)
+        self.assertEqual(estados["T10"]["valor"], "lista")
+        self.assertEqual([(s["persona"], s["que"]) for s in e["sin_tarea"]], [(B, "arbol: a.py")])
+
     def test_E58(self):
         estados, e = self.calcula([commit(2, C1, rama="worktree-agent-x")], 3)
         self.assertEqual((estados["T10"]["valor"], estados["T10"]["fuente"]), ("en_curso", "git"))

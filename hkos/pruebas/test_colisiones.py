@@ -215,6 +215,20 @@ class Contratos(unittest.TestCase):
         self.assertEqual([(x["id"], x["rutas"]) for x in c],
                          [("3:motor web ficha de empresa:carla", ["docs/contratos.md"])])
 
+    def test_el_arbol_del_demonio_conserva_los_bloques(self):
+        """El `arbol` del demonio (fuente git, al cambiar origin/main) no trae los bloques tocados: se quedan los del
+        último `arbol` mientras docs/contratos.md siga cambiado; si ya no lo está, se van."""
+        con, _ = contratos.duenos(CONTRATOS, AUTORIDAD)
+        ev = Eventos()
+        ev(0, "carla", "arbol", rutas=["docs/contratos.md"], datos={"contratos": ["motor → web: ficha de empresa"]})
+        e = ev(10, "carla", "arbol", papel="demonio", rutas=["docs/contratos.md", "web/a.js"], datos={"base": "abc1234"})
+        e["fuente"] = "git"
+        self.assertEqual([x["id"] for x in col(ev.lista, contratos=con)[0] if x["nivel"] == "3"],
+                         ["3:motor web ficha de empresa:carla"])
+        e = ev(20, "carla", "arbol", papel="demonio", rutas=["web/a.js"], datos={"base": "abc1234"})
+        e["fuente"] = "git"
+        self.assertEqual([x for x in col(ev.lista, contratos=con)[0] if x["nivel"] == "3"], [])
+
     def test_el_dueno_no_se_avisa_a_si_mismo(self):
         con, _ = contratos.duenos(CONTRATOS, AUTORIDAD)
         ev = Eventos()

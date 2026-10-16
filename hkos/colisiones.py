@@ -3,6 +3,8 @@
 - Nivel 1 (amarillo, R-19): dos personas distintas con cambios sin fusionar en el mismo fichero. Los ficheros de cada
   persona salen de sus eventos: por cada árbol en que trabaja (la copia principal o el worktree de un worker), las
   rutas de su último `arbol` más las de los `edicion` posteriores. El de un worker deja de contar con su `worker.fin`.
+  El `arbol` de la copia principal también lo emite el demonio al cambiar origin/main (fuente git): así, un push desde
+  la terminal saca los ficheros subidos sin esperar a la siguiente herramienta de la sesión.
 - Nivel 2 (rojo, R-20): los conflictos de `git merge-tree` entre las refs de trabajo en curso (los calcula
   colisiones_merge.py en el relay; aquí llegan hechos). Un fichero en conflicto entre dos personas deja de salir en su
   amarillo.
@@ -62,6 +64,10 @@ def ficheros(eventos, equipo):
                 if x:
                     rutas[x[0]] = antes["rutas"].get(x[0], (x[1], e["ts"]))
             contratos = {n: antes["contratos"].get(n, e["ts"]) for n in e.get("datos", {}).get("contratos", []) if n}
+            # El `arbol` del demonio (fuente git, al cambiar origin/main) no saca los bloques tocados: se quedan los
+            # del último `arbol` mientras docs/contratos.md siga cambiado.
+            if e["fuente"] == "git" and "contratos" not in e.get("datos", {}) and "docs/contratos.md" in rutas:
+                contratos = dict(antes["contratos"])
             arboles[clave] = {"rutas": rutas, "contratos": contratos}
         elif e["tipo"] == "edicion":
             a = arboles.setdefault(clave, {"rutas": {}, "contratos": {}})

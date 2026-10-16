@@ -582,6 +582,45 @@ def prueba_persona_fija(tmp):
               e.returncode == 0 and len(ls) == 1 and json.loads(ls[0])["persona"] == "persona-a", repr(ls))
 
 
+def prueba_avisar(tmp):
+    """Pendiente de M6b-2: `buzon.sh avisar` con la misma nota dos veces (un reintento) abría dos issues (#11 y #12 del
+    sandbox). La segunda vez dice el issue de la primera y no llama a gh; una nota distinta sí abre otro."""
+    print("\n== buzon.sh avisar no repite la misma nota (M6b-2)")
+    base = os.path.join(tmp, "avisar"); os.makedirs(base)
+    r = repo_os(base, "clon")
+    open(os.path.join(r, ".hackathon", "coordinacion.md"), "w", encoding="utf-8").write(
+        "activa: sí\nrepo: equipo/reto\n\n| Persona | GitHub |\n|---|---|\n| A | @persona-a |\n| B | @persona-b |\n")
+    gh = os.path.join(base, "gh-falso").replace("\\", "/")
+    llamadas = os.path.join(base, "llamadas.txt").replace("\\", "/")
+    open(gh, "w", newline="\n").write(
+        '#!/usr/bin/env bash\nprintf "%%s\\n" "$*" >> "%s"\n'
+        'case "$*" in *"api user"*) echo persona-a ;; *"issue create"*) n=$(grep -c "issue create" "%s"); '
+        'echo "https://github.com/equipo/reto/issues/$n" ;; esac\nexit 0\n' % (llamadas, llamadas))
+    ejecutable(gh)
+    env = dict(ENV, HK_GH=gh)
+    BUZ = KIT + "/scripts/coordinacion/buzon.sh"
+
+    def avisar(texto):
+        f = os.path.join(base, "nota.md")
+        open(f, "w", encoding="utf-8", newline="\n").write(texto)
+        return subprocess.run([BASH, BUZ, "avisar", "nota de prueba", f.replace("\\", "/")], capture_output=True,
+                              text=True, encoding="utf-8", cwd=r, env=env)
+
+    def creados():
+        return open(llamadas, encoding="utf-8").read().count("issue create") if os.path.exists(llamadas) else 0
+
+    nota = "- 2026-11-20 10:00 · Jurado · «Queremos ver la demo» · Anotado por A\n"
+    s1 = avisar(nota)
+    comprueba("la primera vez abre el issue", s1.returncode == 0 and creados() == 1 and "issues/1" in s1.stdout,
+              s1.stdout + s1.stderr)
+    s2 = avisar(nota)
+    comprueba("la misma nota otra vez: dice el issue de antes y no abre otro",
+              s2.returncode == 0 and creados() == 1 and "ya se avisó" in s2.stdout and "issues/1" in s2.stdout,
+              s2.stdout + s2.stderr)
+    s3 = avisar(nota.replace("10:00", "10:05"))
+    comprueba("una nota distinta sí abre otro", s3.returncode == 0 and creados() == 2, s3.stdout + s3.stderr)
+
+
 def prueba_reservas(tmp):
     """M8g (K-73, criterio 4): reserva.sh avisa de un fichero reservado por otra persona, sin bloquear nunca, una vez
     por sesión y reserva; la sección «Reservas» llega en el bloque de inicio y en el delta. Con el OS apagado, nada."""
@@ -1162,6 +1201,7 @@ try:
     prueba_proyeccion(tmp)
     prueba_reservas(tmp)
     prueba_persona_fija(tmp)
+    prueba_avisar(tmp)
 finally:
     subprocess.run(["git", "worktree", "prune"], cwd=os.path.join(tmp, "repo"), capture_output=True)
     shutil.rmtree(tmp, ignore_errors=True)

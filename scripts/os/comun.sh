@@ -118,12 +118,25 @@ os_crudo_ini() {
   OS_V=${BASH_REMATCH[1]}
 }
 
-# Texto propio (no de la entrada) a cadena JSON, sin comillas: OS_V.
+# Texto propio (no de la entrada) a cadena JSON, sin comillas: OS_V. En UTF-8: con LC_ALL=C, el [[:cntrl:]] de
+# MSYS toma los bytes 0x80–0x9F por controles y partía «…» y «—» (e2 80 a6, e2 80 94) en los avisos.
 os_json() {
-  local v=$1
+  local v=$1 LC_ALL=C.UTF-8
   v=${v//\\/\\\\}; v=${v//\"/\\\"}; v=${v//$'\t'/\\t}; v=${v//$'\n'/\\n}; v=${v//$'\r'/}
   while [[ $v =~ [[:cntrl:]] ]]; do v=${v//"${BASH_REMATCH[0]}"/}; done
   OS_V=$v
+}
+
+# Ruta que se enseña al modelo (OS_V): en Windows, C:/… y no /c/…, para que la pueda abrir. /c/x se cambia sin
+# procesos; otras rutas de MSYS (/tmp/… es la carpeta TEMP de Windows) necesitan cygpath, un proceso que solo se
+# paga con el repo en una de ellas (M8h, como en arranque.sh).
+os_ruta_ver() {
+  OS_V=$1
+  if [[ $OS_V =~ ^/([A-Za-z])/(.*)$ ]]; then
+    OS_V=${BASH_REMATCH[1]^^}:/${BASH_REMATCH[2]}
+  elif [[ $OS_V == /* && ( $OSTYPE == msys* || $OSTYPE == cygwin* ) ]]; then
+    OS_V=$(cygpath -m "$OS_V" 2>/dev/null || printf '%s' "$OS_V")
+  fi
 }
 
 # Bytes de una cadena, contados con LC_ALL=C (para el tope por línea).

@@ -392,10 +392,13 @@ def a4(c):
         if not any(palabras_cifra <= h for h in huecos):
             fallos.append(f"[CIFRA: {cifra}] sin fila en «Cifras que hay que medir»")
 
-    evaluacion = norm(seccion(leer(an), "Cómo se evalúa", 3) or "")
+    crudo = seccion(leer(an), "Cómo se evalúa", 3) or ""
+    evaluacion = norm(crudo)
     criterios = [l for l in evaluacion.splitlines() if l.strip()]
     peso_re = r"\d+(?:[.,]\d+)?\s*(?:%|puntos\b|pts\b|/\s*\d+\b)"
-    if not re.search(peso_re, evaluacion):
+    # Un peso sin unidad, en negrita («Producto: **35**», reto 02): norm quita los asteriscos, así que se mira en crudo.
+    sin_unidad = re.search(r"\*\*\+?\d+(?:[.,]\d+)?(?:\s*máx\.?)?\*\*", crudo)
+    if not (re.search(peso_re, evaluacion) or sin_unidad):
         # Sin rúbrica publicada: los pesos no se comprueban (N/A), pero el pitch no puede inventarlos.
         guion = (seccion(t, "Guion", 2) or "")
         for p in re.findall(peso_re, guion):
@@ -470,7 +473,15 @@ def a5(c, enunciado, refs):
         # Palabras que no vienen del kit ni son cifras ni muy cortas: lo que hace concreto un tramo.
         return {t for t in toks if len(t) >= 4 and not any(ch.isdigit() for ch in t) and t not in vocabulario}
 
-    salidas = [c / "CLAUDE.md", c / "README.md", *(c / ".claude").rglob("*.md"), *(c / ".hackathon").glob("*.md")]
+    # Un tramo de los ejemplos de otro reto cuyas palabras propias están todas en el
+    # enunciado no es contaminación (los retos 02 y 03 comparten la cabecera del evento). Con un repositorio de
+    # referencia, sí cuenta: comparte vocabulario con el enunciado del mismo reto.
+    del_enunciado = {t for l in lineas_tokens(leer(enunciado)) for t in l}
+    ejemplos = {f for f in corpus if f.is_relative_to(KIT)}
+    # equipo.md y criterios.md los escriben personas, no el kit (plantilla y /hack-note).
+    escritos = {"equipo.md", "criterios.md"}
+    salidas = [c / "CLAUDE.md", c / "README.md", *(c / ".claude").rglob("*.md"),
+               *(f for f in (c / ".hackathon").glob("*.md") if f.name not in escritos)]
     fallos = []
     for s in salidas:
         if not s.exists():
@@ -488,7 +499,10 @@ def a5(c, enunciado, refs):
                        and tuple(toks[j:j + N]) not in permitidos):
                     j += 1
                 tramo = toks[i:j + N - 1]
-                if len(propias(tramo)) >= CONTENIDO:
+                suyas = propias(tramo)
+                if fuentes[0] in ejemplos:
+                    suyas -= del_enunciado
+                if len(suyas) >= CONTENIDO:
                     f = fuentes[0]
                     origen = f.relative_to(KIT).as_posix() if f.is_relative_to(KIT) else f
                     fallos.append(f"{s.relative_to(c).as_posix()} ← {origen}: «{' '.join(tramo)[:120]}»")
@@ -549,6 +563,18 @@ def sin_comillas(s):
     return norm("".join(ch for ch in s if ch not in COMILLAS)).strip(" .,;:")
 
 
+# Los cuatro veredictos de /hack-check, por la primera que aparece en la celda («**Quitar** (…)», «Sostenidas…»,
+# «Etiqueta mixta → … Sostenida»). Una celda sin ninguna cuenta aparte.
+VEREDICTOS = (("sostenid", "sostenida"), ("supuesto", "supuesto"), ("conocimiento externo", "conocimiento externo"),
+              ("quitar", "quitar"))
+
+
+def veredicto(celda):
+    t = norm(celda)
+    vistos = [(t.find(raiz), nombre) for raiz, nombre in VEREDICTOS if raiz in t]
+    return min(vistos)[1] if vistos else "sin veredicto"
+
+
 def a7(c, enunciado):
     """Cada cita de .hackathon/verificacion.md aparece literalmente en la fuente que nombra."""
     v = c / ".hackathon/verificacion.md"
@@ -566,6 +592,9 @@ def a7(c, enunciado):
         nonlocal vistas
         cita = cita.strip()
         if not cita or cita in {"—", "-"} or re.fullmatch(r"\([^()]*\)", cita):  # «(la misma)»: anotación
+            return
+        # «— (el enunciado solo dice …)» sin fuente: no hay cita, solo una anotación detrás de la raya (reto 02, M5).
+        if cita.startswith(("—", "- ")) and fuente.strip() in {"", "—", "-"}:
             return
         vistas += 1
         claves = [k for k in textos if k.split(".")[0] in fuente.lower()]
@@ -590,8 +619,7 @@ def a7(c, enunciado):
         if i is not None and j is not None and max(i, j) < len(fila):
             comprobar(fila[i], fila[j], "Afirmaciones")
         if len(fila) > 2:
-            ver = re.sub(r"\W+$", "", norm(fila[2]).split()[0]) if fila[2].strip() else "?"
-            veredictos[ver] = veredictos.get(ver, 0) + 1
+            veredictos[veredicto(fila[2])] = veredictos.get(veredicto(fila[2]), 0) + 1
     for titulo in ("Bloqueantes", "Cobertura de la rúbrica"):
         cab, fs = filas(seccion(t, titulo, 2) or "")
         k = next((n for n, x in enumerate(cab) if "cita" in x.lower()), None)

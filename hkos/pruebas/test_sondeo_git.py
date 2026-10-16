@@ -90,8 +90,9 @@ class SondeoGit(unittest.TestCase):
         self.reloj.t += 16
         a.ciclo()
 
-    def git_del_relay(self):
-        return [e for e in self.relay.eventos if e["fuente"] == "git"]
+    def git_del_relay(self, arbol=False):
+        """Los eventos de git del relay; los `arbol` del demonio, solo con arbol=True."""
+        return [e for e in self.relay.eventos if e["fuente"] == "git" and (arbol or e["tipo"] != "arbol")]
 
     def test_primera_vuelta_no_emite_lo_ya_subido(self):
         a = self.agente()
@@ -199,6 +200,27 @@ class SondeoGit(unittest.TestCase):
         self.vuelta(b)
         self.assertEqual(len(self.git_del_relay()), 1)              # confirmado: no se repite
         self.assertEqual(len(lee_json(os.path.join(a.dir, "git.json"))["vistos"]), 1)
+
+    def test_push_desde_la_terminal_rehace_el_arbol(self):
+        """Pendiente de M8g: tras un push desde la terminal, el amarillo seguía hasta el siguiente `arbol` de una sesión.
+        Al cambiar origin/main, el demonio emite el `arbol` de la copia principal: sin lo subido, con lo que sigue
+        cambiado (un renombrado cuenta por el nombre nuevo). No es actividad de ninguna tarea."""
+        a = self.agente()
+        self.vuelta(a)
+        self.commit("T08 · subido desde la terminal")
+        git(self.repo, "push", "-q", "origin", "main")
+        self.escribe("b.txt", "sin subir\n")
+        git(self.repo, "mv", "a.txt", "c.txt")                      # renombrado sin commit: «R  c.txt\0a.txt»
+        self.vuelta(a)
+        [e] = [e for e in self.git_del_relay(arbol=True) if e["tipo"] == "arbol"]
+        self.assertEqual((e["actor"]["papel"], e["actor"]["worktree"], sorted(e["rutas"]), e["datos"]["base"]),
+                         ("demonio", "", ["b.txt", "c.txt"], git(self.repo, "rev-parse", "origin/main")))
+        self.vuelta(a)                                              # sin cambios en origin/main: nada nuevo
+        self.assertEqual(len([e for e in self.git_del_relay(arbol=True) if e["tipo"] == "arbol"]), 1)
+        tareas = [{"id": "T09", "titulo": "Nueve", "dueno": "persona-b", "depende_de": []}]
+        issues = {"T09": {"creado_en": "2020-01-01T09:00:00Z", "acciones": []}}
+        r = calcular(tareas, issues, self.relay.eventos, PERSONAS, ahora_iso())
+        self.assertNotIn("arbol", " ".join(s["que"] for s in r["sin_tarea"]))
 
 
 if __name__ == "__main__":

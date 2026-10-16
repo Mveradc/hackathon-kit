@@ -172,10 +172,13 @@ class Normalizador:
                 ruta = linea[3:].split(" -> ")[-1].strip('"')
                 if ruta and ruta not in rutas:
                     rutas.append(ruta)
+            sin_commit = len(rutas)
             for ruta in crudo.get("diff", []):
                 if ruta not in rutas:
                     rutas.append(ruta)
             datos = {k: crudo[k] for k in ("base", "truncado") if crudo.get(k)}
+            if len(rutas) > sin_commit:              # las últimas, solo del diff: ya tienen su `commit` (sin_tarea)
+                datos["solo_diff"] = len(rutas) - sin_commit
             if isinstance(crudo.get("contratos"), list):          # M8g: bloques de docs/contratos.md tocados
                 contratos = [str(c)[:120] for c in crudo["contratos"] if c][:5]
                 if contratos:

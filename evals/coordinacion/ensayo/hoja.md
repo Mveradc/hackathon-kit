@@ -86,3 +86,22 @@ El demonio que no arranca, el relay caído, la red, el cortafuegos, el alias de 
 | | | | | |
 | | | | | |
 | | | | | |
+
+## 7. Idas a la terminal (bloques 1 y 2)
+Una fila cada vez que alguien tiene que ir a la terminal **fuera de la conversación con Claude**: `git`, `hk-os`, `gh` o editar a mano un fichero de `.hackathon/`. Lo que Claude ejecuta dentro de su sesión no cuenta. Sirve para decidir qué botones de la web se hacen primero (`docs/hackathon-os/hitos.md`, «Después del M8»). Cada persona apunta las suyas o se las dice a quien observa.
+
+| Bloque (1/2) | Hora | Quién | Herramienta (git / hk-os / gh / fichero) | Para qué, en pocas palabras | ¿Se rompió algo? (no / sí: qué y cuánto costó) |
+|---|---|---|---|---|---|
+| | | | | | |
+| | | | | | |
+| | | | | | |
+| | | | | | |
+| | | | | | |
+| | | | | | |
+
+Recuento (lo rellena quien observa al final):
+
+| Bloque | git | hk-os | gh | fichero a mano | Total | Con algo roto |
+|---|---|---|---|---|---|---|
+| 1 · control | | | | | | |
+| 2 · con OS | | | | | | |
