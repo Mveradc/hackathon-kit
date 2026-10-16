@@ -1,19 +1,20 @@
 # Hoja de observación del ensayo (M8h, criterio 4)
 
-Para imprimir o rellenar en el portátil. Una hoja por ensayo; la rellena la persona observadora y cada persona apunta sus propias preguntas en la tabla 1 (o se las dice a quien observa). Usad la hora del reloj de la pared o la del relay, siempre la misma. **En `prueba.md` va anonimizada** (Persona A, B…): aquí podéis poner nombres.
+Para imprimir o rellenar en el portátil. Una hoja por ensayo; la rellena la persona observadora y cada persona apunta sus propias preguntas en la tabla 1 (o se las dice a quien observa). Usad la hora del reloj de la pared o la del relay, siempre la misma. **En `prueba.md` va anonimizada** (Persona A, B…): aquí podéis poner nombres. **En el ensayo realista** no hay bloque 1: todas las filas llevan «2» en la columna de bloque y la fila «1 · control» de los recuentos se queda vacía.
 
 ## Cabecera
 | Campo | Valor |
 |---|---|
 | Fecha | |
-| Reto | 03 (Embat) |
+| Variante | completo (con control) / realista (sin control) |
+| Reto | 03 (Embat) / otro: |
 | Personas (nombre → letra) | A: · B: · C: · D: · E: |
 | Quién coordina (relay) | |
 | Quién observa | |
-| Bloque 0 · cadena del kit | de __:__ a __:__ |
-| Bloque 1 · **control, OS apagado** (60 min) | de __:__ a __:__ |
+| Bloque 0 · cadena del kit | de __:__ a __:__ → ___ min (en el realista, cronometrado; cada comando: analyze __ · approaches __ · scaffold __ · plan __) |
+| Bloque 1 · **control, OS apagado** (60 min; no hay en el realista) | de __:__ a __:__ |
 | Arranque del OS (criterio 3) | de __:__ a __:__ → ___ min (todos en la web a las __:__) |
-| Bloque 2 · **con el OS** (≥ 3 h) | de __:__ a __:__ |
+| Bloque 2 · **con el OS** (≥ 3 h; en el realista, lo que dure el trabajo) | de __:__ a __:__ |
 | Desfase de reloj de cada portátil (lo dice `hk-os unir`) | A: ___ s · B: ___ s · C: ___ s · D: ___ s · E: ___ s |
 
 ## 1. Preguntas en voz alta
