@@ -50,6 +50,7 @@ SONDEO_GITHUB_S = 30            # api.md §8
 NOVEDADES_S = 60                # git fetch y lectura de decisiones y criterios (M8f)
 SERVICIOS = ".hackathon/servicios.md"   # M9a (api.md §10)
 SERVICIOS_COMMITS = 200         # historia de servicios.md que se mira (api.md §3)
+REINTENTO_TOPE = 16             # vueltas, como mucho, entre dos intentos de leer una versión que falla
 RUTAS_MAX = 5000                # ficheros de origin/main para «código fuera de cualquier servicio»
 RECIENTES_MAX = 1000            # eventos guardados para el SSE `eventos` (M9a)
 EVENTOS_SSE_MAX = 200           # por mensaje (api.md §3)
@@ -92,9 +93,11 @@ def iso_us(t):
 
 
 def _git(repo, *args, timeout=30):
+    """Sin objetos de reemplazo (`git replace`): un commit «sin padres» por un reemplazo parecería crear servicios.md
+    y añadir todas sus filas (issue #18, ADR-0011). Lo mismo en Novedades._texto."""
     try:
-        r = subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=timeout)
+        r = subprocess.run(["git", "--no-replace-objects", "-C", repo, *args], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=timeout)
     except (OSError, subprocess.SubprocessError):
         return None
     return r.stdout if r.returncode == 0 else None
@@ -103,6 +106,16 @@ def _git(repo, *args, timeout=30):
 DECISION = re.compile(r"^- (\d{4}-\d\d-\d\d \d\d:\d\d) ([+-]\d{4}) · \[#(\d+)\]\([^)]*\) · @([\w-]+) ↔ @([\w-]+) · "
                       r"nivel: [^·]*· (.+)$")
 CRITERIO = re.compile(r"^## (\d{4}-\d\d-\d\d \d\d:\d\d) · (.+)$")
+
+
+def _con_lo_dicho(resumen, dijo, n=200):
+    """«<resumen>: <lo que dijo>» en n caracteres como mucho. Unas palabras literales («…») se cortan por dentro, para
+    no perder la » de fuera (nota del PR #17); si no cabe ni una letra entre las comillas, solo el resumen."""
+    entero = f"{resumen}: {dijo}"
+    if len(entero) <= n or len(dijo) < 2 or dijo[0] != "«" or dijo[-1] != "»":
+        return entero[:n]
+    cabe = n - len(resumen) - 4
+    return f"{resumen}: «{dijo[1:-1][:cabe]}»" if cabe > 0 else resumen
 
 
 def novedades_de(decisiones, criterios, tz=None):
@@ -128,7 +141,7 @@ def novedades_de(decisiones, criterios, tz=None):
                 cuando = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M").replace(tzinfo=tz)
                 nota = {"tipo": "criterio", "resumen": m.group(2)[:200], "observado_en": iso(cuando)}
         elif nota and linea.startswith("- Qué dijo:"):
-            nota["resumen"] = f"{nota['resumen']}: {linea[len('- Qué dijo:'):].strip()}"[:200]
+            nota["resumen"] = _con_lo_dicho(nota["resumen"], linea[len("- Qué dijo:"):].strip())
         elif nota and linea.startswith("- Anotado por:"):
             autor = linea[len("- Anotado por:"):].strip()
             if autor and autor != "—":
@@ -143,13 +156,15 @@ class Novedades:
     Desde M8g, también los contratos de docs/contratos.md con su dueño de .hackathon/autoridad.md (nivel 3): un bloque
     sin dueño, o con más de una candidata, se dice una vez por `aviso`.
     Desde M9a, con `web_nueva`, lo que necesita servicios.calcular de origin/main (api.md §3): servicios.md, su historia
-    (cada versión con la de sus padres; un sha ya leído no se vuelve a leer), autoridad.md, contratos.md y los ficheros."""
+    (cada versión con la de sus padres; un sha ya leído no se vuelve a leer), autoridad.md, contratos.md y los ficheros.
+    Si no se puede leer, se queda lo último bueno; una versión que falla se reintenta tras 1, 2, 4… vueltas (issue #18)."""
 
     def __init__(self, repo, umbral_s=300, reloj=time.time, git=_git, aviso=None, web_nueva=False):
         self.repo, self.umbral_s, self.reloj, self.git = repo, umbral_s, reloj, git
         self.lista, self.ultimo_ok, self.fallando = [], None, False
         self.contratos, self.aviso, self._avisados = [], aviso, set()
         self.web_nueva, self.servicios, self._versiones, self._crea = web_nueva, None, {}, (None, None)
+        self._vuelta, self._fallos = 0, {}       # sha → (fallos seguidos, vuelta del próximo intento)
 
     def _leer(self, ruta):
         for ref in ("refs/remotes/origin/main", "HEAD"):
@@ -160,7 +175,8 @@ class Novedades:
     def _texto(self, ref, ruta):
         """El fichero en `ref`, tolerando BOM y UTF-16 (servicios.decodificar); None si no existe."""
         try:
-            r = subprocess.run(["git", "-C", self.repo, "show", f"{ref}:{ruta}"], capture_output=True, timeout=30)
+            r = subprocess.run(["git", "--no-replace-objects", "-C", self.repo, "show", f"{ref}:{ruta}"],
+                               capture_output=True, timeout=30)
         except (OSError, subprocess.SubprocessError):
             return None
         return servicios_mod.decodificar(r.stdout) if r.returncode == 0 else None
@@ -178,7 +194,8 @@ class Novedades:
 
     def _version(self, sha):
         """La versión de `sha` con la de sus padres reales, o None si falló alguna lectura: no se guarda en la caché y
-        se vuelve a leer en la vuelta siguiente. Mientras, la versión no está en la lista y no confirma nada."""
+        se vuelve a leer más adelante (_leer_servicios: tras 1, 2, 4… vueltas, hasta REINTENTO_TOPE). Mientras, la
+        versión no está en la lista y no confirma nada."""
         padres = self.git(self.repo, "log", "-1", "--format=%P", sha)
         if padres is None:
             return None
@@ -189,7 +206,11 @@ class Novedades:
 
     def _bordes(self):
         """Los commits del borde de un clon superficial (git no tiene sus padres: `%P` sale vacío y parecerían crear
-        el fichero con todas sus filas). set() si el clon es completo; None si no se sabe."""
+        el fichero con todas sus filas). set() si el clon es completo; None si no se sabe. Con `info/grafts`, también
+        None: un commit injertado sin padres sería un borde que no está en `shallow` (issue #18)."""
+        grafts = (self.git(self.repo, "rev-parse", "--git-path", "info/grafts") or "").strip()
+        if not grafts or os.path.exists(os.path.join(self.repo, grafts)):
+            return None
         superficial = (self.git(self.repo, "rev-parse", "--is-shallow-repository") or "").strip()
         if superficial == "false":
             return set()
@@ -237,14 +258,18 @@ class Novedades:
         return sha
 
     def _leer_servicios(self, autoridad, contratos):
-        """Lo de origin/main que necesita servicios.calcular, o None sin servicios.md."""
+        """Lo de origin/main que necesita servicios.calcular, None sin servicios.md, o FALLO si no se ha podido leer
+        (quien llama se queda con lo último bueno: un fallo no es «ya no está»)."""
+        self._vuelta += 1
         ref = next((r for r in ("refs/remotes/origin/main", "HEAD")
                     if self.git(self.repo, "rev-parse", "--verify", "-q", r) is not None), None)
-        texto = self._texto(ref, SERVICIOS) if ref else None
-        if texto is None:
-            return None
+        texto = self._en(ref) if ref else FALLO
+        if texto is None or texto is FALLO:
+            return texto
         log = self.git(self.repo, "log", "--full-history", "--reverse", "-n", str(SERVICIOS_COMMITS), "--format=%H %ct",
-                       ref, "--", SERVICIOS) or ""
+                       ref, "--", SERVICIOS)
+        if log is None:
+            return FALLO
         # En un clon superficial (o si no se sabe si lo es) no hay creación conocida, y las versiones del borde no se
         # leen: sin sus padres, todas sus filas saldrían añadidas por la persona de ese commit (ADR-0011).
         bordes = self._bordes()
@@ -258,11 +283,18 @@ class Novedades:
             if bordes is None or sha in bordes:
                 continue
             if sha not in self._versiones:
+                veces, proxima = self._fallos.get(sha, (0, 0))
+                if self._vuelta < proxima:
+                    continue
                 version = self._version(sha)
                 if version is None:
+                    self._fallos[sha] = (veces + 1, self._vuelta + min(2 ** veces, REINTENTO_TOPE))
                     continue
+                self._fallos.pop(sha, None)
                 self._versiones[sha] = version
             versiones.append(dict(self._versiones[sha], crea=sha == crea))
+        en_log = {linea.split()[0] for linea in log.splitlines() if linea.strip()}
+        self._fallos = {s: f for s, f in self._fallos.items() if s in en_log}
         rutas = (self.git(self.repo, "ls-tree", "-r", "--name-only", ref) or "").splitlines()[:RUTAS_MAX]
         return {"texto": texto, "versiones": versiones, "rutas": rutas, "autoridad": autoridad, "contratos": contratos,
                 "observado_en": iso_us(float(cuando)) if cuando else iso_us(self.reloj())}
@@ -284,7 +316,9 @@ class Novedades:
                 self._avisados.add(a)
                 self.aviso(f"Nivel 3: {a}.")
         if self.web_nueva:
-            self.servicios = self._leer_servicios(texto_autoridad, texto_contratos)
+            leido = self._leer_servicios(texto_autoridad, texto_contratos)
+            if leido is not FALLO:
+                self.servicios = leido
         return (self.lista, self.fallando, self.contratos, self.servicios) != antes
 
     def fuente(self):
