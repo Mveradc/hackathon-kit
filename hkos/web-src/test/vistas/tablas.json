@@ -1,0 +1,24 @@
+{
+ "ETIQUETAS": {
+  "pendiente": "pendiente",
+  "lista": "lista",
+  "reclamada": "reclamada",
+  "en_curso": "en curso",
+  "parada": "parada",
+  "en_revision": "en revisión",
+  "integrada": "integrada (sin subir)",
+  "no_cerrada": "no cerrada",
+  "publicada": "publicada",
+  "cerrada": "cerrada"
+ },
+ "TRABAJO": [
+  "en_curso",
+  "parada",
+  "no_cerrada",
+  "en_revision",
+  "reclamada",
+  "integrada",
+  "lista",
+  "pendiente"
+ ]
+}

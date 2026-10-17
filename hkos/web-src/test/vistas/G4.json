@@ -509,6 +509,50 @@
     "novedades": [],
     "reservas": []
    },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T01",
+      "T02",
+      "T03",
+      "T04",
+      "T05",
+      "T08",
+      "T09",
+      "T06",
+      "T07"
+     ],
+     "servicios": []
+    },
+    "persona-b": {
+     "trabajo": [
+      "T11",
+      "T12",
+      "T13",
+      "T15",
+      "T16",
+      "T17",
+      "T18",
+      "T19",
+      "T10",
+      "T14"
+     ],
+     "servicios": []
+    },
+    "persona-c": {
+     "trabajo": [
+      "T20",
+      "T21",
+      "T23",
+      "T24",
+      "T25",
+      "T26",
+      "T27",
+      "T22"
+     ],
+     "servicios": []
+    }
+   },
    "tras": 8
   },
   {
@@ -1023,6 +1067,50 @@
     "novedades": [],
     "reservas": []
    },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T02",
+      "T01",
+      "T03",
+      "T04",
+      "T05",
+      "T08",
+      "T09",
+      "T06",
+      "T07"
+     ],
+     "servicios": []
+    },
+    "persona-b": {
+     "trabajo": [
+      "T11",
+      "T12",
+      "T13",
+      "T15",
+      "T16",
+      "T17",
+      "T18",
+      "T19",
+      "T10",
+      "T14"
+     ],
+     "servicios": []
+    },
+    "persona-c": {
+     "trabajo": [
+      "T20",
+      "T21",
+      "T23",
+      "T24",
+      "T25",
+      "T26",
+      "T27",
+      "T22"
+     ],
+     "servicios": []
+    }
+   },
    "tras": 20
   },
   {
@@ -1535,6 +1623,50 @@
     },
     "novedades": [],
     "reservas": []
+   },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T02",
+      "T01",
+      "T03",
+      "T04",
+      "T05",
+      "T08",
+      "T09",
+      "T06",
+      "T07"
+     ],
+     "servicios": []
+    },
+    "persona-b": {
+     "trabajo": [
+      "T11",
+      "T12",
+      "T13",
+      "T15",
+      "T16",
+      "T17",
+      "T18",
+      "T19",
+      "T10",
+      "T14"
+     ],
+     "servicios": []
+    },
+    "persona-c": {
+     "trabajo": [
+      "T20",
+      "T21",
+      "T23",
+      "T24",
+      "T25",
+      "T26",
+      "T27",
+      "T22"
+     ],
+     "servicios": []
+    }
    },
    "tras": 70
   },
@@ -2054,6 +2186,50 @@
     "novedades": [],
     "reservas": []
    },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T02",
+      "T01",
+      "T03",
+      "T04",
+      "T05",
+      "T08",
+      "T09",
+      "T06",
+      "T07"
+     ],
+     "servicios": []
+    },
+    "persona-b": {
+     "trabajo": [
+      "T11",
+      "T12",
+      "T13",
+      "T15",
+      "T16",
+      "T17",
+      "T18",
+      "T19",
+      "T10",
+      "T14"
+     ],
+     "servicios": []
+    },
+    "persona-c": {
+     "trabajo": [
+      "T20",
+      "T21",
+      "T23",
+      "T24",
+      "T25",
+      "T26",
+      "T27",
+      "T22"
+     ],
+     "servicios": []
+    }
+   },
    "tras": 410
   },
   {
@@ -2568,6 +2744,49 @@
     "novedades": [],
     "reservas": []
    },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T01",
+      "T03",
+      "T04",
+      "T05",
+      "T08",
+      "T09",
+      "T06",
+      "T07"
+     ],
+     "servicios": []
+    },
+    "persona-b": {
+     "trabajo": [
+      "T11",
+      "T12",
+      "T13",
+      "T15",
+      "T16",
+      "T17",
+      "T18",
+      "T19",
+      "T10",
+      "T14"
+     ],
+     "servicios": []
+    },
+    "persona-c": {
+     "trabajo": [
+      "T20",
+      "T21",
+      "T23",
+      "T24",
+      "T25",
+      "T26",
+      "T27",
+      "T22"
+     ],
+     "servicios": []
+    }
+   },
    "tras": 510
   },
   {
@@ -3081,6 +3300,49 @@
     },
     "novedades": [],
     "reservas": []
+   },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T01",
+      "T03",
+      "T04",
+      "T05",
+      "T08",
+      "T09",
+      "T06",
+      "T07"
+     ],
+     "servicios": []
+    },
+    "persona-b": {
+     "trabajo": [
+      "T11",
+      "T12",
+      "T13",
+      "T15",
+      "T16",
+      "T17",
+      "T18",
+      "T19",
+      "T10",
+      "T14"
+     ],
+     "servicios": []
+    },
+    "persona-c": {
+     "trabajo": [
+      "T20",
+      "T21",
+      "T23",
+      "T24",
+      "T25",
+      "T26",
+      "T27",
+      "T22"
+     ],
+     "servicios": []
+    }
    },
    "tras": 610
   }

@@ -9,6 +9,10 @@ reto 03), calcula el estado de cada punto de control de G1–G6, el estado sint�
 (servicios), comprueba que cada estado valida contra estado.schema.json y deja, por caso, lo que serviría el demonio en
 GET /v1/vista (api.md §4): {servido_en, persona, relay, vista}. La web solo pinta eso.
 
+Para que los tests de la web no se comparen consigo mismos, cada caso lleva también `esperado`, lo que calcula
+proyeccion.py para cada persona de la vista: {persona: {trabajo: [ids en el orden de TRABAJO], servicios: [claves de
+servicios_de]}}. Y tablas.json, las tablas ETIQUETAS y TRABAJO de proyeccion.py que la web repite.
+
 Uso (desde hkos/web-src): uv run --no-project scripts/vistas_ejemplo.py   → test/vistas/*.json
 """
 import json
@@ -40,19 +44,27 @@ def respuesta(estado, persona):
     if err is not None:
         raise SystemExit(f"estado que no valida contra estado.schema.json: {err}")
     ahora = estado["generado_en"]
-    return {"servido_en": ahora, "persona": persona, "relay": {"conectado": True, "desde": ahora},
-            "vista": proyeccion.vista(estado, ahora)}
+    v = proyeccion.vista(estado, ahora)
+    return {"servido_en": ahora, "persona": persona, "relay": {"conectado": True, "desde": ahora}, "vista": v,
+            "esperado": {p["persona"]: {"trabajo": [t["id"] for t in proyeccion.trabajo(v, p["persona"])],
+                                        "servicios": [x["clave"] for x in proyeccion.servicios_de(v, p["persona"])]}
+                         for p in v["personas"]}}
+
+
+def escribe(fichero, datos):
+    with open(os.path.join(SALIDA, fichero), "w", encoding="utf-8", newline="\n") as f:
+        json.dump(datos, f, ensure_ascii=False, indent=1)
+        f.write("\n")
 
 
 def guarda(nombre, casos):
-    with open(os.path.join(SALIDA, f"{nombre}.json"), "w", encoding="utf-8", newline="\n") as f:
-        json.dump({"nombre": nombre, "casos": casos}, f, ensure_ascii=False, indent=1)
-        f.write("\n")
+    escribe(f"{nombre}.json", {"nombre": nombre, "casos": casos})
     print(f"{nombre}: {len(casos)} casos")
 
 
 def main():
     os.makedirs(SALIDA, exist_ok=True)
+    escribe("tablas.json", {"ETIQUETAS": proyeccion.ETIQUETAS, "TRABAJO": list(proyeccion.TRABAJO)})
     tmp = tempfile.mkdtemp(prefix="hk-vistas-")
     try:
         for g in ("G1", "G2", "G3", "G4", "G5", "G6"):

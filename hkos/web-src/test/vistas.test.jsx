@@ -1,18 +1,39 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { arroba, hace, serviciosDe, tarjetas, trabajoDe } from "../src/formato.js";
+import { arroba, ETIQUETAS, hace, serviciosDe, tarjetas, TRABAJO, trabajoDe } from "../src/formato.js";
 import { Cabina } from "../src/vistas/Cabina.jsx";
 import { Fuentes } from "../src/vistas/comun.jsx";
 import { Red } from "../src/vistas/Red.jsx";
 import { Servicios } from "../src/vistas/Servicios.jsx";
 import { Tablero } from "../src/vistas/Tablero.jsx";
-import { casos } from "./ayuda.js";
+import { casos, tablas } from "./ayuda.js";
 
 // Criterio 3 de M9a y ADR-0009 (prueba doble, parte 2): con las vistas de G1–G6, G12 y el estado de 5×20 (que validan
 // contra estado.schema.json: scripts/vistas_ejemplo.py), cada vista pinta cada estado, dueño, colisión, antigüedad y
-// desajuste con el mismo texto que trae la vista.
+// desajuste con el mismo texto que trae la vista. Lo que la web repite de proyeccion.py (trabajoDe, serviciosDe,
+// ETIQUETAS y TRABAJO) se compara con lo que calculó Python (`esperado` y tablas.json), no con la propia web.
 
 const CASOS = casos();
+
+/** serviciosDe en la forma de las claves de proyeccion.servicios_de, en su orden: lo que no cuadra, lo sin confirmar
+ *  (filas y luego propuestas) y lo de fuera de servicios. */
+function clavesServicios(s) {
+  return [
+    ...s.noCuadra.map((d) => [d.tipo, d.clave ?? null, d.detalle]),
+    ...s.sinConfirmar.map(({ x }) => ["fila", x.clave]),
+    ...s.propuestas.map((p) => ["propuesta", p.clave]),
+    ...s.fuera.map((d) => ["codigo_fuera", [...(d.rutas || [])].sort()]),
+  ];
+}
+
+describe("las tablas que la web repite de proyeccion.py", () => {
+  it("ETIQUETAS y TRABAJO son las de Python", () => {
+    const py = tablas();
+    expect(ETIQUETAS).toEqual(py.ETIQUETAS);
+    expect(TRABAJO).toEqual(py.TRABAJO);
+  });
+});
+
 const reclamo = { reclamar: () => {}, ocupado: null, aviso: null };
 const anotar = async () => ({ ok: true, texto: "" });
 const props = (respuesta) => ({ respuesta, eventos: [], sinConexion: false, reclamo, anotar });
@@ -61,8 +82,17 @@ function compruebaDesajuste(raiz, d, servido) {
   }
 }
 
-describe.each(CASOS)("$nombre", ({ respuesta }) => {
+describe.each(CASOS)("$nombre", ({ respuesta, esperado }) => {
   const { vista, servido_en: servido } = respuesta;
+
+  it("trabajoDe y serviciosDe dan, para cada persona, lo mismo que proyeccion.trabajo y servicios_de", () => {
+    expect(Object.keys(esperado).sort()).toEqual(vista.personas.map((p) => p.persona).sort());
+    for (const p of vista.personas) {
+      const py = esperado[p.persona];
+      expect(trabajoDe(vista, p.persona).map((t) => t.id), `trabajo de @${p.persona}`).toEqual(py.trabajo);
+      expect(clavesServicios(serviciosDe(vista, p.persona)), `servicios de @${p.persona}`).toEqual(py.servicios);
+    }
+  });
 
   it("tablero: todas las tareas por dueño, las colisiones y la presencia «vieja» de la vista", () => {
     const { container } = render(<Tablero {...props(respuesta)} />);
@@ -89,19 +119,27 @@ describe.each(CASOS)("$nombre", ({ respuesta }) => {
   });
 
   it("cabina de cada persona: su trabajo, sus colisiones y lo de servicios que le toca (como estado-equipo.md)", () => {
+    const porId = new Map(tarjetas(vista).map((t) => [t.id, t]));
     for (const p of vista.personas) {
+      const py = esperado[p.persona];
       const r = { ...respuesta, persona: p.persona };
       const { container, unmount } = render(<Cabina {...props(r)} />);
       const lo = container.querySelector('[aria-label="Lo tuyo"]');
-      const mias = trabajoDe(vista, p.persona);
-      expect(lo.querySelectorAll("[data-tarea]").length).toBe(mias.length);
-      for (const t of mias) compruebaTarea(lo, t, servido);
+      const pintadas = [...lo.querySelectorAll("[data-tarea]")].map((el) => el.getAttribute("data-tarea"));
+      expect(pintadas, `«Lo tuyo» de @${p.persona}, en el orden de proyeccion.trabajo`).toEqual(py.trabajo);
+      for (const id of py.trabajo) compruebaTarea(lo, porId.get(id), servido);
       const necesitan = container.querySelector('[aria-label="Te necesitan"]');
       for (const c of vista.colisiones.filter((x) => x.personas.includes(p.persona))) compruebaColision(necesitan, c, servido);
-      const s = serviciosDe(vista, p.persona);
-      for (const d of s.noCuadra) compruebaDesajuste(necesitan, d, servido);
-      for (const { x } of s.sinConfirmar) expect(necesitan.querySelector(`[data-sin-confirmar="${x.clave}"]`)).not.toBeNull();
-      for (const pr of s.propuestas) expect(necesitan.querySelector(`[data-propuesta="${pr.clave}"]`)).not.toBeNull();
+      const desajustes = new Map((vista.servicios?.desajustes || []).map((d) => [JSON.stringify([d.tipo, d.clave ?? null, d.detalle]), d]));
+      const filas = [...necesitan.querySelectorAll("[data-sin-confirmar]")].map((el) => ["fila", el.getAttribute("data-sin-confirmar")]);
+      const propuestas = [...necesitan.querySelectorAll("[data-propuesta]")].map((el) => ["propuesta", el.getAttribute("data-propuesta")]);
+      expect(filas, `filas sin confirmar de @${p.persona}`).toEqual(py.servicios.filter((k) => k[0] === "fila"));
+      expect(propuestas, `propuestas de @${p.persona}`).toEqual(py.servicios.filter((k) => k[0] === "propuesta"));
+      for (const k of py.servicios.filter((x) => x[0] !== "fila" && x[0] !== "propuesta" && x[0] !== "codigo_fuera")) {
+        const d = desajustes.get(JSON.stringify(k));
+        expect(d, `desajuste ${JSON.stringify(k)} en la vista`).toBeDefined();
+        compruebaDesajuste(necesitan, d, servido);
+      }
       unmount();
     }
   });

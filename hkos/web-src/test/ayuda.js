@@ -6,21 +6,30 @@ import { vi } from "vitest";
 // En el entorno jsdom, `URL` es la de jsdom: la ruta se arma con node:path.
 const DIR = join(dirname(fileURLToPath(import.meta.url)), "vistas") + "/";
 
-/** Las vistas de ejemplo (scripts/vistas_ejemplo.py): [{nombre, caso, respuesta}] con lo que serviría el demonio. */
+const TABLAS = "tablas.json";
+
+/** Las vistas de ejemplo (scripts/vistas_ejemplo.py): [{nombre, respuesta, esperado}], con lo que serviría el demonio
+ *  y lo que calcula proyeccion.py para cada persona ({persona: {trabajo, servicios}}). */
 export function casos() {
   const salida = [];
-  for (const f of readdirSync(DIR).filter((x) => x.endsWith(".json")).sort()) {
+  for (const f of readdirSync(DIR).filter((x) => x.endsWith(".json") && x !== TABLAS).sort()) {
     const { nombre, casos: lista } = JSON.parse(readFileSync(DIR + f, "utf-8"));
     lista.forEach((c, i) => {
-      const { tras, ...respuesta } = c;
-      salida.push({ nombre: `${nombre}${tras != null ? ` t=${tras}` : ""} #${i} @${c.persona}`, respuesta });
+      const { tras, esperado, ...respuesta } = c;
+      salida.push({ nombre: `${nombre}${tras != null ? ` t=${tras}` : ""} #${i} @${c.persona}`, respuesta, esperado });
     });
   }
   return salida;
 }
 
 export function caso(nombre, i = 0) {
-  return JSON.parse(readFileSync(DIR + `${nombre}.json`, "utf-8")).casos[i];
+  const { esperado, ...c } = JSON.parse(readFileSync(DIR + `${nombre}.json`, "utf-8")).casos[i];
+  return c;
+}
+
+/** ETIQUETAS y TRABAJO de proyeccion.py, tal cual. */
+export function tablas() {
+  return JSON.parse(readFileSync(DIR + TABLAS, "utf-8"));
 }
 
 /** Un stream que el test va llenando: body.getReader().read() espera hasta el siguiente trozo. */
