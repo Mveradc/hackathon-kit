@@ -28,6 +28,7 @@ leer_md() {
   [[ -f $md ]] || return 1
   local l sec=AVISO
   MD_CAB= MD_AVISO=() MD_TRABAJO=() MD_COLISIONES=() MD_RESERVAS=() MD_NOVEDADES=() MD_EQUIPO=() MD_DETALLE=()
+  MD_SERVICIOS=() MD_CON_SERVICIOS=   # M9a: la sección solo existe con web_nueva y servicios en el estado
   while IFS= read -r l || [[ -n $l ]]; do
     l=${l%$'\r'}
     if [[ -z $MD_CAB ]]; then
@@ -39,6 +40,7 @@ leer_md() {
       '## Tu trabajo') sec=TRABAJO; continue ;;
       '## Colisiones que te afectan') sec=COLISIONES; continue ;;
       '## Reservas') sec=RESERVAS; continue ;;   # M8g
+      '## Servicios') sec=SERVICIOS MD_CON_SERVICIOS=1; continue ;;   # M9a
       '## Novedades') sec=NOVEDADES; continue ;;
       '## Equipo') sec=EQUIPO; continue ;;
       '## Detalle') sec=DETALLE; continue ;;
@@ -49,6 +51,7 @@ leer_md() {
       TRABAJO) MD_TRABAJO+=("$l") ;;
       COLISIONES) MD_COLISIONES+=("$l") ;;
       RESERVAS) MD_RESERVAS+=("$l") ;;
+      SERVICIOS) MD_SERVICIOS+=("$l") ;;
       NOVEDADES) MD_NOVEDADES+=("$l") ;;
       EQUIPO) MD_EQUIPO+=("$l") ;;
       DETALLE) MD_DETALLE+=("$l") ;;
@@ -63,11 +66,12 @@ cab() {
   [[ $MD_CAB =~ [[:space:]]$1=([^[:space:]]*) ]] && OS_V=${BASH_REMATCH[1]}
 }
 
-# Firmas de la cabecera: F_TRABAJO, F_COLISIONES, F_NOVEDADES y F_RESERVAS (M8g).
+# Firmas de la cabecera: F_TRABAJO, F_COLISIONES, F_NOVEDADES, F_RESERVAS (M8g) y F_SERVICIOS (M9a).
 firmas_md() {
   cab firmas
-  F_TRABAJO=$VACIA F_COLISIONES=$VACIA F_NOVEDADES=$VACIA F_RESERVAS=$VACIA
+  F_TRABAJO=$VACIA F_COLISIONES=$VACIA F_NOVEDADES=$VACIA F_RESERVAS=$VACIA F_SERVICIOS=$VACIA
   [[ $OS_V =~ reservas:([0-9a-f]+) ]] && F_RESERVAS=${BASH_REMATCH[1]}
+  [[ $OS_V =~ servicios:([0-9a-f]+) ]] && F_SERVICIOS=${BASH_REMATCH[1]}
   [[ $OS_V =~ trabajo:([0-9a-f]+) ]] && F_TRABAJO=${BASH_REMATCH[1]}
   [[ $OS_V =~ colisiones:([0-9a-f]+) ]] && F_COLISIONES=${BASH_REMATCH[1]}
   [[ $OS_V =~ novedades:([0-9a-f]+) ]] && F_NOVEDADES=${BASH_REMATCH[1]}
@@ -84,7 +88,7 @@ clave() {
 declare -A ENTREGADAS
 leer_entregado() {
   local l
-  E_TRABAJO=$VACIA E_COLISIONES=$VACIA E_NOVEDADES=$VACIA E_RESERVAS=$VACIA E_CHARS=0
+  E_TRABAJO=$VACIA E_COLISIONES=$VACIA E_NOVEDADES=$VACIA E_RESERVAS=$VACIA E_SERVICIOS=$VACIA E_CHARS=0
   [[ -f $entregado ]] || return 0
   while IFS= read -r l || [[ -n $l ]]; do
     l=${l%$'\r'}
@@ -93,6 +97,7 @@ leer_entregado() {
       colisiones=*) E_COLISIONES=${l#*=} ;;
       novedades=*) E_NOVEDADES=${l#*=} ;;
       reservas=*) E_RESERVAS=${l#*=} ;;
+      servicios=*) E_SERVICIOS=${l#*=} ;;
       chars=*) [[ ${l#*=} =~ ^[0-9]+$ ]] && E_CHARS=${l#*=} ;;
       linea=*) ENTREGADAS[${l#*=}]=1 ;;
     esac
@@ -102,9 +107,9 @@ leer_entregado() {
 guardar_entregado() {   # $1 = caracteres inyectados desde el inicio o la última compactación
   [[ -d $dir/entregado ]] || mkdir -p "$dir/entregado" 2>/dev/null || return 0
   local l texto
-  printf -v texto 'trabajo=%s\ncolisiones=%s\nnovedades=%s\nreservas=%s\nchars=%s\n' "$F_TRABAJO" "$F_COLISIONES" \
-    "$F_NOVEDADES" "$F_RESERVAS" "$1"
-  for l in "${MD_TRABAJO[@]}" "${MD_COLISIONES[@]}" "${MD_RESERVAS[@]}" "${MD_NOVEDADES[@]}"; do
+  printf -v texto 'trabajo=%s\ncolisiones=%s\nnovedades=%s\nreservas=%s\nservicios=%s\nchars=%s\n' "$F_TRABAJO" \
+    "$F_COLISIONES" "$F_NOVEDADES" "$F_RESERVAS" "$F_SERVICIOS" "$1"
+  for l in "${MD_TRABAJO[@]}" "${MD_COLISIONES[@]}" "${MD_RESERVAS[@]}" "${MD_SERVICIOS[@]}" "${MD_NOVEDADES[@]}"; do
     clave "$l"
     texto+="linea=$OS_V"$'\n'
   done
@@ -158,8 +163,10 @@ if [[ $1 == inicio ]]; then
     hora "$OS_V"
     pon $cabe "> El demonio no actualiza este estado desde las $OS_V: puede estar viejo."
   fi
+  servicios=()
+  [[ -n $MD_CON_SERVICIOS ]] && servicios=("## Servicios" "${MD_SERVICIOS[@]}")   # M9a
   pon $cabe "${MD_AVISO[@]}" "## Tu trabajo" "${MD_TRABAJO[@]}" "## Colisiones que te afectan" "${MD_COLISIONES[@]}" \
-    "## Reservas" "${MD_RESERVAS[@]}" "## Novedades" "${MD_NOVEDADES[@]}" "## Equipo" "${MD_EQUIPO[@]}"
+    "## Reservas" "${MD_RESERVAS[@]}" "${servicios[@]}" "## Novedades" "${MD_NOVEDADES[@]}" "## Equipo" "${MD_EQUIPO[@]}"
   (( OMITIDAS )) && SALIDA+="… ($OMITIDAS líneas más en $ver)"$'\n'
   SALIDA+=$final
   printf '%s' "$SALIDA"
@@ -192,7 +199,7 @@ leer_md || exit 0
 firmas_md
 leer_entregado
 [[ $F_TRABAJO == "$E_TRABAJO" && $F_COLISIONES == "$E_COLISIONES" && $F_NOVEDADES == "$E_NOVEDADES" &&
-   $F_RESERVAS == "$E_RESERVAS" ]] && exit 0
+   $F_RESERVAS == "$E_RESERVAS" && $F_SERVICIOS == "$E_SERVICIOS" ]] && exit 0
 
 cab hora
 cabe=$(( DELTA - ${#ver} - 20 ))   # sitio para «… (más en <md>)»
@@ -212,6 +219,7 @@ else
   # Las colisiones, delante: si no cabe todo, lo que se corta es lo menos urgente.
   [[ $F_COLISIONES != "$E_COLISIONES" ]] && seccion "## Colisiones que te afectan" "${MD_COLISIONES[@]}"
   [[ $F_RESERVAS != "$E_RESERVAS" ]] && seccion "## Reservas" "${MD_RESERVAS[@]}"   # M8g: antes de editar
+  [[ -n $MD_CON_SERVICIOS && $F_SERVICIOS != "$E_SERVICIOS" ]] && seccion "## Servicios" "${MD_SERVICIOS[@]}"   # M9a
   [[ $F_TRABAJO != "$E_TRABAJO" ]] && seccion "## Tu trabajo" "${MD_TRABAJO[@]}"
   [[ $F_NOVEDADES != "$E_NOVEDADES" ]] && seccion "## Novedades" "${MD_NOVEDADES[@]}"
 fi

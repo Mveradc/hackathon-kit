@@ -452,6 +452,77 @@ def prueba_prueba(tmp):
         comprueba(f"{nombre}: ni una escritura en .git/hackathon", not os.path.exists(os.path.join(r2, ".git", "hackathon")))
 
 
+def prueba_servicios_md(tmp):
+    """M9a, K-97: la sección «Servicios» de estado-equipo.md en delta.sh (inicio y delta), con el estado de G12 que
+    calcula el relay de verdad. Sin servicios en el estado, ni sección ni firma (lo de M8h)."""
+    import time
+    from datetime import datetime, timezone
+    sys.path.insert(0, KIT + "/hkos")
+    sys.path.insert(0, KIT + "/evals/coordinacion/simulador")
+    import g12
+    import proyeccion
+    import relay as relay_mod
+    print("\n== «Servicios» en estado-equipo.md y delta.sh (M9a, K-97)")
+    base = os.path.join(tmp, "servicios-md"); os.makedirs(base)
+    repo_g12, eventos = g12.montar(base)
+    nov = relay_mod.Novedades(repo_g12, 300, web_nueva=True)
+    nov.sondear()
+
+    class Sondeo:
+        tareas, issues, estado = g12.TAREAS, g12.ISSUES, "ok"
+        ultimo_ok = datetime.fromisoformat(g12.AHORA.replace("Z", "+00:00")).timestamp()
+
+        def resultado(self, ahora):
+            return self.tareas, self.issues, [], 0
+    rel = relay_mod.Relay(os.path.join(base, "relay"), g12.PERSONAS, ahora=lambda: g12.AHORA, sondeo=Sondeo(),
+                          novedades=nov, web_nueva=True)
+    rel.recibir({"eventos": eventos})
+    rel.recalcular()
+    con = rel.estado
+    sin = {k: v for k, v in con.items() if k != "servicios"}
+
+    r = repo_os(base, "clon", "activa: sí\npuerto_agente: 47998\n")
+    osdir = os.path.join(r, ".git", "hackathon", "os"); os.makedirs(osdir)
+    DELTA = KIT + "/scripts/os/delta.sh"
+
+    def deja(estado):
+        v = proyeccion.vista(estado)
+        open(os.path.join(osdir, "estado-equipo.md"), "w", encoding="utf-8", newline="\n").write(
+            proyeccion.markdown(v, "persona-b", "x", tz=timezone.utc, epoch=int(time.time())))
+        open(os.path.join(osdir, "agente.vivo"), "w").write(f"47998\n{int(time.time())}\n")
+
+    def inicio(sid):
+        return subprocess.run([BASH, DELTA, "inicio", sid], capture_output=True, text=True, encoding="utf-8", cwd=r).stdout
+
+    def turno(sid):
+        return lanza(DELTA, json.dumps({"hook_event_name": "UserPromptSubmit", "session_id": sid, "cwd": r,
+                                        "prompt": "sigue"}), r).stdout
+
+    deja(sin)
+    b = inicio("s1")
+    comprueba("sin servicios en el estado: ni sección ni firma servicios:", "## Servicios" not in b and turno("s1") == "")
+    deja(con)
+    b = inicio("s2")
+    titulos = [l for l in b.splitlines() if l.startswith("## ")]
+    comprueba("con servicios: «Servicios» entre «Reservas» y «Novedades», con lo que afecta a @persona-b",
+              titulos[2:4] == ["## Reservas", "## Servicios"] and titulos[4] == "## Novedades"
+              and "sin confirmar · servicio «motor» · cambio de @persona-c" in b, str(titulos))
+    comprueba("sin cambios: el delta no imprime nada", turno("s2") == "")
+    otro = json.loads(json.dumps(con))
+    otro["servicios"]["desajustes"].append({"tipo": "salud_falla", "clave": "0" * 12, "personas": ["persona-b"],
+                                           "detalle": "«motor» :9000/salud responde 500", "observado_en": g12.AHORA,
+                                           "fuente": "demonio"})
+    deja(otro)
+    d = turno("s2")
+    comprueba("un desajuste nuevo de @persona-b: el delta trae solo «Servicios», con la línea nueva delante",
+              "## Servicios" in d and "## Tu trabajo" not in d and "## Novedades" not in d
+              and d.index("responde 500") < d.index("cambio de @persona-c"), d)
+    otro["servicios"]["desajustes"][-1]["personas"] = ["persona-a"]
+    deja(otro)
+    comprueba("…cuando ese desajuste pasa a ser solo de @persona-a, a @persona-b le llega un delta y después silencio",
+              turno("s2") != "" and turno("s2") == "")
+
+
 def prueba_arranque(tmp):
     """M8d: sesion.sh lanza el demonio (scripts/os/arranque.sh). Con el OS apagado, la salida es la de antes, byte a byte;
     con el puerto de otro programa o sin uv, avisa una sola vez por sesión, en JSON, y no lanza nada."""
@@ -1267,6 +1338,7 @@ try:
 
     prueba_os(tmp, repo, informe, handback)
     prueba_prueba(tmp)
+    prueba_servicios_md(tmp)
     prueba_arranque(tmp)
     prueba_proyeccion(tmp)
     prueba_reservas(tmp)

@@ -336,9 +336,13 @@ def calcular(texto, versiones, sha_persona, texto_autoridad, texto_contratos, ru
         campos = dict(f["campos"])
         if f["tipo"] == "servicio":
             campos["puerto"] = _puerto(campos["puerto"])
+            duenos = [d for d in [_dueno_autoridad(campos["carpeta"], secs)] if d]
+        else:
+            duenos = sorted({d for d in (duenos_de.get(campos["de"]), duenos_de.get(campos["a"])) if d})
         for motivo in f["invalidos"]:
             desajuste("formato_invalido", f"propuesta de la línea {f['linea']}: {motivo}")
-        propuestas.append({"tipo": f["tipo"], "clave": f["clave"], "campos": campos, "autor_declarado": f["autor"],
+        propuestas.append({"tipo": f["tipo"], "clave": f["clave"], "campos": campos, "duenos": duenos,
+                           "autor_declarado": f["autor"],
                            "hora_declarada": f["hora"], "autor_git": autor.get((f["tabla"], f["clave"])),
                            "observado_en": observado_en})
 

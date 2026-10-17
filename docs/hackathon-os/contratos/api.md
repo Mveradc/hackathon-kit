@@ -66,6 +66,9 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
     - una carpeta sin dueño en `autoridad.md`:
       - **antes del reparto** (sin `autoridad.md` o sin ninguna persona en él), «sin dueño» y sin desajuste; la fila solo se confirma si viene de `/hack-scaffold`, y lo mismo una conexión con un extremo sin dueño;
       - **con el reparto hecho**, desajuste `dueno_distinto` y sin confirmar.
+  - En K-97, tras congelar (solo añade):
+    - en [estado.schema.json](estado.schema.json), `duenos` (opcional) en cada propuesta: quién la confirma, para la sección `## Servicios` de cada persona;
+    - en la vista, cada tarjeta lleva `estado_declarado: true` si su estado es declarado (`reclamada` desde la web o el MCP). El md lo dice («· declarado») y entra en la firma de «Tu trabajo» solo cuando es verdad, así que las firmas de antes no cambian.
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -384,7 +387,8 @@ Generado. Secciones en este orden y con estos títulos, para que `sesion.sh` y `
 ## Servicios                                                                                  ← desde M9a, con web_nueva: sí
 - no cuadra · «datos» :8001 declarado, no responde (18:40 · demonio)
 - no cuadra · contrato «motor → web»: la prueba falla (18:38 · hook)
-- sin confirmar · conexión «motor → datos» · añadida por @luis (18:12 · git)
+- sin confirmar · conexión «motor → datos» · cambio de @luis (18:12 · git)
+- sin confirmar · propuesta de servicio «cache» · de @luis (18:10 · git)
 - fuera de servicios · scripts/descarga.py y 2 más (18:41 · git)
 ## Novedades
 - 18:40 · decisión · «#12: …» (@ana ↔ @luis)

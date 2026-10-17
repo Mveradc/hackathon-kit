@@ -52,6 +52,8 @@ def vista(estado, ahora=None, umbral_viejo_s=FUENTE_VIEJA_S):
             x["issue"] = t["issue"]
         if t.get("declarado"):
             x["declarado"] = t["declarado"]["valor"]
+        if e.get("declarado"):                 # M9a: el estado mismo es declarado (reclamada desde la web o el MCP)
+            x["estado_declarado"] = True
         if t.get("cumplidas_por_cierre"):
             x["cumplidas_por_cierre"] = list(t["cumplidas_por_cierre"])
         if e["valor"] == "pendiente":
@@ -93,12 +95,15 @@ def vista(estado, ahora=None, umbral_viejo_s=FUENTE_VIEJA_S):
                       "viejo": not sin and (d["valor"] != "ok" or _edad(d["observado_en"], ahora) > umbral_viejo_s)}
     colisiones = sorted(estado.get("colisiones", []), key=lambda c: (c["gravedad"] != "rojo", c["id"]))
     novedades = sorted(estado.get("novedades", []), key=lambda n: fecha(n["observado_en"]), reverse=True)
-    return {"v": 1, "generado_en": estado["generado_en"], "ahora": ahora, "fuentes": fuentes,
-            "umbrales": {"presencia_s": PRESENCIA_VIEJA_S, "fuente_s": umbral_viejo_s},
-            "columnas": columnas, "colisiones": [dict(c) for c in colisiones],
-            "sin_tarea": sorted(estado.get("sin_tarea", []), key=lambda s: fecha(s["observado_en"]), reverse=True),
-            "personas": personas, "nombres": nombres, "novedades": novedades[:NOVEDADES_MAX],
-            "reservas": sorted(estado.get("reservas", []), key=lambda r: (r["hasta"], r.get("id", "")))}
+    salida = {"v": 1, "generado_en": estado["generado_en"], "ahora": ahora, "fuentes": fuentes,
+              "umbrales": {"presencia_s": PRESENCIA_VIEJA_S, "fuente_s": umbral_viejo_s},
+              "columnas": columnas, "colisiones": [dict(c) for c in colisiones],
+              "sin_tarea": sorted(estado.get("sin_tarea", []), key=lambda s: fecha(s["observado_en"]), reverse=True),
+              "personas": personas, "nombres": nombres, "novedades": novedades[:NOVEDADES_MAX],
+              "reservas": sorted(estado.get("reservas", []), key=lambda r: (r["hasta"], r.get("id", "")))}
+    if estado.get("servicios"):                # M9a (ADR-0011): tal cual; la persona lo filtra servicios_de()
+        salida["servicios"] = json.loads(json.dumps(estado["servicios"]))
+    return salida
 
 
 # --- vistas de una persona ---
@@ -118,6 +123,43 @@ def reservas_de_otros(v, persona):
     return [r for r in v.get("reservas", []) if r["persona"] != persona]
 
 
+def servicios_de(v, persona):
+    """Lo de servicios que afecta a la persona (api.md §6, M9a), en el orden de la sección: lo que no cuadra (sus
+    servicios y las conexiones de las que es un extremo; lo del fichero entero, a todos), lo que espera su confirmación
+    (filas sin confirmar y propuestas) y una línea, para todos, con el código fuera de cualquier servicio.
+    [{grupo, texto, clave, observado_en, fuente}]: `texto` sin hora; `clave` es lo que firma (sin horas)."""
+    s = v.get("servicios")
+    if not s:
+        return []
+    no_cuadra, sin_confirmar, fuera = [], [], []
+    for d in s["desajustes"]:
+        x = {"observado_en": d["observado_en"], "fuente": d["fuente"]}
+        if d["tipo"] == "codigo_fuera":
+            rutas = d.get("rutas", [])
+            mas = f" y {len(rutas) - 2} más" if len(rutas) > 2 else ""
+            fuera.append(dict(x, grupo="fuera de servicios", texto=" y ".join(rutas[:2]) if len(rutas) <= 2
+                              else ", ".join(rutas[:2]) + mas, clave=["codigo_fuera", sorted(rutas)]))
+        elif persona in d.get("personas", []) or not d.get("personas"):
+            no_cuadra.append(dict(x, grupo="no cuadra", texto=d["detalle"], clave=[d["tipo"], d.get("clave"), d["detalle"]]))
+    filas = [("servicio", f"«{x['nombre']}»", x) for x in s["lista"]] + \
+            [("conexión", f"«{x['de']} → {x['a']}»", x) for x in s["conexiones"]]
+    for tipo, nombre, x in filas:
+        c = x["confirmacion"]
+        if c["valor"] == "sin_confirmar" and persona in c["faltan"]:
+            por = ", ".join("@" + p for p in c["por"]) or "nadie del equipo conocido"
+            sin_confirmar.append({"grupo": "sin confirmar", "texto": f"{tipo} {nombre} · cambio de {por}",
+                                  "clave": ["fila", x["clave"]], "observado_en": c["observado_en"], "fuente": c["fuente"]})
+    for p in s["propuestas"]:
+        if persona in p.get("duenos", []) and p.get("autor_git") != persona:
+            c = p["campos"]
+            nombre = f"servicio «{c.get('nombre') or ''}»" if p["tipo"] == "servicio" else \
+                f"conexión «{c.get('de') or ''} → {c.get('a') or ''}»"
+            autor = f"@{p['autor_git']}" if p.get("autor_git") else (p.get("autor_declarado") or "sin autor")
+            sin_confirmar.append({"grupo": "sin confirmar", "texto": f"propuesta de {nombre} · de {autor}",
+                                  "clave": ["propuesta", p["clave"]], "observado_en": p["observado_en"], "fuente": "git"})
+    return no_cuadra + sin_confirmar + fuera
+
+
 def _huella(obj):
     return hashlib.sha256(json.dumps(obj, sort_keys=True, ensure_ascii=False).encode("utf-8")).hexdigest()[:12]
 
@@ -126,14 +168,18 @@ def firmas(v, persona):
     """Una huella por sección que delta.sh compara con lo entregado (R-25). Sin horas: el paso del tiempo no es un
     cambio. «Tu trabajo» incluye de quién espera cada tarea pendiente y en qué estado, para que una dependencia que
     pasa a `parada` llegue como cambio. «Equipo» (la presencia de los demás) no tiene firma: nunca abre un delta."""
-    return {
+    salida = {
         "trabajo": _huella([[t["id"], t["estado"], t.get("declarado"), t.get("cumplidas_por_cierre", []),
-                             [[e["id"], e["dueno"], e["estado"]] for e in t["espera"]]] for t in trabajo(v, persona)]),
+                             [[e["id"], e["dueno"], e["estado"]] for e in t["espera"]]]
+                            + (["declarado"] if t.get("estado_declarado") else []) for t in trabajo(v, persona)]),
         "colisiones": _huella([[c["id"], c["nivel"], c["gravedad"], sorted(c["personas"]), sorted(c["rutas"]),
                                 c.get("contrato")] for c in colisiones_de(v, persona)]),
         "novedades": _huella([[n.get("tipo"), n.get("resumen"), n.get("autor"), n["observado_en"]] for n in v["novedades"]]),
         "reservas": _huella([[sorted(r["rutas"]), r["persona"], r["modo"]] for r in reservas_de_otros(v, persona)]),
     }
+    if v.get("servicios"):                     # M9a: solo con servicios en el estado
+        salida["servicios"] = _huella([x["clave"] for x in servicios_de(v, persona)])
+    return salida
 
 
 def _hora(ts, tz):
@@ -155,7 +201,8 @@ def _cuando(x, ahora, tz, vieja_s=None):
 
 def lineas_tarea(t, v, tz):
     """Una línea de «Tu trabajo»: «T07 «…» · en curso (18:40 · hook) · bloquea a T09»."""
-    texto = f"{t['id']} «{_corta(t['titulo'], 70)}» · {t['etiqueta']} ({_cuando(t, v['ahora'], tz)})"
+    declarado = " · declarado" if t.get("estado_declarado") else ""
+    texto = f"{t['id']} «{_corta(t['titulo'], 70)}» · {t['etiqueta']} ({_cuando(t, v['ahora'], tz)}{declarado})"
     if t.get("declarado"):
         texto += f" · ⚑ {ETIQUETAS.get(t['declarado'], t['declarado'])} a mano"
     for d in t.get("cumplidas_por_cierre", []):
@@ -192,6 +239,11 @@ def reservas_tsv(v, persona, tz):
             campos = [r.get("id", ""), ruta, r["persona"], str(int(hasta.timestamp())), _hora(r["hasta"], tz), r["modo"]]
             lineas.append(SEP.join(c.replace(SEP, " ").replace(SALTO, " ") for c in campos))
     return "".join(l + SALTO for l in lineas)
+
+
+def linea_servicio(x, tz):
+    """«- no cuadra · «datos» :8001 declarado, no responde (18:40 · demonio)» (api.md §6, M9a)."""
+    return "- " + _linea(f"{x['grupo']} · {x['texto']} ({_hora(x['observado_en'], tz)} · {x['fuente']})")
 
 
 def linea_novedad(n, tz):
@@ -251,7 +303,7 @@ def markdown(v, persona, ruta_detalle, tz=None, epoch=None, relay=None, avisos_l
                 f"epoch={epoch if epoch is not None else int(fecha(v['ahora']).timestamp())} relay={relay_ok} "
                 f"github={'no' if github and github['valor'] == 'no' else 'viejo' if github and github['viejo'] else 'ok'} "
                 f"firmas=trabajo:{f['trabajo']},colisiones:{f['colisiones']},novedades:{f['novedades']},"
-                f"reservas:{f['reservas']} -->")
+                f"reservas:{f['reservas']}" + (f",servicios:{f['servicios']}" if "servicios" in f else "") + " -->")
     lineas = [cabecera]
     if relay is not None:
         lineas.append(f"> Relay sin respuesta desde {_hora(relay[1], tz)}: lo efímero (presencia, ficheros) puede estar viejo.")
@@ -263,6 +315,9 @@ def markdown(v, persona, ruta_detalle, tz=None, epoch=None, relay=None, avisos_l
     lineas += [linea_colision(c, tz) for c in colisiones_de(v, persona)] or ["- ninguna"]
     lineas.append("## Reservas")
     lineas += [linea_reserva(r, tz) for r in reservas_de_otros(v, persona)] or ["- ninguna"]
+    if v.get("servicios"):                     # M9a (api.md §6)
+        lineas.append("## Servicios")
+        lineas += [linea_servicio(x, tz) for x in servicios_de(v, persona)] or ["- todo cuadra"]
     lineas.append("## Novedades")
     lineas += [linea_novedad(n, tz) for n in v["novedades"]] or ["- ninguna"]
     lineas.append("## Equipo")

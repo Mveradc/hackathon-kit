@@ -261,6 +261,7 @@
                   "prueba": { "$ref": "#/$defs/texto_o_nada" }
                 }
               },
+              "duenos": { "type": "array", "items": { "type": "string" }, "description": "Quién la confirma según autoridad.md: el dueño de la carpeta (servicio) o los de los dos extremos (conexión). Opcional (K-97)." },
               "autor_declarado": { "$ref": "#/$defs/texto_o_nada" },
               "hora_declarada": { "$ref": "#/$defs/texto_o_nada" },
               "autor_git": { "$ref": "#/$defs/texto_o_nada", "description": "La persona del commit que la añadió; null si el sha no es de ningún evento commit." },
