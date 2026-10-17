@@ -160,6 +160,9 @@ def hay_blob(repo, texto):
 
 
 def main():
+    for flujo in (sys.stdout, sys.stderr):  # en Windows, con la salida redirigida, cp1252 no sabe escribir «≤» (issue #18)
+        if hasattr(flujo, "reconfigure"):
+            flujo.reconfigure(encoding="utf-8", errors="replace")
     tmp = tempfile.mkdtemp(prefix="hk-colisiones-")
     try:
         return prueba(tmp)

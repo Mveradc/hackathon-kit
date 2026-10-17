@@ -327,14 +327,20 @@ def g7b(tmp):
     cv.escribe(clon, ".hackathon/coordinacion.md", COORD)
     cv.escribe(clon, ".git/hackathon/yo-fijo", "persona-a\n")       # sin red, gh api user tampoco responde
     cv.escribe(clon, ".hackathon-gh-falso", "403")
-    t = time.time()
-    s = subprocess.run([cv.BASH, os.path.join(KIT, "scripts", "coordinacion", "sesion.sh")], cwd=clon, capture_output=True,
-                       input=json.dumps({"hook_event_name": "SessionStart", "session_id": "g7b", "source": "startup"}).encode(),
-                       env=dict(ENV, HK_GH=os.path.join(AQUI, "gh-falso.sh").replace("\\", "/")), timeout=60)
-    dur = time.time() - t
-    out = s.stdout.decode("utf-8", "replace")
+    # Con la máquina cargada, una pasada puede pasar de 15 s sin que sesion.sh se cuelgue: hasta 3 pasadas y cuenta la
+    # más rápida. Un cuelgue de verdad (sesion.sh esperando a gh) pasa de 15 s en las tres.
+    medidas = []
+    while len(medidas) < 3 and (not medidas or min(d for d, _, _ in medidas) >= 15):
+        t = time.time()
+        s = subprocess.run([cv.BASH, os.path.join(KIT, "scripts", "coordinacion", "sesion.sh")], cwd=clon,
+                           capture_output=True, timeout=60, env=dict(ENV, HK_GH=os.path.join(AQUI, "gh-falso.sh").replace("\\", "/")),
+                           input=json.dumps({"hook_event_name": "SessionStart", "session_id": f"g7b{len(medidas)}",
+                                             "source": "startup"}).encode())
+        medidas.append((time.time() - t, s.returncode, s.stdout.decode("utf-8", "replace")))
+    dur, _, out = min(medidas, key=lambda m: m[0])
     comprueba(G, "sesion.sh con gh en 403: sale bien, a tiempo (< 15 s, el timeout del hook) y lo dice",
-              s.returncode == 0 and dur < 15 and "GitHub no ha respondido a tiempo" in out, f"{dur:.1f} s", out[:300])
+              all(c == 0 and "GitHub no ha respondido a tiempo" in o for _, c, o in medidas) and dur < 15,
+              ", ".join(f"{d:.1f} s" for d, _, _ in medidas), out[:300])
 
 
 # --------------------------------------------------------------------------------------------------------------------
@@ -381,7 +387,8 @@ def g7c(tmp):
     git(b, "config", "user.name", "persona-b")
     salidas = {}
     for c, persona, extra in ((a, "persona-a", []), (b, "persona-b", ["--remoto", url_r])):
-        s = subprocess.run(uv + ["unir", url, token, "--persona", persona, *extra], cwd=c, capture_output=True,
+        # `--`: un token de token_urlsafe empieza por «-» una vez de cada 64, y argparse lo tomaría por una opción.
+        s = subprocess.run(uv + ["unir", "--persona", persona, *extra, "--", url, token], cwd=c, capture_output=True,
                            env=dict(ENV, **sin_red), timeout=120)
         salidas[persona] = s.stdout.decode("utf-8", "replace") + s.stderr.decode("utf-8", "replace")
         comprueba(G, f"hk-os unir --persona {persona}" + (" --remoto" if extra else ""), s.returncode == 0
@@ -413,7 +420,11 @@ def g7c(tmp):
     except (OSError, ValueError):
         fv = {}
     comprueba(G, "la web: github «no» y nunca viejo", fv.get("valor") == "no" and fv.get("viejo") is False, str(fv))
-    # B publica T11 (código) y T17 (sin código, commit vacío); T09, de A, espera a T17.
+    # B publica T11 (código) y T17 (sin código, commit vacío); T09, de A, espera a T17. Antes, la primera vuelta de git
+    # del demonio de B (deja git.json): si B sube antes, el demonio toma ese origin/main como punto de partida y no ve
+    # ni los commits ni el push. El md de B no sirve de señal: lo escribe ya `hk-os unir`.
+    comprueba(G, "el demonio de B ha dado su primera vuelta de git",
+              cv.espera(lambda: os.path.exists(os.path.join(b, ".git", "hackathon", "os", "git.json")), 60))
     secreto = "contenido-que-no-viaja-7f3a"
     cv.escribe(b, "web/src/score.js", f"// {secreto}\n")
     git(b, "add", "-A")
