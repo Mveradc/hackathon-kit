@@ -315,7 +315,11 @@ Cada conexión con el demonio tiene un plazo de socket de 10 s (tras congelar, 2
   - `donde` (opcional, ≤ 80).
 
   Un campo de más, o fuera de su lista o de su longitud, da `400`.
-- **Saneado:** saltos de línea y tabuladores, a un espacio; espacios repetidos, a uno; un `#` o `>` al principio se quita; ningún carácter de control.
+- **Saneado:** saltos de línea y tabuladores, a un espacio; espacios repetidos, a uno; un `#` o `>` al principio se quita; ningún carácter de control. Además (tras congelar, 2026-10-17, PR #16, issue #10):
+  - fuera los invisibles de dirección y de formato: U+061C, U+200B, U+200E, U+200F, U+202A–202E, U+2060–2064, U+2066–2069, U+FEFF y U+FFF9–FFFB. U+200C y U+200D (ZWNJ y ZWJ) se quedan;
+  - fuera `«` y `»`, también escritas como entidad (`&laquo;`, `&raquo;`, `&#171;`, `&#187;`, `&#xab;`, `&#xbb;`, sin distinguir mayúsculas y con ceros delante o sin ellos): una nota no puede cerrar sus comillas en `estado-equipo.md` (constitución V);
+  - fuera el HTML: las etiquetas completas (`<` seguido de una letra, `/`, `!` o `?`, hasta el `>`) y cualquier `<` delante de una letra, `/`, `!` o `?` (un `<!--` sin cerrar queda en `!--`). `3 < 4` y `<3` se quedan;
+  - las comillas y el HTML se quitan una y otra vez hasta que no queda nada (`&la&laquo;quo;` deja otro `&laquo;`; `<<b>!--`, otro `<!--`).
 - **Nota**, con el formato de la plantilla de `/hack-note`:
   ```
   ## <AAAA-MM-DD HH:MM local> · <quien o —> (<jurado|mentor|organización>)
