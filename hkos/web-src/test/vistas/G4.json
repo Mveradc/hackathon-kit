@@ -1,0 +1,3088 @@
+{
+ "nombre": "G4",
+ "casos": [
+  {
+   "servido_en": "2026-09-18T17:00:08Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-18T17:00:08Z"
+   },
+   "vista": {
+    "v": 1,
+    "generado_en": "2026-09-18T17:00:08Z",
+    "ahora": "2026-09-18T17:00:08Z",
+    "fuentes": {
+     "github": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:00:08Z",
+      "viejo": false
+     },
+     "relay": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:00:08Z",
+      "viejo": false
+     }
+    },
+    "umbrales": {
+     "presencia_s": 180,
+     "fuente_s": 300
+    },
+    "columnas": {
+     "haciendo": [],
+     "hecho": [],
+     "falta": [
+      {
+       "id": "T01",
+       "titulo": "Servir en `motor/` la ficha del ejemplo de `docs/contratos.md`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T10"
+       ],
+       "espera": [],
+       "bloque": "Contratos",
+       "issue": 100
+      },
+      {
+       "id": "T02",
+       "titulo": "Cargar los CSV de `datos/` en UTF-8 a tabla mensual por `company_id`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 101
+      },
+      {
+       "id": "T03",
+       "titulo": "Calcular caja, días de cobro y deuda por mes, con su `moneda`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 102
+      },
+      {
+       "id": "T04",
+       "titulo": "Score 0–100 suavizado a partir de las tres señales",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T22"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 103
+      },
+      {
+       "id": "T05",
+       "titulo": "Calcular `tendencia` y `desglose` del último mes",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T14"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 104
+      },
+      {
+       "id": "T08",
+       "titulo": "Arreglar errores en 30 empresas al azar",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 107
+      },
+      {
+       "id": "T09",
+       "titulo": "Si Embat pide validación propia: medir estabilidad en empresas apartadas",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 108
+      },
+      {
+       "id": "T11",
+       "titulo": "Pintar el desglose caja / cobros / deuda con signo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 110
+      },
+      {
+       "id": "T12",
+       "titulo": "Pintar las acciones con su cifra destacada",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 111
+      },
+      {
+       "id": "T13",
+       "titulo": "Selector de `company_id` que llama a `/api`",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Navegación",
+       "issue": 112
+      },
+      {
+       "id": "T15",
+       "titulo": "Inicio con acceso en dos clics a las dos empresas de la demo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 114
+      },
+      {
+       "id": "T16",
+       "titulo": "Estados de carga, vacío y sin acciones",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 115
+      },
+      {
+       "id": "T17",
+       "titulo": "`npm run build` listo para que A lo despliegue",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T07"
+       ],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 116
+      },
+      {
+       "id": "T18",
+       "titulo": "Textos para el CFO revisados con C",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pulido",
+       "issue": 117
+      },
+      {
+       "id": "T19",
+       "titulo": "Guion de clics de la demo en vivo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 118
+      },
+      {
+       "id": "T20",
+       "titulo": "Apuntar las respuestas de Embat en `CLAUDE.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Preguntas",
+       "issue": 119
+      },
+      {
+       "id": "T21",
+       "titulo": "Escribir 5–6 reglas de acción en `.claude/rules/ficha-y-acciones.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T06"
+       ],
+       "espera": [],
+       "bloque": "Reglas",
+       "issue": 120
+      },
+      {
+       "id": "T23",
+       "titulo": "Escribir qué movió a cada una y qué haría su CFO",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Empresas",
+       "issue": 122
+      },
+      {
+       "id": "T24",
+       "titulo": "Guion de 5 min en `pitch/guion.md`: comprador Embat, problema, demo, cierre",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 123
+      },
+      {
+       "id": "T25",
+       "titulo": "Diapositivas en `pitch/`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 124
+      },
+      {
+       "id": "T26",
+       "titulo": "Cómo abrir la demo, URL y comprador en `README.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "README",
+       "issue": 125
+      },
+      {
+       "id": "T27",
+       "titulo": "Completar los TODO de la guía `entrega` (canal y comandos)",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Cierre",
+       "issue": 126
+      },
+      {
+       "id": "T06",
+       "titulo": "Implementar las reglas de C, cada una con su cifra",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T21"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T21",
+         "dueno": "persona-c",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Acciones",
+       "issue": 105
+      },
+      {
+       "id": "T07",
+       "titulo": "Publicar motor y build de la web en una URL (conocimiento externo, verificar plataforma)",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T17"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T17",
+         "dueno": "persona-b",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Despliegue",
+       "issue": 106
+      },
+      {
+       "id": "T10",
+       "titulo": "Pintar en `web/src/App.jsx` score, curva de 24 meses y flecha",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T01"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T01",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Ficha",
+       "issue": 109
+      },
+      {
+       "id": "T14",
+       "titulo": "Conectar con la ficha real del motor",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T05"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T05",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Integración",
+       "issue": 113
+      },
+      {
+       "id": "T22",
+       "titulo": "Elegir una empresa que mejora (~45→65) y otra que cae (~82→68)",
+       "dueno": "persona-c",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T04"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T04",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Empresas",
+       "issue": 121
+      }
+     ]
+    },
+    "colisiones": [],
+    "sin_tarea": [
+     {
+      "persona": "persona-a",
+      "que": "edicion: docs/notas.md",
+      "observado_en": "2026-09-18T17:00:05Z"
+     }
+    ],
+    "personas": [
+     {
+      "persona": "persona-a",
+      "nombre": "A",
+      "activos": 1,
+      "papeles": {
+       "principal": 1
+      },
+      "haciendo": [],
+      "ultima_senal": "2026-09-18T17:00:05Z",
+      "viejo": false
+     },
+     {
+      "persona": "persona-b",
+      "nombre": "B",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     },
+     {
+      "persona": "persona-c",
+      "nombre": "C",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     }
+    ],
+    "nombres": {
+     "persona-a": "A",
+     "persona-b": "B",
+     "persona-c": "C"
+    },
+    "novedades": [],
+    "reservas": []
+   },
+   "tras": 8
+  },
+  {
+   "servido_en": "2026-09-18T17:00:20Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-18T17:00:20Z"
+   },
+   "vista": {
+    "v": 1,
+    "generado_en": "2026-09-18T17:00:20Z",
+    "ahora": "2026-09-18T17:00:20Z",
+    "fuentes": {
+     "github": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:00:20Z",
+      "viejo": false
+     },
+     "relay": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:00:20Z",
+      "viejo": false
+     }
+    },
+    "umbrales": {
+     "presencia_s": 180,
+     "fuente_s": 300
+    },
+    "columnas": {
+     "haciendo": [
+      {
+       "id": "T02",
+       "titulo": "Cargar los CSV de `datos/` en UTF-8 a tabla mensual por `company_id`",
+       "dueno": "persona-a",
+       "estado": "reclamada",
+       "etiqueta": "reclamada",
+       "fuente": "mcp",
+       "observado_en": "2026-09-18T17:00:10Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 101,
+       "estado_declarado": true
+      }
+     ],
+     "hecho": [],
+     "falta": [
+      {
+       "id": "T01",
+       "titulo": "Servir en `motor/` la ficha del ejemplo de `docs/contratos.md`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T10"
+       ],
+       "espera": [],
+       "bloque": "Contratos",
+       "issue": 100
+      },
+      {
+       "id": "T03",
+       "titulo": "Calcular caja, días de cobro y deuda por mes, con su `moneda`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 102
+      },
+      {
+       "id": "T04",
+       "titulo": "Score 0–100 suavizado a partir de las tres señales",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T22"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 103
+      },
+      {
+       "id": "T05",
+       "titulo": "Calcular `tendencia` y `desglose` del último mes",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T14"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 104
+      },
+      {
+       "id": "T08",
+       "titulo": "Arreglar errores en 30 empresas al azar",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 107
+      },
+      {
+       "id": "T09",
+       "titulo": "Si Embat pide validación propia: medir estabilidad en empresas apartadas",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 108
+      },
+      {
+       "id": "T11",
+       "titulo": "Pintar el desglose caja / cobros / deuda con signo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 110
+      },
+      {
+       "id": "T12",
+       "titulo": "Pintar las acciones con su cifra destacada",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 111
+      },
+      {
+       "id": "T13",
+       "titulo": "Selector de `company_id` que llama a `/api`",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Navegación",
+       "issue": 112
+      },
+      {
+       "id": "T15",
+       "titulo": "Inicio con acceso en dos clics a las dos empresas de la demo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 114
+      },
+      {
+       "id": "T16",
+       "titulo": "Estados de carga, vacío y sin acciones",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 115
+      },
+      {
+       "id": "T17",
+       "titulo": "`npm run build` listo para que A lo despliegue",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T07"
+       ],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 116
+      },
+      {
+       "id": "T18",
+       "titulo": "Textos para el CFO revisados con C",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pulido",
+       "issue": 117
+      },
+      {
+       "id": "T19",
+       "titulo": "Guion de clics de la demo en vivo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 118
+      },
+      {
+       "id": "T20",
+       "titulo": "Apuntar las respuestas de Embat en `CLAUDE.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Preguntas",
+       "issue": 119
+      },
+      {
+       "id": "T21",
+       "titulo": "Escribir 5–6 reglas de acción en `.claude/rules/ficha-y-acciones.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T06"
+       ],
+       "espera": [],
+       "bloque": "Reglas",
+       "issue": 120
+      },
+      {
+       "id": "T23",
+       "titulo": "Escribir qué movió a cada una y qué haría su CFO",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Empresas",
+       "issue": 122
+      },
+      {
+       "id": "T24",
+       "titulo": "Guion de 5 min en `pitch/guion.md`: comprador Embat, problema, demo, cierre",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 123
+      },
+      {
+       "id": "T25",
+       "titulo": "Diapositivas en `pitch/`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 124
+      },
+      {
+       "id": "T26",
+       "titulo": "Cómo abrir la demo, URL y comprador en `README.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "README",
+       "issue": 125
+      },
+      {
+       "id": "T27",
+       "titulo": "Completar los TODO de la guía `entrega` (canal y comandos)",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Cierre",
+       "issue": 126
+      },
+      {
+       "id": "T06",
+       "titulo": "Implementar las reglas de C, cada una con su cifra",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T21"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T21",
+         "dueno": "persona-c",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Acciones",
+       "issue": 105
+      },
+      {
+       "id": "T07",
+       "titulo": "Publicar motor y build de la web en una URL (conocimiento externo, verificar plataforma)",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T17"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T17",
+         "dueno": "persona-b",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Despliegue",
+       "issue": 106
+      },
+      {
+       "id": "T10",
+       "titulo": "Pintar en `web/src/App.jsx` score, curva de 24 meses y flecha",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T01"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T01",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Ficha",
+       "issue": 109
+      },
+      {
+       "id": "T14",
+       "titulo": "Conectar con la ficha real del motor",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T05"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T05",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Integración",
+       "issue": 113
+      },
+      {
+       "id": "T22",
+       "titulo": "Elegir una empresa que mejora (~45→65) y otra que cae (~82→68)",
+       "dueno": "persona-c",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T04"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T04",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Empresas",
+       "issue": 121
+      }
+     ]
+    },
+    "colisiones": [],
+    "sin_tarea": [
+     {
+      "persona": "persona-a",
+      "que": "edicion: docs/notas.md",
+      "observado_en": "2026-09-18T17:00:05Z"
+     }
+    ],
+    "personas": [
+     {
+      "persona": "persona-a",
+      "nombre": "A",
+      "activos": 1,
+      "papeles": {
+       "principal": 1
+      },
+      "haciendo": [
+       "T02"
+      ],
+      "ultima_senal": "2026-09-18T17:00:10Z",
+      "viejo": false
+     },
+     {
+      "persona": "persona-b",
+      "nombre": "B",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     },
+     {
+      "persona": "persona-c",
+      "nombre": "C",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     }
+    ],
+    "nombres": {
+     "persona-a": "A",
+     "persona-b": "B",
+     "persona-c": "C"
+    },
+    "novedades": [],
+    "reservas": []
+   },
+   "tras": 20
+  },
+  {
+   "servido_en": "2026-09-18T17:01:10Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-18T17:01:10Z"
+   },
+   "vista": {
+    "v": 1,
+    "generado_en": "2026-09-18T17:01:10Z",
+    "ahora": "2026-09-18T17:01:10Z",
+    "fuentes": {
+     "github": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:01:10Z",
+      "viejo": false
+     },
+     "relay": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:01:10Z",
+      "viejo": false
+     }
+    },
+    "umbrales": {
+     "presencia_s": 180,
+     "fuente_s": 300
+    },
+    "columnas": {
+     "haciendo": [
+      {
+       "id": "T02",
+       "titulo": "Cargar los CSV de `datos/` en UTF-8 a tabla mensual por `company_id`",
+       "dueno": "persona-a",
+       "estado": "en_curso",
+       "etiqueta": "en curso",
+       "fuente": "hook",
+       "observado_en": "2026-09-18T17:01:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 101
+      }
+     ],
+     "hecho": [],
+     "falta": [
+      {
+       "id": "T01",
+       "titulo": "Servir en `motor/` la ficha del ejemplo de `docs/contratos.md`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T10"
+       ],
+       "espera": [],
+       "bloque": "Contratos",
+       "issue": 100
+      },
+      {
+       "id": "T03",
+       "titulo": "Calcular caja, días de cobro y deuda por mes, con su `moneda`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 102
+      },
+      {
+       "id": "T04",
+       "titulo": "Score 0–100 suavizado a partir de las tres señales",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T22"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 103
+      },
+      {
+       "id": "T05",
+       "titulo": "Calcular `tendencia` y `desglose` del último mes",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T14"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 104
+      },
+      {
+       "id": "T08",
+       "titulo": "Arreglar errores en 30 empresas al azar",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 107
+      },
+      {
+       "id": "T09",
+       "titulo": "Si Embat pide validación propia: medir estabilidad en empresas apartadas",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 108
+      },
+      {
+       "id": "T11",
+       "titulo": "Pintar el desglose caja / cobros / deuda con signo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 110
+      },
+      {
+       "id": "T12",
+       "titulo": "Pintar las acciones con su cifra destacada",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 111
+      },
+      {
+       "id": "T13",
+       "titulo": "Selector de `company_id` que llama a `/api`",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Navegación",
+       "issue": 112
+      },
+      {
+       "id": "T15",
+       "titulo": "Inicio con acceso en dos clics a las dos empresas de la demo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 114
+      },
+      {
+       "id": "T16",
+       "titulo": "Estados de carga, vacío y sin acciones",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 115
+      },
+      {
+       "id": "T17",
+       "titulo": "`npm run build` listo para que A lo despliegue",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T07"
+       ],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 116
+      },
+      {
+       "id": "T18",
+       "titulo": "Textos para el CFO revisados con C",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pulido",
+       "issue": 117
+      },
+      {
+       "id": "T19",
+       "titulo": "Guion de clics de la demo en vivo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 118
+      },
+      {
+       "id": "T20",
+       "titulo": "Apuntar las respuestas de Embat en `CLAUDE.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Preguntas",
+       "issue": 119
+      },
+      {
+       "id": "T21",
+       "titulo": "Escribir 5–6 reglas de acción en `.claude/rules/ficha-y-acciones.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T06"
+       ],
+       "espera": [],
+       "bloque": "Reglas",
+       "issue": 120
+      },
+      {
+       "id": "T23",
+       "titulo": "Escribir qué movió a cada una y qué haría su CFO",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Empresas",
+       "issue": 122
+      },
+      {
+       "id": "T24",
+       "titulo": "Guion de 5 min en `pitch/guion.md`: comprador Embat, problema, demo, cierre",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 123
+      },
+      {
+       "id": "T25",
+       "titulo": "Diapositivas en `pitch/`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 124
+      },
+      {
+       "id": "T26",
+       "titulo": "Cómo abrir la demo, URL y comprador en `README.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "README",
+       "issue": 125
+      },
+      {
+       "id": "T27",
+       "titulo": "Completar los TODO de la guía `entrega` (canal y comandos)",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Cierre",
+       "issue": 126
+      },
+      {
+       "id": "T06",
+       "titulo": "Implementar las reglas de C, cada una con su cifra",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T21"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T21",
+         "dueno": "persona-c",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Acciones",
+       "issue": 105
+      },
+      {
+       "id": "T07",
+       "titulo": "Publicar motor y build de la web en una URL (conocimiento externo, verificar plataforma)",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T17"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T17",
+         "dueno": "persona-b",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Despliegue",
+       "issue": 106
+      },
+      {
+       "id": "T10",
+       "titulo": "Pintar en `web/src/App.jsx` score, curva de 24 meses y flecha",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T01"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T01",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Ficha",
+       "issue": 109
+      },
+      {
+       "id": "T14",
+       "titulo": "Conectar con la ficha real del motor",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T05"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T05",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Integración",
+       "issue": 113
+      },
+      {
+       "id": "T22",
+       "titulo": "Elegir una empresa que mejora (~45→65) y otra que cae (~82→68)",
+       "dueno": "persona-c",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T04"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T04",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Empresas",
+       "issue": 121
+      }
+     ]
+    },
+    "colisiones": [],
+    "sin_tarea": [
+     {
+      "persona": "persona-a",
+      "que": "edicion: docs/notas.md",
+      "observado_en": "2026-09-18T17:00:05Z"
+     }
+    ],
+    "personas": [
+     {
+      "persona": "persona-a",
+      "nombre": "A",
+      "activos": 1,
+      "papeles": {
+       "principal": 1
+      },
+      "haciendo": [
+       "T02"
+      ],
+      "ultima_senal": "2026-09-18T17:01:00Z",
+      "viejo": false
+     },
+     {
+      "persona": "persona-b",
+      "nombre": "B",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     },
+     {
+      "persona": "persona-c",
+      "nombre": "C",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     }
+    ],
+    "nombres": {
+     "persona-a": "A",
+     "persona-b": "B",
+     "persona-c": "C"
+    },
+    "novedades": [],
+    "reservas": []
+   },
+   "tras": 70
+  },
+  {
+   "servido_en": "2026-09-18T17:06:50Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-18T17:06:50Z"
+   },
+   "vista": {
+    "v": 1,
+    "generado_en": "2026-09-18T17:06:50Z",
+    "ahora": "2026-09-18T17:06:50Z",
+    "fuentes": {
+     "git": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:06:40Z",
+      "viejo": false
+     },
+     "github": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:06:50Z",
+      "viejo": false
+     },
+     "relay": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:06:50Z",
+      "viejo": false
+     }
+    },
+    "umbrales": {
+     "presencia_s": 180,
+     "fuente_s": 300
+    },
+    "columnas": {
+     "haciendo": [
+      {
+       "id": "T02",
+       "titulo": "Cargar los CSV de `datos/` en UTF-8 a tabla mensual por `company_id`",
+       "dueno": "persona-a",
+       "estado": "en_curso",
+       "etiqueta": "en curso",
+       "fuente": "git",
+       "observado_en": "2026-09-18T17:06:40Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 101
+      }
+     ],
+     "hecho": [],
+     "falta": [
+      {
+       "id": "T01",
+       "titulo": "Servir en `motor/` la ficha del ejemplo de `docs/contratos.md`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T10"
+       ],
+       "espera": [],
+       "bloque": "Contratos",
+       "issue": 100
+      },
+      {
+       "id": "T03",
+       "titulo": "Calcular caja, días de cobro y deuda por mes, con su `moneda`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 102
+      },
+      {
+       "id": "T04",
+       "titulo": "Score 0–100 suavizado a partir de las tres señales",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T22"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 103
+      },
+      {
+       "id": "T05",
+       "titulo": "Calcular `tendencia` y `desglose` del último mes",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T14"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 104
+      },
+      {
+       "id": "T08",
+       "titulo": "Arreglar errores en 30 empresas al azar",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 107
+      },
+      {
+       "id": "T09",
+       "titulo": "Si Embat pide validación propia: medir estabilidad en empresas apartadas",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 108
+      },
+      {
+       "id": "T11",
+       "titulo": "Pintar el desglose caja / cobros / deuda con signo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 110
+      },
+      {
+       "id": "T12",
+       "titulo": "Pintar las acciones con su cifra destacada",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 111
+      },
+      {
+       "id": "T13",
+       "titulo": "Selector de `company_id` que llama a `/api`",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Navegación",
+       "issue": 112
+      },
+      {
+       "id": "T15",
+       "titulo": "Inicio con acceso en dos clics a las dos empresas de la demo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 114
+      },
+      {
+       "id": "T16",
+       "titulo": "Estados de carga, vacío y sin acciones",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 115
+      },
+      {
+       "id": "T17",
+       "titulo": "`npm run build` listo para que A lo despliegue",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T07"
+       ],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 116
+      },
+      {
+       "id": "T18",
+       "titulo": "Textos para el CFO revisados con C",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pulido",
+       "issue": 117
+      },
+      {
+       "id": "T19",
+       "titulo": "Guion de clics de la demo en vivo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 118
+      },
+      {
+       "id": "T20",
+       "titulo": "Apuntar las respuestas de Embat en `CLAUDE.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Preguntas",
+       "issue": 119
+      },
+      {
+       "id": "T21",
+       "titulo": "Escribir 5–6 reglas de acción en `.claude/rules/ficha-y-acciones.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T06"
+       ],
+       "espera": [],
+       "bloque": "Reglas",
+       "issue": 120
+      },
+      {
+       "id": "T23",
+       "titulo": "Escribir qué movió a cada una y qué haría su CFO",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Empresas",
+       "issue": 122
+      },
+      {
+       "id": "T24",
+       "titulo": "Guion de 5 min en `pitch/guion.md`: comprador Embat, problema, demo, cierre",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 123
+      },
+      {
+       "id": "T25",
+       "titulo": "Diapositivas en `pitch/`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 124
+      },
+      {
+       "id": "T26",
+       "titulo": "Cómo abrir la demo, URL y comprador en `README.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "README",
+       "issue": 125
+      },
+      {
+       "id": "T27",
+       "titulo": "Completar los TODO de la guía `entrega` (canal y comandos)",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Cierre",
+       "issue": 126
+      },
+      {
+       "id": "T06",
+       "titulo": "Implementar las reglas de C, cada una con su cifra",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T21"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T21",
+         "dueno": "persona-c",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Acciones",
+       "issue": 105
+      },
+      {
+       "id": "T07",
+       "titulo": "Publicar motor y build de la web en una URL (conocimiento externo, verificar plataforma)",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T17"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T17",
+         "dueno": "persona-b",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Despliegue",
+       "issue": 106
+      },
+      {
+       "id": "T10",
+       "titulo": "Pintar en `web/src/App.jsx` score, curva de 24 meses y flecha",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T01"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T01",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Ficha",
+       "issue": 109
+      },
+      {
+       "id": "T14",
+       "titulo": "Conectar con la ficha real del motor",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T05"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T05",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Integración",
+       "issue": 113
+      },
+      {
+       "id": "T22",
+       "titulo": "Elegir una empresa que mejora (~45→65) y otra que cae (~82→68)",
+       "dueno": "persona-c",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T04"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T04",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Empresas",
+       "issue": 121
+      }
+     ]
+    },
+    "colisiones": [],
+    "sin_tarea": [
+     {
+      "persona": "persona-a",
+      "que": "edicion: docs/notas.md",
+      "observado_en": "2026-09-18T17:00:05Z"
+     }
+    ],
+    "personas": [
+     {
+      "persona": "persona-a",
+      "nombre": "A",
+      "activos": 1,
+      "papeles": {
+       "humano": 1
+      },
+      "haciendo": [
+       "T02"
+      ],
+      "ultima_senal": "2026-09-18T17:06:40Z",
+      "viejo": false
+     },
+     {
+      "persona": "persona-b",
+      "nombre": "B",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     },
+     {
+      "persona": "persona-c",
+      "nombre": "C",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     }
+    ],
+    "nombres": {
+     "persona-a": "A",
+     "persona-b": "B",
+     "persona-c": "C"
+    },
+    "novedades": [],
+    "reservas": []
+   },
+   "tras": 410
+  },
+  {
+   "servido_en": "2026-09-18T17:08:30Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-18T17:08:30Z"
+   },
+   "vista": {
+    "v": 1,
+    "generado_en": "2026-09-18T17:08:30Z",
+    "ahora": "2026-09-18T17:08:30Z",
+    "fuentes": {
+     "git": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:08:20Z",
+      "viejo": false
+     },
+     "github": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:08:30Z",
+      "viejo": false
+     },
+     "relay": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:08:30Z",
+      "viejo": false
+     }
+    },
+    "umbrales": {
+     "presencia_s": 180,
+     "fuente_s": 300
+    },
+    "columnas": {
+     "haciendo": [],
+     "hecho": [
+      {
+       "id": "T02",
+       "titulo": "Cargar los CSV de `datos/` en UTF-8 a tabla mensual por `company_id`",
+       "dueno": "persona-a",
+       "estado": "publicada",
+       "etiqueta": "publicada",
+       "fuente": "git",
+       "observado_en": "2026-09-18T17:08:20Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 101
+      }
+     ],
+     "falta": [
+      {
+       "id": "T01",
+       "titulo": "Servir en `motor/` la ficha del ejemplo de `docs/contratos.md`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T10"
+       ],
+       "espera": [],
+       "bloque": "Contratos",
+       "issue": 100
+      },
+      {
+       "id": "T03",
+       "titulo": "Calcular caja, días de cobro y deuda por mes, con su `moneda`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 102
+      },
+      {
+       "id": "T04",
+       "titulo": "Score 0–100 suavizado a partir de las tres señales",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T22"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 103
+      },
+      {
+       "id": "T05",
+       "titulo": "Calcular `tendencia` y `desglose` del último mes",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T14"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 104
+      },
+      {
+       "id": "T08",
+       "titulo": "Arreglar errores en 30 empresas al azar",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 107
+      },
+      {
+       "id": "T09",
+       "titulo": "Si Embat pide validación propia: medir estabilidad en empresas apartadas",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 108
+      },
+      {
+       "id": "T11",
+       "titulo": "Pintar el desglose caja / cobros / deuda con signo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 110
+      },
+      {
+       "id": "T12",
+       "titulo": "Pintar las acciones con su cifra destacada",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 111
+      },
+      {
+       "id": "T13",
+       "titulo": "Selector de `company_id` que llama a `/api`",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Navegación",
+       "issue": 112
+      },
+      {
+       "id": "T15",
+       "titulo": "Inicio con acceso en dos clics a las dos empresas de la demo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 114
+      },
+      {
+       "id": "T16",
+       "titulo": "Estados de carga, vacío y sin acciones",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 115
+      },
+      {
+       "id": "T17",
+       "titulo": "`npm run build` listo para que A lo despliegue",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T07"
+       ],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 116
+      },
+      {
+       "id": "T18",
+       "titulo": "Textos para el CFO revisados con C",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pulido",
+       "issue": 117
+      },
+      {
+       "id": "T19",
+       "titulo": "Guion de clics de la demo en vivo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 118
+      },
+      {
+       "id": "T20",
+       "titulo": "Apuntar las respuestas de Embat en `CLAUDE.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Preguntas",
+       "issue": 119
+      },
+      {
+       "id": "T21",
+       "titulo": "Escribir 5–6 reglas de acción en `.claude/rules/ficha-y-acciones.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T06"
+       ],
+       "espera": [],
+       "bloque": "Reglas",
+       "issue": 120
+      },
+      {
+       "id": "T23",
+       "titulo": "Escribir qué movió a cada una y qué haría su CFO",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Empresas",
+       "issue": 122
+      },
+      {
+       "id": "T24",
+       "titulo": "Guion de 5 min en `pitch/guion.md`: comprador Embat, problema, demo, cierre",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 123
+      },
+      {
+       "id": "T25",
+       "titulo": "Diapositivas en `pitch/`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 124
+      },
+      {
+       "id": "T26",
+       "titulo": "Cómo abrir la demo, URL y comprador en `README.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "README",
+       "issue": 125
+      },
+      {
+       "id": "T27",
+       "titulo": "Completar los TODO de la guía `entrega` (canal y comandos)",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Cierre",
+       "issue": 126
+      },
+      {
+       "id": "T06",
+       "titulo": "Implementar las reglas de C, cada una con su cifra",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T21"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T21",
+         "dueno": "persona-c",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Acciones",
+       "issue": 105
+      },
+      {
+       "id": "T07",
+       "titulo": "Publicar motor y build de la web en una URL (conocimiento externo, verificar plataforma)",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T17"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T17",
+         "dueno": "persona-b",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Despliegue",
+       "issue": 106
+      },
+      {
+       "id": "T10",
+       "titulo": "Pintar en `web/src/App.jsx` score, curva de 24 meses y flecha",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T01"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T01",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Ficha",
+       "issue": 109
+      },
+      {
+       "id": "T14",
+       "titulo": "Conectar con la ficha real del motor",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T05"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T05",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Integración",
+       "issue": 113
+      },
+      {
+       "id": "T22",
+       "titulo": "Elegir una empresa que mejora (~45→65) y otra que cae (~82→68)",
+       "dueno": "persona-c",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T04"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T04",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Empresas",
+       "issue": 121
+      }
+     ]
+    },
+    "colisiones": [],
+    "sin_tarea": [
+     {
+      "persona": "persona-a",
+      "que": "edicion: docs/notas.md",
+      "observado_en": "2026-09-18T17:00:05Z"
+     }
+    ],
+    "personas": [
+     {
+      "persona": "persona-a",
+      "nombre": "A",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": "2026-09-18T17:06:40Z",
+      "viejo": false
+     },
+     {
+      "persona": "persona-b",
+      "nombre": "B",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     },
+     {
+      "persona": "persona-c",
+      "nombre": "C",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     }
+    ],
+    "nombres": {
+     "persona-a": "A",
+     "persona-b": "B",
+     "persona-c": "C"
+    },
+    "novedades": [],
+    "reservas": []
+   },
+   "tras": 510
+  },
+  {
+   "servido_en": "2026-09-18T17:10:10Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-18T17:10:10Z"
+   },
+   "vista": {
+    "v": 1,
+    "generado_en": "2026-09-18T17:10:10Z",
+    "ahora": "2026-09-18T17:10:10Z",
+    "fuentes": {
+     "git": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:08:20Z",
+      "viejo": false
+     },
+     "github": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:10:10Z",
+      "viejo": false
+     },
+     "relay": {
+      "valor": "ok",
+      "observado_en": "2026-09-18T17:10:10Z",
+      "viejo": false
+     }
+    },
+    "umbrales": {
+     "presencia_s": 180,
+     "fuente_s": 300
+    },
+    "columnas": {
+     "haciendo": [],
+     "hecho": [
+      {
+       "id": "T02",
+       "titulo": "Cargar los CSV de `datos/` en UTF-8 a tabla mensual por `company_id`",
+       "dueno": "persona-a",
+       "estado": "cerrada",
+       "etiqueta": "cerrada",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:10:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 101
+      }
+     ],
+     "falta": [
+      {
+       "id": "T01",
+       "titulo": "Servir en `motor/` la ficha del ejemplo de `docs/contratos.md`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T10"
+       ],
+       "espera": [],
+       "bloque": "Contratos",
+       "issue": 100
+      },
+      {
+       "id": "T03",
+       "titulo": "Calcular caja, días de cobro y deuda por mes, con su `moneda`",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Datos",
+       "issue": 102
+      },
+      {
+       "id": "T04",
+       "titulo": "Score 0–100 suavizado a partir de las tres señales",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T22"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 103
+      },
+      {
+       "id": "T05",
+       "titulo": "Calcular `tendencia` y `desglose` del último mes",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T14"
+       ],
+       "espera": [],
+       "bloque": "Score",
+       "issue": 104
+      },
+      {
+       "id": "T08",
+       "titulo": "Arreglar errores en 30 empresas al azar",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 107
+      },
+      {
+       "id": "T09",
+       "titulo": "Si Embat pide validación propia: medir estabilidad en empresas apartadas",
+       "dueno": "persona-a",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Robustez",
+       "issue": 108
+      },
+      {
+       "id": "T11",
+       "titulo": "Pintar el desglose caja / cobros / deuda con signo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 110
+      },
+      {
+       "id": "T12",
+       "titulo": "Pintar las acciones con su cifra destacada",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Ficha",
+       "issue": 111
+      },
+      {
+       "id": "T13",
+       "titulo": "Selector de `company_id` que llama a `/api`",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Navegación",
+       "issue": 112
+      },
+      {
+       "id": "T15",
+       "titulo": "Inicio con acceso en dos clics a las dos empresas de la demo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 114
+      },
+      {
+       "id": "T16",
+       "titulo": "Estados de carga, vacío y sin acciones",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 115
+      },
+      {
+       "id": "T17",
+       "titulo": "`npm run build` listo para que A lo despliegue",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T07"
+       ],
+       "espera": [],
+       "bloque": "Producto",
+       "issue": 116
+      },
+      {
+       "id": "T18",
+       "titulo": "Textos para el CFO revisados con C",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pulido",
+       "issue": 117
+      },
+      {
+       "id": "T19",
+       "titulo": "Guion de clics de la demo en vivo",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 118
+      },
+      {
+       "id": "T20",
+       "titulo": "Apuntar las respuestas de Embat en `CLAUDE.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Preguntas",
+       "issue": 119
+      },
+      {
+       "id": "T21",
+       "titulo": "Escribir 5–6 reglas de acción en `.claude/rules/ficha-y-acciones.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T06"
+       ],
+       "espera": [],
+       "bloque": "Reglas",
+       "issue": 120
+      },
+      {
+       "id": "T23",
+       "titulo": "Escribir qué movió a cada una y qué haría su CFO",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Empresas",
+       "issue": 122
+      },
+      {
+       "id": "T24",
+       "titulo": "Guion de 5 min en `pitch/guion.md`: comprador Embat, problema, demo, cierre",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 123
+      },
+      {
+       "id": "T25",
+       "titulo": "Diapositivas en `pitch/`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Pitch",
+       "issue": 124
+      },
+      {
+       "id": "T26",
+       "titulo": "Cómo abrir la demo, URL y comprador en `README.md`",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "README",
+       "issue": 125
+      },
+      {
+       "id": "T27",
+       "titulo": "Completar los TODO de la guía `entrega` (canal y comandos)",
+       "dueno": "persona-c",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Cierre",
+       "issue": 126
+      },
+      {
+       "id": "T06",
+       "titulo": "Implementar las reglas de C, cada una con su cifra",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T21"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T21",
+         "dueno": "persona-c",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Acciones",
+       "issue": 105
+      },
+      {
+       "id": "T07",
+       "titulo": "Publicar motor y build de la web en una URL (conocimiento externo, verificar plataforma)",
+       "dueno": "persona-a",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T17"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T17",
+         "dueno": "persona-b",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Despliegue",
+       "issue": 106
+      },
+      {
+       "id": "T10",
+       "titulo": "Pintar en `web/src/App.jsx` score, curva de 24 meses y flecha",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T01"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T01",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Ficha",
+       "issue": 109
+      },
+      {
+       "id": "T14",
+       "titulo": "Conectar con la ficha real del motor",
+       "dueno": "persona-b",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T05"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T05",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Integración",
+       "issue": 113
+      },
+      {
+       "id": "T22",
+       "titulo": "Elegir una empresa que mejora (~45→65) y otra que cae (~82→68)",
+       "dueno": "persona-c",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-18T17:00:00Z",
+       "depende_de": [
+        "T04"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T04",
+         "dueno": "persona-a",
+         "estado": "lista"
+        }
+       ],
+       "bloque": "Empresas",
+       "issue": 121
+      }
+     ]
+    },
+    "colisiones": [],
+    "sin_tarea": [
+     {
+      "persona": "persona-a",
+      "que": "edicion: docs/notas.md",
+      "observado_en": "2026-09-18T17:00:05Z"
+     }
+    ],
+    "personas": [
+     {
+      "persona": "persona-a",
+      "nombre": "A",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": "2026-09-18T17:06:40Z",
+      "viejo": true
+     },
+     {
+      "persona": "persona-b",
+      "nombre": "B",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     },
+     {
+      "persona": "persona-c",
+      "nombre": "C",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": null,
+      "viejo": true
+     }
+    ],
+    "nombres": {
+     "persona-a": "A",
+     "persona-b": "B",
+     "persona-c": "C"
+    },
+    "novedades": [],
+    "reservas": []
+   },
+   "tras": 610
+  }
+ ]
+}
