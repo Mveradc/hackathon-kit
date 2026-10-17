@@ -81,6 +81,7 @@ def derivar(tarea, issue, eventos, dependencias, equipo, ahora, umbral_parada_s=
     fase_dato = None      # (fuente, ts) del evento que fijó la fase
     ultima = None         # (fuente, ts) de la última actividad del dueño
     reclamo = None        # ts del primer reclamo del dueño
+    reclamo_fuente = None  # su fuente (mcp, o web desde M9a)
     cambios = 0
     fusion_actual, veredicto_actual, fusion = None, None, None
     por_publicar = None   # sha cuya llegada a origin/main publica la tarea (última fusión aprobada o último commit)
@@ -113,7 +114,8 @@ def derivar(tarea, issue, eventos, dependencias, equipo, ahora, umbral_parada_s=
             continue
 
         if tipo == "reclamo":
-            reclamo = reclamo or ts
+            if reclamo is None:
+                reclamo, reclamo_fuente = ts, fuente
             continue
         if tipo not in ACTIVIDAD:
             continue
@@ -180,8 +182,10 @@ def derivar(tarea, issue, eventos, dependencias, equipo, ahora, umbral_parada_s=
 
     if fase is None:                               # regla 10
         if asignado or reclamo:
-            primero = min((x for x in ((asignado, "github"), (reclamo, "mcp")) if x[0]), key=lambda x: fecha(x[0]))
+            primero = min((x for x in ((asignado, "github"), (reclamo, reclamo_fuente)) if x[0]), key=lambda x: fecha(x[0]))
             estado = dato("reclamada", primero[1], primero[0])
+            if primero[0] != asignado:           # M9a: un reclamo (MCP o web) sin asignación anterior es declarado
+                estado["declarado"] = True
         elif pendientes:
             estado = dato("pendiente", issue.get("fuente", "github"), issue["creado_en"])   # sin GitHub, git (M8h)
         else:

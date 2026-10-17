@@ -35,10 +35,11 @@ import compilar  # noqa: E402
 import contratos as contratos_mod  # noqa: E402
 import github  # noqa: E402
 import proyeccion  # noqa: E402
+import servicios as servicios_mod  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from estados import fecha, iso  # noqa: E402
 from modelo import calcular  # noqa: E402
-from red import Servidor, ahora_iso, conf, equipo  # noqa: E402
+from red import Servidor, ahora_iso, conf, equipo, web_nueva  # noqa: E402
 
 LOTE_MAX = 200
 CUERPO_MAX = 2 * 1024 * 1024
@@ -47,6 +48,11 @@ RECALCULO_RELOJ_S = 5           # y uno cada 5 s, para que la presencia caduque 
 PING_S = 20
 SONDEO_GITHUB_S = 30            # api.md §8
 NOVEDADES_S = 60                # git fetch y lectura de decisiones y criterios (M8f)
+SERVICIOS = ".hackathon/servicios.md"   # M9a (api.md §10)
+SERVICIOS_COMMITS = 200         # historia de servicios.md que se mira (api.md §3)
+RUTAS_MAX = 5000                # ficheros de origin/main para «código fuera de cualquier servicio»
+RECIENTES_MAX = 1000            # eventos guardados para el SSE `eventos` (M9a)
+EVENTOS_SSE_MAX = 200           # por mensaje (api.md §3)
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "index.html")
 TAILNET = ipaddress.ip_network("100.64.0.0/10")
 PRIVADAS = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
@@ -134,12 +140,15 @@ class Novedades:
     `git fetch` cada NOVEDADES_S: si falla (red, refs bloqueadas por un `git pull` de la persona), en silencio, y se
     reintenta en la vuelta siguiente. Solo si dura más de `umbral_s` se refleja en fuentes.git.
     Desde M8g, también los contratos de docs/contratos.md con su dueño de .hackathon/autoridad.md (nivel 3): un bloque
-    sin dueño, o con más de una candidata, se dice una vez por `aviso`."""
+    sin dueño, o con más de una candidata, se dice una vez por `aviso`.
+    Desde M9a, con `web_nueva`, lo que necesita servicios.calcular de origin/main (api.md §3): servicios.md, su historia
+    (cada versión con la de sus padres; un sha ya leído no se vuelve a leer), autoridad.md, contratos.md y los ficheros."""
 
-    def __init__(self, repo, umbral_s=300, reloj=time.time, git=_git, aviso=None):
+    def __init__(self, repo, umbral_s=300, reloj=time.time, git=_git, aviso=None, web_nueva=False):
         self.repo, self.umbral_s, self.reloj, self.git = repo, umbral_s, reloj, git
         self.lista, self.ultimo_ok, self.fallando = [], None, False
         self.contratos, self.aviso, self._avisados = [], aviso, set()
+        self.web_nueva, self.servicios, self._versiones = web_nueva, None, {}
 
     def _leer(self, ruta):
         for ref in ("refs/remotes/origin/main", "HEAD"):
@@ -147,9 +156,41 @@ class Novedades:
                 return self.git(self.repo, "show", f"{ref}:{ruta}") or ""
         return ""
 
+    def _texto(self, ref, ruta):
+        """El fichero en `ref`, tolerando BOM y UTF-16 (servicios.decodificar); None si no existe."""
+        try:
+            r = subprocess.run(["git", "-C", self.repo, "show", f"{ref}:{ruta}"], capture_output=True, timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            return None
+        return servicios_mod.decodificar(r.stdout) if r.returncode == 0 else None
+
+    def _leer_servicios(self, autoridad, contratos):
+        """Lo de origin/main que necesita servicios.calcular, o None sin servicios.md."""
+        ref = next((r for r in ("refs/remotes/origin/main", "HEAD")
+                    if self.git(self.repo, "rev-parse", "--verify", "-q", r) is not None), None)
+        texto = self._texto(ref, SERVICIOS) if ref else None
+        if texto is None:
+            return None
+        log = self.git(self.repo, "log", "--reverse", "-n", str(SERVICIOS_COMMITS), "--format=%H %ct", ref, "--",
+                       SERVICIOS) or ""
+        versiones, cuando = [], None
+        for linea in log.splitlines():
+            partes = linea.split()
+            if len(partes) != 2:
+                continue
+            sha, cuando = partes
+            if sha not in self._versiones:
+                padres = (self.git(self.repo, "log", "-1", "--format=%P", sha) or "").split()   # los padres reales
+                self._versiones[sha] = {"sha": sha, "textos_padres": [self._texto(p, SERVICIOS) for p in padres],
+                                        "texto": self._texto(sha, SERVICIOS) or ""}
+            versiones.append(self._versiones[sha])
+        rutas = (self.git(self.repo, "ls-tree", "-r", "--name-only", ref) or "").splitlines()[:RUTAS_MAX]
+        return {"texto": texto, "versiones": versiones, "rutas": rutas, "autoridad": autoridad, "contratos": contratos,
+                "observado_en": iso_us(float(cuando)) if cuando else iso_us(self.reloj())}
+
     def sondear(self):
         """True si cambió la lista o el estado del fetch."""
-        antes = (self.lista, self.fallando, self.contratos)
+        antes = (self.lista, self.fallando, self.contratos, self.servicios)
         if self.git(self.repo, "fetch", "--quiet", "origin", timeout=20) is None:
             self.fallando = True
         else:
@@ -157,12 +198,15 @@ class Novedades:
         if self.ultimo_ok is None:
             self.ultimo_ok = self.reloj()        # sin un fetch bueno aún, el plazo cuenta desde el arranque
         self.lista = novedades_de(self._leer(".hackathon/decisiones.md"), self._leer(".hackathon/criterios.md"))
-        self.contratos, avisos = contratos_mod.duenos(self._leer("docs/contratos.md"), self._leer(".hackathon/autoridad.md"))
+        texto_contratos, texto_autoridad = self._leer("docs/contratos.md"), self._leer(".hackathon/autoridad.md")
+        self.contratos, avisos = contratos_mod.duenos(texto_contratos, texto_autoridad)
         for a in avisos:
             if a not in self._avisados and self.aviso:
                 self._avisados.add(a)
                 self.aviso(f"Nivel 3: {a}.")
-        return (self.lista, self.fallando, self.contratos) != antes
+        if self.web_nueva:
+            self.servicios = self._leer_servicios(texto_autoridad, texto_contratos)
+        return (self.lista, self.fallando, self.contratos, self.servicios) != antes
 
     def fuente(self):
         """El dato de fuentes.git si el fetch lleva fallando más de umbral_s; None si no."""
@@ -175,8 +219,12 @@ class Relay:
     """El estado del relay, sin HTTP. `ahora` se puede inyectar en las pruebas."""
 
     def __init__(self, carpeta, personas, ahora=ahora_iso, sondeo=None, umbral_parada_s=1200, novedades=None,
-                 umbral_viejo_s=300, contratos=None, wip=None):
+                 umbral_viejo_s=300, contratos=None, wip=None, web_nueva=False):
         self.carpeta, self.personas, self.ahora = carpeta, personas, ahora
+        # M9a (api.md §3), solo con `web_nueva`: los metadatos de los últimos eventos para el SSE `eventos`
+        # ((seq, {id, tipo, persona, papel, ts})), el pulso de GitHub y la caché de las confirmaciones de servicios.
+        self.web_nueva, self.seq, self.recientes = web_nueva, 0, []
+        self._pulso_github, self._conf_clave, self._conf = False, None, None
         self.sondeo, self.umbral_parada_s = sondeo, umbral_parada_s
         self.novedades, self.umbral_viejo_s = novedades, umbral_viejo_s
         # M8g: los contratos con dueño (fijos en las pruebas; si no, los de `novedades`) y el nivel 2 (Calculo).
@@ -267,9 +315,26 @@ class Relay:
                     os.fsync(f.fileno())
                 self.ids |= vistos
                 self.eventos += nuevos
+                if self.web_nueva:
+                    for e in nuevos:
+                        self._reciente({"id": e["id"], "tipo": e["tipo"], "persona": e["actor"]["persona"],
+                                        "papel": e["actor"]["papel"], "ts": e["ts"]})
+                    self.cambio.notify_all()
         if nuevos:
             self.sucio.set()
         return nuevos
+
+    def _reciente(self, meta):
+        """Un evento para el SSE `eventos` (M9a). Con self.lock tomado."""
+        self.seq += 1
+        self.recientes.append((self.seq, meta))
+        if len(self.recientes) > RECIENTES_MAX:
+            del self.recientes[:len(self.recientes) - RECIENTES_MAX]
+
+    def recientes_desde(self, seq):
+        """(última seq, [metadatos] posteriores a `seq`, recortados): lo que aún no ha recibido un cliente. Con self.lock."""
+        nuevos = [m for s, m in self.recientes if s > seq]
+        return self.seq, nuevos[-EVENTOS_SSE_MAX:], max(0, len(nuevos) - EVENTOS_SSE_MAX)
 
     # --- reservas (M8g, api.md §3) ---
     def reservar(self, cuerpo):
@@ -402,6 +467,11 @@ class Relay:
             estado["discrepancias"].append({"tipo": "linea_corrupta", "persona": p, "veces": c["veces"],
                                             "primera_vez": c["primera_vez"], "ultima_vez": c.get("ultima_vez", c["primera_vez"]),
                                             "detalle": f"{c['veces']} líneas rotas en los JSONL de {p}"})
+        if self.web_nueva and self.novedades:          # M9a: servicios (api.md §3, ADR-0011)
+            with self.lock:
+                leido = self.novedades.servicios
+            if leido:
+                estado["servicios"] = self._servicios(leido, eventos)
         # Sin la hora del cálculo ni la del relay: solo hay versión nueva (y SSE) si cambia algo de verdad.
         sin_hora = dict(estado, generado_en=None, fuentes={k: v for k, v in estado["fuentes"].items() if k != "relay"})
         # M8h: un sondeo bueno de GitHub sin cambios solo mueve la hora de fuentes.github. No es una versión nueva
@@ -418,7 +488,41 @@ class Relay:
                 self.estado = estado
                 self.texto = json.dumps(estado, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
                 self.vista = proyeccion.vista(estado, umbral_viejo_s=self.umbral_viejo_s)
+                if self.web_nueva and self._pulso_github:   # M9a: el sondeo trajo un cambio que saca versión
+                    self._pulso_github = False
+                    self._reciente({"id": f"github-{self.version}", "tipo": "github.sondeo", "persona": None,
+                                    "papel": None, "ts": estado["generado_en"]})
                 self.cambio.notify_all()
+            else:
+                self._pulso_github = False         # un cambio de GitHub que no cambia el estado no es un paquete
+
+    def _servicios(self, leido, eventos):
+        """El bloque `servicios` (servicios.calcular) con lo leído de origin/main y los eventos del registro: la persona
+        de cada commit, la última comprobación de cada demonio por clave, el último resultado de cada Prueba y las rutas
+        del último `arbol` de cada actor."""
+        sha_persona = servicios_mod.personas_de_commits(eventos)
+        shas = tuple(v["sha"] for v in leido["versiones"])
+        clave = (shas, tuple(sha_persona.get(s) for s in shas))
+        if clave != self._conf_clave:
+            self._conf_clave, self._conf = clave, servicios_mod.confirmaciones(leido["versiones"], sha_persona)
+        comprobados, pruebas, arboles = {}, {}, {}
+        for e in sorted(eventos, key=lambda e: fecha(e["ts"])):
+            d, actor = e.get("datos") or {}, e["actor"]
+            if e["tipo"] == "servicio.estado" and d.get("clave"):
+                comprobados.setdefault(d["clave"], {})[actor["persona"]] = {
+                    "valor": {"escucha": d.get("escucha"), "salud": d.get("salud")}, "fuente": "demonio",
+                    "observado_en": e["ts"]}
+            elif e["tipo"] == "prueba" and d.get("comando_sha") and d.get("resultado"):
+                pruebas[d["comando_sha"]] = {"valor": d["resultado"], "fuente": "hook", "observado_en": e["ts"]}
+            elif e["tipo"] == "arbol":
+                arboles[(actor["persona"], actor.get("sesion"), actor.get("agente"))] = (e.get("rutas") or [], e["ts"])
+        rutas, ts_rutas = set(leido["rutas"]), leido["observado_en"]
+        for rs, ts in arboles.values():
+            rutas.update(rs)
+            ts_rutas = max(ts_rutas, ts, key=fecha)
+        return servicios_mod.calcular(leido["texto"], leido["versiones"], sha_persona, leido["autoridad"],
+                                      leido["contratos"], sorted(rutas), comprobados, pruebas, leido["observado_en"],
+                                      ts_rutas, confirmado=self._conf)
 
     def bucle(self, parar):
         """Recalcula tras cada lote (como mucho cada RECALCULO_MIN_S) y cada RECALCULO_RELOJ_S."""
@@ -445,6 +549,9 @@ class Relay:
                     with open(tmp, "w", encoding="utf-8") as f:
                         json.dump(foto, f)
                     os.replace(tmp, os.path.join(self.carpeta, "github.json"))
+                if cambio and self.web_nueva:
+                    with self.lock:
+                        self._pulso_github = True
                 if cambio or self.sondeo.estado != estado_antes:
                     self.sucio.set()
             except Exception as ex:  # el sondeo no tumba el relay
@@ -616,18 +723,29 @@ def manejador(relay):
             self.send_header("Cache-Control", "no-cache")
             self.end_headers()
             enviada = None
+            with relay.lock:
+                visto = relay.seq          # M9a: un cliente nuevo no recibe los eventos de antes (api.md §3)
             try:
                 while True:
                     with relay.cambio:
-                        if relay.version == enviada:
+                        if relay.version == enviada and relay.seq == visto:
                             relay.cambio.wait(PING_S)
                         version, texto = relay.version, relay.texto
+                        visto, nuevos, recortados = relay.recientes_desde(visto)
+                    escrito = False
                     if version != enviada:
                         self.wfile.write(b"id: %d\nevent: estado\ndata: " % version + texto + b"\n\n")
                         _, vista = relay.vista_servida()
                         self.wfile.write(b"id: %d\nevent: vista\ndata: " % version + vista + b"\n\n")
-                        enviada = version
-                    else:
+                        enviada, escrito = version, True
+                    if nuevos:
+                        cuerpo = {"eventos": nuevos}
+                        if recortados:
+                            cuerpo["recortados"] = recortados
+                        self.wfile.write(b"event: eventos\ndata: " + json.dumps(cuerpo, ensure_ascii=False, separators=(
+                            ",", ":")).encode("utf-8") + b"\n\n")
+                        escrito = True
+                    if not escrito:
                         self.wfile.write(b"event: ping\ndata: \n\n")
                     self.wfile.flush()
             except OSError:
@@ -670,13 +788,16 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
         viejo = float(conf(os_md, "umbral_viejo_s") or 300) if os_md else 300
     except ValueError:
         viejo = 300
-    novedades = Novedades(repo, viejo, aviso=aviso) if es_repo else None
+    nueva = web_nueva(os_md)                        # M9a: SSE `eventos` y `servicios` (api.md §0 y §3)
+    novedades = Novedades(repo, viejo, aviso=aviso, web_nueva=nueva) if es_repo else None
     wip = None
     if es_repo and os_md and colisiones_merge.modo_publicar(conf(os_md, "publicar_wip"))[0]:
         wip = colisiones_merge.Calculo(repo, {p["persona"] for p in personas}, aviso=aviso)
         wip = wip if wip.activo else None
     relay = Relay(carpeta, personas, sondeo=sondeo, umbral_parada_s=umbral, novedades=novedades, umbral_viejo_s=viejo,
-                  wip=wip)
+                  wip=wip, web_nueva=nueva)
+    if nueva:
+        aviso("Web de trabajo (web_nueva: sí): SSE `eventos` y servicios de .hackathon/servicios.md.")
     servidor = Servidor((ip, puerto), manejador(relay))
     parar = threading.Event()
     threading.Thread(target=relay.bucle, args=(parar,), daemon=True).start()

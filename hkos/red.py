@@ -45,6 +45,16 @@ def conf(ruta, clave):
     return ""
 
 
+def es_si(valor):
+    """«sí», «si» o «yes» (como os_activo de comun.sh)."""
+    return (valor or "").strip().lower() in ("sí", "si", "yes")
+
+
+def web_nueva(os_md):
+    """M9a (api.md §0): `web_nueva: sí` en os.md. Sin la línea, no."""
+    return bool(os_md) and es_si(conf(os_md, "web_nueva"))
+
+
 def equipo(ruta):
     """Las personas de la tabla de coordinacion.md: [{persona, nombre}], con el usuario de GitHub en minúsculas.
     Las filas sin GitHub («—») no cuentan."""

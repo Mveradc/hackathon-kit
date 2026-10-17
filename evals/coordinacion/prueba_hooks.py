@@ -52,6 +52,7 @@ CAMPOS = {  # lista blanca de api.md §1, por tipo de línea
              "ruta", "git", "subagent_type", "id", "base", "transcript_path", "veredicto", "fusion", "truncado"},
     "arbol": {"v", "ts", "persona", "tipo", "session_id", "cwd", "agent_id", "agent_type", "base", "porcelain", "diff", "truncado", "contratos"},
     "compuerta": {"v", "ts", "persona", "tipo", "session_id", "cwd", "agent_id", "agent_type", "resultado", "tope", "motivos", "truncado"},
+    "prueba": {"v", "ts", "persona", "tipo", "session_id", "cwd", "agent_id", "agent_type", "comando_sha", "resultado", "codigo", "truncado"},
 }
 
 
@@ -85,7 +86,7 @@ def valida(nombre, texto):
     except ValueError as e:
         comprueba(nombre, False, f"no es JSON: {e}: {texto[:120]}")
         return None
-    clase = d.get("tipo") if d.get("tipo") in ("arbol", "compuerta") else "hook"
+    clase = d.get("tipo") if d.get("tipo") in ("arbol", "compuerta", "prueba") else "hook"
     sobra = set(d) - CAMPOS[clase]
     if sobra:
         comprueba(nombre, False, f"campos fuera de la lista blanca: {sorted(sobra)}")
@@ -113,7 +114,7 @@ def scripts_del_os(d, hooks):
     ev, salida = d["hook_event_name"], []
     for g in hooks.get(ev, []):
         m = g.get("matcher")
-        clave = d.get("tool_name") if ev in ("PreToolUse", "PostToolUse") else d.get("source")
+        clave = d.get("tool_name") if ev in ("PreToolUse", "PostToolUse", "PostToolUseFailure") else d.get("source")
         if m and not (clave and re.fullmatch(m, clave)):
             continue
         salida += [KIT + "/scripts/os/" + s for h in g["hooks"] for s in re.findall(r"scripts/os/(\w+\.sh)", h["command"])]
@@ -381,6 +382,74 @@ def cksum(datos):
         crc = ((crc << 8) & 0xFFFFFFFF) ^ tabla[((crc >> 24) ^ (n & 0xFF)) & 0xFF]
         n >>= 8
     return ~crc & 0xFFFFFFFF
+
+
+def prueba_prueba(tmp):
+    """M9a, K-96: prueba.sh (api.md §1) con la forma real de las entradas del Paso 0 (entradas/m9a-bash/)."""
+    sys.path.insert(0, os.path.join(KIT, "hkos"))
+    from esquema import Esquema
+    from normaliza import Contexto, Normalizador, normalizar_fichero
+    from servicios import huella_prueba
+    print("\n== prueba.sh: el resultado de la Prueba de una conexión (M9a, K-96)")
+    PRUEBA = KIT + "/scripts/os/prueba.sh"
+    hooks = json.load(open(os.path.join(KIT, "hooks", "hooks.json"), encoding="utf-8"))["hooks"]
+    pasa = json.load(open(os.path.join(ENTRADAS, "m9a-bash", "01-principal-PostToolUse-Bash.json"), encoding="utf-8"))
+    falla = json.load(open(os.path.join(ENTRADAS, "m9a-bash", "02-principal-PostToolUseFailure-Bash.json"), encoding="utf-8"))
+    comprueba("hooks.json lanza prueba.sh en PostToolUse y PostToolUseFailure de Bash",
+              PRUEBA in scripts_del_os(pasa, hooks) and PRUEBA in scripts_del_os(falla, hooks))
+    pruebas = ["uv run pytest tests/test_web_api.py", 'uv run pytest -k "motor and web"', "pytest -q | tee x.log"]
+    servicios_md = ("# Servicios\n\n## Servicios\n| Nombre | Carpeta | Puerto | Arranque | Salud | Dueño |\n|---|---|---|---|---|---|\n"
+                    "| api | api/ | 8000 | — | /salud | — |\n\n## Conexiones\n| De | A | Contrato | Prueba |\n|---|---|---|---|\n"
+                    f"| web | api | web → api | `{pruebas[0]}` |\n| motor | web | motor → web | `{pruebas[1]}` |\n"
+                    "| web | motor | x | `pytest -q \\| tee x.log` |\n| web | api | sin prueba | — |\n")
+    base = os.path.join(tmp, "prueba-m9a"); os.makedirs(base)
+
+    def montar(nombre, os_md, con_servicios=True):
+        r = repo_os(base, nombre, os_md)
+        if con_servicios:
+            open(os.path.join(r, ".hackathon", "servicios.md"), "w", encoding="utf-8", newline="\n").write(servicios_md)
+        return r
+
+    def lanzar(r, entrada, comando, sid, **cambios):
+        d = dict(entrada, session_id=sid, cwd=r, tool_input=dict(entrada["tool_input"], command=comando), **cambios)
+        lanza(PRUEBA, json.dumps(d), r)
+        return [valida(f"línea de prueba.sh ({sid})", l) for l in lineas(r).get(sid, [])]
+
+    r = montar("activa", "activa: sí\nweb_nueva: sí   # M9a\n")
+    ls = lanzar(r, pasa, pruebas[0], "p1")
+    comprueba("PostToolUse con la Prueba exacta: una línea «pasa» con su huella y sin el comando",
+              len(ls) == 1 and ls[0] and ls[0]["resultado"] == "pasa" and ls[0]["comando_sha"] == huella_prueba(pruebas[0])
+              and "codigo" not in ls[0] and pruebas[0] not in json.dumps(ls[0]))
+    ls = lanzar(r, falla, "  " + pruebas[1] + " ", "p2")
+    comprueba("PostToolUseFailure (comillas dentro, espacios a los lados): «falla» con codigo 3",
+              len(ls) == 1 and ls[0] and ls[0]["resultado"] == "falla" and ls[0].get("codigo") == 3
+              and ls[0]["comando_sha"] == huella_prueba(pruebas[1]))
+    ls = lanzar(r, pasa, pruebas[2], "p3")
+    comprueba("una Prueba con «\\|» en la tabla coincide con el comando con «|»",
+              len(ls) == 1 and ls[0] and ls[0]["comando_sha"] == huella_prueba(pruebas[2]))
+    comprueba("otro comando, una Prueba a medias o «—»: nada",
+              lanzar(r, pasa, "echo pasa", "p4") == [] and lanzar(r, pasa, "uv run pytest", "p5") == []
+              and lanzar(r, pasa, "—", "p6") == [])
+    comprueba("PostToolUseFailure con is_interrupt: nada", lanzar(r, falla, pruebas[0], "p7", is_interrupt=True) == [])
+    comprueba("otra herramienta: nada", lanzar(r, pasa, pruebas[0], "p8", tool_name="PowerShell") == [])
+    sin_codigo = lanzar(r, falla, pruebas[0], "p9", error="Command failed")
+    comprueba("PostToolUseFailure sin «Exit code N»: «falla» sin codigo",
+              len(sin_codigo) == 1 and sin_codigo[0] and "codigo" not in sin_codigo[0])
+
+    nz = Normalizador(Contexto(persona="persona-a", raices=lambda cwd: (cwd, cwd)))
+    eventos = [e for sid in ("p1", "p2") for e in normalizar_fichero(
+        os.path.join(r, ".git", "hackathon", "os", "eventos", sid + ".jsonl"), normalizador=nz)]
+    esquema = Esquema("eventos.schema.json")
+    comprueba("normaliza.py: eventos `prueba` (fuente hook) que validan contra eventos.schema.json",
+              [(e["tipo"], e["fuente"], e["datos"]["resultado"]) for e in eventos] == [("prueba", "hook", "pasa"), ("prueba", "hook", "falla")]
+              and eventos[1]["datos"].get("codigo") == 3 and all(esquema.error(e) is None for e in eventos),
+              json.dumps(eventos, ensure_ascii=False)[:300])
+
+    for nombre, os_md, con in (("sin web_nueva", "activa: sí\n", True), ("web_nueva: no", "activa: sí\nweb_nueva: no\n", True),
+                               ("OS apagado", "activa: no\nweb_nueva: sí\n", True), ("sin servicios.md", "activa: sí\nweb_nueva: sí\n", False)):
+        r2 = montar(nombre.replace(" ", "-").replace(":", ""), os_md, con)
+        lanzar(r2, pasa, pruebas[0], "q1"); lanzar(r2, falla, pruebas[1], "q2")
+        comprueba(f"{nombre}: ni una escritura en .git/hackathon", not os.path.exists(os.path.join(r2, ".git", "hackathon")))
 
 
 def prueba_arranque(tmp):
@@ -1197,6 +1266,7 @@ try:
         print(f"{'OK   ' if ok else 'FALLO'} {script}: consultas con labels={', labels='.join(consultas) or '(ninguna)'}")
 
     prueba_os(tmp, repo, informe, handback)
+    prueba_prueba(tmp)
     prueba_arranque(tmp)
     prueba_proyeccion(tmp)
     prueba_reservas(tmp)

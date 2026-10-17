@@ -232,15 +232,15 @@ class Desajustes(unittest.TestCase):
         for salud in ("http://x/salud", "//host/salud", "/../salud", "salud"):
             t = md([API[:4] + (salud,) + API[5:], WEB, MOTOR], [WEB_API, MOTOR_WEB])
             comprobado = {"valor": {"escucha": True, "salud": None}, "fuente": "demonio", "observado_en": T2}
-            s = calc(t, historia(("s1", t)), comprobados={servicios.leer(t)["filas"][0]["clave"]: comprobado})
+            s = calc(t, historia(("s1", t)), comprobados={servicios.leer(t)["filas"][0]["clave"]: {"ana": comprobado}})
             self.assertEqual(tipos(s), ["formato_invalido"], salud)   # ni salud_falla: no se consulta
 
     def test_puerto_salud_prueba_y_contrato(self):
         t = md([API, WEB, MOTOR], [WEB_API, MOTOR_WEB, ("web", "motor", "web → motor", "—")])
         filas = servicios.leer(t)["filas"]
         k_api, k_web = filas[0]["clave"], filas[1]["clave"]
-        comprobados = {k_api: {"valor": {"escucha": True, "salud": 500}, "fuente": "demonio", "observado_en": T2},
-                       k_web: {"valor": {"escucha": False, "salud": None}, "fuente": "demonio", "observado_en": T2}}
+        comprobados = {k_api: {"ana": {"valor": {"escucha": True, "salud": 500}, "fuente": "demonio", "observado_en": T2}},
+                       k_web: {"ana": {"valor": {"escucha": False, "salud": None}, "fuente": "demonio", "observado_en": T2}}}
         pruebas = {servicios.huella_prueba("uv run pytest tests/test_motor_web.py"):
                    {"valor": "falla", "fuente": "hook", "observado_en": T2}}
         s = calc(t, historia(("s1", BASE), ("a1", t)), comprobados=comprobados, pruebas=pruebas)
@@ -255,7 +255,14 @@ class Desajustes(unittest.TestCase):
         t = md([API[:2] + ("9000",) + API[3:], WEB, MOTOR], [WEB_API, MOTOR_WEB])
         k = servicios.leer(t)["filas"][0]["clave"]
         s = calc(t, historia(("s1", BASE), ("l1", t)),
-                 comprobados={k: {"valor": {"escucha": False}, "fuente": "demonio", "observado_en": T2}})
+                 comprobados={k: {"ana": {"valor": {"escucha": False}, "fuente": "demonio", "observado_en": T2}}})
+        self.assertNotIn("puerto_sin_respuesta", tipos(s))
+
+    def test_solo_cuenta_el_demonio_del_dueno(self):
+        k = servicios.leer(BASE)["filas"][0]["clave"]
+        caido = {"valor": {"escucha": False, "salud": None}, "fuente": "demonio", "observado_en": T2}
+        s = calc(BASE, historia(("s1", BASE)), comprobados={k: {"luis": caido}})   # api es de ana
+        self.assertIsNone(de(s, "api")["comprobado"])
         self.assertNotIn("puerto_sin_respuesta", tipos(s))
 
     def test_codigo_fuera_de_todo_servicio(self):

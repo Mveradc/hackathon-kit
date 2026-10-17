@@ -99,6 +99,11 @@ class Motor(unittest.TestCase):
         r = corre(depende_de=["T99"]); self.estado(r, "pendiente", "github"); self.disc(r, "dependencia_inexistente")
     def test_E08(self): self.estado(corre(acciones=[acc(0, "asignar", B, a=B)]), "reclamada", "github", 0)
     def test_E09(self): self.estado(corre([ev(0, "reclamo", fuente="mcp")]), "reclamada", "mcp", 0)
+    def test_E09_web(self):    # M9a: reclamada desde la web, con su fuente y declarada; una asignación anterior manda
+        r = corre([ev(0, "reclamo", fuente="web")]); self.estado(r, "reclamada", "web", 0)
+        self.assertTrue(r["estado"].get("declarado"))
+        r = corre([ev(3, "reclamo", fuente="web")], acciones=[acc(0, "asignar", B, a=B)])
+        self.estado(r, "reclamada", "github", 0); self.assertFalse(r["estado"].get("declarado"))
     def test_E10(self):
         r = corre(acciones=[acc(0, "asignar", FUERA, a=B)]); self.estado(r, "lista", "derivado"); self.disc(r, "fuera_del_equipo")
 

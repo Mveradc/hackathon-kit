@@ -27,7 +27,7 @@ Ninguna gasta en modelos (salvo las sesiones que se observen con `presencia.py`)
 Con `--python 3.10` detrás de `--no-project`, las de `uv` se ejecutan con la versión mínima (`requires-python >= 3.10`).
 
 ## Qué hay aquí
-- `prueba_hooks.py`: los hooks con entradas simuladas y, desde M8c, los del Hackathon OS: interruptor apagado (ni escrituras ni red), entradas reales de `entradas/` pasadas por los hooks que les tocan según `hooks/hooks.json` y normalizadas con `hkos/normaliza.py`, recortes del campo `git`, entradas grandes, escrituras simultáneas, líneas rotas, `arbol.sh` y la línea de la compuerta.
+- `prueba_hooks.py`: los hooks con entradas simuladas y, desde M8c, los del Hackathon OS: interruptor apagado (ni escrituras ni red), entradas reales de `entradas/` pasadas por los hooks que les tocan según `hooks/hooks.json` y normalizadas con `hkos/normaliza.py`, recortes del campo `git`, entradas grandes, escrituras simultáneas, líneas rotas, `arbol.sh` y la línea de la compuerta. Desde M9a (K-96), `prueba.sh` con la forma real de `entradas/m9a-bash/`: la Prueba exacta de una conexión (pasa, falla con código, comillas, `\|`), lo que no debe escribir nada (otro comando, `is_interrupt`, sin `web_nueva: sí`, OS apagado, sin `servicios.md`) y su normalización.
 - `entradas/`: entradas reales de los hooks (M8.0, anonimizadas) y `normalizadas.json`, el evento que corresponde a cada una.
 - `simulador/`: el simulador del M8, sus guiones y la prueba de carga del relay (`carga.py`, G11).
 - `caidas_relay.py` y `presencia.py`: pruebas de M8d con clones de verdad (relay caído y reiniciado; presencia de sesiones reales). `tareas_vivo.py` (M8e): el estado de las tareas en el relay durante una pasada real.

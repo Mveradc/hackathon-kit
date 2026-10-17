@@ -39,6 +39,20 @@
         "hooks": [
           { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/os/emite.sh\"", "timeout": 10, "async": true }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/os/prueba.sh\"", "timeout": 10, "async": true }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          { "type": "command", "command": "bash \"${CLAUDE_PLUGIN_ROOT}/scripts/os/prueba.sh\"", "timeout": 10, "async": true }
+        ]
       }
     ],
     "PostToolBatch": [

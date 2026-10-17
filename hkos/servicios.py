@@ -232,14 +232,16 @@ def _usuario(v):
 
 
 def calcular(texto, versiones, sha_persona, texto_autoridad, texto_contratos, rutas, comprobados, pruebas,
-             observado_en, rutas_observado_en=None):
+             observado_en, rutas_observado_en=None, confirmado=None):
     """El bloque `servicios` de estado.json.
-    - texto: servicios.md de origin/main; versiones y sha_persona: los de confirmaciones();
+    - texto: servicios.md de origin/main; versiones y sha_persona: los de confirmaciones() (o `confirmado`, su
+      resultado ya calculado: el relay lo guarda mientras no cambien los commits ni sus personas);
     - rutas: ficheros de origin/main y de los últimos `arbol` (para «código fuera de cualquier servicio»);
-    - comprobados: {clave: dato} del último servicio.estado; pruebas: {comando_sha: dato} del último `prueba`;
+    - comprobados: {clave: {persona: dato}} del último servicio.estado de cada demonio; solo cuenta el del dueño;
+    - pruebas: {comando_sha: dato} del último `prueba`;
     - observado_en: hora del commit de servicios.md en origin/main."""
     leido = leer(texto)
-    por, autor, inicial = confirmaciones(versiones, sha_persona)
+    por, autor, inicial = confirmado or confirmaciones(versiones, sha_persona)
     secs = contratos.secciones(texto_autoridad)
     titulos = {contratos.normal(b["nombre"]) for b in contratos.bloques(texto_contratos)}
     desajustes = []
@@ -289,7 +291,7 @@ def calcular(texto, versiones, sha_persona, texto_autoridad, texto_contratos, ru
             desajuste("dueno_distinto", f"«{c['nombre']}»: Dueño «{c['dueno'] or '—'}», pero autoridad.md da "
                       f"«{c['carpeta']}» a @{dueno}", [dueno], k)
         conf = confirmacion(k, [dueno] if dueno else [], distinto)
-        comprobado = comprobados.get(k)
+        comprobado = (comprobados.get(k) or {}).get(dueno) if dueno else None   # solo el demonio del dueño
         puerto = _puerto(c["puerto"])
         if conf["valor"] == "confirmada" and puerto is not None and not f["invalidos"] and comprobado:
             v = comprobado.get("valor") or {}

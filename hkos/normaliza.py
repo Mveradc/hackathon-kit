@@ -14,6 +14,7 @@ import subprocess
 EDICION = {"Edit", "Write", "MultiEdit", "NotebookEdit"}
 PAPELES = {"orquestador", "worker", "revisor"}
 PERSONA = re.compile(r"^[a-z0-9-]+$")
+PRUEBA_SHA = re.compile(r"^[0-9a-f]{12}$")   # M9a: huella de la Prueba (api.md §1)
 # ID: y Base: al principio de una línea del prompt (en el transcript, también justo tras las comillas del texto).
 ID_TAREA = re.compile(r'(?:^|[\n"])[*\s]*ID:[*\s]*(T\d{2,3})(?!\d)')
 BASE = re.compile(r'(?:^|[\n"])[*\s]*Base:[*\s]*`?([0-9a-f]{7,40})(?![0-9a-f])')
@@ -190,6 +191,13 @@ class Normalizador:
                 datos["tope"] = True
             actor["papel"] = "worker"
             ev("compuerta.ok" if crudo.get("resultado") == "ok" else "compuerta.ko", fuente="compuerta", datos=datos)
+        elif tipo == "prueba" and PRUEBA_SHA.match(str(crudo.get("comando_sha", ""))) \
+                and crudo.get("resultado") in ("pasa", "falla"):    # M9a: la Prueba de una conexión (prueba.sh)
+            datos = {"comando_sha": crudo["comando_sha"], "resultado": crudo["resultado"]}
+            if crudo["resultado"] == "falla" and isinstance(crudo.get("codigo"), int) \
+                    and not isinstance(crudo["codigo"], bool):
+                datos["codigo"] = crudo["codigo"]
+            ev("prueba", datos=datos)
         return salida
 
     def _encargo_del_worker(self, crudo):

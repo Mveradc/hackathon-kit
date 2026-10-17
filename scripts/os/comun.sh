@@ -71,16 +71,24 @@ os_activo() {
 
 os_md_activo() {
   os_raiz || return 1
+  os_si activa
+}
+
+# ¿Dice «sí» la clave $1 de .hackathon/os.md de la copia principal? La primera línea `$1:` manda. Necesita os_raiz.
+os_si() {
   local f=$OS_PRINCIPAL/.hackathon/os.md l LC_ALL=C
   [[ -f $f ]] || return 1
   while IFS= read -r l || [[ -n $l ]]; do
     l=${l//$'\r'/}; l=${l#$'\xef\xbb\xbf'}; l=${l#$'\xff\xfe'}; l=${l#$'\xfe\xff'}
-    [[ $l =~ ^activa:[[:space:]]*([^#[:space:]]*) ]] || continue
+    [[ $l =~ ^$1:[[:space:]]*([^#[:space:]]*) ]] || continue
     case ${BASH_REMATCH[1]} in [Ss]í|[Ss]Í|[Ss][Ii]|[Yy][Ee][Ss]|[Ss]$'\xed'|[Ss]$'\xcd') return 0 ;; esac
     return 1
   done < "$f" 2>/dev/null
   return 1
 }
+
+# M9a: ¿`web_nueva: sí` en os.md? (api.md §0). Sin la línea, no. Llamar después de os_activo.
+os_web_nueva() { os_si web_nueva; }
 
 # Persona: la caché de hk_yo en el git común (la deja sesion.sh en la copia principal). Si no hay ninguna o
 # no coinciden, «»: la resuelve el demonio (api.md §1).
