@@ -171,13 +171,14 @@ def primera_linea(texto, defecto):
 
 
 # El resumen de la línea «!» del push --porcelain cuando otro subió antes: `[rejected] (fetch first | non-fast-forward)`
-# lo ve el cliente; si los dos pushes llegan a la vez, el remoto da `[remote rejected] (failed to update ref)` (el
-# «cannot lock ref … is at X but expected Y» va solo por stderr), `(failed to lock)` en gits viejos, o `(cannot lock
-# ref …)` / `(incorrect old value provided)`. Un hook que rechaza da `[remote rejected] (… hook declined)`: no es una
-# carrera, aunque imprima «[rejected]» por stderr (que no se mira). Como «failed to update ref» también sale con el
-# disco del remoto lleno, el reintento comprueba que origin/main se movió de verdad.
+# lo ve el cliente; si los dos pushes llegan a la vez, el remoto da `[remote rejected] …`: `(failed to update ref)` en
+# git 2.49 (el «cannot lock ref … is at X but expected Y» va solo por stderr), `(incorrect old value provided)` en 2.56,
+# `(reference already exists)` en 2.56 si el otro tiene cogido main.lock, `(failed to lock)` en gits viejos o
+# `(cannot lock ref …)`. Un hook que rechaza da `[remote rejected] (… hook declined)`: no es una carrera, aunque
+# imprima «[rejected]» por stderr (que no se mira). Como los del remoto también salen con su disco lleno o un main.lock
+# huérfano, el reintento comprueba que origin/main se movió de verdad.
 CARRERA = re.compile(r"^\[rejected\]|^\[remote rejected\] \((?:failed to (?:update ref|lock)|cannot lock ref|"
-                     r"incorrect old value)")
+                     r"incorrect old value|reference already exists)")
 
 
 def rechazo(porcelain, ref="refs/heads/main"):
@@ -192,9 +193,9 @@ def rechazo(porcelain, ref="refs/heads/main"):
 class Rechazado(Exception):
     """El push no es un avance rápido: alguien subió antes. `base`: el origin/main sobre el que se hizo el commit."""
 
-    def __init__(self, motivo, base):
+    def __init__(self, motivo, base, detalle):
         super().__init__(motivo)
-        self.motivo, self.base = motivo, base
+        self.motivo, self.base, self.detalle = motivo, base, detalle
 
 
 class FalloGit(Exception):
@@ -253,7 +254,7 @@ class Acciones:
         self._ok("fetch", "--quiet", "--no-tags", "origin", "+refs/heads/main:refs/remotes/origin/main")
         base = self._ok("rev-parse", "--verify", "-q", "refs/remotes/origin/main^{commit}")
         if antes and base == antes.base:
-            raise FalloGit(f"git push: {antes.motivo}")
+            raise FalloGit(f"git push: {antes.detalle}")
         try:
             os.remove(self.indice)
         except OSError:
@@ -276,7 +277,7 @@ class Acciones:
         if c != 0:
             motivo = rechazo(out.decode("utf-8", "replace"))
             if motivo and CARRERA.search(motivo):
-                raise Rechazado(motivo, base)
+                raise Rechazado(motivo, base, primera_linea(err, motivo))
             raise FalloGit("git push: " + primera_linea(err, motivo or f"sale con {c}"))
         return sha
 

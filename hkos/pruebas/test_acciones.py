@@ -305,13 +305,17 @@ class Anotar(Base):
         self.assertEqual(huella(self.ca), antes)
 
     def test_remoto_que_no_actualiza_sin_carrera_502(self):
-        """`[remote rejected] (failed to update ref)` sin que nadie haya subido (un main.lock huérfano en el remoto, o
-        su disco lleno): no es una carrera; 502 con el motivo, no el 409 de «otra nota se subió a la vez»."""
+        """Un main.lock huérfano en el remoto (o su disco lleno): `[remote rejected] (failed to update ref)` en git 2.49,
+        `(reference already exists)` en 2.56, sin que nadie haya subido. No es una carrera: 502 con el motivo en una
+        línea, no el 409 de «otra nota se subió a la vez»."""
         with open(os.path.join(self.bare, "refs", "heads", "main.lock"), "w") as f:
             f.write("x\n")
         base = git(self.bare, "rev-parse", "main")
         codigo, r = self.ag.accion("/v1/anotar", NOTA)
-        self.assertEqual((codigo, r), (502, {"error": "git push: [remote rejected] (failed to update ref)"}))
+        self.assertEqual(codigo, 502, r)
+        self.assertTrue(r["error"].startswith("git push: "), r)
+        self.assertIn("main.lock", r["error"])                           # el motivo que da el remoto
+        self.assertNotIn("\n", r["error"])
         self.assertEqual(git(self.bare, "rev-parse", "main"), base)
 
     def test_rechazo_mira_solo_la_linea_de_porcelain(self):
@@ -324,6 +328,7 @@ class Anotar(Base):
             f"{'b' * 40} but expected {'c' * 40})\nDone\n": True,
             f"To x\n!\t{sha}:refs/heads/main\t[remote rejected] (incorrect old value provided)\nDone\n": True,
             f"To x\n!\tHEAD:refs/heads/main\t[remote rejected] (failed to update ref)\nDone\n": True,   # git 2.49
+            f"To x\n!\tHEAD:refs/heads/main\t[remote rejected] (reference already exists)\nDone\n": True,  # 2.56
             f"To x\n!\t{sha}:refs/heads/main\t[remote rejected] (pre-receive hook declined)\nDone\n": False,
             f"To x\n!\t{sha}:refs/heads/main\t[remote rejected] (protected branch hook declined)\nDone\n": False,
             f"To x\n!\t{sha}:refs/heads/otra\t[rejected] (fetch first)\nDone\n": False,
