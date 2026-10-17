@@ -16,7 +16,9 @@ import threading
 import time
 import unittest
 import zipfile
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler
+from unittest import mock
 
 HKOS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HKOS)
@@ -128,6 +130,24 @@ class Token(Base):
         otro = agente_mod.Agente(self.repo, PERSONA, reloj=self.reloj, ahora=lambda: self.ahora)
         self.assertEqual(otro.web_token, self.a.web_token)
 
+    @unittest.skipIf(os.name == "nt", "en Windows los permisos no son de POSIX")
+    def test_nace_con_0600(self):
+        """Issue #6: el temporal ya tiene 0600 antes del os.replace (sin ventana con la umask), aunque la umask sea 0."""
+        os.remove(os.path.join(self.dir, "web.token"))
+        modos, replace = [], os.replace
+
+        def espia(src, dst):
+            if dst.endswith("web.token"):
+                modos.append(os.stat(src).st_mode & 0o777)
+            replace(src, dst)
+        viejo = os.umask(0)
+        self.addCleanup(os.umask, viejo)
+        with mock.patch("os.replace", espia):
+            otro = agente_mod.Agente(self.repo, PERSONA, reloj=self.reloj, ahora=lambda: self.ahora)
+        self.assertEqual(modos, [0o600])
+        self.assertEqual(os.stat(os.path.join(self.dir, "web.token")).st_mode & 0o777, 0o600)
+        self.assertNotEqual(otro.web_token, self.a.web_token)
+
 
 class Seguridad(Base):
     """Criterio 6 de M9a (ADR-0010), en el proceso; evals/coordinacion/acciones_seguridad.py lo repite en vivo."""
@@ -194,6 +214,32 @@ class Seguridad(Base):
             self.assertEqual(codigo, 405)
             self.sin_cors(resp)
 
+    def test_peticion_a_medias_no_retiene_el_hilo(self):
+        """Issue #6 [reproducido]: un POST con Content-Length: 10 y sin cuerpo dejaba el hilo en rfile.read hasta que el
+        cliente cerraba. Ahora, 408 al pasar SOCKET_S; y sin ni siquiera la línea de la petición, se cierra."""
+        viejo, agente_mod.SOCKET_S = agente_mod.SOCKET_S, 0.5
+        self.addCleanup(setattr, agente_mod, "SOCKET_S", viejo)
+        srv = servir(agente_mod.manejador(self.a))
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        p = srv.server_address[1]
+        with socket.create_connection(("127.0.0.1", p), timeout=5) as s:
+            inicio = time.time()
+            s.sendall(f"POST /v1/anotar HTTP/1.1\r\nHost: 127.0.0.1:{p}\r\nContent-Type: application/json\r\n"
+                      f"X-HK-Token: {self.a.web_token}\r\nContent-Length: 10\r\n\r\n".encode())
+            respuesta = b""
+            while True:
+                trozo = s.recv(4096)
+                if not trozo:
+                    break
+                respuesta += trozo
+            self.assertLess(time.time() - inicio, 4)
+        self.assertTrue(respuesta.startswith(b"HTTP/1.0 408 "), respuesta[:40])
+        with socket.create_connection(("127.0.0.1", p), timeout=5) as s:
+            inicio = time.time()
+            self.assertEqual(s.recv(4096), b"")                     # nada que leer: el demonio cierra
+            self.assertLess(time.time() - inicio, 4)
+
 
 class Estaticos(Base):
     def test_lista_blanca(self):
@@ -209,6 +255,8 @@ class Estaticos(Base):
         codigo, resp, datos = pide(self.puerto, "GET", "/")
         self.assertEqual((codigo, resp["content-type"]), (200, "text/html; charset=utf-8"))
         self.assertIn("script-src 'self'", resp["content-security-policy"])
+        self.assertIn("style-src 'self';", resp["content-security-policy"])
+        self.assertNotIn("unsafe-inline", resp["content-security-policy"])          # issue #6
         self.assertNotIn(self.a.web_token.encode(), datos)
         self.assertEqual(pide(self.puerto, "GET", "/assets/app-1a.js")[1]["content-type"], "text/javascript; charset=utf-8")
         self.assertEqual(pide(self.puerto, "GET", "/assets/f.woff2")[1]["content-type"], "font/woff2")
@@ -238,6 +286,7 @@ class Suscripcion(Base):
         c.request("GET", "/v1/stream", headers=self.token())
         r = c.getresponse()
         self.addCleanup(c.close)
+        self.addCleanup(r.close)
         self.assertEqual(r.status, 200)
         return lector_sse(r)
 
@@ -312,6 +361,67 @@ class Suscripcion(Base):
         self.assertTrue(self.a.vista_web()["relay"]["conectado"])
         self.assertEqual(self.a.vista_web()["relay"]["desde"], self.ahora)
 
+    def ping_rapido(self):
+        viejo, agente_mod.PING_S = agente_mod.PING_S, 0.2
+        self.addCleanup(setattr, agente_mod, "PING_S", viejo)
+
+    def test_el_stream_envejece_con_el_tiempo(self):
+        """Issue #6 [reproducido]: fuentes.relay observado en t0 y umbral_viejo_s 300. La 1.ª `vista` trae viejo: false.
+        El reloj del demonio avanza 600 s sin estado nuevo: antes, el stream solo mandaba `ping` y la web se quedaba
+        con viejo: false, mientras /v1/vista y estado-equipo.md ya decían viejo. Ahora, con el ping llega otra
+        `vista`, con el mismo servido_en y el mismo viejo que /v1/vista."""
+        self.ping_rapido()
+        self.con_estado()
+        t0 = self.a.estado["fuentes"]["relay"]["observado_en"]
+        self.ahora = t0
+        lee = self.stream_del_demonio()
+        primera = json.loads(lee()["data"])
+        self.assertEqual((primera["servido_en"], primera["vista"]["fuentes"]["relay"]["viejo"]), (t0, False))
+        despues = datetime.strptime(t0, "%Y-%m-%dT%H:%M:%S.%fZ").replace(tzinfo=timezone.utc) + timedelta(seconds=600)
+        self.ahora = despues.strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        self.reloj.t += 600
+        cuerpo, fin = None, time.time() + 5
+        while cuerpo is None and time.time() < fin:                 # antes: solo `ping`, para siempre
+            m = lee()
+            if m.get("event") == "vista" and json.loads(m["data"])["servido_en"] == self.ahora:
+                cuerpo = json.loads(m["data"])
+        self.assertIsNotNone(cuerpo, "el stream no manda la vista nueva")
+        self.assertTrue(cuerpo["vista"]["fuentes"]["relay"]["viejo"])
+        self.assertEqual(lee()["event"], "ping")
+        codigo, _, datos = pide(self.puerto, "GET", "/v1/vista", self.token())
+        self.assertEqual((codigo, json.loads(datos)), (200, cuerpo))
+        self.a.ciclo()                                              # y el md dice lo mismo
+        with open(os.path.join(self.dir, "estado-equipo.md"), encoding="utf-8") as f:
+            self.assertIn("> Relay (lo efímero: presencia, ficheros): sin datos nuevos desde", f.read())
+
+    def test_tope_de_clientes(self):
+        """Issue #6: como mucho STREAM_MAX clientes de /v1/stream a la vez; al irse uno, cabe otro."""
+        self.ping_rapido()
+        viejo, agente_mod.STREAM_MAX = agente_mod.STREAM_MAX, 2
+        self.addCleanup(setattr, agente_mod, "STREAM_MAX", viejo)
+        self.con_estado()
+        conexiones = []
+
+        def cerrar(c, r):
+            r.close()                                               # la respuesta también retiene el socket
+            c.close()
+        for _ in range(3):
+            c = http.client.HTTPConnection("127.0.0.1", self.puerto, timeout=10)
+            c.request("GET", "/v1/stream", headers=self.token())
+            r = c.getresponse()                                     # solo las cabeceras: el cuerpo no acaba
+            self.addCleanup(cerrar, c, r)
+            conexiones.append((c, r))
+            if len(conexiones) < 3:
+                self.assertEqual(r.status, 200)
+                self.assertEqual(lector_sse(r)()["event"], "vista")
+        self.assertEqual(r.status, 429)
+        cerrar(*conexiones.pop())
+        self.assertEqual(pide(self.puerto, "GET", "/v1/vista", self.token())[0], 200)     # el resto sigue
+        self.assertEqual(self.a.web_clientes, 2)
+        cerrar(*conexiones.pop())
+        self.assertTrue(self.esperar(lambda: self.a.web_clientes == 1))
+        self.stream_del_demonio()
+
 
 class SaludServicios(Base):
     def setUp(self):
@@ -373,6 +483,48 @@ class SaludServicios(Base):
         self.a.salud_servicios.emitidos.clear()                       # como al arrancar otra vez: una vez cada uno
         self.a.ciclo_servicios()
         self.assertEqual([e["tipo"] for e in self.a.cola], ["servicio.estado", "servicio.estado"])
+
+    def test_servicio_a_gotas_no_bloquea_a_los_demas(self):
+        """Issue #6 [reproducido]: un servicio que responde a 1 byte/s dejaba comprobar() bloqueado (el plazo valía por
+        cada recv). Ahora HTTP_S es para toda la consulta: sale sin código y el siguiente servicio se mira igual."""
+        oyente = socket.socket()
+        oyente.bind(("127.0.0.1", 0))
+        oyente.listen(5)
+        self.addCleanup(oyente.close)
+        parar = threading.Event()
+        self.addCleanup(parar.set)
+
+        def gotas(c):
+            with c:
+                try:
+                    c.recv(4096)
+                    for b in b"HTTP/1.1 200 OK\r\nContent-Length: 0\r\n\r\n":
+                        if parar.wait(1):
+                            return
+                        c.sendall(bytes([b]))
+                except OSError:
+                    pass
+
+        def aceptar():
+            while not parar.is_set():
+                try:
+                    c, _ = oyente.accept()
+                except OSError:
+                    return
+                threading.Thread(target=gotas, args=(c,), daemon=True).start()
+        threading.Thread(target=aceptar, daemon=True).start()
+        lento = oyente.getsockname()[1]
+        inicio = time.time()
+        resultado = self.a.salud_servicios.comprobar(lento, "/salud")
+        self.assertLess(time.time() - inicio, agente_mod.SaludServicios.HTTP_S + 1.5)
+        self.assertEqual(resultado, (True, None))
+        self.a.estado = {"servicios": {"lista": [self.fila("lento", "a" * 12, lento, "/salud"),
+                                                 self.fila("api", "b" * 12, self.p, "/salud")], "desajustes": []}}
+        inicio = time.time()
+        eventos = self.a.salud_servicios.ciclo()
+        self.assertLess(time.time() - inicio, agente_mod.SaludServicios.HTTP_S + 3)
+        self.assertEqual([(e["datos"]["servicio"], e["datos"]["escucha"], e["datos"]["salud"]) for e in eventos],
+                         [("lento", True, None), ("api", True, 200)])
 
 
 class HkOsWeb(Base):

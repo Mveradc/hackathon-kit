@@ -52,12 +52,15 @@ LOG_MAX = 1024 * 1024
 WEB_NUEVA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "nueva")
 TIPOS_WEB = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".woff2": "font/woff2",
              ".svg": "image/svg+xml", ".png": "image/png"}
-CSP_WEB = ("default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; "
+# Sin 'unsafe-inline' (issue #6): React pone los style={{…}} por CSSOM, que la CSP no bloquea.
+CSP_WEB = ("default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; "
            "img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 ACCIONES = ("/v1/anotar", "/v1/reclamar")
 ACCION_MAX = 4096
 PING_S = 20                      # el mismo que el relay: la web pasa a «sin conexión» tras max(umbral_viejo_s, 40 s)
 WEB_COLA = 200
+SOCKET_S = 10                    # issue #6: una petición a medias (cabeceras o cuerpo) no retiene un hilo para siempre
+STREAM_MAX = 8                   # clientes de /v1/stream a la vez (pestañas de la persona); el siguiente, 429
 
 
 def git_comun(repo):
@@ -338,24 +341,35 @@ class SaludServicios:
 
     def comprobar(self, puerto, salud):
         """(escucha, salud): si el puerto acepta en 127.0.0.1 y el código HTTP de GET <Salud> (None sin Salud o sin
-        respuesta). Sin seguir redirecciones y leyendo como mucho 4 KB."""
+        respuesta). Sin seguir redirecciones y leyendo como mucho 4 KB. HTTP_S es el plazo de toda la consulta, no de
+        cada recv (issue #6): un servicio que responde a gotas no bloquea el hilo ni deja sin mirar a los demás. Solo
+        hace falta la línea de estado, así que se lee hasta ella."""
         try:
-            socket.create_connection(("127.0.0.1", puerto), timeout=self.CONEXION_S).close()
+            s = socket.create_connection(("127.0.0.1", puerto), timeout=self.CONEXION_S)
         except OSError:
             return False, None
-        if salud is None:
-            return True, None
-        c = http.client.HTTPConnection("127.0.0.1", puerto, timeout=self.HTTP_S)
-        try:
-            c.request("GET", salud)
-            r = c.getresponse()
-            r.read(self.LEER_MAX)
-            codigo = r.status
-        except (OSError, http.client.HTTPException):
-            codigo = None
-        finally:
-            c.close()
-        return True, codigo if isinstance(codigo, int) and 100 <= codigo <= 599 else None
+        datos = b""
+        with s:
+            if salud is None:
+                return True, None
+            fin = time.monotonic() + self.HTTP_S
+            try:
+                s.settimeout(self.HTTP_S)
+                s.sendall(f"GET {salud} HTTP/1.1\r\nHost: 127.0.0.1:{puerto}\r\nAccept-Encoding: identity\r\n"
+                          "Connection: close\r\n\r\n".encode("ascii"))
+                while b"\n" not in datos and len(datos) < self.LEER_MAX:
+                    resto = fin - time.monotonic()
+                    if resto <= 0:
+                        break
+                    s.settimeout(resto)
+                    trozo = s.recv(self.LEER_MAX - len(datos))
+                    if not trozo:
+                        break
+                    datos += trozo
+            except (OSError, UnicodeEncodeError):
+                pass
+        m = re.match(rb"HTTP/1\.[01] ([1-5][0-9][0-9])(?: [^\r\n]*)?\r?\n", datos)
+        return True, int(m.group(1)) if m else None
 
     def ciclo(self):
         if self.ag.reloj() - self.cuando < self.CADA_S:
@@ -433,6 +447,7 @@ class Agente:
         self.en_stream, self.md_pendiente, self.relay_ultimo_bueno = False, False, None
         self.web_cambio = threading.Condition()
         self.web_seq, self.web_cola = 0, deque(maxlen=WEB_COLA)     # (seq, evento, datos): lo que va a /v1/stream
+        self.web_clientes = 0                                          # clientes de /v1/stream ahora (tope STREAM_MAX)
         self.suscripcion, self.salud_servicios = Suscripcion(self), SaludServicios(self)
         self.acciones = Acciones(self)
 
@@ -448,11 +463,8 @@ class Agente:
         except OSError:
             pass
         token = secrets.token_hex(32)
-        self._escribe("web.token", token + "\n")
-        try:
-            os.chmod(ruta, 0o600)
-        except OSError:
-            pass
+        # Linux y macOS: el fichero nace ya con 0600, sin ventana entre escribirlo y el chmod (issue #6).
+        self._escribe("web.token", token + "\n", modo=None if os.name == "nt" else 0o600)
         return token
 
     def token_valido(self, dado):
@@ -789,11 +801,21 @@ class Agente:
         # M8g: las reservas de las demás personas, para el aviso de reserva.sh (solo builtins de bash).
         self._escribe("reservas.tsv", proyeccion.reservas_tsv(v, self.persona, self.tz or datetime.now().astimezone().tzinfo))
 
-    def _escribe(self, nombre, texto):
-        """Escritura atómica: quien lee (sesion.sh, delta.sh, el MCP) nunca ve un fichero a medias."""
+    def _escribe(self, nombre, texto, modo=None):
+        """Escritura atómica: quien lee (sesion.sh, delta.sh, el MCP) nunca ve un fichero a medias. Con `modo`, el
+        temporal se crea nuevo con esos permisos (O_EXCL), y no con los de la umask."""
         ruta = os.path.join(self.dir, nombre)
         tmp = f"{ruta}.{os.getpid()}.tmp"
-        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        abrir = None
+        if modo is not None:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+
+            def abrir(r, flags):
+                return os.open(r, flags | os.O_EXCL, modo)
+        with open(tmp, "w", encoding="utf-8", newline="\n", opener=abrir) as f:
             f.write(texto)
         os.replace(tmp, ruta)
 
@@ -828,6 +850,7 @@ def manejador(agente):
     class Manejador(BaseHTTPRequestHandler):
         server_version = "hk-os-agente"
         sys_version = ""
+        timeout = SOCKET_S
 
         def log_message(self, *args):
             pass
@@ -895,24 +918,34 @@ def manejador(agente):
 
         def _stream(self):
             """SSE para la web (api.md §4): `vista` al conectar y cada vez que cambia; `eventos` tal como llegan del
-            relay; `ping` cada 20 s sin nada más."""
-            self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            visto, _ = agente.web_esperar(-1, 0)
-
-            def vista():
-                cuerpo = agente.vista_web()
-                if cuerpo is not None:
-                    self.wfile.write(b"event: vista\ndata: " + json.dumps(cuerpo, ensure_ascii=False, separators=(
-                        ",", ":")).encode("utf-8") + b"\n\n")
+            relay; `ping` cada 20 s sin nada más, y con él otra `vista`: `servido_en` y lo «viejo» cambian con el
+            tiempo, y la web tiene que decir lo mismo que /v1/vista y estado-equipo.md (issue #6, ADR-0009). Como mucho
+            STREAM_MAX clientes a la vez (429 al siguiente)."""
+            with agente.web_cambio:
+                lleno = agente.web_clientes >= STREAM_MAX
+                if not lleno:
+                    agente.web_clientes += 1
+            if lleno:
+                self._json(429, {"error": "demasiados clientes"})
+                return
             try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                visto, _ = agente.web_esperar(-1, 0)
+
+                def vista():
+                    cuerpo = agente.vista_web()
+                    if cuerpo is not None:
+                        self.wfile.write(b"event: vista\ndata: " + json.dumps(cuerpo, ensure_ascii=False, separators=(
+                            ",", ":")).encode("utf-8") + b"\n\n")
                 vista()
                 self.wfile.flush()
                 while True:
                     visto, nuevos = agente.web_esperar(visto, PING_S)
                     if not nuevos:
+                        vista()
                         self.wfile.write(b"event: ping\ndata: \n\n")
                     hecha = False
                     for evento, datos in nuevos:
@@ -924,6 +957,9 @@ def manejador(agente):
                     self.wfile.flush()
             except OSError:
                 return
+            finally:
+                with agente.web_cambio:
+                    agente.web_clientes -= 1
 
         def do_GET(self):
             if self.path == "/salud":
@@ -955,7 +991,12 @@ def manejador(agente):
             except ValueError:
                 n = -1
             # Leído antes de cualquier respuesta (en Windows, cerrar sin leer da un RST); lo grande, sin guardarlo.
-            datos = self.rfile.read(n) if 0 <= n <= 16 * ACCION_MAX else None
+            try:
+                datos = self.rfile.read(n) if 0 <= n <= 16 * ACCION_MAX else None
+            except TimeoutError:                            # un cuerpo que no llega en SOCKET_S (issue #6)
+                self.close_connection = True
+                self._json(408, {"error": "cuerpo"})
+                return
             if datos is not None and n > ACCION_MAX:
                 datos = None
             if not self._local():
