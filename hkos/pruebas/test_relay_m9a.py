@@ -471,5 +471,131 @@ class ClonSuperficial(RepoGit):
         self.assertEqual((lista["cache"]["por"], lista["motor"]["por"]), (["luis"], []))
 
 
+DATOS = "| datos | api/datos/ | — | — | — | — |\n"
+
+
+class Reemplazos(RepoGit):
+    """Issue #18, hallazgo 6 (media): con `git replace --graft` o `.git/info/grafts`, un commit queda sin padres sin ser
+    borde de un clon superficial. Parecía el que crea servicios.md y el que añade todas sus filas: «datos», de @luis,
+    salía confirmada por @ana (su dueña) y de /hack-scaffold. El relay lee sin reemplazos; con grafts, nada cuenta."""
+
+    def setUp(self):
+        super().setUp()
+        self.scaffold()
+        self.escribe(".hackathon/servicios.md", CABECERA + DATOS + CONEXIONES)
+        self.sha_luis = self.commit("luis añade datos en api/datos/", "2026-11-25T18:10:00Z")
+        self.escribe(".hackathon/servicios.md", CABECERA.replace("| web | web/ | — |", "| web | web/ | 3000 |") + DATOS
+                     + CONEXIONES)
+        self.sha_ana = self.commit("ana retoca el fichero", "2026-11-25T18:20:00Z")
+        self.eventos = [self.commit_de("luis", self.sha_luis), self.commit_de("ana", self.sha_ana)]
+
+    def test_replace_graft_se_ignora(self):
+        git(self.repo, "replace", "--graft", self.sha_ana)
+        self.assertEqual(git(self.repo, "log", "-1", "--format=%P", self.sha_ana), "")     # el caso del issue
+        lista, r = self.servicios(self.eventos)
+        self.assertEqual((lista["datos"]["valor"], lista["datos"]["por"], lista["datos"]["faltan"],
+                          lista["datos"]["de_scaffold"]), ("sin_confirmar", ["luis"], ["ana"], False))
+        self.assertEqual((lista["api"]["valor"], lista["api"]["de_scaffold"]), ("confirmada", True))
+        self.assertEqual([len(v["textos_padres"]) for v in r.novedades.servicios["versiones"]], [1, 1, 1])
+
+    def test_info_grafts_como_clon_superficial(self):
+        ruta = os.path.join(self.repo, git(self.repo, "rev-parse", "--git-path", "info/grafts"))
+        os.makedirs(os.path.dirname(ruta), exist_ok=True)
+        with open(ruta, "w", encoding="utf-8", newline="\n") as f:
+            f.write(self.sha_ana + "\n")
+        lista, r = self.servicios(self.eventos)
+        self.nada_de_scaffold(lista)
+        self.assertEqual({nombre: c["por"] for nombre, c in lista.items()}, {"api": [], "web": [], "datos": []})
+        self.assertEqual(r.novedades.servicios["versiones"], [])
+
+
+class UltimoBueno(RepoGit):
+    """Issue #18, hallazgo 7 (baja): si no se puede leer servicios.md de la punta, el bloque `servicios` no desaparece:
+    se queda el último bueno (constitución III y VIII). Si el fichero ya no está en la punta, sí desaparece (api.md §3)."""
+
+    def test_clon_parcial_sin_remoto(self):
+        self.scaffold()
+        bare = os.path.join(self.dir, "equipo.git")
+        subprocess.run(["git", "clone", "-q", "--bare", self.repo, bare], check=True, capture_output=True)
+        git(bare, "config", "uploadpack.allowFilter", "true")
+        clon = os.path.join(self.dir, "clon")
+        subprocess.run(["git", "clone", "-q", "--filter=blob:none", pathlib.Path(bare).as_uri(), clon], check=True,
+                       capture_output=True)
+        n = relay_mod.Novedades(clon, 300, web_nueva=True)
+        n.sondear()
+        bueno = n.servicios
+        self.assertIsNotNone(bueno)
+        self.escribe(".hackathon/servicios.md", CABECERA + DATOS + CONEXIONES)
+        self.commit("datos", "2026-11-25T18:10:00Z")
+        git(self.repo, "push", "-q", bare, "main")
+        git(clon, "fetch", "-q", "origin")                           # trae el commit, sin el blob nuevo
+        os.rename(bare, bare + ".fuera")
+        n.sondear()
+        self.assertTrue(n.fallando)
+        self.assertIs(n.servicios, bueno)
+        r = relay_mod.Relay(os.path.join(self.dir, "relay"), PERSONAS, novedades=n, web_nueva=True)
+        self.assertIn("servicios", r.estado)
+        self.assertIsNone(Esquema("estado.schema.json").error(r.estado))
+        # Vuelve el remoto: se lee la punta nueva. Y si en la punta ya no está el fichero, el bloque sí desaparece.
+        os.rename(bare + ".fuera", bare)
+        n.sondear()
+        self.assertIn("| datos |", n.servicios["texto"])
+        git(self.repo, "rm", "-q", ".hackathon/servicios.md")
+        self.commit("fuera", "2026-11-25T18:20:00Z")
+        git(self.repo, "push", "-q", bare, "main")
+        n.sondear()
+        self.assertIsNone(n.servicios)
+
+
+class EsperaCreciente(LecturaFallida):
+    """Issue #18, hallazgo 7 (baja): una versión que falla no se vuelve a leer en cada vuelta (con un promisor colgado,
+    cada `git show` espera 30 s), sino tras 1, 2, 4… vueltas, con un tope. Al leerse bien, deja de contar."""
+
+    def test_espera_por_sha(self):
+        from unittest import mock
+        n = relay_mod.Novedades(self.repo, 300, web_nueva=True)
+        intentos, falla, version_real = [], [True], n._version
+
+        def version(sha):
+            if sha == self.sha_ana:
+                intentos.append(vuelta)
+                if falla[0]:
+                    return None
+            return version_real(sha)
+        n._version = version
+        with mock.patch.object(relay_mod, "REINTENTO_TOPE", 4):
+            for vuelta in range(1, 21):
+                n.sondear()
+                self.assertNotIn(self.sha_ana, n._versiones)
+            self.assertEqual(intentos, [1, 2, 4, 8, 12, 16, 20])
+            falla[0] = False
+            for vuelta in range(21, 25):
+                n.sondear()
+        self.assertEqual(intentos, [1, 2, 4, 8, 12, 16, 20, 24])
+        self.assertIn(self.sha_ana, n._versiones)
+        self.assertEqual(n._fallos, {})
+
+
+class ResumenDeNota(unittest.TestCase):
+    """Nota del PR #17: novedades_de cortaba el resumen a 200 después de poner la «, y se perdía la » de fuera."""
+
+    def nota(self, dijo, titulo="Ana (jurado)"):
+        from datetime import timezone
+        texto = f"# Criterios\n\n## 2026-11-20 10:05 · {titulo}\n- Qué dijo: {dijo}\n- Anotado por: @ana\n"
+        return relay_mod.novedades_de("", texto, tz=timezone.utc)[0]["resumen"]
+
+    def test_literal_largo_conserva_la_comilla_de_fuera(self):
+        resumen = self.nota("«" + "x" * 300 + "»")
+        self.assertEqual(len(resumen), 200)
+        self.assertTrue(resumen.startswith("Ana (jurado): «x"))
+        self.assertTrue(resumen.endswith("x»"))
+        # lo corto y lo que no va entre «», como antes
+        self.assertEqual(self.nota("«hola»"), "Ana (jurado): «hola»")
+        self.assertEqual(self.nota("(paráfrasis) " + "y" * 300), ("Ana (jurado): (paráfrasis) " + "y" * 300)[:200])
+
+    def test_titulo_que_no_deja_sitio(self):
+        self.assertEqual(self.nota("«" + "x" * 50 + "»", titulo="t" * 197), "t" * 197)
+
+
 if __name__ == "__main__":
     unittest.main()
