@@ -231,12 +231,16 @@ Colisiones (M8g): las calcula `modelo.calcular` con `hkos/colisiones.py` y `hkos
 - Sigue `<git común>/hackathon/os/eventos/*.jsonl` (posición por fichero en `<git común>/hackathon/os/posiciones.json`: bytes y nº de línea ya enviados). **No consume la última línea de un JSONL mientras no acabe en salto**: puede estar a medio escribir. Al arrancar vuelve a normalizar cada fichero desde la primera línea, para recuperar lo que el normalizador sabe (la tarea de cada worker por su `agent_id`), pero solo envía lo que va detrás de su posición.
 - **Persona.** Una línea con `persona` vacía (el primer `SessionStart` de un clon, `api.md` §1) toma la persona del clon, que le pasa `sesion.sh` al lanzarlo (`--persona`, de `hk_yo`).
 - **Envío.** Junta lo nuevo de todos los JSONL, lo ordena por (`ts`, `id`), valida cada evento contra [eventos.schema.json](eventos.schema.json) y lo manda en lotes de ≤ 200. Solo avanza la posición cuando el relay responde `200`. Si el relay no responde o da error, reintenta con espera creciente (hasta 30 s), sin perder la posición. Cada 15 s manda un latido con sus actores abiertos (los que tienen una señal en los últimos 90 s y no han cerrado) y la cuenta de líneas rotas.
-- **Relay y token** de `<git común>/hackathon/os/relay.url` y `…/token`, que deja `hk-os unir` (la carpeta `…/os/relay/` es la del registro del relay, §7); si no está el primero, el `relay:` de `os.md`. Sin token, no envía nada (todo sigue en disco).
+- **Relay y token** de `<git común>/hackathon/os/relay.url` y `…/token`, que deja `hk-os unir` con permisos 0600 desde que se crean (un `.tmp` con `O_CREAT|O_EXCL` y `os.replace`; uno de antes pasa a 0600 al volver a unir; tras congelar, 2026-10-17, PR #19, issue #15, hallazgo 12) (la carpeta `…/os/relay/` es la del registro del relay, §7); si no está el primero, el `relay:` de `os.md`. Sin token, no envía nada (todo sigue en disco).
 - Cada 15 s: `git worktree list --porcelain`; por worktree, `git status --porcelain` y `git diff --name-only <origin/main>...HEAD`; `git for-each-ref refs/hackathon/`; si hay `origin`, `git fetch --quiet` cada 60 s y `git merge-base --is-ancestor` de las fusiones aprobadas.
 - **Implementado en M8e** (lo que exigen sus criterios):
   - cada 15 s, y `git fetch --quiet origin` cada 60 s;
-  - **`commit`** por cada commit nuevo de una rama local que no está en `origin/main` (fuente `git`, actor `humano`; en una rama `worktree-agent-<id>`, actor `worker` con la tarea de su encargo), con `tarea` si el asunto **empieza** por un `Txx` (`T07 · …`, ADR-0002; una mención en medio no cuenta) y `datos` = `{sha, rama, alcanzable: false}`. Los merges no se emiten como commits;
-  - **cuando cambia `origin/main`**, primero los `commit` del tramo nuevo que son de esta persona y aún no ha emitido (`alcanzable: true`). Son de esta persona si el correo de quien hizo el commit es el `user.email` del clon, o, sin él, si los alcanza una rama local. Los commits de otras personas no se emiten como suyos. Después, `push` (actor `demonio`, `datos.sha` = punta nueva, `datos.incluye` = los shas del tramo que citan un ID o son fusiones aprobadas que ha visto);
+  - **`commit`** por cada commit nuevo de una rama local que no está en `origin/main` y que se hizo **en este clon** con `git commit` o `git revert` (la regla del reflog, abajo) (fuente `git`, actor `humano`; en una rama `worktree-agent-<id>`, actor `worker` con la tarea de su encargo), con `tarea` si el asunto **empieza** por un `Txx` (`T07 · …`, ADR-0002; una mención en medio no cuenta) y `datos` = `{sha, rama, alcanzable: false}`. Los merges no se emiten como commits;
+  - **cuando cambia `origin/main`**, primero los `commit` del tramo nuevo que se hicieron en este clon (la misma regla) y aún no ha emitido (`alcanzable: true`). Los demás (de otras personas o de otro clon) no se emiten como suyos, aunque lleven el correo de esta persona: solo entran en el `incluye` del `push`. Después, `push` (actor `demonio`, `datos.sha` = punta nueva, `datos.incluye` = los shas del tramo que citan un ID o son fusiones aprobadas que ha visto);
+  - **qué commits son de este clon** (tras congelar, 2026-10-17, PR #12: el correo del committer atribuía por el autor de git, issue #2, hallazgos 2 y 5; PR #20: una rama fusionada y borrada antes de la vuelta, y los worktrees de otra persona, issue #15, hallazgos 1, 7 y 8): solo los shas que tienen una entrada `commit:`, `commit (initial):`, `commit (amend):` o `revert:` en el reflog de **HEAD de la copia principal** o en el de una rama **`worktree-agent-<id>`** (está en el git común). No se lee el reflog de las demás ramas: no dice desde qué worktree se hizo el commit. Nunca se miran el autor ni el committer de git. Por eso:
+    - **salen** los `git commit` y `git revert` hechos en la copia principal, en cualquier rama o con HEAD suelto (si después llegan a una rama local o a `origin/main`), antes o después de subirlos, aunque la rama ya se haya borrado (fusionada en local y borrada antes de la vuelta) y aunque el demonio estuviera apagado; el `--amend`; los de los workers en su rama `worktree-agent-<id>`; y un `git commit` que copia contenido ajeno (`merge --squash` + `commit`, `checkout otra -- fichero` + `commit`), que para git es un commit hecho aquí;
+    - **no salen** los commits de un worktree que no es el principal ni de worker (puede ser de otra persona); los traídos con `fetch` y `checkout`, `merge` o `pull`; los shas nuevos de `cherry-pick` y `rebase`, también de commits propios (no se distingue si lo aplicado es propio o ajeno); los de un `reset` a otro sha; los merges, como antes. Sin reflog, o si git no puede leerlo, ninguno;
+    - una entrada `commit:` escrita en esos reflogs por otro medio (`update-ref -m "commit: …"` sobre HEAD o sobre una rama `worktree-agent-<id>`, una línea añadida a mano, `GIT_REFLOG_ACTION=commit`) hace pasar por propio un sha ajeno: el demonio no lo distingue;
   - horas en UTC con `Z`; IDs deterministas (`git-<persona>-commit-<sha12>`, `git-<persona>-push-<sha12>`). Un commit o la punta nueva solo quedan vistos (`<git común>/hackathon/os/git.json`) cuando el relay los confirma: si el demonio se reinicia antes, los vuelve a emitir con el mismo ID y el relay los descarta;
   - la primera vez, lo que ya estaba en `origin/main` no es un push nuevo.
 - **Desde el 2026-10-16:** tras el `push`, el `arbol` de la copia principal (nota de arriba).
@@ -268,6 +272,10 @@ Colisiones (M8g): las calcula `modelo.calcular` con `hkos/colisiones.py` y `hkos
 
 ### Web de trabajo (M9a; solo con `web_nueva: sí`; ADR-0009, ADR-0010, ADR-0011)
 **Token local.** Al arrancar, si no existe, el demonio crea `<git común>/hackathon/os/web.token` con 32 bytes aleatorios en hex (`secrets.token_hex(32)`). Se reutiliza en cada arranque y se compara en tiempo constante. `hk-os web` lo lee, comprueba el demonio por `/salud` (si no responde, lo dice y no abre nada) y abre `http://127.0.0.1:<puerto>/#t=<token>` en el navegador (`webbrowser`). También imprime la URL **sin** el token y cómo volver a abrirla.
+- **Fuera de Windows** (Linux y macOS; tras congelar, 2026-10-17, PR #11: otros usuarios ven los argumentos de cualquier proceso en `/proc/*/cmdline` o con `ps`, issue #6), el navegador no recibe la URL con el token. `hk-os web` escribe `<git común>/hackathon/os/web.html`, con permisos 0600 desde que se crea (temporal con `O_CREAT|O_EXCL` y `os.replace`), una página que redirige a la URL con el token (`meta refresh` y un enlace, `referrer` `no-referrer`), y al navegador solo le pasa `file:///…/web.html`. Si no hay navegador, dice qué fichero abrir a mano, sin imprimir el token. En Windows no cambia nada: la línea de órdenes de un proceso de otro usuario solo la leen los administradores.
+
+- **Antes de mandar el token** (tras congelar, 2026-10-17, PR #19: quien conteste `/salud` en el puerto de un `agente.vivo` que se quedó en disco recibiría el token, issue #15, hallazgo 4), `hk-os web` lee `agente.vivo` y no sigue si le falta la hora o tiene más de 60 s (el criterio de `delta.sh`), ni, en Linux, si en `/proc/net/tcp` y `tcp6` no hay nadie en escucha en ese puerto (en `127.0.0.1`, `0.0.0.0`, `::` o las mapeadas) o alguno es de otro uid. Si no puede leer `/proc`, solo cuenta la hora; en Windows y macOS, también solo la hora. Entonces no pide ni `/salud`, dice que el demonio de este clon no está en marcha, no manda el token y no abre el navegador.
+- **«Abre a mano»** (tras congelar, 2026-10-17, PR #19: un navegador snap no lee repos fuera de `/home` ni bajo carpetas ocultas, issue #15, hallazgo 11): fuera de Windows, cuando el navegador abre, `hk-os web` también dice «Abre a mano `file:///…/web.html` si el navegador no puede leerla (lleva el token: no la compartas)», sin imprimir el token.
 
 **Reglas comunes a todas las rutas de M9a** (no a `/salud`):
 - **`Host`** igual a `127.0.0.1:<puerto>` o `localhost:<puerto>`; si no, `403` (contra DNS rebinding).
@@ -280,17 +288,23 @@ Colisiones (M8g): las calcula `modelo.calcular` con `hkos/colisiones.py` y `hkos
 |---|---|---|---|
 | `GET /` y `GET /assets/<fichero>` | No | Los ficheros de `hkos/web/nueva/` (el compilado). Lista blanca: `index.html` en `/` y lo que exista en `assets/`, sin `..` ni subcarpetas fuera de ella. Tipos por extensión (`.js`, `.css`, `.woff2`, `.svg`, `.png`). El HTML no lleva datos ni el token | `200`, o `404` |
 | `GET /v1/vista` | Sí | `{servido_en, persona, relay: {conectado, desde}, vista}`. `vista` = `proyeccion.vista(estado.json local, ahora)`, con `servicios` (§3) y `umbrales.fuente_s` = `umbral_viejo_s`. `relay` es del transporte (el demonio oye o no al relay), como `relay=ok\|viejo` en la cabecera de `estado-equipo.md` y con el mismo valor | `200`; `503` `{"error":"sin estado"}` si aún no hay `estado.json` |
-| `GET /v1/stream` | Sí | SSE. Al conectar, `event: vista` con lo mismo que `/v1/vista`. Después, `vista` cada vez que llega un estado nuevo del relay o cambia `relay.conectado`; `eventos` tal como llegan del relay (§3), sin cambiarlos; `ping` cada 20 s | `text/event-stream` |
+| `GET /v1/stream` | Sí | SSE. Al conectar, `event: vista` con lo mismo que `/v1/vista`. Después, `vista` cada vez que llega un estado nuevo del relay o cambia `relay.conectado`; `eventos` tal como llegan del relay (§3), sin cambiarlos; `ping` cada 20 s sin nada más, precedido de otra `vista` calculada en ese momento, para que `servido_en` y lo «viejo» avancen con el tiempo como en `/v1/vista` y `estado-equipo.md` (tras congelar, 2026-10-17, PR #12, issue #6). Sin `estado.json`, la `vista` no se manda y solo van los `ping`. Como mucho 8 clientes a la vez | `text/event-stream`; `429 {"error":"demasiados clientes"}` con 8 ya conectados (el hueco se libera al cortarse uno) |
 | `POST /v1/anotar` | Sí | Anotar (abajo) | `200 {"ok":true,"sha":…}`; `400` con el campo que no vale; `409` si el push se rechaza dos veces; `502` si git falla por otra cosa (con el motivo en una línea) |
 | `POST /v1/reclamar` | Sí | Reclamar (abajo) | `200 {"ok":true,"issue":n\|null}`; `404` si la tarea no existe; `409` si no está libre o es de otro dueño; `429` por encima del tope; `502` si `gh` falla |
 
+El hueco de un cliente de `/v1/stream` que cierra se libera en 1 s, sin esperar al `ping` (tras congelar, 2026-10-17, PR #20, issue #15, hallazgo 9): entre `ping` y `ping`, cada segundo sin nada que mandar, el demonio mira si la conexión da EOF o un error y, si es así, termina el stream. Lo que el cliente mande de más no lo cierra.
+
 Las acciones exigen además `Content-Type: application/json` (si no, `415`) y un cuerpo de 4 KB como mucho (si no, `413`).
+
+Cada conexión con el demonio tiene un plazo de socket de 10 s (tras congelar, 2026-10-17, PR #12, issue #6): un `POST` cuyo cuerpo prometido (`Content-Length`) no llega en ese plazo recibe `408 {"error":"cuerpo"}` y se cierra la conexión; si ni siquiera llega la línea de la petición, la conexión se cierra sin respuesta.
 
 **Cómo lee la web** (ADR-0010):
 - Toma el token del fragmento, lo quita de la URL con `history.replaceState` y lo guarda solo en memoria.
 - Lee `/v1/stream` con `fetch` y un `ReadableStream`, con `X-HK-Token`: `EventSource` no admite cabeceras.
 - Si el stream se corta, reconecta con espera creciente (1 s → 30 s) y, mientras, pide `/v1/vista` cada 3 s.
 - Sin nada del demonio (ni vista, ni `eventos`, ni `ping`) durante `max(umbral_viejo_s, 40 s)`, pasa a «sin conexión» (ADR-0009). Los 40 s son el doble del `ping` de 20 s: un `ping` perdido no basta para que la página salga «sin conexión». Con el `umbral_viejo_s` por defecto (300 s) manda este; los 40 s solo cuentan si alguien lo baja en `os.md`.
+- **Un solo `/v1/stream` por navegador y origen** (tras congelar, 2026-10-17, PR #17: Chrome abre como mucho 6 conexiones por host y, con un stream por pestaña, desde la 7.ª la página no cargaba, issue #15, hallazgo 3). Con `navigator.locks`, `BroadcastChannel` y `crypto.subtle`, solo la pestaña que tiene el cerrojo `hk-os-stream-<SHA-256 del token>` (la líder) habla con el demonio (stream, sondeo y reconexión) y reparte por el canal del mismo nombre, tal cual, lo que recibe: la vista, los `eventos` y los `ping`, con la hora a la que los recibió (así «sin conexión» se mide igual en todas), y el modo y los fallos. Una pestaña que llega pide con `hola` la última vista, el modo y el fallo (los `eventos` no). Si la líder se cierra, otra coge el cerrojo y abre el stream. Solo comparten stream las pestañas con el mismo token; `127.0.0.1` y `localhost` son orígenes distintos, cada uno con su líder. Sin esas APIs, o si falla la huella, cada pestaña lee su propio stream.
+- **Con un `429`** del stream, la web dice «sin stream: tu demonio no admite más (demasiadas pestañas o clientes abiertos); pidiendo cada 3 s» y sigue pidiendo `/v1/vista` cada 3 s y reintentando el stream con espera creciente; el aviso se va cuando vuelve el stream (PR #17, issue #15, hallazgo 10).
 
 **Suscripción al relay.** Con `web_nueva: sí`, el demonio deja el sondeo de `GET /v1/estado` cada 3 s (M8f) y lee `GET /v1/stream` del relay en un hilo: `estado` sustituye a la respuesta del sondeo (mismo `estado.json`, mismo `estado-equipo.md`) y `eventos` se reenvía a sus clientes. Si el stream se corta, vuelve al sondeo cada 3 s hasta que reconecta (espera creciente hasta 30 s). `relay.conectado` es `false` desde el corte hasta el primer mensaje nuevo, y `relay.desde` es la hora del último mensaje bueno.
 
@@ -309,7 +323,11 @@ Las acciones exigen además `Content-Type: application/json` (si no, `415`) y un
   - `donde` (opcional, ≤ 80).
 
   Un campo de más, o fuera de su lista o de su longitud, da `400`.
-- **Saneado:** saltos de línea y tabuladores, a un espacio; espacios repetidos, a uno; un `#` o `>` al principio se quita; ningún carácter de control.
+- **Saneado:** saltos de línea y tabuladores, a un espacio; espacios repetidos, a uno; un `#` o `>` al principio se quita; ningún carácter de control. Además (tras congelar, 2026-10-17, PR #16, issue #10):
+  - fuera los invisibles de dirección y de formato: U+061C, U+200B, U+200E, U+200F, U+202A–202E, U+2060–2064, U+2066–2069, U+FEFF y U+FFF9–FFFB. U+200C y U+200D (ZWNJ y ZWJ) se quedan;
+  - fuera `«` y `»`, también escritas como entidad (`&laquo;`, `&raquo;`, `&#171;`, `&#187;`, `&#xab;`, `&#xbb;`, sin distinguir mayúsculas y con ceros delante o sin ellos): una nota no puede cerrar sus comillas en `estado-equipo.md` (constitución V);
+  - fuera el HTML: las etiquetas completas (`<` seguido de una letra, `/`, `!` o `?`, hasta el `>`) y cualquier `<` delante de una letra, `/`, `!` o `?` (un `<!--` sin cerrar queda en `!--`). `3 < 4` y `<3` se quedan;
+  - las comillas y el HTML se quitan una y otra vez hasta que no queda nada (`&la&laquo;quo;` deja otro `&laquo;`; `<<b>!--`, otro `<!--`).
 - **Nota**, con el formato de la plantilla de `/hack-note`:
   ```
   ## <AAAA-MM-DD HH:MM local> · <quien o —> (<jurado|mentor|organización>)
@@ -327,7 +345,12 @@ Las acciones exigen además `Content-Type: application/json` (si no, `415`) y un
   5. `write-tree` y `commit-tree -p origin/main -m "Criterio: <papel> · <primeros 50 caracteres de que_dijo>"`, con la identidad de git del clon y sin coautoría;
   6. `git push --no-verify origin <sha>:refs/heads/main`.
 
-  Si el push se rechaza por no ser avance rápido, repite una vez desde el paso 1. Si vuelve a fallar, `409` y la web lo dice. Nunca hay merge, rebase, checkout ni stash en la copia. Mismo entorno de git sin preguntas que el publicador de M8g (`GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`, `GIT_ASKPASS` vacío, `ssh -o BatchMode=yes`, `credential.interactive=false`).
+  Si el push se rechaza por no ser avance rápido, repite una vez desde el paso 1. Si vuelve a fallar, `409` y la web lo dice.
+  - «Se rechaza por no ser avance rápido» (tras congelar, 2026-10-17, PR #16, issue #10) es lo que dice la línea `!` de `refs/heads/main` en la salida de `push --porcelain`; el stderr no se mira. Cuenta como carrera `[rejected] …` o `[remote rejected] (failed to update ref | failed to lock | cannot lock ref … | incorrect old value … | reference already exists)`. Cualquier otro rechazo (por ejemplo, un hook que lo rechaza) da `502` sin reintento.
+  - Los motivos del remoto también salen con su disco lleno o con un `main.lock` huérfano, así que el reintento comprueba tras su `fetch` que `origin/main` ya no es el padre del commit rechazado (con cualquiera de los motivos de carrera). Si no se ha movido, no era una carrera: `502` con el motivo, sin volver a subir.
+  - Cada orden de git tiene un plazo de 60 s. Pasado, se mata el árbol de procesos entero (`taskkill /F /T` en Windows; en Linux y macOS, su grupo de procesos con `SIGKILL`) y da `502 {"error":"git <orden>: sin respuesta en 60 s"}`.
+
+  Nunca hay merge, rebase, checkout ni stash en la copia. Mismo entorno de git sin preguntas que el publicador de M8g (`GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`, `GIT_ASKPASS` vacío, `ssh -o BatchMode=yes`, `credential.interactive=false`).
 - **Después:** no emite evento ni avisa por GitHub. Los demás la ven en novedades cuando el relay hace su fetch, y la propia persona, en el siguiente `git pull`.
 
 **Reclamar** (`POST /v1/reclamar`):
@@ -336,17 +359,21 @@ Las acciones exigen además `Content-Type: application/json` (si no, `415`) y un
   - la tarea existe (si no, `404`);
   - su estado es `lista` o `pendiente` y no tiene asignación (si no, `409`);
   - su `dueno` es esta persona o está vacío. Si es de otro dueño, `409` «es de @x según el plan» (regla de §5).
-- **Tope:** 10 reclamos por persona y hora, contados en `<git común>/hackathon/os/acciones.jsonl`. Pasado el tope, `429`.
+- **Tope:** 10 reclamos por persona y hora, contados en `<git común>/hackathon/os/acciones.jsonl`. Pasado el tope, `429`. Además (tras congelar, 2026-10-17, PR #16, issue #10):
+  - cuentan también los `gh issue edit` que fallaron (la línea `reclamo_fallido` de abajo); como están en el fichero, siguen contando tras reiniciar el demonio;
+  - una línea cuenta si `-300 s ≤ ahora − ts < 1 h`: una con el `ts` más de 5 min en el futuro (el reloj iba adelantado y se corrigió) no cuenta.
 - **Con GitHub** (`github: sí` y la tarea con `issue`):
+  - `repo_tareas` (o, si está vacío, el `repo` de `coordinacion.md`) tiene que tener la forma `dueño/repo`: `^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$`, y el repo no puede ser `.` ni `..`. Si no, `502` y no se llama a `gh` (PR #16);
   - `gh api user` debe ser esta persona (se comprueba una vez y se guarda; si no lo es, `409` y no asigna);
   - después, `gh issue edit <n> --repo <repo_tareas> --add-assignee @me`. Es un `assigned` y cuenta en la cuenta del equipo de §8 (R-30);
-  - si `gh` falla, `502` y no se emite nada.
+  - si `gh` falla, `502` y no se emite nada. Cada llamada a `gh` tiene un plazo de 30 s; pasado, se mata el árbol de procesos, como en Anotar, y cuenta como un fallo (PR #16);
+  - si lo que falla es el `gh issue edit`, además se añade a `acciones.jsonl` la línea `{"tipo":"reclamo_fallido","tarea":"T12","ts":"<UTC>"}`. Cuenta para el tope y nada más: no lleva `id` y su `tipo` no es `reclamo`, así que `escucha.sh` no la entrega (PR #16).
 - **Sin GitHub:** no asigna nada.
 - **En los dos casos:**
   - emite `reclamo` (§2);
   - añade a `acciones.jsonl` la línea `{"id":"<id del evento>","tipo":"reclamo","tarea":"T12","ts":"<UTC>"}`, con un solo `write` en modo append.
 - **Entrega del turno:** `scripts/coordinacion/escucha.sh`, con el OS activo y `web_nueva: sí`, lee las líneas nuevas de `acciones.jsonl` en cada paso (el de las rojas).
-  - Para cada línea de menos de 10 minutos, intenta `mkdir <git común>/hackathon/os/entregado/accion-<id>`. Solo el monitor que lo consigue la entrega, así que la recibe **una** sesión de esa persona.
+  - Para cada línea con `0 ≤ edad < 600 s`, intenta `mkdir <git común>/hackathon/os/entregado/accion-<id>`. Solo el monitor que lo consigue la entrega, así que la recibe **una** sesión de esa persona. La edad es `EPOCHSECONDS` menos la época en ms del ID entre 1000, leída en base 10 aunque empiece por 0: una línea con la hora en el futuro no se entrega (tras congelar, 2026-10-17, PR #16, issue #10; antes, «de menos de 10 minutos»).
   - Imprime el texto fijo «hk-os · reclamaste T12 desde la web (HH:MM). Es tuya: cuando acabes lo que tienes entre manos, ponte con ella; su definición, con la herramienta tarea del MCP o en el plan.».
   - Del contenido de la línea solo usa el ID, validado otra vez con la regex. Ni el título ni nada de los issues.
 
@@ -436,6 +463,7 @@ Inyección (scripts/os/delta.sh):
 | Refs de trabajo en curso | `refs/hackathon/wip/<persona>` en el remoto (opt-in) | Refs, no ramas |
 | `servicios.md` (M9a, §10) | `.hackathon/` | Sí |
 | `web.token` (token local de la web), `acciones.jsonl` (las acciones de la web, solo crece), `nota.index` (el índice temporal de Anotar), `servicios.json` (lo último que emitió el demonio por `clave`), `entregado/accion-<id>` (directorio: la acción ya la entregó un monitor) (M9a) | `<git común>/hackathon/os/` | No |
+| `web.html` (fuera de Windows: la página 0600 que redirige a la web con el token; la escribe `hk-os web`, §4, y `hk-os recoger` la deja fuera, como `web.token`) (tras congelar, 2026-10-17, PR #11) | `<git común>/hackathon/os/` | No |
 | La web nueva: fuente y compilado (M9a) | `hkos/web-src/` y `hkos/web/nueva/` del plugin | Sí (el compilado también: nadie instala Node) |
 
 `<git común>` (`git rev-parse --git-common-dir`) es compartido entre la copia principal y todos los worktrees de esa persona, así que los hooks de los workers leen y escriben lo mismo que los de la sesión principal. El estado propio de los scripts del buzón sigue en `<git dir>/hackathon/` como en la 0.3.2.
@@ -554,16 +582,27 @@ Fuera de servicios: docs/, README.md, CLAUDE.md
 **Lectura:**
 - Secciones por su título exacto (`## Servicios`, `## Conexiones`, `## Propuestas de servicios`, `## Propuestas de conexiones`); el orden no importa, y las de propuestas pueden faltar. Se toleran BOM, UTF-16 y `\r` (como `hk_leer`).
 - Filas: las líneas que empiezan por `|`, menos la cabecera y la de guiones. Las celdas se separan por `|` sin escapar y se recortan. Una celda vacía o `—` es «sin valor».
-- **Nombre:** `[a-z0-9][a-z0-9_-]{0,39}`, único.
+- **Nombre:** `[a-z0-9][a-z0-9_-]{0,39}`, único. Con un nombre repetido, ni sus filas ni las conexiones que lo usan salen confirmadas, y los dueños de esas conexiones son los de todas las filas con ese nombre (tras congelar, 2026-10-17, PR #7, issue #2, hallazgo 4).
 - **Carpeta:** relativa, con `/` al final, sin `..` ni `/` al principio.
 - **Puerto:** entero de 1 a 65535, o sin valor.
 - **Arranque** y **Prueba:** texto (≤ 300), con o sin comillas invertidas alrededor. El OS **nunca** los ejecuta.
-- **Salud:** sin valor, o una ruta `^/[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*$` sin `..` y sin `//` al principio (ADR-0011).
+- **Salud:** sin valor, o una ruta `^/[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*$` sin `..` y sin `//` al principio (ADR-0011), tampoco después de descodificar los `%XX` (`%2e%2e`, `%2f%2f`, `%252e`), hasta 5 veces; si aún cambia tras la quinta, no vale (tras congelar, 2026-10-17, PR #7, issue #2, hallazgo 13).
 - **Dueño:** `@usuario` de la tabla de `coordinacion.md`, o sin valor si aún no hay reparto (`/hack-scaffold` corre antes que `/hack-plan`). Sin valor, el dueño es el de `autoridad.md` y no hay desajuste; un `@usuario` distinto del de `autoridad.md` sí lo es (ADR-0011).
 - **De** y **A:** nombres de servicios de `## Servicios`.
 - **Contrato:** el título de un bloque `##` de `docs/contratos.md`, sin `##`.
 - **Propuestas:** el mismo formato que su tabla (Servicios o Conexiones), con las mismas reglas por campo, más **Autor** (`@usuario`) y **Hora** (`AAAA-MM-DD HH:MM`), que son declarados (dato).
 - `Fuera de servicios:` es una sola línea, con rutas separadas por comas (una carpeta acaba en `/`). Siempre están fuera, aunque no se escriban, `.hackathon/`, `.claude/`, `.github/` y los ficheros de la raíz que empiezan por `.`.
+- **Una versión con una lectura fallida** (tras congelar, 2026-10-17, PR #14, issue #10): si al leer una versión de la historia (abajo) falla alguna lectura de git (sus padres, con `git log -1 --format=%P`, o el fichero en el commit o en uno de sus padres, con `git ls-tree` y `git show`), esa versión no se guarda ni entra en la lista hasta que se lea bien: se vuelve a leer en la vuelta siguiente y, mientras, no confirma nada (tampoco como de `/hack-scaffold`). Que el fichero no esté en un padre (`git ls-tree` sin salida) no es un fallo; antes, las dos cosas se tomaban por «no estaba», y todas las filas del commit parecían añadidas en él.
 - **Mal formado** (una sección con una fila que no se puede partir, o dos servicios con el mismo nombre): `servicios.fichero` = `mal formado`, con la línea en el detalle. Las filas buenas se siguen mostrando y las malas salen como desajuste `formato_invalido`. Un campo que no vale en una fila buena (Puerto, Salud, Carpeta) también es `formato_invalido`, y esa fila no se consulta.
+- **Una fila que no vale** (tras congelar, 2026-10-17, PR #7, issue #2, hallazgo 6): con algún campo que no vale, la fila (servicio o conexión) queda `sin_confirmar`, y en `servicios.lista` un Puerto o una Salud que no valen van como `null`. El motivo sigue en el desajuste `formato_invalido`, con la `clave` de la fila. `lista` no tiene otra marca de «fila que no vale» (el esquema no la admite).
+
+**Clon superficial del relay** (tras congelar, 2026-10-17, PR #14, issue #10): si el clon del relay es superficial (`git rev-parse --is-shallow-repository` da `true`), ninguna fila es de `/hack-scaffold`, y las versiones de los commits del borde (los de `shallow`) no cuentan: git no tiene sus padres, así que todas sus filas parecerían añadidas por la persona de ese commit. Si no se sabe si es superficial (la orden falla o da otra cosa, o no se puede leer `shallow`), tampoco hay nada de `/hack-scaffold` y no cuenta ninguna versión, así que ninguna fila sale confirmada.
 
 **Clave de una fila:** los 12 primeros hex del sha256 del JSON de sus campos normalizados, en el orden de su tabla: Servicios = nombre, carpeta, puerto, arranque, salud, dueño; Conexiones = de, a, contrato, prueba. Normalizar es recortar, quitar las comillas invertidas de alrededor y pasar `—` a `null`. Una fila de Propuestas tiene la clave de la fila que propone: la de sus columnas sin Autor ni Hora. La confirmación (quién añadió cada clave, qué dueños hacen falta) es la de ADR-0011.
+
+**Historia que lee el relay** (tras congelar, 2026-10-17, PR #7, issue #2, hallazgos 1, 5 y 9):
+- las versiones del fichero salen de `git log --full-history` (hasta 200 commits), sin la simplificación de historia de `git log`;
+- **el commit que creó el fichero** se busca en toda la historia de `origin/main` (`git log --full-history -m --no-renames --diff-filter=A`): tiene que haber **uno solo** en el que el fichero está y no está en ninguno de sus padres, con como mucho un padre y que no venga de un renombrado (`diff-tree -M`). Si no (una rama sin ancestro común con el scaffold, un fichero borrado y vuelto a crear, un merge que lo crea, un renombrado), ninguna fila es de `/hack-scaffold`;
+- además, ese commit tiene que estar entre los 200 que se leen y ser el único de ellos sin el fichero en sus padres: con más de 200 commits en el fichero, ninguna fila es de `/hack-scaffold`;
+- de ese commit solo cuentan como de `/hack-scaffold` las filas de `## Servicios` y `## Conexiones`, no las de Propuestas;
+- un sha que emiten como `commit` demonios de personas distintas no se atribuye a nadie, sea cual sea el orden de llegada.

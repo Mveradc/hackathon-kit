@@ -114,8 +114,9 @@ def acciones_web(eventos, zips, por_zip, personas, nombres, tz):
         L.append("- En `criterios.md` de main, entradas «anotada desde la web» (por «Anotado por»): "
                  + ", ".join(f"{nombres.get(k, k)} {v}" for k, v in por_md.most_common()) + ".")
     if not con_entregas:
-        L.append("- «Entregadas por un monitor»: ningún zip trae `entregado/accion-<id>` (son carpetas vacías y "
-                 "`hk-os recoger` no las guarda). Si la sesión recibió el turno, lo dice la hoja.")
+        L.append("- «Entregadas por un monitor»: ningún zip trae `entregado/accion-<id>`. O ningún monitor entregó una "
+                 "acción, o los zips son de antes de que `hk-os recoger` guardara las carpetas vacías (PR #11). "
+                 "Si la sesión recibió el turno, lo dice la hoja.")
     if otros_reclamos:
         L.append("- Reclamos por otra vía (para comparar): " + ", ".join(f"{k} {v}" for k, v in otros_reclamos.items()) + ".")
     L += ["- Lo que no sale de aquí: los reclamos y notas que la web rechazó (409, 429, 502…), que no dejan ni evento ni "
