@@ -116,6 +116,30 @@ os_rojas() {
   done
 }
 
+# M9a (K-95, api.md §4, ADR-0010): Reclamar desde la web deja una línea en acciones.jsonl; el monitor de una sola
+# sesión de esa persona la convierte en un turno con un texto fijo del kit. De la línea solo se usa el ID de la tarea,
+# validado otra vez; la hora sale del ID del evento (época en ms), sin procesos. Lo entrega el monitor que consigue
+# crear entregado/accion-<id> (mkdir es atómico). Solo con el OS activo y `web_nueva: sí`; sin ellos no lee nada.
+acciones_leidas=0
+os_acciones() {
+  os_activo && os_web_nueva || return 0
+  local f=$OS_COMUN/hackathon/os/acciones.jsonl ent=$OS_COMUN/hackathon/os/entregado l n=0 id tarea ms hhmm
+  [[ -f $f ]] || return 0
+  while IFS= read -r l; do                       # sin `|| [[ -n $l ]]`: una última línea sin salto aún no cuenta
+    (( ++n > acciones_leidas )) || continue
+    acciones_leidas=$n
+    [[ $l =~ \"tipo\":\"reclamo\" && $l =~ \"tarea\":\"(T[0-9]{2,3})\" ]] || continue
+    tarea=${BASH_REMATCH[1]}
+    [[ $l =~ \"id\":\"(web-[a-z0-9-]{1,60}-reclamo-$tarea-([0-9]{10,16}))\" ]] || continue
+    id=${BASH_REMATCH[1]} ms=${BASH_REMATCH[2]}
+    (( EPOCHSECONDS - ms / 1000 < 600 )) || continue        # de menos de 10 minutos
+    [[ -d $ent ]] || mkdir -p "$ent" 2>/dev/null
+    mkdir "$ent/accion-$id" 2>/dev/null || continue         # ya la entregó otro monitor
+    printf -v hhmm '%(%H:%M)T' $(( ms / 1000 ))
+    echo "hk-os · reclamaste $tarea desde la web ($hhmm). Es tuya: cuando acabes lo que tienes entre manos, ponte con ella; su definición, con la herramienta tarea del MCP o en el plan."
+  done < "$f"
+}
+
 # Al cerrar la sesión, Claude Code mata al proceso que lanzó el monitor, pero en Windows (Git Bash) el
 # monitor sobrevive, huérfano: seguiría consultando GitHub y se quedaría avisos que no llegan a nadie
 # (prueba de M6a, 2026-10-11). Si el padre ya no existe, la sesión ha terminado: salir no cuesta turnos.
@@ -135,6 +159,7 @@ while :; do
   fi
   if (( activa )); then
     os_rojas
+    os_acciones
     sleep "$paso"
   else
     sleep 60

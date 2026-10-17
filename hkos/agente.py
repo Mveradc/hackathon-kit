@@ -31,6 +31,7 @@ from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from acciones import Acciones  # noqa: E402
 from colisiones_merge import Publicador  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from estados import fecha  # noqa: E402
@@ -433,6 +434,7 @@ class Agente:
         self.web_cambio = threading.Condition()
         self.web_seq, self.web_cola = 0, deque(maxlen=WEB_COLA)     # (seq, evento, datos): lo que va a /v1/stream
         self.suscripcion, self.salud_servicios = Suscripcion(self), SaludServicios(self)
+        self.acciones = Acciones(self)
 
     # --- web de trabajo (M9a) ---
     def _token_web(self):
@@ -481,8 +483,13 @@ class Agente:
                 "vista": proyeccion.vista(estado, ahora=ahora, umbral_viejo_s=self.umbral_viejo_s)}
 
     def accion(self, ruta, cuerpo):
-        """Anotar y Reclamar (K-95). Hasta entonces, la ruta existe con sus comprobaciones de seguridad y nada más."""
-        return 501, {"error": "sin implementar"}
+        """Anotar y Reclamar (K-95, acciones.py), ya pasadas las comprobaciones de seguridad. Un fallo inesperado no tumba
+        al demonio: 502 con el motivo en una línea."""
+        try:
+            return self.acciones(ruta, cuerpo)
+        except Exception as ex:  # constitución VIII
+            self.log(f"acción {ruta}: error: {ex!r}")
+            return 502, {"error": f"{type(ex).__name__}: {ex}"[:200]}
 
     def mensaje_relay(self, evento, datos, ident=None):
         """Un mensaje del SSE del relay (lo llama Suscripcion en su hilo)."""
