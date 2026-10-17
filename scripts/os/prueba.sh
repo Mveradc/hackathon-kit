@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Hook del Hackathon OS (M9a, K-96; api.md §1; ADR-0011): si el comando de un Bash es exactamente la Prueba de una
 # conexión de .hackathon/servicios.md, una línea `prueba` con su huella (nunca el comando) y si pasó o falló.
-# PostToolUse → pasa; PostToolUseFailure → falla, con el código de «Exit code N» (Paso 0 de M9a). El OS nunca ejecuta
-# la Prueba: solo mira lo que la sesión ya ha corrido. Sin OS activo, sin `web_nueva: sí` o sin servicios.md, sale sin
-# leer la entrada. Solo builtins, salvo el sha256 cuando hay coincidencia.
+# PostToolUse → pasa; PostToolUseFailure → falla, con el código de «Exit code N» (Paso 0 de M9a); con is_interrupt o
+# run_in_background, nada. El OS nunca ejecuta la Prueba: solo mira lo que la sesión ya ha corrido. Sin OS activo, sin
+# `web_nueva: sí` o sin servicios.md, sale sin leer la entrada. Solo builtins, salvo el sha256 cuando hay coincidencia.
 
 LC_ALL=C.UTF-8
 d=${0//\\//}
@@ -22,6 +22,8 @@ case $OS_V in
 esac
 os_crudo tool_name "$OS_CABEZA" && [[ $OS_V == Bash ]] || exit 0
 [[ $OS_CABEZA =~ \"is_interrupt\"[[:space:]]*:[[:space:]]*true ]] && exit 0
+# En segundo plano, PostToolUse llega al arrancar el proceso, no al terminar: no dice si la Prueba pasó (issue #2, 8).
+[[ $OS_CABEZA =~ \"run_in_background\"[[:space:]]*:[[:space:]]*true ]] && exit 0
 os_crudo command "$OS_CABEZA" || exit 0
 comando=$OS_V   # tal como viene escapado en la entrada
 comando=${comando#"${comando%%[![:space:]]*}"}; comando=${comando%"${comando##*[![:space:]]}"}

@@ -431,6 +431,14 @@ def prueba_prueba(tmp):
               lanzar(r, pasa, "echo pasa", "p4") == [] and lanzar(r, pasa, "uv run pytest", "p5") == []
               and lanzar(r, pasa, "—", "p6") == [])
     comprueba("PostToolUseFailure con is_interrupt: nada", lanzar(r, falla, pruebas[0], "p7", is_interrupt=True) == [])
+    # Fabricada (issue #2, hallazgo 8): en segundo plano, PostToolUse llega al arrancar, no al terminar la Prueba.
+    def fondo(entrada, valor):
+        return dict(entrada, tool_input=dict(entrada["tool_input"], run_in_background=valor),
+                    tool_response={"stdout": "", "stderr": "", "interrupted": False, "backgroundTaskId": "b1"})
+    comprueba("Bash con run_in_background: true (PostToolUse y PostToolUseFailure): nada",
+              lanzar(r, fondo(pasa, True), pruebas[0], "p10") == [] and lanzar(r, fondo(falla, True), pruebas[0], "p11") == [])
+    comprueba("run_in_background: false sigue dando «pasa»",
+              [l["resultado"] for l in lanzar(r, fondo(pasa, False), pruebas[0], "p12") if l] == ["pasa"])
     comprueba("otra herramienta: nada", lanzar(r, pasa, pruebas[0], "p8", tool_name="PowerShell") == [])
     sin_codigo = lanzar(r, falla, pruebas[0], "p9", error="Command failed")
     comprueba("PostToolUseFailure sin «Exit code N»: «falla» sin codigo",

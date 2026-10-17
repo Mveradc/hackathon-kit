@@ -15,8 +15,10 @@
   hk-os web                               abre la web de trabajo de este clon (M9a, con web_nueva: sí en os.md)
   hk-os agente …                          el demonio (lo lanza sesion.sh; ver agente.py)
 """
+import html
 import json
 import os
+import pathlib
 import re
 import subprocess
 import sys
@@ -36,7 +38,7 @@ from red import equipo, web_nueva  # noqa: E402
 
 USO = __doc__.split("\n\n", 1)[1]
 # Lo que `recoger` nunca mete en el zip: secretos, los índices temporales y el remoto (código).
-NO_RECOGER = {"token", "relay.url", "wip.index", "wip.pathspecs", "web.token", "nota.index"}
+NO_RECOGER = {"token", "relay.url", "wip.index", "wip.pathspecs", "web.token", "nota.index", "web.html", "web.html.tmp"}
 
 
 def _principal(comun):
@@ -223,8 +225,10 @@ def unir(url, token, cwd=".", persona=None, remoto=None, salida=print):
 
 def recoger(cwd=".", destino=None, salida=print):
     """Zip con los datos del OS de este clon para analizar el ensayo (evals/coordinacion/ensayo/resumen.py): la carpeta
-    <git común>/hackathon/os/ sin secretos ni el remoto, el log de git y el desfase del reloj. No incluye la
-    configuración de git (.git/config, donde va la cabecera del remoto)."""
+    <git común>/hackathon/os/ sin secretos ni el remoto (con sus carpetas vacías, como entregado/accion-<id>), el log
+    de git y el desfase del reloj; a quien coordina, además, en contexto/, lo que el relay leía de origin/main y
+    .hackathon/criterios.md (las notas de Anotar). No incluye la configuración de git (.git/config, donde va la
+    cabecera del remoto)."""
     comun = agente.git_comun(cwd)
     principal = _principal(comun)
     base = os.path.join(comun, "hackathon", "os")
@@ -232,11 +236,14 @@ def recoger(cwd=".", destino=None, salida=print):
         salida("hk-os recoger: este clon no tiene datos del Hackathon OS.")
         return 1
     destino = destino or os.path.abspath(f"hk-os-{time.strftime('%Y%m%d-%H%M%S')}.zip")
-    n = 0
+    n = vacias = 0
     with zipfile.ZipFile(destino, "w", zipfile.ZIP_DEFLATED) as z:
         for raiz, dirs, ficheros in os.walk(base):
             rel = os.path.relpath(raiz, base).replace("\\", "/")
             dirs[:] = [d for d in dirs if not (rel == "." and d == "remoto")]
+            if rel != "." and not dirs and not ficheros:   # entregado/accion-<id>: la entrega es la carpeta (api.md §4)
+                z.writestr(zipfile.ZipInfo.from_file(raiz, f"os/{rel}/"), b"")
+                vacias += 1
             for f in ficheros:
                 if f in NO_RECOGER:
                     continue
@@ -245,7 +252,8 @@ def recoger(cwd=".", destino=None, salida=print):
         _, log = _git(principal, "log", "--all", "--date=iso-strict", "--format=%H%x09%cd%x09%ae%x09%D%x09%s")
         z.writestr("git-log.tsv", log + "\n")
         if os.path.isdir(os.path.join(base, "relay")):   # quien coordina: lo que el relay leía de origin/main
-            for ruta in (".hackathon/coordinacion.md", ".hackathon/plan.md", ".hackathon/autoridad.md", "docs/contratos.md"):
+            for ruta in (".hackathon/coordinacion.md", ".hackathon/plan.md", ".hackathon/autoridad.md", "docs/contratos.md",
+                         ".hackathon/criterios.md"):
                 rc, texto = _git(principal, "show", f"origin/main:{ruta}")
                 if rc == 0:
                     z.writestr("contexto/" + ruta, texto + "\n")
@@ -258,13 +266,38 @@ def recoger(cwd=".", destino=None, salida=print):
         except OSError:
             d = None
         z.writestr("desfase.txt", f"{d if d is not None else 'sin relay'}\n")
-    salida(f"Recogidos {n} ficheros en {destino} (sin token, sin relay.url, sin el remoto ni la configuración de git).")
+    salida(f"Recogidos {n} ficheros" + (f" y {vacias} carpetas vacías" if vacias else "")
+           + f" en {destino} (sin token, sin relay.url, sin el remoto ni la configuración de git).")
     return 0
 
 
-def web(cwd=".", abrir=webbrowser.open, salida=print):
+PAGINA_WEB = ('<!doctype html><meta charset="utf-8"><meta name="referrer" content="no-referrer">'
+              '<meta http-equiv="refresh" content="0;url={url}"><title>hk-os web</title>'
+              '<a href="{url}">Abrir la web de trabajo</a>\n')
+
+
+def abrir_navegador(url, carpeta):
+    """Abre la web con el token en el fragmento. En Windows, con webbrowser: la línea de órdenes del navegador solo la
+    leen el propio usuario y los administradores. En Linux (y macOS) cualquier usuario ve los argumentos de cualquier
+    proceso (/proc/*/cmdline, ps; issue #6): el navegador recibe solo la ruta de web.html, una página de este clon,
+    0600 como web.token, que redirige a la URL. False si no hay navegador."""
+    if os.name == "nt":
+        return webbrowser.open(url)
+    ruta = os.path.join(carpeta, "web.html")
+    try:
+        os.remove(ruta + ".tmp")
+    except OSError:
+        pass
+    with os.fdopen(os.open(ruta + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as f:
+        f.write(PAGINA_WEB.format(url=html.escape(url, quote=True)))
+    os.replace(ruta + ".tmp", ruta)
+    return webbrowser.open(pathlib.Path(ruta).as_uri())
+
+
+def web(cwd=".", abrir=None, salida=print):
     """M9a (api.md §4): abre http://127.0.0.1:<puerto>/#t=<token> si el demonio de este clon responde por /salud con
-    su git común y sirve la web. El token va en el fragmento, que el navegador no envía; no se imprime."""
+    su git común y sirve la web. El token va en el fragmento, que el navegador no envía; no se imprime ni va en los
+    argumentos del navegador fuera de Windows (abrir_navegador). `abrir` (pruebas) recibe la URL con el token."""
     comun = agente.git_comun(cwd)
     principal = _principal(comun)
     carpeta = os.path.join(comun, "hackathon", "os")
@@ -306,7 +339,18 @@ def web(cwd=".", abrir=webbrowser.open, salida=print):
         salida("hk-os web: el demonio de este clon arrancó antes de «web_nueva: sí». Cierra las sesiones de Claude "
                "Code de este clon y termina el proceso de hkos/agente.py; la próxima sesión lo lanza con la web.")
         return 1
-    abrir(f"{url}#t={token}")
+    if abrir:
+        abrir(f"{url}#t={token}")
+    else:
+        try:
+            abierta = abrir_navegador(f"{url}#t={token}", carpeta)
+        except OSError as ex:
+            salida(f"hk-os web: no he podido preparar la página para el navegador ({ex}).")
+            return 1
+        if not abierta:
+            salida("hk-os web: no he encontrado un navegador." + ("" if os.name == "nt" else
+                   f" Abre a mano {pathlib.Path(carpeta, 'web.html').as_uri()} (lleva el token: no la compartas)."))
+            return 1
     salida(f"Web de trabajo: {url} (el token va aparte, en el fragmento; para volver a abrirla, hk-os web).")
     return 0
 
