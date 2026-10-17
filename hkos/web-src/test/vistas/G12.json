@@ -1,0 +1,1055 @@
+{
+ "nombre": "G12",
+ "casos": [
+  {
+   "servido_en": "2026-11-25T18:20:00Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-11-25T18:20:00Z"
+   },
+   "vista": {
+    "v": 1,
+    "generado_en": "2026-11-25T18:20:00Z",
+    "ahora": "2026-11-25T18:20:00Z",
+    "fuentes": {
+     "git": {
+      "valor": "ok",
+      "observado_en": "2026-11-25T18:10:00.000000Z",
+      "viejo": true
+     },
+     "github": {
+      "valor": "ok",
+      "observado_en": "2026-11-25T18:20:00Z",
+      "viejo": false
+     },
+     "relay": {
+      "valor": "ok",
+      "observado_en": "2026-11-25T18:20:00.000000Z",
+      "viejo": false
+     }
+    },
+    "umbrales": {
+     "presencia_s": 180,
+     "fuente_s": 300
+    },
+    "columnas": {
+     "haciendo": [
+      {
+       "id": "T01",
+       "titulo": "API de predicción",
+       "dueno": "persona-a",
+       "estado": "reclamada",
+       "etiqueta": "reclamada",
+       "fuente": "web",
+       "observado_en": "2026-11-25T18:16:00.000000Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "issue": 100,
+       "estado_declarado": true
+      }
+     ],
+     "hecho": [],
+     "falta": [
+      {
+       "id": "T02",
+       "titulo": "Motor",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-11-25T18:00:00.000000Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "issue": 101
+      }
+     ]
+    },
+    "colisiones": [],
+    "sin_tarea": [
+     {
+      "persona": "persona-b",
+      "que": "arbol: notas.txt, motor/m.py",
+      "observado_en": "2026-11-25T18:15:00.000000Z"
+     },
+     {
+      "persona": "persona-c",
+      "que": "commit: main",
+      "observado_en": "2026-11-25T18:10:00.000000Z"
+     }
+    ],
+    "personas": [
+     {
+      "persona": "persona-a",
+      "nombre": "A",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [
+       "T01"
+      ],
+      "ultima_senal": "2026-11-25T18:16:00.000000Z",
+      "viejo": true
+     },
+     {
+      "persona": "persona-b",
+      "nombre": "B",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": "2026-11-25T18:15:00.000000Z",
+      "viejo": true
+     },
+     {
+      "persona": "persona-c",
+      "nombre": "C",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": "2026-11-25T18:10:00.000000Z",
+      "viejo": true
+     }
+    ],
+    "nombres": {
+     "persona-a": "A",
+     "persona-b": "B",
+     "persona-c": "C"
+    },
+    "novedades": [],
+    "reservas": [],
+    "servicios": {
+     "fichero": {
+      "valor": "ok",
+      "fuente": "git",
+      "observado_en": "2026-11-25T18:10:00Z"
+     },
+     "lista": [
+      {
+       "clave": "6b62f452dfc2",
+       "nombre": "api",
+       "carpeta": "api/",
+       "puerto": 8000,
+       "arranque": "uv run api",
+       "salud": "/salud",
+       "dueno": null,
+       "dueno_autoridad": "persona-a",
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": {
+        "valor": {
+         "escucha": false,
+         "salud": null
+        },
+        "fuente": "demonio",
+        "observado_en": "2026-11-25T18:12:00.000000Z"
+       }
+      },
+      {
+       "clave": "d82e721d5c27",
+       "nombre": "web",
+       "carpeta": "web/",
+       "puerto": 5173,
+       "arranque": null,
+       "salud": null,
+       "dueno": null,
+       "dueno_autoridad": "persona-a",
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": null
+      },
+      {
+       "clave": "7d32ed6a31cc",
+       "nombre": "motor",
+       "carpeta": "motor/",
+       "puerto": 9000,
+       "arranque": null,
+       "salud": null,
+       "dueno": null,
+       "dueno_autoridad": "persona-b",
+       "confirmacion": {
+        "valor": "sin_confirmar",
+        "por": [
+         "persona-c"
+        ],
+        "faltan": [
+         "persona-b"
+        ],
+        "de_scaffold": false,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": null
+      },
+      {
+       "clave": "c0b846b958bf",
+       "nombre": "datos",
+       "carpeta": "datos/",
+       "puerto": null,
+       "arranque": null,
+       "salud": null,
+       "dueno": null,
+       "dueno_autoridad": "persona-c",
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": null
+      }
+     ],
+     "conexiones": [
+      {
+       "clave": "e6629752e3d3",
+       "de": "web",
+       "a": "api",
+       "contrato": "web → api",
+       "prueba": "pytest t_web_api.py",
+       "duenos": [
+        "persona-a"
+       ],
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "resultado": {
+        "valor": "falla",
+        "fuente": "hook",
+        "observado_en": "2026-11-25T18:14:00.000000Z"
+       }
+      },
+      {
+       "clave": "9e91abddfe28",
+       "de": "motor",
+       "a": "web",
+       "contrato": "motor → web",
+       "prueba": null,
+       "duenos": [
+        "persona-a",
+        "persona-b"
+       ],
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "resultado": null
+      },
+      {
+       "clave": "fd537389d533",
+       "de": "datos",
+       "a": "motor",
+       "contrato": "datos → motor",
+       "prueba": null,
+       "duenos": [
+        "persona-b",
+        "persona-c"
+       ],
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "resultado": null
+      }
+     ],
+     "propuestas": [
+      {
+       "tipo": "conexion",
+       "clave": "a182d1d842f6",
+       "campos": {
+        "de": "web",
+        "a": "motor",
+        "contrato": "motor → web",
+        "prueba": null
+       },
+       "duenos": [
+        "persona-a",
+        "persona-b"
+       ],
+       "autor_declarado": "@persona-c",
+       "hora_declarada": "2026-11-25 18:10",
+       "autor_git": "persona-c",
+       "observado_en": "2026-11-25T18:10:00Z"
+      }
+     ],
+     "fuera": [
+      ".hackathon/",
+      ".claude/",
+      ".github/",
+      "docs/"
+     ],
+     "desajustes": [
+      {
+       "tipo": "puerto_sin_respuesta",
+       "detalle": "«api» :8000 declarado, no responde",
+       "observado_en": "2026-11-25T18:12:00.000000Z",
+       "fuente": "demonio",
+       "personas": [
+        "persona-a"
+       ],
+       "clave": "6b62f452dfc2"
+      },
+      {
+       "tipo": "prueba_falla",
+       "detalle": "contrato «web → api»: la prueba falla",
+       "observado_en": "2026-11-25T18:14:00.000000Z",
+       "fuente": "hook",
+       "personas": [
+        "persona-a"
+       ],
+       "clave": "e6629752e3d3"
+      },
+      {
+       "tipo": "contrato_inexistente",
+       "detalle": "conexión «datos → motor»: el contrato «datos → motor» no está en docs/contratos.md",
+       "observado_en": "2026-11-25T18:10:00Z",
+       "fuente": "git",
+       "personas": [
+        "persona-b",
+        "persona-c"
+       ],
+       "clave": "fd537389d533"
+      },
+      {
+       "tipo": "codigo_fuera",
+       "detalle": "2 ficheros fuera de todo servicio",
+       "observado_en": "2026-11-25T18:15:00.000000Z",
+       "fuente": "git",
+       "personas": [],
+       "rutas": [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "servido_en": "2026-11-25T18:20:00Z",
+   "persona": "persona-b",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-11-25T18:20:00Z"
+   },
+   "vista": {
+    "v": 1,
+    "generado_en": "2026-11-25T18:20:00Z",
+    "ahora": "2026-11-25T18:20:00Z",
+    "fuentes": {
+     "git": {
+      "valor": "ok",
+      "observado_en": "2026-11-25T18:10:00.000000Z",
+      "viejo": true
+     },
+     "github": {
+      "valor": "ok",
+      "observado_en": "2026-11-25T18:20:00Z",
+      "viejo": false
+     },
+     "relay": {
+      "valor": "ok",
+      "observado_en": "2026-11-25T18:20:00.000000Z",
+      "viejo": false
+     }
+    },
+    "umbrales": {
+     "presencia_s": 180,
+     "fuente_s": 300
+    },
+    "columnas": {
+     "haciendo": [
+      {
+       "id": "T01",
+       "titulo": "API de predicción",
+       "dueno": "persona-a",
+       "estado": "reclamada",
+       "etiqueta": "reclamada",
+       "fuente": "web",
+       "observado_en": "2026-11-25T18:16:00.000000Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "issue": 100,
+       "estado_declarado": true
+      }
+     ],
+     "hecho": [],
+     "falta": [
+      {
+       "id": "T02",
+       "titulo": "Motor",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-11-25T18:00:00.000000Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "issue": 101
+      }
+     ]
+    },
+    "colisiones": [],
+    "sin_tarea": [
+     {
+      "persona": "persona-b",
+      "que": "arbol: notas.txt, motor/m.py",
+      "observado_en": "2026-11-25T18:15:00.000000Z"
+     },
+     {
+      "persona": "persona-c",
+      "que": "commit: main",
+      "observado_en": "2026-11-25T18:10:00.000000Z"
+     }
+    ],
+    "personas": [
+     {
+      "persona": "persona-a",
+      "nombre": "A",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [
+       "T01"
+      ],
+      "ultima_senal": "2026-11-25T18:16:00.000000Z",
+      "viejo": true
+     },
+     {
+      "persona": "persona-b",
+      "nombre": "B",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": "2026-11-25T18:15:00.000000Z",
+      "viejo": true
+     },
+     {
+      "persona": "persona-c",
+      "nombre": "C",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": "2026-11-25T18:10:00.000000Z",
+      "viejo": true
+     }
+    ],
+    "nombres": {
+     "persona-a": "A",
+     "persona-b": "B",
+     "persona-c": "C"
+    },
+    "novedades": [],
+    "reservas": [],
+    "servicios": {
+     "fichero": {
+      "valor": "ok",
+      "fuente": "git",
+      "observado_en": "2026-11-25T18:10:00Z"
+     },
+     "lista": [
+      {
+       "clave": "6b62f452dfc2",
+       "nombre": "api",
+       "carpeta": "api/",
+       "puerto": 8000,
+       "arranque": "uv run api",
+       "salud": "/salud",
+       "dueno": null,
+       "dueno_autoridad": "persona-a",
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": {
+        "valor": {
+         "escucha": false,
+         "salud": null
+        },
+        "fuente": "demonio",
+        "observado_en": "2026-11-25T18:12:00.000000Z"
+       }
+      },
+      {
+       "clave": "d82e721d5c27",
+       "nombre": "web",
+       "carpeta": "web/",
+       "puerto": 5173,
+       "arranque": null,
+       "salud": null,
+       "dueno": null,
+       "dueno_autoridad": "persona-a",
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": null
+      },
+      {
+       "clave": "7d32ed6a31cc",
+       "nombre": "motor",
+       "carpeta": "motor/",
+       "puerto": 9000,
+       "arranque": null,
+       "salud": null,
+       "dueno": null,
+       "dueno_autoridad": "persona-b",
+       "confirmacion": {
+        "valor": "sin_confirmar",
+        "por": [
+         "persona-c"
+        ],
+        "faltan": [
+         "persona-b"
+        ],
+        "de_scaffold": false,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": null
+      },
+      {
+       "clave": "c0b846b958bf",
+       "nombre": "datos",
+       "carpeta": "datos/",
+       "puerto": null,
+       "arranque": null,
+       "salud": null,
+       "dueno": null,
+       "dueno_autoridad": "persona-c",
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": null
+      }
+     ],
+     "conexiones": [
+      {
+       "clave": "e6629752e3d3",
+       "de": "web",
+       "a": "api",
+       "contrato": "web → api",
+       "prueba": "pytest t_web_api.py",
+       "duenos": [
+        "persona-a"
+       ],
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "resultado": {
+        "valor": "falla",
+        "fuente": "hook",
+        "observado_en": "2026-11-25T18:14:00.000000Z"
+       }
+      },
+      {
+       "clave": "9e91abddfe28",
+       "de": "motor",
+       "a": "web",
+       "contrato": "motor → web",
+       "prueba": null,
+       "duenos": [
+        "persona-a",
+        "persona-b"
+       ],
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "resultado": null
+      },
+      {
+       "clave": "fd537389d533",
+       "de": "datos",
+       "a": "motor",
+       "contrato": "datos → motor",
+       "prueba": null,
+       "duenos": [
+        "persona-b",
+        "persona-c"
+       ],
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "resultado": null
+      }
+     ],
+     "propuestas": [
+      {
+       "tipo": "conexion",
+       "clave": "a182d1d842f6",
+       "campos": {
+        "de": "web",
+        "a": "motor",
+        "contrato": "motor → web",
+        "prueba": null
+       },
+       "duenos": [
+        "persona-a",
+        "persona-b"
+       ],
+       "autor_declarado": "@persona-c",
+       "hora_declarada": "2026-11-25 18:10",
+       "autor_git": "persona-c",
+       "observado_en": "2026-11-25T18:10:00Z"
+      }
+     ],
+     "fuera": [
+      ".hackathon/",
+      ".claude/",
+      ".github/",
+      "docs/"
+     ],
+     "desajustes": [
+      {
+       "tipo": "puerto_sin_respuesta",
+       "detalle": "«api» :8000 declarado, no responde",
+       "observado_en": "2026-11-25T18:12:00.000000Z",
+       "fuente": "demonio",
+       "personas": [
+        "persona-a"
+       ],
+       "clave": "6b62f452dfc2"
+      },
+      {
+       "tipo": "prueba_falla",
+       "detalle": "contrato «web → api»: la prueba falla",
+       "observado_en": "2026-11-25T18:14:00.000000Z",
+       "fuente": "hook",
+       "personas": [
+        "persona-a"
+       ],
+       "clave": "e6629752e3d3"
+      },
+      {
+       "tipo": "contrato_inexistente",
+       "detalle": "conexión «datos → motor»: el contrato «datos → motor» no está en docs/contratos.md",
+       "observado_en": "2026-11-25T18:10:00Z",
+       "fuente": "git",
+       "personas": [
+        "persona-b",
+        "persona-c"
+       ],
+       "clave": "fd537389d533"
+      },
+      {
+       "tipo": "codigo_fuera",
+       "detalle": "2 ficheros fuera de todo servicio",
+       "observado_en": "2026-11-25T18:15:00.000000Z",
+       "fuente": "git",
+       "personas": [],
+       "rutas": [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      }
+     ]
+    }
+   }
+  },
+  {
+   "servido_en": "2026-11-25T18:20:00Z",
+   "persona": "persona-c",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-11-25T18:20:00Z"
+   },
+   "vista": {
+    "v": 1,
+    "generado_en": "2026-11-25T18:20:00Z",
+    "ahora": "2026-11-25T18:20:00Z",
+    "fuentes": {
+     "git": {
+      "valor": "ok",
+      "observado_en": "2026-11-25T18:10:00.000000Z",
+      "viejo": true
+     },
+     "github": {
+      "valor": "ok",
+      "observado_en": "2026-11-25T18:20:00Z",
+      "viejo": false
+     },
+     "relay": {
+      "valor": "ok",
+      "observado_en": "2026-11-25T18:20:00.000000Z",
+      "viejo": false
+     }
+    },
+    "umbrales": {
+     "presencia_s": 180,
+     "fuente_s": 300
+    },
+    "columnas": {
+     "haciendo": [
+      {
+       "id": "T01",
+       "titulo": "API de predicción",
+       "dueno": "persona-a",
+       "estado": "reclamada",
+       "etiqueta": "reclamada",
+       "fuente": "web",
+       "observado_en": "2026-11-25T18:16:00.000000Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "issue": 100,
+       "estado_declarado": true
+      }
+     ],
+     "hecho": [],
+     "falta": [
+      {
+       "id": "T02",
+       "titulo": "Motor",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-11-25T18:00:00.000000Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "issue": 101
+      }
+     ]
+    },
+    "colisiones": [],
+    "sin_tarea": [
+     {
+      "persona": "persona-b",
+      "que": "arbol: notas.txt, motor/m.py",
+      "observado_en": "2026-11-25T18:15:00.000000Z"
+     },
+     {
+      "persona": "persona-c",
+      "que": "commit: main",
+      "observado_en": "2026-11-25T18:10:00.000000Z"
+     }
+    ],
+    "personas": [
+     {
+      "persona": "persona-a",
+      "nombre": "A",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [
+       "T01"
+      ],
+      "ultima_senal": "2026-11-25T18:16:00.000000Z",
+      "viejo": true
+     },
+     {
+      "persona": "persona-b",
+      "nombre": "B",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": "2026-11-25T18:15:00.000000Z",
+      "viejo": true
+     },
+     {
+      "persona": "persona-c",
+      "nombre": "C",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": "2026-11-25T18:10:00.000000Z",
+      "viejo": true
+     }
+    ],
+    "nombres": {
+     "persona-a": "A",
+     "persona-b": "B",
+     "persona-c": "C"
+    },
+    "novedades": [],
+    "reservas": [],
+    "servicios": {
+     "fichero": {
+      "valor": "ok",
+      "fuente": "git",
+      "observado_en": "2026-11-25T18:10:00Z"
+     },
+     "lista": [
+      {
+       "clave": "6b62f452dfc2",
+       "nombre": "api",
+       "carpeta": "api/",
+       "puerto": 8000,
+       "arranque": "uv run api",
+       "salud": "/salud",
+       "dueno": null,
+       "dueno_autoridad": "persona-a",
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": {
+        "valor": {
+         "escucha": false,
+         "salud": null
+        },
+        "fuente": "demonio",
+        "observado_en": "2026-11-25T18:12:00.000000Z"
+       }
+      },
+      {
+       "clave": "d82e721d5c27",
+       "nombre": "web",
+       "carpeta": "web/",
+       "puerto": 5173,
+       "arranque": null,
+       "salud": null,
+       "dueno": null,
+       "dueno_autoridad": "persona-a",
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": null
+      },
+      {
+       "clave": "7d32ed6a31cc",
+       "nombre": "motor",
+       "carpeta": "motor/",
+       "puerto": 9000,
+       "arranque": null,
+       "salud": null,
+       "dueno": null,
+       "dueno_autoridad": "persona-b",
+       "confirmacion": {
+        "valor": "sin_confirmar",
+        "por": [
+         "persona-c"
+        ],
+        "faltan": [
+         "persona-b"
+        ],
+        "de_scaffold": false,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": null
+      },
+      {
+       "clave": "c0b846b958bf",
+       "nombre": "datos",
+       "carpeta": "datos/",
+       "puerto": null,
+       "arranque": null,
+       "salud": null,
+       "dueno": null,
+       "dueno_autoridad": "persona-c",
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "comprobado": null
+      }
+     ],
+     "conexiones": [
+      {
+       "clave": "e6629752e3d3",
+       "de": "web",
+       "a": "api",
+       "contrato": "web → api",
+       "prueba": "pytest t_web_api.py",
+       "duenos": [
+        "persona-a"
+       ],
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "resultado": {
+        "valor": "falla",
+        "fuente": "hook",
+        "observado_en": "2026-11-25T18:14:00.000000Z"
+       }
+      },
+      {
+       "clave": "9e91abddfe28",
+       "de": "motor",
+       "a": "web",
+       "contrato": "motor → web",
+       "prueba": null,
+       "duenos": [
+        "persona-a",
+        "persona-b"
+       ],
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "resultado": null
+      },
+      {
+       "clave": "fd537389d533",
+       "de": "datos",
+       "a": "motor",
+       "contrato": "datos → motor",
+       "prueba": null,
+       "duenos": [
+        "persona-b",
+        "persona-c"
+       ],
+       "confirmacion": {
+        "valor": "confirmada",
+        "por": [],
+        "faltan": [],
+        "de_scaffold": true,
+        "fuente": "git",
+        "observado_en": "2026-11-25T18:10:00Z"
+       },
+       "resultado": null
+      }
+     ],
+     "propuestas": [
+      {
+       "tipo": "conexion",
+       "clave": "a182d1d842f6",
+       "campos": {
+        "de": "web",
+        "a": "motor",
+        "contrato": "motor → web",
+        "prueba": null
+       },
+       "duenos": [
+        "persona-a",
+        "persona-b"
+       ],
+       "autor_declarado": "@persona-c",
+       "hora_declarada": "2026-11-25 18:10",
+       "autor_git": "persona-c",
+       "observado_en": "2026-11-25T18:10:00Z"
+      }
+     ],
+     "fuera": [
+      ".hackathon/",
+      ".claude/",
+      ".github/",
+      "docs/"
+     ],
+     "desajustes": [
+      {
+       "tipo": "puerto_sin_respuesta",
+       "detalle": "«api» :8000 declarado, no responde",
+       "observado_en": "2026-11-25T18:12:00.000000Z",
+       "fuente": "demonio",
+       "personas": [
+        "persona-a"
+       ],
+       "clave": "6b62f452dfc2"
+      },
+      {
+       "tipo": "prueba_falla",
+       "detalle": "contrato «web → api»: la prueba falla",
+       "observado_en": "2026-11-25T18:14:00.000000Z",
+       "fuente": "hook",
+       "personas": [
+        "persona-a"
+       ],
+       "clave": "e6629752e3d3"
+      },
+      {
+       "tipo": "contrato_inexistente",
+       "detalle": "conexión «datos → motor»: el contrato «datos → motor» no está en docs/contratos.md",
+       "observado_en": "2026-11-25T18:10:00Z",
+       "fuente": "git",
+       "personas": [
+        "persona-b",
+        "persona-c"
+       ],
+       "clave": "fd537389d533"
+      },
+      {
+       "tipo": "codigo_fuera",
+       "detalle": "2 ficheros fuera de todo servicio",
+       "observado_en": "2026-11-25T18:15:00.000000Z",
+       "fuente": "git",
+       "personas": [],
+       "rutas": [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

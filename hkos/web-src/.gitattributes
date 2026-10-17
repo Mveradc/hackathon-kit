@@ -1,0 +1,3 @@
+# El compilado tiene que salir igual en Windows y en el CI (web-m9a.yml compara el diff): fuente con LF siempre.
+* text=auto eol=lf
+*.woff2 binary

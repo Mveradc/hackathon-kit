@@ -1,0 +1,116 @@
+/* Maquetación de las cuatro vistas (pantallas/ de diseno-web). Solo forma: los colores, de los tokens. */
+* { box-sizing: border-box; }
+html { color-scheme: dark; }
+html[data-theme="light"] { color-scheme: light; }
+
+.hk-app { min-height: 100vh; padding: 28px var(--space-8) 40px; }
+.hk-app__marco { max-width: 1376px; margin: 0 auto; display: flex; flex-direction: column; gap: var(--space-6); }
+
+.hk-cabecera { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-4); }
+.hk-cabecera__izq, .hk-cabecera__der { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-4); }
+.hk-producto { font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -.01em; }
+.hk-titulo { font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -.01em; margin: 0; }
+.hk-sub { font-family: var(--font-mono); font-size: 13px; color: var(--ink-muted); }
+
+.hk-nav { display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--surface-100); box-shadow: var(--panel); }
+.hk-nav button {
+  border: 0; background: transparent; cursor: pointer; padding: 8px 14px; border-radius: var(--radius-md);
+  font: 600 13px/18px var(--font-sans); color: var(--ink-muted);
+}
+.hk-nav button[aria-current="page"] { color: var(--relay); background: var(--relay-soft); }
+.hk-nav button:focus-visible, .hk-tema:focus-visible { outline: 2px solid var(--relay); outline-offset: 2px; }
+.hk-tema { border: 1px solid var(--line-strong); background: transparent; color: var(--ink-muted); border-radius: var(--radius-md);
+  padding: 6px 10px; font: 600 12px/16px var(--font-sans); cursor: pointer; }
+
+.hk-avatar { width: 40px; height: 40px; flex: none; border-radius: var(--radius-pill); display: inline-flex; align-items: center;
+  justify-content: center; font: 500 12px var(--font-mono); border: 2px solid var(--relay); background: var(--surface-200); }
+.hk-avatar.is-stale { border-style: dashed; border-color: var(--state-stale); }
+
+.hk-fila { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+.hk-col { min-width: 0; display: flex; flex-direction: column; gap: var(--space-6); }
+.hk-lista { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.hk-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap: var(--space-3); }
+.hk-vacio { color: var(--ink-faint); font-size: 13px; }
+.hk-texto { font-size: 14px; line-height: 20px; }
+.hk-texto-sec { font-size: 13px; line-height: 18px; color: var(--ink-muted); }
+.hk-dato { overflow-wrap: anywhere; }
+.hk-bloque { display: flex; flex-direction: column; gap: var(--space-1); padding-top: 10px; border-top: 1px solid var(--line); }
+.hk-bloque:first-child { padding-top: 0; border-top: 0; }
+.hk-caja { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); border-radius: var(--radius-md);
+  background: var(--surface-200); border: 1px solid var(--line); }
+.hk-caja--wait { border-color: var(--state-wait); }
+.hk-caja--fail { border-color: var(--state-fail); }
+.hk-caja--declarado { border-style: dashed; border-color: var(--declared); }
+.hk-caja--relay { border-color: var(--relay); background: var(--relay-soft); }
+.hk-acciones { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
+.hk-reclamar { display: flex; align-items: center; gap: 10px; }
+.hk-reclamar > :first-child { flex: 1 1 auto; min-width: 0; }
+
+/* Cifras de la red */
+.hk-cifras { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-4); }
+.hk-cifra { background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: var(--space-4);
+  display: flex; flex-direction: column; gap: 6px; }
+.hk-cifra--wait { box-shadow: var(--glow-wait); }
+.hk-cifra--fail { box-shadow: var(--glow-fail); }
+.hk-cifra__valor { font: 500 32px/36px var(--font-mono); }
+.hk-cifra__de { color: var(--ink-faint); }
+.hk-barra { height: 4px; border-radius: var(--radius-pill); background: var(--surface-200); }
+.hk-barra > div { height: 4px; border-radius: var(--radius-pill); background: var(--state-ok); }
+.hk-leyenda { display: flex; flex-wrap: wrap; gap: 20px; font-size: 12px; color: var(--ink-muted); }
+.hk-leyenda span { display: inline-flex; align-items: center; gap: 6px; }
+.hk-leyenda i { display: inline-block; width: 18px; height: 2px; }
+
+/* Tablero */
+.hk-banda { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 16px; border-radius: var(--radius-md);
+  border: 1px solid var(--state-fail); background: var(--fail-soft); }
+.hk-columnas { flex: 999 1 820px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: var(--space-4); align-items: start; }
+.hk-columna { display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--radius-lg);
+  background: var(--surface-100); box-shadow: var(--panel); }
+.hk-columna--wait { box-shadow: var(--glow-wait); }
+.hk-columna__cab { display: flex; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line); }
+.hk-columna__cab .hk-avatar { width: 34px; height: 34px; font-size: 11px; }
+
+/* Servicios */
+.hk-servicios { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); gap: var(--space-4); }
+.hk-servicio { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--radius-md);
+  background: var(--surface-100); border: 1px solid var(--line-strong); box-shadow: var(--panel); font-size: 13px; line-height: 18px; }
+.hk-servicio--fail { border-color: var(--state-fail); box-shadow: var(--glow-fail); }
+.hk-servicio--wait { border-color: var(--state-wait); box-shadow: var(--glow-wait); }
+.hk-servicio--declarado { border-style: dashed; border-color: var(--declared); }
+.hk-servicio__nombre { font: 600 15px var(--font-mono); }
+.hk-ficha { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 4px 12px; font-size: 13px; line-height: 18px; margin: 0; }
+.hk-ficha dt { color: var(--ink-faint); }
+.hk-ficha dd { margin: 0; overflow-wrap: anywhere; }
+.hk-ok { color: var(--state-ok); font-weight: 600; }
+.hk-fallo { color: var(--state-fail); font-weight: 600; }
+.hk-espera { color: var(--state-wait); font-weight: 600; }
+.hk-declarado { color: var(--declared); font-weight: 600; }
+
+/* Formularios (Anotar) */
+.hk-form { display: flex; flex-direction: column; gap: var(--space-2); }
+.hk-form label { font-size: 12px; color: var(--ink-muted); }
+.hk-form input[type="text"], .hk-form select, .hk-form textarea {
+  font: 14px/20px var(--font-sans); padding: 8px 10px; border-radius: var(--radius-md); border: 1px solid var(--line-strong);
+  background: var(--surface-200); color: var(--ink); width: 100%;
+}
+.hk-form textarea { resize: vertical; }
+.hk-form__dos { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.hk-form__check { display: inline-flex; align-items: center; gap: 6px; }
+.hk-aviso { padding: 10px 12px; border-radius: var(--radius-md); font-size: 13px; line-height: 18px; }
+.hk-aviso--ok { background: var(--relay-soft); border: 1px solid var(--relay); }
+.hk-aviso--error { background: var(--fail-soft); border: 1px solid var(--state-fail); }
+
+/* «Sin conexión» (ADR-0009): toda la página gris y quieta, con la hora del último dato. */
+.hk-sinconexion { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; border-radius: var(--radius-md);
+  border: 1px dashed var(--state-stale); background: var(--surface-100); color: var(--ink); }
+.hk-app.is-offline .hk-app__contenido { filter: grayscale(1); opacity: .7; }
+.hk-app.is-offline *, .hk-app.is-offline *::before, .hk-app.is-offline *::after { animation: none !important; transition: none !important; }
+
+.hk-portada { max-width: 640px; margin: 15vh auto 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.hk-portada code { font-family: var(--font-mono); color: var(--relay); }
+
+@media (max-width: 720px) {
+  .hk-app { padding: var(--space-4); }
+  .hk-form__dos { grid-template-columns: 1fr; }
+}
