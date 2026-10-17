@@ -351,11 +351,15 @@ Cada conexión con el demonio tiene un plazo de socket de 10 s (tras congelar, 2
   - la tarea existe (si no, `404`);
   - su estado es `lista` o `pendiente` y no tiene asignación (si no, `409`);
   - su `dueno` es esta persona o está vacío. Si es de otro dueño, `409` «es de @x según el plan» (regla de §5).
-- **Tope:** 10 reclamos por persona y hora, contados en `<git común>/hackathon/os/acciones.jsonl`. Pasado el tope, `429`.
+- **Tope:** 10 reclamos por persona y hora, contados en `<git común>/hackathon/os/acciones.jsonl`. Pasado el tope, `429`. Además (tras congelar, 2026-10-17, PR #16, issue #10):
+  - cuentan también los `gh issue edit` que fallaron (la línea `reclamo_fallido` de abajo); como están en el fichero, siguen contando tras reiniciar el demonio;
+  - una línea cuenta si `-300 s ≤ ahora − ts < 1 h`: una con el `ts` más de 5 min en el futuro (el reloj iba adelantado y se corrigió) no cuenta.
 - **Con GitHub** (`github: sí` y la tarea con `issue`):
+  - `repo_tareas` (o, si está vacío, el `repo` de `coordinacion.md`) tiene que tener la forma `dueño/repo`: `^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$`, y el repo no puede ser `.` ni `..`. Si no, `502` y no se llama a `gh` (PR #16);
   - `gh api user` debe ser esta persona (se comprueba una vez y se guarda; si no lo es, `409` y no asigna);
   - después, `gh issue edit <n> --repo <repo_tareas> --add-assignee @me`. Es un `assigned` y cuenta en la cuenta del equipo de §8 (R-30);
-  - si `gh` falla, `502` y no se emite nada.
+  - si `gh` falla, `502` y no se emite nada. Cada llamada a `gh` tiene un plazo de 30 s; pasado, se mata el árbol de procesos, como en Anotar, y cuenta como un fallo (PR #16);
+  - si lo que falla es el `gh issue edit`, además se añade a `acciones.jsonl` la línea `{"tipo":"reclamo_fallido","tarea":"T12","ts":"<UTC>"}`. Cuenta para el tope y nada más: no lleva `id` y su `tipo` no es `reclamo`, así que `escucha.sh` no la entrega (PR #16).
 - **Sin GitHub:** no asigna nada.
 - **En los dos casos:**
   - emite `reclamo` (§2);
