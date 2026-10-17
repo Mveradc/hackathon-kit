@@ -174,6 +174,10 @@ Abierto el 2026-10-17 por decisión del usuario: se construye **antes** de la fa
 
   **No se recortan:** el respaldo de la web clásica, la seguridad de ADR-0010 y las dos acciones.
 
+*Estado (2026-10-17):*
+- **K-95 hecha (PR #8), salvo lo de K-99.** Los criterios 7 y 8 están cubiertos sin sandbox (`test_acciones.py` y `prueba_hooks.py`); falta su parte en `Mveradc/hk-sandbox` con @hk-persona-b y la prueba interactiva del turno, que son de K-99.
+- **Revisión independiente (issue #2):** los hallazgos 1, 4, 5, 6, 9 y 13 quedan resueltos por el PR #7. El detalle, en `tareas.md`.
+
 ---
 
 ## Después del M8 (Pendiente)

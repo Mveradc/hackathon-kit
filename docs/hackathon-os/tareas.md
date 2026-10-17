@@ -228,6 +228,7 @@ Hecho cuando: criterios 2 y 6 de M9a; con `web_nueva: sí`, el demonio se suscri
 Cubre: R-30, R-33 · Depende de: K-94 · Puedes tocar: `hkos/acciones.py`, `hkos/agente.py` (rutas de acción), `scripts/coordinacion/escucha.sh`, `evals/coordinacion/prueba_hooks.py`
 Contratos que aplican: `api.md` §4 y §5, ADR-0010
 Hecho cuando: criterios 7 y 8 de M9a (incluido el push de Anotar rechazado: un reintento sobre el `origin/main` nuevo y, si falla, aviso en la web sin tocar la copia); `prueba_hooks.py` comprueba que una línea de `acciones.jsonl` sale en un solo monitor y que, sin OS activo, el monitor no la lee.
+**Hecha (PR #8), salvo lo que es de K-99.** `hkos/acciones.py`, las rutas de acción de `agente.py` y la entrega por `escucha.sh`; los criterios 7 y 8 quedan cubiertos sin sandbox por `hkos/pruebas/test_acciones.py` (remoto `bare`, dos clones y `gh` falso) y por `prueba_hooks.py` (un solo monitor de dos; nada sin OS activo ni con `web_nueva: no`). Falta lo de K-99: Anotar y Reclamar en `Mveradc/hk-sandbox` con @hk-persona-b (asignación y `gh api user` reales, push a `main` de GitHub, la nota en novedades en ≤ 60 s con el relay de verdad) y la prueba interactiva del turno.
 
 ### K-96 · `prueba.sh` [P]
 Cubre: R-33 · Depende de: K-91 · Puedes tocar: `scripts/os/prueba.sh`, `scripts/os/comun.sh`, `hooks/hooks.json`, `hkos/normaliza.py`, `evals/coordinacion/prueba_hooks.py`
@@ -243,6 +244,9 @@ Hecho cuando: la vista lleva el bloque `servicios`; `estado-equipo.md` lleva `##
 Cubre: R-26, R-33 · Depende de: K-94, K-97 · Puedes tocar: `hkos/web-src/`, `hkos/web/nueva/`, `.github/workflows/web-m9a.yml`
 Contratos que aplican: ADR-0009, `docs/hackathon-os/diseno-web/`
 Hecho cuando: criterios 2, 3 y 4 de M9a; cabina por defecto; el token, fuera de la URL nada más leerlo y solo en memoria; el stream, con `fetch` y `X-HK-Token`; «sin conexión» tras `max(umbral_viejo_s, 40 s)` sin datos; `TeamGraph` reescrito para React 19, no copiado de `diseno-web/`: refs como prop y sin `forwardRef`, y cada paquete ligado a un `id` de evento, que se lanza una vez y se retira al acabar su animación de CSS o SVG, sin temporizadores que generen actividad; los siete componentes con sus nombres, props y clases `hk-*`; fuentes dentro del repo; el CI en verde.
+
+### Revisión independiente de K-91–K-97 (issue #2)
+Hallazgos **1, 4, 5, 6, 9 y 13 resueltos** por el PR #7 (`hkos/servicios.py` y la lectura de la historia de `servicios.md` en `hkos/relay.py`, con sus pruebas en `test_servicios.py` y `test_relay_m9a.py`): ninguna fila sale «confirmada» por error. El 8 (`prueba.sh` con un Bash en segundo plano) lo arregla el commit de `prueba.sh` de la rama `m9a-prueba-docs`. Siguen abiertos el 2, 3, 7, 10, 11 y 12. Lo que el PR #7 pide en ADR-0011, `api.md` §10 y `estado.schema.json` (contratos congelados) queda para quien los revise.
 
 ### K-99 · Validación con modelo y en sandbox
 Depende de: todo lo anterior · Puedes tocar: `evals/coordinacion/`, carpetas de prueba en `../`

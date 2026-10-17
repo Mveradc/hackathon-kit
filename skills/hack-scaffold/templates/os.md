@@ -14,3 +14,4 @@ umbral_viejo_s: 300
 datos_excluidos: data/, datos/   # ADR-0007: nunca se publican en refs/hackathon/wip/*
 puerto_agente:            # vacío = 47100 + (cksum del git común) % 900 (ADR-0004)
 apagado_min: 30           # el demonio sale tras este tiempo sin eventos ni sesiones
+web_nueva: no             # sí = la web de trabajo de M9a, servida por el demonio de cada persona (api.md §4, ADR-0010)
