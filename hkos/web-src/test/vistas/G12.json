@@ -349,6 +349,80 @@
       }
      ]
     }
+   },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T01"
+     ],
+     "servicios": [
+      [
+       "puerto_sin_respuesta",
+       "6b62f452dfc2",
+       "«api» :8000 declarado, no responde"
+      ],
+      [
+       "prueba_falla",
+       "e6629752e3d3",
+       "contrato «web → api»: la prueba falla"
+      ],
+      [
+       "propuesta",
+       "a182d1d842f6"
+      ],
+      [
+       "codigo_fuera",
+       [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      ]
+     ]
+    },
+    "persona-b": {
+     "trabajo": [
+      "T02"
+     ],
+     "servicios": [
+      [
+       "contrato_inexistente",
+       "fd537389d533",
+       "conexión «datos → motor»: el contrato «datos → motor» no está en docs/contratos.md"
+      ],
+      [
+       "fila",
+       "7d32ed6a31cc"
+      ],
+      [
+       "propuesta",
+       "a182d1d842f6"
+      ],
+      [
+       "codigo_fuera",
+       [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      ]
+     ]
+    },
+    "persona-c": {
+     "trabajo": [],
+     "servicios": [
+      [
+       "contrato_inexistente",
+       "fd537389d533",
+       "conexión «datos → motor»: el contrato «datos → motor» no está en docs/contratos.md"
+      ],
+      [
+       "codigo_fuera",
+       [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      ]
+     ]
+    }
    }
   },
   {
@@ -699,6 +773,80 @@
       }
      ]
     }
+   },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T01"
+     ],
+     "servicios": [
+      [
+       "puerto_sin_respuesta",
+       "6b62f452dfc2",
+       "«api» :8000 declarado, no responde"
+      ],
+      [
+       "prueba_falla",
+       "e6629752e3d3",
+       "contrato «web → api»: la prueba falla"
+      ],
+      [
+       "propuesta",
+       "a182d1d842f6"
+      ],
+      [
+       "codigo_fuera",
+       [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      ]
+     ]
+    },
+    "persona-b": {
+     "trabajo": [
+      "T02"
+     ],
+     "servicios": [
+      [
+       "contrato_inexistente",
+       "fd537389d533",
+       "conexión «datos → motor»: el contrato «datos → motor» no está en docs/contratos.md"
+      ],
+      [
+       "fila",
+       "7d32ed6a31cc"
+      ],
+      [
+       "propuesta",
+       "a182d1d842f6"
+      ],
+      [
+       "codigo_fuera",
+       [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      ]
+     ]
+    },
+    "persona-c": {
+     "trabajo": [],
+     "servicios": [
+      [
+       "contrato_inexistente",
+       "fd537389d533",
+       "conexión «datos → motor»: el contrato «datos → motor» no está en docs/contratos.md"
+      ],
+      [
+       "codigo_fuera",
+       [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      ]
+     ]
+    }
    }
   },
   {
@@ -1047,6 +1195,80 @@
         "scripts/descarga.py"
        ]
       }
+     ]
+    }
+   },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T01"
+     ],
+     "servicios": [
+      [
+       "puerto_sin_respuesta",
+       "6b62f452dfc2",
+       "«api» :8000 declarado, no responde"
+      ],
+      [
+       "prueba_falla",
+       "e6629752e3d3",
+       "contrato «web → api»: la prueba falla"
+      ],
+      [
+       "propuesta",
+       "a182d1d842f6"
+      ],
+      [
+       "codigo_fuera",
+       [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      ]
+     ]
+    },
+    "persona-b": {
+     "trabajo": [
+      "T02"
+     ],
+     "servicios": [
+      [
+       "contrato_inexistente",
+       "fd537389d533",
+       "conexión «datos → motor»: el contrato «datos → motor» no está en docs/contratos.md"
+      ],
+      [
+       "fila",
+       "7d32ed6a31cc"
+      ],
+      [
+       "propuesta",
+       "a182d1d842f6"
+      ],
+      [
+       "codigo_fuera",
+       [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      ]
+     ]
+    },
+    "persona-c": {
+     "trabajo": [],
+     "servicios": [
+      [
+       "contrato_inexistente",
+       "fd537389d533",
+       "conexión «datos → motor»: el contrato «datos → motor» no está en docs/contratos.md"
+      ],
+      [
+       "codigo_fuera",
+       [
+        "notas.txt",
+        "scripts/descarga.py"
+       ]
+      ]
      ]
     }
    }

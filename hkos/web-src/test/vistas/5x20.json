@@ -500,6 +500,49 @@
      }
     ],
     "reservas": []
+   },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T01",
+      "T11",
+      "T06",
+      "T16"
+     ],
+     "servicios": []
+    },
+    "persona-b": {
+     "trabajo": [
+      "T07",
+      "T17",
+      "T02",
+      "T12"
+     ],
+     "servicios": []
+    },
+    "persona-c": {
+     "trabajo": [
+      "T08",
+      "T18",
+      "T03",
+      "T13"
+     ],
+     "servicios": []
+    },
+    "persona-d": {
+     "trabajo": [
+      "T09",
+      "T19"
+     ],
+     "servicios": []
+    },
+    "persona-e": {
+     "trabajo": [
+      "T05",
+      "T15"
+     ],
+     "servicios": []
+    }
    }
   },
   {
@@ -1001,6 +1044,49 @@
      }
     ],
     "reservas": []
+   },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T01",
+      "T11",
+      "T06",
+      "T16"
+     ],
+     "servicios": []
+    },
+    "persona-b": {
+     "trabajo": [
+      "T07",
+      "T17",
+      "T02",
+      "T12"
+     ],
+     "servicios": []
+    },
+    "persona-c": {
+     "trabajo": [
+      "T08",
+      "T18",
+      "T03",
+      "T13"
+     ],
+     "servicios": []
+    },
+    "persona-d": {
+     "trabajo": [
+      "T09",
+      "T19"
+     ],
+     "servicios": []
+    },
+    "persona-e": {
+     "trabajo": [
+      "T05",
+      "T15"
+     ],
+     "servicios": []
+    }
    }
   }
  ]
