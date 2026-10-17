@@ -1,0 +1,72 @@
+# Pruebas sin modelo del kit en Windows con Git Bash (evals/coordinacion/README.md): hkos/pruebas, prueba_hooks.py,
+# simulador G1–G6 e igualdad de vistas, robustez.py y colisiones_vivo.py. Sin Claude Code, sin red ni GitHub, sin jq.
+# Cada paso corre aunque falle el anterior. El checkout deja core.autocrlf como en un Windows de verdad: los .sh, .md
+# y .json van en LF por .gitattributes.
+name: Windows (pruebas sin modelo)
+on:
+  workflow_dispatch:
+  pull_request:
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash               # Git Bash (C:\Program Files\Git\bin\bash.exe), no el de WSL
+env:
+  PYTHONIOENCODING: utf-8     # la consola del runner es cp1252; las pruebas imprimen «…», «—» y «→»
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # prueba_hooks.py compara sesion.sh con el de la etiqueta v0.3.2
+      - name: uv (como en arranque.md)
+        shell: pwsh
+        run: |
+          irm https://astral.sh/uv/install.ps1 | iex
+          "$env:USERPROFILE\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Versiones y entorno
+        run: |
+          cmd //c ver; git --version; uv --version; bash --version | head -1
+          echo "bash: $(command -v bash)"; echo "python de uv: $(uv run --no-project python -c 'import sys; print(sys.version)')"
+          echo "TEMP=$TEMP · /tmp -> $(cygpath -m /tmp)"; git config --get core.autocrlf || true
+          for c in timeout sha256sum cksum cygpath powershell taskkill jq; do printf '%-10s %s\n' "$c" "$(command -v $c || echo '—')"; done
+          git tag --list 'v0.3.2'
+      - name: Pruebas de hkos/
+        if: always()
+        timeout-minutes: 15
+        run: uv run --no-project --with "jsonschema[format-nongpl]" -m unittest discover -s hkos/pruebas -v
+      - name: Hooks (prueba_hooks.py)
+        if: always()
+        timeout-minutes: 15
+        env:
+          HK_RONDAS: "2"
+        run: uv run --no-project evals/coordinacion/prueba_hooks.py
+      - name: Simulador G1–G6
+        if: always()
+        timeout-minutes: 10
+        run: uv run --no-project --with "jsonschema[format-nongpl]" evals/coordinacion/simulador/prueba_simulador.py
+      - name: Igualdad de vistas (igualdad.py, con G12)
+        if: always()
+        timeout-minutes: 10
+        run: uv run --no-project evals/coordinacion/simulador/igualdad.py
+      - name: Robustez G7–G10 (robustez.py)
+        if: always()
+        timeout-minutes: 25
+        run: uv run --no-project evals/coordinacion/robustez.py --informe robustez.md
+      - name: Colisiones en vivo (colisiones_vivo.py)
+        if: always()
+        timeout-minutes: 15
+        run: uv run --no-project evals/coordinacion/colisiones_vivo.py
+      - name: Procesos que quedan (uv, python, bash)
+        if: always()
+        shell: pwsh
+        run: Get-Process uv, python, bash -ErrorAction SilentlyContinue | Format-Table Id, ProcessName, StartTime -AutoSize
+      - name: Informe de robustez
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: robustez-windows
+          path: robustez.md
+          if-no-files-found: ignore
