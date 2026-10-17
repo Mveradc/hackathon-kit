@@ -13,6 +13,10 @@ Qué puede decidir el agente de cada persona sin preguntar. El equipo puede edit
 - **Agentes + confirmación del dueño**: los agentes negocian, pero no vale hasta que el dueño escribe `hk confirmo` en el issue desde su usuario de GitHub.
 - **Solo humano**: los agentes no deciden ni opinan; se pregunta a las personas.
 
+## Servicios (`.hackathon/servicios.md`)
+<!-- Copia esta sección tal cual (solo si existe .hackathon/servicios.md). -->
+Un servicio lo confirma su dueño (la persona de su carpeta aquí abajo); una conexión, los dueños de sus dos extremos. Confirmar es hacer el cambio desde el portátil del dueño, por la persona o por sus agentes. Un cambio en algo que no es tuyo va a «Propuestas de servicios» o «Propuestas de conexiones», con autor y hora. Lo que además pida una decisión según esta tabla (un contrato, por ejemplo) sigue necesitando `hk confirmo`.
+
 ## Por dueño
 <!-- Una sección por persona de «## Dueños». 3–5 filas: su implementación interna (agente solo), cada contrato que expone
 (confirmación) y lo que el plan deja a su cargo que afecte a otros (entrega, datos, arranque…). -->

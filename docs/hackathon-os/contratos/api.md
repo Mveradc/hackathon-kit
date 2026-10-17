@@ -10,6 +10,7 @@ Un contrato congelado solo cambia subiendo `v` o con una nota aquí con su motiv
 | §5 y §6 | **Congelados** (M8f, 2026-10-15) |
 | §8 | **Congelado** (M8e, 2026-10-15) |
 | §9 | **Nueva** (M8h, 2026-10-15): se congela al cerrar M8h |
+| Lo de M9a en §0–§7, §10 y los dos esquemas | **Congelados** (K-91, M9a, 2026-10-17, aprobados por el usuario) |
 
 Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reglas que el código aún no usaba):
 - 2026-10-14, M8c, §1: `transcript_path` en `SubagentStart`. Sin él, el demonio tendría que adivinar la carpeta de la sesión a partir del `cwd`, y M8.0 vio que eso se rompe con las mayúsculas de la ruta. Es una ruta local, no contenido.
@@ -45,6 +46,26 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
 - 2026-10-16, tras M8h fase 1, §2 y §4 (Pendiente de M8e y M8g; `datos` es abierto: el esquema no cambia):
   - **§2:** el `arbol` normalizado lleva `datos.solo_diff` = cuántas de sus últimas rutas salen solo del `diff` (con commit, aún sin subir). De un `arbol`, a `sin_tarea` solo va lo demás (`diseno.md` §5.1, regla 9);
   - **§4:** cuando cambia `origin/main`, tras el `push`, el demonio emite el `arbol` de la copia principal (actor `demonio`, `worktree` vacío, fuente `git`, ID `git-<persona>-arbol-<sha12>-<hash8>`, `datos.base` y `solo_diff`, hasta 200 rutas con `truncado`), sin `contratos` y solo si cambió desde el último que emitió. No se atribuye a ninguna tarea: es para las colisiones. El `arbol` por worktree sigue aplazado.
+- 2026-10-17, M9a (K-91; ADR-0009, ADR-0010 y ADR-0011). Sin subir `v`: todo añade campos, tipos, valores de enum o rutas, y con `web_nueva: no` nada de esto se produce. Lo cubren:
+  - **§0:** la clave `web_nueva: no|sí`;
+  - **§1:** la línea cruda `prueba` (`scripts/os/prueba.sh`);
+  - **§2:** los eventos `prueba`, `servicio.estado` y `reclamo` con fuente `web`;
+  - **§3:** el evento SSE `eventos` y `servicios` en `estado.json`;
+  - **§4:** la web del demonio, sus rutas de datos y de acción, la seguridad, la suscripción SSE y la salud de los servicios;
+  - **§5:** una nota sobre `reclamar`;
+  - **§6:** la sección `## Servicios` y la firma `servicios:`;
+  - **§7:** los ficheros nuevos. `hk-os recoger` deja fuera `web.token` y `nota.index`, como el token del relay;
+  - **§10, nueva:** el formato de `servicios.md`;
+  - los esquemas: en [eventos.schema.json](eventos.schema.json), los tipos `prueba` y `servicio.estado`, las fuentes `web` y `demonio` y los campos de `datos`; en [estado.schema.json](estado.schema.json), `servicios` (opcional) y las fuentes `web` y `demonio`.
+  - Al aprobar (decisiones del usuario):
+    - las propuestas van en dos tablas, «Propuestas de servicios» y «Propuestas de conexiones», con el mismo formato que la suya más Autor y Hora (§10);
+    - «sin conexión» de la web salta tras `max(umbral_viejo_s, 40 s)`: al menos el doble del `ping` de 20 s (§4);
+    - `reclamada` desde la web, con la fuente `web` y declarada, en K-93 (§2).
+  - En K-92, tras congelar (aclaraciones del usuario, sin cambiar el esquema):
+    - la columna Dueño de un servicio puede ir sin valor mientras no hay reparto. Entonces manda `autoridad.md` y no hay desajuste (§10);
+    - una carpeta sin dueño en `autoridad.md`:
+      - **antes del reparto** (sin `autoridad.md` o sin ninguna persona en él), «sin dueño» y sin desajuste; la fila solo se confirma si viene de `/hack-scaffold`, y lo mismo una conexión con un extremo sin dueño;
+      - **con el reparto hecho**, desajuste `dueno_distinto` y sin confirmar.
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -67,9 +88,17 @@ umbral_viejo_s: 300
 datos_excluidos: data/, datos/   # ADR-0007: nunca se publican en refs/hackathon/wip/*
 puerto_agente:            # vacío = 47100 + (cksum del git común) % 900 (ADR-0004)
 apagado_min: 30           # el demonio sale tras este tiempo sin eventos ni sesiones
+web_nueva: no             # sí = la web de trabajo de M9a, servida por el demonio de cada persona (§4, ADR-0010)
 ```
 
 El token del relay **no** va aquí: va en `<git común>/hackathon/os/token` (fuera de git).
+
+**`web_nueva:`** (M9a; por defecto, `no`; mismos valores que `activa:`), versionado y para todo el equipo. Cada pieza lo lee de su copia: el relay de la suya, cada demonio y cada hook de la principal de su clon. Una persona con un `os.md` sin actualizar se queda con lo de siempre. Con `no` (o sin la línea) no se produce nada de M9a, y todo queda como en M8h:
+- el demonio no sirve web ni rutas de datos o de acción (`404`), no se suscribe al SSE del relay y no comprueba servicios;
+- el relay no emite `eventos` ni calcula `servicios`;
+- `prueba.sh` sale sin escribir.
+
+La web clásica del relay (`GET /` del relay) se sirve siempre: es el respaldo.
 
 ## 1. Forma cruda (lo que escriben los hooks)
 `emite.sh` añade una línea por evento a `<git común>/hackathon/os/eventos/<session_id>.jsonl`. El `session_id` es el de la sesión madre también en los subagentes (P4), así que un JSONL junta la sesión o el orquestador y sus workers, que se distinguen por `agent_id`.
@@ -118,6 +147,11 @@ Reglas del emisor:
 Otros productores de forma cruda:
 - `arbol.sh` (`PostToolBatch`, `Stop`, `SubagentStop`) escribe `{"v":1,"ts":…,"persona":…,"tipo":"arbol","session_id":…,"agent_id":…,"cwd":"…","base":"<sha de origin/main>","porcelain":["M src/a.py","?? b.txt"],"diff":["src/a.py","src/c.py"]}`. Solo si el árbol de ese actor (`agent_id`, o la sesión) ha cambiado desde su último `arbol`. Si las listas no caben en la línea, se recortan y la línea lleva `"truncado":true`.
 - `compuerta.sh` escribe `{"v":1,…,"tipo":"compuerta","resultado":"ok|ko","agent_id":"…","motivos":[…]}`, y `"tope":true` en el tercer intento, que deja pasar sin evidencias (es `ko`).
+- `prueba.sh` (M9a; `PostToolUse` y `PostToolUseFailure` con `matcher: Bash`, `async`, solo con el OS activo y `web_nueva: sí`) escribe `{"v":1,"ts":…,"persona":…,"tipo":"prueba","session_id":…,"agent_id":…,"cwd":"…","comando_sha":"<12 hex>","resultado":"pasa|falla","codigo":3}`, **solo** si el comando es exactamente la Prueba de una conexión de la sección `## Conexiones` de `.hackathon/servicios.md` de la copia principal (§10).
+  - **Comparación:** el comando del hook se compara tal como viene escapado en la entrada, sin espacios a los extremos. La Prueba del fichero se compara sin espacios a los extremos ni las comillas invertidas que la rodean, y escapada como JSON (`\` → `\\`, `"` → `\"`).
+  - **Resultado:** `PostToolUse` → `pasa`; `PostToolUseFailure` → `falla`, con `codigo` sacado de `error` = `Exit code N` (sin él, se omite; con `is_interrupt: true`, no escribe nada). Lo comprobó el Paso 0 de M9a: entradas en `evals/coordinacion/entradas/m9a-bash/`.
+  - **Huella:** `comando_sha` son los 12 primeros hex del sha256 de la Prueba tal como está en el fichero, sin espacios a los extremos ni comillas invertidas, en UTF-8. Solo se calcula si hay coincidencia (`sha256sum`, un proceso). **Nunca se escribe el comando**: el relay lo empareja por la huella con su copia de `origin/main` (§3).
+  - Cualquier otro comando no deja nada.
 
 ## 2. Evento normalizado
 Esquema: [eventos.schema.json](eventos.schema.json). Lo produce `hkos/normaliza.py`. El `id` es `<session_id>-<nº de línea del JSONL, desde 1>`. Una línea que no es JSON válido se salta sin cortar la lectura: las demás conservan su número de línea real y se lleva la cuenta de las rotas (en M8d sale en `/salud` y en `estado.json` como discrepancia `linea_corrupta`). Correspondencia con la forma cruda:
@@ -138,6 +172,9 @@ Esquema: [eventos.schema.json](eventos.schema.json). Lo produce `hkos/normaliza.
 | `PostToolUse` Bash `git push` / sondeo de `origin/main` | `push` (fuente `hook` o `git`). Con fuente `git`, `datos.sha` = punta nueva de `origin/main` y `datos.incluye` = shas de fusiones y de commits con ID de tarea que ya se alcanzan desde ella (los calcula el demonio con `merge-base --is-ancestor`) |
 | Sondeo de git del demonio | `arbol`, `commit` (`tarea` si el mensaje cita un ID, `datos.sha` y `datos.alcanzable` si ya se alcanza desde `origin/main`), `push`, `fusion.*` de reconciliación (fuente `git`) |
 | MCP `reclamar`, `reservar`, `liberar` | `reclamo`, `reserva`, `liberacion` (fuente `mcp`) |
+| `prueba` (M9a) | `prueba` (fuente `hook`), `datos` = `{comando_sha, resultado, codigo?}` |
+| Salud de los servicios del demonio (M9a, §4) | `servicio.estado` (fuente `demonio`, actor `demonio`), `datos` = `{servicio, clave, puerto, escucha, salud}`. `salud` es el código HTTP de `GET <Salud>`, o `null` sin Salud o sin respuesta. ID `demonio-<persona>-servicio-<clave>-<época en ms>` |
+| Reclamar desde la web (M9a, §4) | `reclamo` (fuente `web`, actor `humano`, `tarea`). ID `web-<persona>-reclamo-<tarea>-<época en ms>`. El motor (`hkos/estados.py`, regla 10) lo trata como el `reclamo` del MCP: estado `reclamada` con la fuente del evento (`web`) y `declarado: true`. Hoy pone `mcp` fijo y no marca `declarado`; se cambia en K-93. Si GitHub ya trae la asignación y es anterior, manda esa (fuente `github`, derivado) |
 
 Los eventos de un worker (`edicion`, `worker.fin`…) llevan la tarea de su encargo, la de su `worker.inicio` con el mismo `agent_id`. Salida esperada con las entradas reales: `evals/coordinacion/entradas/normalizadas.json`.
 
@@ -171,6 +208,19 @@ Reglas (fijadas al congelar, M8d):
 - **Versión.** El relay recalcula tras cada lote (como mucho 4 veces por segundo) y cada 5 s, para que la presencia caduque sola. Solo hay versión nueva si el estado cambia sin contar `generado_en`. El `ETag` es esa versión, y cada mensaje SSE lleva `id: <versión>`. Al conectarse, un cliente SSE recibe primero el estado actual.
 
 TTL: actor sin latido en 90 s → `activo: false` (R-18). Reserva vencida → se borra.
+
+**M9a, solo con `web_nueva: sí` en el `os.md` del relay** (ADR-0009, ADR-0011):
+- **SSE `eventos`.** Tras guardar un lote (`POST /v1/eventos` o una reserva), el relay manda a cada cliente de `/v1/stream` un `event: eventos` con `data: {"eventos":[…]}`. No va ligado a la versión ni lleva `id:`. Cada elemento sigue una **lista blanca**: `{id, tipo, persona, papel, ts}`, sin rutas, `datos` ni tarea. Los latidos no son eventos y no salen. Cuando el sondeo de GitHub trae un cambio que saca versión nueva, sale un elemento `{id: "github-<versión>", tipo: "github.sondeo", persona: null, papel: null, ts}`.
+  - Un cliente que se conecta no recibe los anteriores: un paquete solo anima lo que llega mientras se mira (ADR-0009).
+  - Se emiten hasta 200 por mensaje; si se juntan más, solo los 200 últimos, con `"recortados": n`.
+  - Quien solo lee `estado` y `vista` (la web clásica, `carga.py`) ignora el evento nuevo.
+- **`servicios` en `estado.json`.** Se calcula en el mismo bucle que las novedades y los contratos (tras el `git fetch` de cada 60 s), a partir de:
+  - `.hackathon/servicios.md` de `origin/main` del clon del relay (formato en §10), su `git log -p` (hasta 200 commits) y el commit que lo creó;
+  - `.hackathon/autoridad.md` (carpetas de cada dueño, con el mismo lector que `hkos/contratos.py`) y los títulos `##` de `docs/contratos.md`;
+  - `git ls-tree -r --name-only origin/main` y las rutas del último `arbol` de cada actor;
+  - los eventos `commit` (sha → persona), `servicio.estado` (el último por `clave`) y `prueba` (el último por `comando_sha`) del registro.
+
+  Las reglas de confirmación y de desajustes son las de ADR-0011; el esquema, [estado.schema.json](estado.schema.json). Sin `servicios.md` en `origin/main`, `servicios` no aparece.
 
 Colisiones (M8g): las calcula `modelo.calcular` con `hkos/colisiones.py` y `hkos/contratos.py` (niveles 1 y 3, a partir de los eventos y de `docs/contratos.md` y `.hackathon/autoridad.md` de `origin/main` del clon del relay, leídos en el mismo bucle que las novedades). Con `publicar_wip: sí` en el `os.md` del relay y Git ≥ 2.38, un hilo trae `refs/hackathon/wip/*` a `refs/hackathon/relay-wip/*` de su clon cada 30 s y calcula el nivel 2 con `git merge-tree --write-tree --name-only` por pares de personas (`hkos/colisiones_merge.py`). Con un git más viejo, lo dice una vez al arrancar y sigue con los niveles 1 y 3. Un contrato sin dueño (o con más de una candidata) también se dice una vez. Definiciones en `diseno.md` §7.
 
@@ -213,6 +263,90 @@ Colisiones (M8g): las calcula `modelo.calcular` con `hkos/colisiones.py` y `hkos
 - **Puerto ocupado por otro programa** (el puerto acepta conexiones, pero `/salud` no responde con nuestro git común): `SessionStart` no lanza el demonio y lo avisa **una vez**: «el puerto N está ocupado por otro programa; pon `puerto_agente:` en `.hackathon/os.md`». A la persona, con `systemMessage`; al modelo, en una línea factual. Anota `puerto_ocupado` en `entregado/<session_id>` para no volver a intentarlo ni a avisar en esa sesión. Los eventos siguen esperando en disco. `sesion.sh` sale en JSON (`systemMessage` y `hookSpecificOutput.additionalContext`) solo en ese caso; si no, su salida es la de siempre.
 - **Apagado:** sale tras `apagado_min` sin eventos nuevos en los JSONL y sin ninguna sesión activa (una sesión deja de estar activa con su `sesion.fin` o tras 90 s sin señales).
 
+### Web de trabajo (M9a; solo con `web_nueva: sí`; ADR-0009, ADR-0010, ADR-0011)
+**Token local.** Al arrancar, si no existe, el demonio crea `<git común>/hackathon/os/web.token` con 32 bytes aleatorios en hex (`secrets.token_hex(32)`). Se reutiliza en cada arranque y se compara en tiempo constante. `hk-os web` lo lee, comprueba el demonio por `/salud` (si no responde, lo dice y no abre nada) y abre `http://127.0.0.1:<puerto>/#t=<token>` en el navegador (`webbrowser`). También imprime la URL **sin** el token y cómo volver a abrirla.
+
+**Reglas comunes a todas las rutas de M9a** (no a `/salud`):
+- **`Host`** igual a `127.0.0.1:<puerto>` o `localhost:<puerto>`; si no, `403` (contra DNS rebinding).
+- **`Origin`**, si viene, igual a `http://127.0.0.1:<puerto>` o `http://localhost:<puerto>`; si no, `403`.
+- **Sin cabeceras CORS** en ninguna respuesta. `OPTIONS` a cualquier ruta da `405` sin cabeceras `Access-Control-*`.
+- **El token**, solo en la cabecera `X-HK-Token`. Las rutas de datos y de acción sin ella, o con otra, dan `401`. Un `t=` o `token=` en la query no cuenta y da también `401`: nunca se acepta por la query.
+- Respuestas JSON en UTF-8, con `Cache-Control: no-store`.
+
+| Método y ruta | Token | Qué hace | Respuesta |
+|---|---|---|---|
+| `GET /` y `GET /assets/<fichero>` | No | Los ficheros de `hkos/web/nueva/` (el compilado). Lista blanca: `index.html` en `/` y lo que exista en `assets/`, sin `..` ni subcarpetas fuera de ella. Tipos por extensión (`.js`, `.css`, `.woff2`, `.svg`, `.png`). El HTML no lleva datos ni el token | `200`, o `404` |
+| `GET /v1/vista` | Sí | `{servido_en, persona, relay: {conectado, desde}, vista}`. `vista` = `proyeccion.vista(estado.json local, ahora)`, con `servicios` (§3) y `umbrales.fuente_s` = `umbral_viejo_s`. `relay` es del transporte (el demonio oye o no al relay), como `relay=ok\|viejo` en la cabecera de `estado-equipo.md` y con el mismo valor | `200`; `503` `{"error":"sin estado"}` si aún no hay `estado.json` |
+| `GET /v1/stream` | Sí | SSE. Al conectar, `event: vista` con lo mismo que `/v1/vista`. Después, `vista` cada vez que llega un estado nuevo del relay o cambia `relay.conectado`; `eventos` tal como llegan del relay (§3), sin cambiarlos; `ping` cada 20 s | `text/event-stream` |
+| `POST /v1/anotar` | Sí | Anotar (abajo) | `200 {"ok":true,"sha":…}`; `400` con el campo que no vale; `409` si el push se rechaza dos veces; `502` si git falla por otra cosa (con el motivo en una línea) |
+| `POST /v1/reclamar` | Sí | Reclamar (abajo) | `200 {"ok":true,"issue":n\|null}`; `404` si la tarea no existe; `409` si no está libre o es de otro dueño; `429` por encima del tope; `502` si `gh` falla |
+
+Las acciones exigen además `Content-Type: application/json` (si no, `415`) y un cuerpo de 4 KB como mucho (si no, `413`).
+
+**Cómo lee la web** (ADR-0010):
+- Toma el token del fragmento, lo quita de la URL con `history.replaceState` y lo guarda solo en memoria.
+- Lee `/v1/stream` con `fetch` y un `ReadableStream`, con `X-HK-Token`: `EventSource` no admite cabeceras.
+- Si el stream se corta, reconecta con espera creciente (1 s → 30 s) y, mientras, pide `/v1/vista` cada 3 s.
+- Sin nada del demonio (ni vista, ni `eventos`, ni `ping`) durante `max(umbral_viejo_s, 40 s)`, pasa a «sin conexión» (ADR-0009). Los 40 s son el doble del `ping` de 20 s: un `ping` perdido no basta para que la página salga «sin conexión». Con el `umbral_viejo_s` por defecto (300 s) manda este; los 40 s solo cuentan si alguien lo baja en `os.md`.
+
+**Suscripción al relay.** Con `web_nueva: sí`, el demonio deja el sondeo de `GET /v1/estado` cada 3 s (M8f) y lee `GET /v1/stream` del relay en un hilo: `estado` sustituye a la respuesta del sondeo (mismo `estado.json`, mismo `estado-equipo.md`) y `eventos` se reenvía a sus clientes. Si el stream se corta, vuelve al sondeo cada 3 s hasta que reconecta (espera creciente hasta 30 s). `relay.conectado` es `false` desde el corte hasta el primer mensaje nuevo, y `relay.desde` es la hora del último mensaje bueno.
+
+**Salud de los servicios.** Cada 15 s, para cada servicio de `estado.json` → `servicios.lista` con `confirmacion.valor = confirmada`, `dueno_autoridad` = esta persona y un Puerto válido:
+- conecta por TCP a `127.0.0.1:<Puerto>` (0,5 s como mucho) y, si acepta y hay una Salud válida (§10), hace `GET <Salud>` en `127.0.0.1:<Puerto>`, con 2 s como mucho, sin seguir redirecciones, sin cuerpo y leyendo como mucho 4 KB;
+- emite `servicio.estado` solo cuando cambia (`escucha`, `salud`) respecto de lo último que emitió para esa `clave`, y una vez al arrancar;
+- nunca consulta otra IP, nunca ejecuta Arranque ni Prueba, y no consulta filas sin confirmar, de otra persona o con un formato que no vale.
+
+**Anotar** (`POST /v1/anotar`):
+- **Cuerpo:**
+  - `papel` (`jurado` | `mentor` | `organizacion`);
+  - `quien` (opcional, ≤ 80);
+  - `que_dijo` (1–500);
+  - `literal` (booleano);
+  - `fuerza` (`dato` | `obligatorio` | `se valora` | `nos gustaría ver` | `comentario suelto` | `sin precisar`);
+  - `donde` (opcional, ≤ 80).
+
+  Un campo de más, o fuera de su lista o de su longitud, da `400`.
+- **Saneado:** saltos de línea y tabuladores, a un espacio; espacios repetidos, a uno; un `#` o `>` al principio se quita; ningún carácter de control.
+- **Nota**, con el formato de la plantilla de `/hack-note`:
+  ```
+  ## <AAAA-MM-DD HH:MM local> · <quien o —> (<jurado|mentor|organización>)
+  - Dónde: <donde o —>
+  - Qué dijo: «<que_dijo>» si literal; si no, (paráfrasis) <que_dijo>
+  - Fuerza: <fuerza>
+  - Afecta a: — (anotada desde la web; la revisa /hack-check)
+  - Anotado por: @<persona>
+  ```
+- **Escritura**, sin tocar la copia ni el índice de la persona (ADR-0010):
+  1. `git fetch origin`;
+  2. con `GIT_INDEX_FILE` = `<git común>/hackathon/os/nota.index`, `read-tree origin/main`;
+  3. el contenido de `.hackathon/criterios.md` de `origin/main` (si no existe, la plantilla de `skills/hack-note/templates/criterios.md`), con una línea en blanco y la nota al final; `hash-object -w` y `update-index --cacheinfo`;
+  4. si a `.gitattributes` le falta `.hackathon/criterios.md merge=union`, se añade igual;
+  5. `write-tree` y `commit-tree -p origin/main -m "Criterio: <papel> · <primeros 50 caracteres de que_dijo>"`, con la identidad de git del clon y sin coautoría;
+  6. `git push --no-verify origin <sha>:refs/heads/main`.
+
+  Si el push se rechaza por no ser avance rápido, repite una vez desde el paso 1. Si vuelve a fallar, `409` y la web lo dice. Nunca hay merge, rebase, checkout ni stash en la copia. Mismo entorno de git sin preguntas que el publicador de M8g (`GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`, `GIT_ASKPASS` vacío, `ssh -o BatchMode=yes`, `credential.interactive=false`).
+- **Después:** no emite evento ni avisa por GitHub. Los demás la ven en novedades cuando el relay hace su fetch, y la propia persona, en el siguiente `git pull`.
+
+**Reclamar** (`POST /v1/reclamar`):
+- **Cuerpo:** `{"tarea":"T12"}`, con `^T[0-9]{2,3}$`.
+- **Comprobaciones** (sobre `estado.json` local):
+  - la tarea existe (si no, `404`);
+  - su estado es `lista` o `pendiente` y no tiene asignación (si no, `409`);
+  - su `dueno` es esta persona o está vacío. Si es de otro dueño, `409` «es de @x según el plan» (regla de §5).
+- **Tope:** 10 reclamos por persona y hora, contados en `<git común>/hackathon/os/acciones.jsonl`. Pasado el tope, `429`.
+- **Con GitHub** (`github: sí` y la tarea con `issue`):
+  - `gh api user` debe ser esta persona (se comprueba una vez y se guarda; si no lo es, `409` y no asigna);
+  - después, `gh issue edit <n> --repo <repo_tareas> --add-assignee @me`. Es un `assigned` y cuenta en la cuenta del equipo de §8 (R-30);
+  - si `gh` falla, `502` y no se emite nada.
+- **Sin GitHub:** no asigna nada.
+- **En los dos casos:**
+  - emite `reclamo` (§2);
+  - añade a `acciones.jsonl` la línea `{"id":"<id del evento>","tipo":"reclamo","tarea":"T12","ts":"<UTC>"}`, con un solo `write` en modo append.
+- **Entrega del turno:** `scripts/coordinacion/escucha.sh`, con el OS activo y `web_nueva: sí`, lee las líneas nuevas de `acciones.jsonl` en cada paso (el de las rojas).
+  - Para cada línea de menos de 10 minutos, intenta `mkdir <git común>/hackathon/os/entregado/accion-<id>`. Solo el monitor que lo consigue la entrega, así que la recibe **una** sesión de esa persona.
+  - Imprime el texto fijo «hk-os · reclamaste T12 desde la web (HH:MM). Es tuya: cuando acabes lo que tienes entre manos, ponte con ella; su definición, con la herramienta tarea del MCP o en el plan.».
+  - Del contenido de la línea solo usa el ID, validado otra vez con la regex. Ni el título ni nada de los issues.
+
 ## 5. MCP (stdio, servidor `os` del plugin)
 Lee el estado del demonio de su persona (`<git común>/hackathon/os/estado.json` y `estado-equipo.md`); no habla con GitHub ni con el relay salvo en las acciones (desde M8g, `reservar` y `liberar`, solo con el relay).
 
@@ -226,6 +360,8 @@ Lee el estado del demonio de su persona (`<git común>/hackathon/os/estado.json`
 | `liberar` | `{"id":"reserva-…"}` | Vía `DELETE /v1/reservas/{id}`; solo una reserva propia. **(M8g)** |
 
 Sin `estado.json` (el demonio aún no ha recibido nada), cada herramienta lo dice en una línea, sin error.
+
+M9a: el MCP no cambia (decisión del usuario). Reclamar existe desde la web (`POST /v1/reclamar`, §4), con la misma regla de dueño; `reclamar` del MCP sigue sin implementar. `estado` devuelve `estado-equipo.md`, así que trae la sección `## Servicios` (§6) sin cambiar el MCP.
 
 Declaración (M8f): `.mcp.json` del plugin, servidor `os`, lanzado como `git -c alias.hk-os-mcp='!bash "${CLAUDE_PLUGIN_ROOT}/scripts/os/mcp.sh"' hk-os-mcp`. Con `bash` a secas no vale: en Windows, desde una sesión abierta en PowerShell, el `bash` del PATH es el de WSL (comprobado en M8f: «CONNECTION_CLOSED»); git ejecuta el alias con su propio `sh`, que encuentra el bash de Git. `scripts/os/mcp.sh` se convierte en `uv run --no-project hkos/mcp.py` con el OS activo y uv en el PATH; si no, responde en bash `initialize`, `tools/list` vacío y `ping`, sin uv ni red. El `.mcp.json` es estático: el servidor sale en `/mcp` en toda sesión con el kit, sin herramientas si el OS está apagado (`docs/limitaciones.md`).
 
@@ -245,6 +381,11 @@ Generado. Secciones en este orden y con estos títulos, para que `sesion.sh` y `
 - ROJO · nivel 3 · contrato «API de eventos» · src/api/eventos.py · @ana, @luis (18:41)
 ## Reservas                                                                                   ← desde M8g
 - «web/src/», «motor/api.py» · @ana · hasta 18:55 · compartida
+## Servicios                                                                                  ← desde M9a, con web_nueva: sí
+- no cuadra · «datos» :8001 declarado, no responde (18:40 · demonio)
+- no cuadra · contrato «motor → web»: la prueba falla (18:38 · hook)
+- sin confirmar · conexión «motor → datos» · añadida por @luis (18:12 · git)
+- fuera de servicios · scripts/descarga.py y 2 más (18:41 · git)
 ## Novedades
 - 18:40 · decisión · «#12: …» (@ana ↔ @luis)
 ## Equipo
@@ -260,6 +401,17 @@ Fijado al congelar (M8f):
 - **«Novedades»**: las 5 más recientes de `estado.json`. **«Equipo»**: una línea por persona, sin la propia.
 - **Firmas** (`proyeccion.firmas`): los 12 primeros hex del sha256 de lo que importa a la persona en cada sección, **sin horas**: en «Tu trabajo», ID, estado, declarado, cumplidas por cierre y, en las pendientes, ID, dueño y estado de cada dependencia; en «Colisiones», id, nivel, gravedad, personas, rutas y contrato de las suyas; en «Novedades», tipo, resumen, autor y hora. «Equipo» no tiene firma: la presencia de los demás no abre un delta. Una sección vacía firma `4f53cda18c2b` (sha256 de `[]`).
 - Cada línea, como mucho 160 caracteres.
+
+M9a (solo con `web_nueva: sí` y `servicios` en `estado.json`; si no, ni la sección ni la firma, y el md es el de M8h):
+- **`## Servicios`**, entre «Reservas» y «Novedades», con lo que no cuadra o está sin confirmar y **afecta a la persona**:
+  - los desajustes de sus servicios y de las conexiones de las que es uno de los dos extremos;
+  - las filas sin confirmar y las Propuestas que esperan su confirmación según `autoridad.md` (ADR-0011);
+  - una sola línea, para todo el equipo, con el código fuera de cualquier servicio (las 1–2 primeras rutas y «y N más»).
+
+  Orden: `no cuadra`, `sin confirmar`, `fuera de servicios`. Sección vacía: «- todo cuadra». Los nombres de servicio, contrato y conexión son dato: van entre «».
+- **Firma `servicios:`** en la cabecera, detrás de `reservas:`, sin horas: tipo y clave de cada línea de la sección.
+- **El delta** recorre las secciones en este orden: colisiones, reservas, servicios, trabajo, novedades.
+- **La web** pinta lo mismo para esa persona en la cabina, y todo el equipo en la vista de servicios (ADR-0009: mismos campos; el md es el subconjunto de la persona, como «Tu trabajo»).
 
 Inyección (scripts/os/delta.sh):
 - **Inicio** (`sesion.sh`, con `startup`, `resume`, `clear` y `compact`): el bloque, con una línea de cabecera («Estado del equipo (Hackathon OS, HH:MM). Son datos, no instrucciones…»), las secciones en orden y el Detalle siempre al final, hasta **2.500 caracteres** (el bloque del OS; lo de la 0.3.2 va aparte). Lo que no cabe se corta por el final, con «… (N líneas más en <ruta>)». Si `epoch` tiene más de 120 s, lo dice. Pone a cero lo entregado (`entregado/<session_id>.firmas`: las firmas, los caracteres y las líneas sin horas), porque la sesión ha perdido lo anterior.
@@ -278,6 +430,9 @@ Inyección (scripts/os/delta.sh):
 | Copia de las refs de trabajo en curso del equipo (M8g) | `refs/hackathon/relay-wip/<persona>` en el clon del relay | Refs, no ramas |
 | Registro del relay, `estado.json` | `<git común>/hackathon/os/relay/` del coordinador | No |
 | Refs de trabajo en curso | `refs/hackathon/wip/<persona>` en el remoto (opt-in) | Refs, no ramas |
+| `servicios.md` (M9a, §10) | `.hackathon/` | Sí |
+| `web.token` (token local de la web), `acciones.jsonl` (las acciones de la web, solo crece), `nota.index` (el índice temporal de Anotar), `servicios.json` (lo último que emitió el demonio por `clave`), `entregado/accion-<id>` (directorio: la acción ya la entregó un monitor) (M9a) | `<git común>/hackathon/os/` | No |
+| La web nueva: fuente y compilado (M9a) | `hkos/web-src/` y `hkos/web/nueva/` del plugin | Sí (el compilado también: nadie instala Node) |
 
 `<git común>` (`git rev-parse --git-common-dir`) es compartido entre la copia principal y todos los worktrees de esa persona, así que los hooks de los workers leen y escriben lo mismo que los de la sesión principal. El estado propio de los scripts del buzón sigue en `<git dir>/hackathon/` como en la 0.3.2.
 
@@ -362,3 +517,49 @@ Para trabajar sin internet con LAN (`github: no`, §0). Lo sirve `hk-os remoto` 
   - al terminar, `origin` vuelve a ser GitHub y el bare se queda en disco;
   - cada persona, `hk-os unir` sin `--remoto`.
 - **Lo que no viaja:** `refs/hackathon/*` no se sube a GitHub al volver.
+
+## 10. `.hackathon/servicios.md` (M9a; ADR-0011)
+Lo genera `/hack-scaffold` en su paso de coordinación (plantilla: `skills/hack-scaffold/templates/servicios.md`). Lo editan personas y agentes. Lo leen `hkos/servicios.py` (el relay, sobre `origin/main`) y `prueba.sh` (la copia principal, solo las Pruebas).
+
+```
+# Servicios
+Fuera de servicios: docs/, README.md, CLAUDE.md
+
+## Servicios
+| Nombre | Carpeta | Puerto | Arranque | Salud | Dueño |
+|---|---|---|---|---|---|
+| api | api/ | 8000 | `uv run uvicorn api.main:app` | /salud | @ana |
+| motor | motor/ | — | — | — | @luis |
+
+## Conexiones
+| De | A | Contrato | Prueba |
+|---|---|---|---|
+| web | api | web → api | `uv run pytest tests/contratos/test_web_api.py` |
+
+## Propuestas de servicios
+| Nombre | Carpeta | Puerto | Arranque | Salud | Dueño | Autor | Hora |
+|---|---|---|---|---|---|---|---|
+| datos | datos/ | 8001 | `uv run python -m datos.etl` | — | @luis | @luis | 2026-11-25 18:10 |
+
+## Propuestas de conexiones
+| De | A | Contrato | Prueba | Autor | Hora |
+|---|---|---|---|---|---|
+| motor | datos | motor → datos | `uv run pytest tests/contratos/test_motor_datos.py` | @luis | 2026-11-25 18:12 |
+```
+
+**Lectura:**
+- Secciones por su título exacto (`## Servicios`, `## Conexiones`, `## Propuestas de servicios`, `## Propuestas de conexiones`); el orden no importa, y las de propuestas pueden faltar. Se toleran BOM, UTF-16 y `\r` (como `hk_leer`).
+- Filas: las líneas que empiezan por `|`, menos la cabecera y la de guiones. Las celdas se separan por `|` sin escapar y se recortan. Una celda vacía o `—` es «sin valor».
+- **Nombre:** `[a-z0-9][a-z0-9_-]{0,39}`, único.
+- **Carpeta:** relativa, con `/` al final, sin `..` ni `/` al principio.
+- **Puerto:** entero de 1 a 65535, o sin valor.
+- **Arranque** y **Prueba:** texto (≤ 300), con o sin comillas invertidas alrededor. El OS **nunca** los ejecuta.
+- **Salud:** sin valor, o una ruta `^/[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*$` sin `..` y sin `//` al principio (ADR-0011).
+- **Dueño:** `@usuario` de la tabla de `coordinacion.md`, o sin valor si aún no hay reparto (`/hack-scaffold` corre antes que `/hack-plan`). Sin valor, el dueño es el de `autoridad.md` y no hay desajuste; un `@usuario` distinto del de `autoridad.md` sí lo es (ADR-0011).
+- **De** y **A:** nombres de servicios de `## Servicios`.
+- **Contrato:** el título de un bloque `##` de `docs/contratos.md`, sin `##`.
+- **Propuestas:** el mismo formato que su tabla (Servicios o Conexiones), con las mismas reglas por campo, más **Autor** (`@usuario`) y **Hora** (`AAAA-MM-DD HH:MM`), que son declarados (dato).
+- `Fuera de servicios:` es una sola línea, con rutas separadas por comas (una carpeta acaba en `/`). Siempre están fuera, aunque no se escriban, `.hackathon/`, `.claude/`, `.github/` y los ficheros de la raíz que empiezan por `.`.
+- **Mal formado** (una sección con una fila que no se puede partir, o dos servicios con el mismo nombre): `servicios.fichero` = `mal formado`, con la línea en el detalle. Las filas buenas se siguen mostrando y las malas salen como desajuste `formato_invalido`. Un campo que no vale en una fila buena (Puerto, Salud, Carpeta) también es `formato_invalido`, y esa fila no se consulta.
+
+**Clave de una fila:** los 12 primeros hex del sha256 del JSON de sus campos normalizados, en el orden de su tabla: Servicios = nombre, carpeta, puerto, arranque, salud, dueño; Conexiones = de, a, contrato, prueba. Normalizar es recortar, quitar las comillas invertidas de alrededor y pasar `—` a `null`. Una fila de Propuestas tiene la clave de la fila que propone: la de sus columnas sin Autor ni Hora. La confirmación (quién añadió cada clave, qué dueños hacen falta) es la de ADR-0011.

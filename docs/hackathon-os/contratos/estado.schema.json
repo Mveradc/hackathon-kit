@@ -7,7 +7,22 @@
   "required": ["v", "generado_en", "fuentes", "personas", "tareas", "colisiones"],
   "additionalProperties": false,
   "$defs": {
-    "fuente": { "enum": ["hook", "git", "github", "orquestador", "compuerta", "mcp", "humano", "derivado"] },
+    "fuente": { "enum": ["hook", "git", "github", "orquestador", "compuerta", "mcp", "humano", "derivado", "web", "demonio"] },
+    "confirmacion": {
+      "type": "object",
+      "description": "M9a, ADR-0011: «confirmada» = hecha desde el portátil del dueño (o de los dos dueños, en una conexión), no decidida por una persona.",
+      "required": ["valor", "por", "faltan", "de_scaffold", "fuente", "observado_en"],
+      "additionalProperties": false,
+      "properties": {
+        "valor": { "enum": ["confirmada", "sin_confirmar"] },
+        "por": { "type": "array", "items": { "type": "string" }, "description": "Personas cuyos commits añadieron una fila con esta clave (sha → persona por los eventos commit)." },
+        "faltan": { "type": "array", "items": { "type": "string" }, "description": "Dueños según autoridad.md que aún no la han añadido." },
+        "de_scaffold": { "type": "boolean", "description": "La fila estaba en el commit que creó servicios.md." },
+        "fuente": { "$ref": "#/$defs/fuente" },
+        "observado_en": { "type": "string", "format": "date-time" }
+      }
+    },
+    "texto_o_nada": { "anyOf": [{ "type": "null" }, { "type": "string", "maxLength": 300 }] },
     "dato": {
       "type": "object",
       "required": ["valor", "fuente", "observado_en"],
@@ -167,6 +182,110 @@
         "type": "object",
         "additionalProperties": false,
         "properties": { "tipo": { "enum": ["decision", "criterio", "escalado"] }, "resumen": { "type": "string", "maxLength": 200 }, "autor": { "type": "string" }, "observado_en": { "type": "string", "format": "date-time" } }
+      }
+    },
+    "servicios": {
+      "type": "object",
+      "description": "M9a (ADR-0011, api.md §3 y §10): solo con web_nueva: sí y .hackathon/servicios.md en origin/main del clon del relay. Los textos (nombres, comandos, contratos) son dato del equipo.",
+      "required": ["fichero", "lista", "conexiones", "propuestas", "fuera", "desajustes"],
+      "additionalProperties": false,
+      "properties": {
+        "fichero": { "$ref": "#/$defs/dato", "description": "valor: ok | mal formado; observado_en: hora del commit de servicios.md en origin/main." },
+        "lista": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["clave", "nombre", "carpeta", "puerto", "arranque", "salud", "dueno", "dueno_autoridad", "confirmacion", "comprobado"],
+            "additionalProperties": false,
+            "properties": {
+              "clave": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
+              "nombre": { "type": "string", "maxLength": 40 },
+              "carpeta": { "type": "string", "maxLength": 300 },
+              "puerto": { "anyOf": [{ "type": "null" }, { "type": "integer", "minimum": 1, "maximum": 65535 }] },
+              "arranque": { "$ref": "#/$defs/texto_o_nada" },
+              "salud": { "$ref": "#/$defs/texto_o_nada" },
+              "dueno": { "$ref": "#/$defs/texto_o_nada", "description": "La columna Dueño, tal cual (dato)." },
+              "dueno_autoridad": { "$ref": "#/$defs/texto_o_nada", "description": "La persona cuyas carpetas de autoridad.md contienen la carpeta; null si ninguna o más de una." },
+              "confirmacion": { "$ref": "#/$defs/confirmacion" },
+              "comprobado": {
+                "description": "Lo último que emitió el demonio de su dueño (servicio.estado): valor {escucha, salud}. null si nunca se comprobó.",
+                "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/dato" }]
+              }
+            }
+          }
+        },
+        "conexiones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["clave", "de", "a", "contrato", "prueba", "duenos", "confirmacion", "resultado"],
+            "additionalProperties": false,
+            "properties": {
+              "clave": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
+              "de": { "type": "string", "maxLength": 40 },
+              "a": { "type": "string", "maxLength": 40 },
+              "contrato": { "$ref": "#/$defs/texto_o_nada" },
+              "prueba": { "$ref": "#/$defs/texto_o_nada", "description": "El comando, tal cual; el OS nunca lo ejecuta." },
+              "duenos": { "type": "array", "items": { "type": "string" }, "description": "Dueños de los dos extremos según autoridad.md." },
+              "confirmacion": { "$ref": "#/$defs/confirmacion" },
+              "resultado": {
+                "description": "El último resultado de su Prueba (evento prueba, por comando_sha): valor pasa | falla, fuente hook. null si nadie la ha corrido.",
+                "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/dato" }]
+              }
+            }
+          }
+        },
+        "propuestas": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["tipo", "clave", "campos", "autor_declarado", "hora_declarada", "autor_git", "observado_en"],
+            "additionalProperties": false,
+            "properties": {
+              "tipo": { "enum": ["servicio", "conexion"], "description": "De qué tabla viene: «## Propuestas de servicios» o «## Propuestas de conexiones» (api.md §10)." },
+              "clave": { "type": "string", "pattern": "^[0-9a-f]{12}$", "description": "La de la fila que propone (sus columnas sin Autor ni Hora)." },
+              "campos": {
+                "type": "object",
+                "description": "Las columnas de la fila propuesta, con los nombres de lista (servicio) o de conexiones (conexión); sin Autor ni Hora.",
+                "additionalProperties": false,
+                "properties": {
+                  "nombre": { "type": "string", "maxLength": 40 },
+                  "carpeta": { "type": "string", "maxLength": 300 },
+                  "puerto": { "anyOf": [{ "type": "null" }, { "type": "integer", "minimum": 1, "maximum": 65535 }] },
+                  "arranque": { "$ref": "#/$defs/texto_o_nada" },
+                  "salud": { "$ref": "#/$defs/texto_o_nada" },
+                  "dueno": { "$ref": "#/$defs/texto_o_nada" },
+                  "de": { "type": "string", "maxLength": 40 },
+                  "a": { "type": "string", "maxLength": 40 },
+                  "contrato": { "$ref": "#/$defs/texto_o_nada" },
+                  "prueba": { "$ref": "#/$defs/texto_o_nada" }
+                }
+              },
+              "autor_declarado": { "$ref": "#/$defs/texto_o_nada" },
+              "hora_declarada": { "$ref": "#/$defs/texto_o_nada" },
+              "autor_git": { "$ref": "#/$defs/texto_o_nada", "description": "La persona del commit que la añadió; null si el sha no es de ningún evento commit." },
+              "observado_en": { "type": "string", "format": "date-time" }
+            }
+          }
+        },
+        "fuera": { "type": "array", "items": { "type": "string" }, "description": "«Fuera de servicios:» más lo que siempre está fuera (api.md §10)." },
+        "desajustes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["tipo", "detalle", "observado_en", "fuente"],
+            "additionalProperties": false,
+            "properties": {
+              "tipo": { "enum": ["puerto_sin_respuesta", "salud_falla", "formato_invalido", "codigo_fuera", "prueba_falla", "dueno_distinto", "contrato_inexistente"] },
+              "clave": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
+              "personas": { "type": "array", "items": { "type": "string" }, "description": "A quién afecta (para la sección de estado-equipo.md)." },
+              "rutas": { "type": "array", "items": { "type": "string" } },
+              "detalle": { "type": "string", "maxLength": 300 },
+              "observado_en": { "type": "string", "format": "date-time" },
+              "fuente": { "$ref": "#/$defs/fuente" }
+            }
+          }
+        }
       }
     }
   }
