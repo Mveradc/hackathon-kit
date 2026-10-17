@@ -13,7 +13,11 @@ Rehace el estado minuto a minuto con hkos/modelo.py (el mismo cálculo que el re
   - las sesiones sin `sesion.fin` (el SessionEnd perdido);
   - lo inyectado en cada sesión (caracteres de los deltas desde el último inicio, de entregado/*.firmas);
   - el desfase del reloj de cada portátil frente al relay y los eventos con hora por delante de la del relay;
-  - lo que tardó el arranque del demonio en cada sesión (arranque.log).
+  - lo que tardó el arranque del demonio en cada sesión (arranque.log);
+  - las acciones de la web nueva (M9a, si aparecen): los eventos con fuente `web` del registro del relay (`reclamo`, y
+    `anotacion` si algún día la emite), las líneas de `acciones.jsonl` de cada clon (y si el relay tiene su evento y si
+    un monitor la entregó, `entregado/accion-<id>`) y las notas de Anotar (commits «Criterio: <papel> · …» de
+    git-log.tsv y, si el zip trae `contexto/.hackathon/criterios.md`, las entradas «anotada desde la web»).
 Lo que no sale de aquí (las preguntas en voz alta y si un estado era incorrecto) está en la hoja.
 
 **Anonimizado por defecto** (Persona A, B…, también dentro de rutas y textos): la salida va a prueba.md, que es público.
@@ -42,9 +46,81 @@ from red import conf  # noqa: E402
 
 
 def leer_zip(ruta):
-    """{nombre interno: texto} de un zip de hk-os recoger."""
+    """{nombre interno: texto} de un zip de hk-os recoger. Las carpetas (`entregado/accion-<id>/`) quedan con texto vacío."""
     with zipfile.ZipFile(ruta) as z:
-        return {n: z.read(n).decode("utf-8", "replace") for n in z.namelist() if not n.endswith("/")}
+        return {n: "" if n.endswith("/") else z.read(n).decode("utf-8", "replace") for n in z.namelist()}
+
+
+# Anotar (api.md §4): «Criterio: <papel> · <primeros 50 caracteres>». /hack-note sube «Criterio: <resumen>», sin papel.
+NOTA_WEB = re.compile(r"^Criterio: (jurado|mentor|organizaci[oó]n) · ")
+ACCION_ENTREGADA = re.compile(r"^os/entregado/accion-([^/]+)(/|$)")
+
+
+def acciones_web(eventos, zips, por_zip, personas, nombres, tz):
+    """Lo que dejan Anotar y Reclamar (M9a): eventos con fuente web del relay, acciones.jsonl de cada clon, entregas del
+    monitor y notas de Anotar. Devuelve las líneas del informe; main anonimiza el texto entero al final."""
+    web = [e for e in eventos if e.get("fuente") == "web"]
+    ids_relay = {e["id"] for e in eventos}
+    # La persona de cada commit, solo de los eventos `commit` de los demonios (nunca del autor de git, ADR-0011).
+    sha_persona = {e["datos"]["sha"][:12]: e["actor"]["persona"] for e in eventos
+                   if e["tipo"] == "commit" and isinstance(e.get("datos"), dict) and e["datos"].get("sha")}
+    notas = {}                                           # sha → hora (dedup: cada clon trae el log de todo main)
+    for z in zips.values():
+        for l in z.get("git-log.tsv", "").splitlines():
+            c = l.split("\t")
+            if len(c) >= 5 and NOTA_WEB.match(c[4]):
+                notas.setdefault(c[0][:12], c[1])
+    criterios = next((z["contexto/.hackathon/criterios.md"] for z in zips.values()
+                      if z.get("contexto/.hackathon/criterios.md")), "")
+    # «Afecta a» va antes que «Anotado por» (plantilla de api.md §4): se cuenta cada entrada al cerrarla.
+    por_md, entrada = Counter(), None
+    for l in criterios.splitlines() + ["## fin"]:
+        l = l.strip()
+        if l.startswith("## "):
+            if entrada and entrada["web"]:
+                por_md[entrada["autor"] or "—"] += 1
+            entrada = {"web": False, "autor": None}
+        elif entrada is not None and l.startswith("- Afecta a:") and "anotada desde la web" in l:
+            entrada["web"] = True
+        elif entrada is not None and l.startswith("- Anotado por:"):
+            entrada["autor"] = l[len("- Anotado por:"):].strip().lstrip("@").lower() or None
+
+    if not (web or notas or por_md or any("os/acciones.jsonl" in z for z in zips.values())):
+        return ["Ninguna en los zips (con `web_nueva: no`, o nadie usó Anotar ni Reclamar).", ""]
+
+    L = ["| Persona | Eventos web en el relay (por tipo) | Horas de los reclamos web | `acciones.jsonl` (por tipo) | "
+         "Sin evento en el relay | Entregadas por un monitor | Notas de Anotar (git) |", "|---|---|---|---|---|---|---|"]
+    # entregado/accion-<id> es una carpeta vacía: un zip sin ninguna no dice que no se entregaran, sino que no las trae.
+    con_entregas = any(ACCION_ENTREGADA.match(n) for z in zips.values() for n in z)
+    for p in personas:
+        yo = p["persona"]
+        mios = [e for e in web if e["actor"]["persona"] == yo]
+        tipos = Counter(e["tipo"] for e in mios)
+        horas = ", ".join(hhmm(e["ts"], tz) for e in mios if e["tipo"] == "reclamo") or "—"
+        z = por_zip.get(yo, {})
+        acc = jsonl(z.get("os/acciones.jsonl", ""))
+        acc_tipos = Counter(str(x.get("tipo", "?")) for x in acc)
+        sin_evento = sum(1 for x in acc if x.get("id") and x["id"] not in ids_relay)
+        entregadas = {m.group(1) for n in z for m in [ACCION_ENTREGADA.match(n)] if m}
+        n_notas = sum(1 for sha in notas if sha_persona.get(sha) == yo)
+        L.append(f"| {nombres[yo]} | {', '.join(f'{k} {v}' for k, v in tipos.most_common()) or '0'} | {horas} | "
+                 f"{', '.join(f'{k} {v}' for k, v in acc_tipos.most_common()) or ('0' if z else '— (sin zip)')} | "
+                 f"{sin_evento} | {len(entregadas) if con_entregas else '—'} | {n_notas} |")
+    sin_atribuir = sum(1 for sha in notas if sha not in sha_persona)
+    otros_reclamos = Counter(e["fuente"] for e in eventos if e["tipo"] == "reclamo" and e.get("fuente") != "web")
+    L += ["", f"- Notas de Anotar en el log de main: {len(notas)}"
+          + (f" ({sin_atribuir} sin evento `commit` de ningún demonio: no se sabe de quién)" if sin_atribuir else "") + "."]
+    if por_md:
+        L.append("- En `criterios.md` de main, entradas «anotada desde la web» (por «Anotado por»): "
+                 + ", ".join(f"{nombres.get(k, k)} {v}" for k, v in por_md.most_common()) + ".")
+    if not con_entregas:
+        L.append("- «Entregadas por un monitor»: ningún zip trae `entregado/accion-<id>` (son carpetas vacías y "
+                 "`hk-os recoger` no las guarda). Si la sesión recibió el turno, lo dice la hoja.")
+    if otros_reclamos:
+        L.append("- Reclamos por otra vía (para comparar): " + ", ".join(f"{k} {v}" for k, v in otros_reclamos.items()) + ".")
+    L += ["- Lo que no sale de aquí: los reclamos y notas que la web rechazó (409, 429, 502…), que no dejan ni evento ni "
+          "línea, y lo que se siguió haciendo en la terminal. Eso, en la sección 7 de la hoja.", ""]
+    return L
 
 
 def jsonl(texto):
@@ -243,6 +319,9 @@ def main(argv=None):
     L += ["El desfase es el del reloj de cada portátil frente al del relay al recoger (`hk-os recoger`; positivo = "
           "adelantado). El relay toma como «ahora» el máximo entre su hora y la del último evento (M8d): un portátil "
           "adelantado no se oculta, pero puede adelantar los umbrales de presencia y de «parada» de los demás.", ""]
+
+    L += ["## Acciones de la web nueva (M9a: Anotar y Reclamar)", ""]
+    L += acciones_web(eventos, zips, por_zip, personas, nombres, tz)
 
     texto = anon("\n".join(L)) + "\n"
     if a.informe:
