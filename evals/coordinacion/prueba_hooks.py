@@ -432,13 +432,44 @@ def prueba_prueba(tmp):
               and lanzar(r, pasa, "—", "p6") == [])
     comprueba("PostToolUseFailure con is_interrupt: nada", lanzar(r, falla, pruebas[0], "p7", is_interrupt=True) == [])
     # Fabricada (issue #2, hallazgo 8): en segundo plano, PostToolUse llega al arrancar, no al terminar la Prueba.
-    def fondo(entrada, valor):
+    def fondo(entrada, valor, tarea="b1"):
         return dict(entrada, tool_input=dict(entrada["tool_input"], run_in_background=valor),
-                    tool_response={"stdout": "", "stderr": "", "interrupted": False, "backgroundTaskId": "b1"})
+                    tool_response={"stdout": "", "stderr": "", "interrupted": False,
+                                   **({"backgroundTaskId": tarea} if tarea else {})})
     comprueba("Bash con run_in_background: true (PostToolUse y PostToolUseFailure): nada",
               lanzar(r, fondo(pasa, True), pruebas[0], "p10") == [] and lanzar(r, fondo(falla, True), pruebas[0], "p11") == [])
-    comprueba("run_in_background: false sigue dando «pasa»",
-              [l["resultado"] for l in lanzar(r, fondo(pasa, False), pruebas[0], "p12") if l] == ["pasa"])
+    comprueba("run_in_background: false (sin backgroundTaskId) sigue dando «pasa»",
+              [l["resultado"] for l in lanzar(r, fondo(pasa, False, None), pruebas[0], "p12") if l] == ["pasa"])
+
+    # Issue #15 (hallazgos 5 y 13), entradas fabricadas a partir de m9a-bash/01. El texto JSON tal cual, sin dumps.
+    def crudo(r, d, sid, cambia=lambda t: t, **dumps):
+        d = dict(d, session_id=sid, cwd=r, tool_input=dict(d["tool_input"], command=pruebas[0]))
+        lanza(PRUEBA, cambia(json.dumps(d, **dumps)), r)
+        return [l and l["resultado"] for l in (valida(f"línea de prueba.sh ({sid})", x) for x in lineas(r).get(sid, []))]
+    ctrl_b = dict(pasa, tool_response=dict(pasa["tool_response"], backgroundTaskId="bk3x9"))
+    comprueba("Ctrl+B: sin run_in_background y con tool_response.backgroundTaskId: nada",
+              crudo(r, ctrl_b, "b1") == [] and crudo(r, ctrl_b, "b2", indent=1) == []
+              and crudo(r, dict(falla, tool_response={"backgroundTaskId": "bk4"}), "b3") == [])
+    grande = dict(pasa, tool_response={"stdout": "línea larga de salida\n" * 1200, "backgroundTaskId": "bk5"})
+    comprueba("Ctrl+B con un stdout de más de 16 KB delante de backgroundTaskId: nada", crudo(r, grande, "b4") == [])
+    comprueba("backgroundTaskId vacío o null, o dentro del texto de stdout: sigue dando «pasa»",
+              crudo(r, dict(pasa, tool_response=dict(pasa["tool_response"], backgroundTaskId=None)), "b5") == ["pasa"]
+              and crudo(r, dict(pasa, tool_response=dict(pasa["tool_response"], backgroundTaskId="")), "b6") == ["pasa"]
+              and crudo(r, dict(pasa, tool_response={"stdout": '{"backgroundTaskId": "b1"}'}), "b7") == ["pasa"])
+    comprueba("run_in_background como la cadena \"true\": nada",
+              crudo(r, fondo(pasa, "true", None), "b8") == [])
+    comprueba("la clave con escapes (\"run\\u005fin_background\": true, también \"\\u0072un…\"): nada",
+              crudo(r, fondo(pasa, True, None), "b9", lambda t: t.replace('"run_in_background"', '"run\\u005fin_background"')) == []
+              and crudo(r, fondo(pasa, True, None), "b10", lambda t: t.replace('"run_in_background"', '"\\u0072un_in_background"')) == []
+              and crudo(r, fondo(pasa, "true", None), "b11", lambda t: t.replace('"true"', '"\\u0074rue"')) == [])
+    comprueba("run_in_background: true con saltos de línea entre clave y valor: nada",
+              crudo(r, fondo(pasa, True, None), "b12", lambda t: t.replace('"run_in_background": true', '"run_in_background"\n :\n true')) == [])
+    comprueba("run_in_background: true fuera de tool_input (en otro objeto o en tool_response): sigue dando «pasa»",
+              crudo(r, dict(pasa, otro={"run_in_background": True}), "b13") == ["pasa"]
+              and crudo(r, dict(pasa, tool_response=dict(pasa["tool_response"], run_in_background=True)), "b14") == ["pasa"]
+              and crudo(r, dict(pasa, tool_input=dict(pasa["tool_input"], extra={"run_in_background": True})), "b15") == ["pasa"])
+    comprueba("run_in_background dentro del texto de description: sigue dando «pasa»",
+              crudo(r, dict(pasa, tool_input=dict(pasa["tool_input"], description='{"run_in_background": true}')), "b16") == ["pasa"])
     comprueba("otra herramienta: nada", lanzar(r, pasa, pruebas[0], "p8", tool_name="PowerShell") == [])
     sin_codigo = lanzar(r, falla, pruebas[0], "p9", error="Command failed")
     comprueba("PostToolUseFailure sin «Exit code N»: «falla» sin codigo",

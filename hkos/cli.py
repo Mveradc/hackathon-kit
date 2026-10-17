@@ -20,6 +20,8 @@ import json
 import os
 import pathlib
 import re
+import socket
+import struct
 import subprocess
 import sys
 import time
@@ -38,7 +40,25 @@ from red import equipo, web_nueva  # noqa: E402
 
 USO = __doc__.split("\n\n", 1)[1]
 # Lo que `recoger` nunca mete en el zip: secretos, los índices temporales y el remoto (código).
-NO_RECOGER = {"token", "relay.url", "wip.index", "wip.pathspecs", "web.token", "nota.index", "web.html", "web.html.tmp"}
+NO_RECOGER = {"token", "relay.url", "wip.index", "wip.pathspecs", "web.token", "nota.index", "web.html", "web.html.tmp",
+              "token.tmp", "relay.url.tmp"}
+# agente.vivo se renueva cada 15 s: con más de 60, el demonio está muerto. El criterio de scripts/os/delta.sh (VIVO_S,
+# línea 22, y la comprobación de la línea 190).
+VIVO_S = 60
+LINUX = sys.platform.startswith("linux")
+TCP_PROC = ("/proc/net/tcp", "/proc/net/tcp6")
+
+
+def _escribe_privado(ruta, texto):
+    """Un secreto en disco, 0600 desde que existe (O_EXCL en un .tmp y os.replace): sin la ventana de umask de
+    open(…, "w") ni el modo de un fichero anterior. En Windows, el modo no cambia el ACL que hereda de la carpeta."""
+    try:
+        os.remove(ruta + ".tmp")
+    except OSError:
+        pass
+    with os.fdopen(os.open(ruta + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as f:
+        f.write(texto)
+    os.replace(ruta + ".tmp", ruta)
 
 
 def _principal(comun):
@@ -183,8 +203,7 @@ def unir(url, token, cwd=".", persona=None, remoto=None, salida=print):
     carpeta = os.path.join(comun, "hackathon", "os")
     os.makedirs(carpeta, exist_ok=True)
     for nombre, valor in (("relay.url", url), ("token", token)):
-        with open(os.path.join(carpeta, nombre), "w", encoding="utf-8") as f:
-            f.write(valor + "\n")
+        _escribe_privado(os.path.join(carpeta, nombre), valor + "\n")
     if persona is not None:
         # Sin GitHub, la persona se declara (no se verifica): hk_yo la toma de aquí antes de preguntar a gh, y
         # sesion.sh avisa una vez si gh dice otra cosa cuando vuelve la red (ADR-0002, nota de M8h).
@@ -284,14 +303,44 @@ def abrir_navegador(url, carpeta):
     if os.name == "nt":
         return webbrowser.open(url)
     ruta = os.path.join(carpeta, "web.html")
-    try:
-        os.remove(ruta + ".tmp")
-    except OSError:
-        pass
-    with os.fdopen(os.open(ruta + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as f:
-        f.write(PAGINA_WEB.format(url=html.escape(url, quote=True)))
-    os.replace(ruta + ".tmp", ruta)
+    _escribe_privado(ruta, PAGINA_WEB.format(url=html.escape(url, quote=True)))
     return webbrowser.open(pathlib.Path(ruta).as_uri())
+
+
+def _direccion(hexa):
+    """La dirección de /proc/net/tcp{,6}: palabras de 32 bits en el orden de bytes de la máquina, en hexadecimal."""
+    return b"".join(struct.pack("=I", int(hexa[i:i + 8], 16)) for i in range(0, len(hexa), 8))
+
+
+# Las direcciones en escucha que reciben una conexión a 127.0.0.1: la propia, 0.0.0.0 y, en tcp6, :: y las mapeadas.
+A_127 = {socket.inet_pton(socket.AF_INET, d) for d in ("127.0.0.1", "0.0.0.0")} | {
+    socket.inet_pton(socket.AF_INET6, d) for d in ("::", "::ffff:127.0.0.1", "::ffff:0.0.0.0")}
+
+
+def escucha_mia(puerto, tablas=None, uid=None):
+    """Linux: ¿es de este usuario quien escucha (estado 0A) en 127.0.0.1:<puerto>? Mira /proc/net/tcp y tcp6. False si
+    no hay nadie o si alguno es de otro uid; None si no se puede leer ninguna tabla (entonces vale solo la hora)."""
+    tablas = TCP_PROC if tablas is None else tablas
+    uid = os.getuid() if uid is None else uid
+    duenos, leida = [], False
+    for tabla in tablas:
+        try:
+            with open(tabla, encoding="ascii", errors="replace") as f:
+                lineas = f.read().splitlines()[1:]
+        except OSError:
+            continue
+        leida = True
+        for linea in lineas:
+            c = linea.split()
+            try:
+                local, p = c[1].split(":")
+                if c[3] == "0A" and int(p, 16) == puerto and _direccion(local) in A_127:
+                    duenos.append(int(c[7]))
+            except (IndexError, ValueError, struct.error):
+                continue
+    if not leida:
+        return None
+    return bool(duenos) and all(d == uid for d in duenos)
 
 
 def web(cwd=".", abrir=None, salida=print):
@@ -305,9 +354,15 @@ def web(cwd=".", abrir=None, salida=print):
         salida("hk-os web: la web de trabajo está apagada en este clon: pon «web_nueva: sí» en .hackathon/os.md "
                "(y súbelo, es para todo el equipo).")
         return 1
+    # Issue #15: quien conteste /salud en el puerto de un agente.vivo huérfano (reinicio, kill -9) recibiría el token.
+    # Antes de nada, la hora de agente.vivo y, en Linux, que el puerto sea de este usuario. El reto en /salud, que lo
+    # cerraría del todo, cambia api.md §4 (pendiente).
     try:
         with open(os.path.join(carpeta, "agente.vivo"), encoding="utf-8") as f:
             puerto = int(f.readline().strip())
+            hora = int(f.readline().strip())
+        if time.time() - hora > VIVO_S or (LINUX and escucha_mia(puerto) is False):
+            raise ValueError("agente.vivo viejo o puerto de otro usuario")
         with urllib.request.urlopen(f"http://127.0.0.1:{puerto}/salud", timeout=2) as r:
             primera = r.read().decode("utf-8", errors="replace").split("\n", 1)[0]
     except (OSError, ValueError):
@@ -339,6 +394,7 @@ def web(cwd=".", abrir=None, salida=print):
         salida("hk-os web: el demonio de este clon arrancó antes de «web_nueva: sí». Cierra las sesiones de Claude "
                "Code de este clon y termina el proceso de hkos/agente.py; la próxima sesión lo lanza con la web.")
         return 1
+    pagina = None
     if abrir:
         abrir(f"{url}#t={token}")
     else:
@@ -347,11 +403,14 @@ def web(cwd=".", abrir=None, salida=print):
         except OSError as ex:
             salida(f"hk-os web: no he podido preparar la página para el navegador ({ex}).")
             return 1
+        pagina = None if os.name == "nt" else pathlib.Path(carpeta, "web.html").as_uri()
         if not abierta:
-            salida("hk-os web: no he encontrado un navegador." + ("" if os.name == "nt" else
-                   f" Abre a mano {pathlib.Path(carpeta, 'web.html').as_uri()} (lleva el token: no la compartas)."))
+            salida("hk-os web: no he encontrado un navegador." + ("" if pagina is None else
+                   f" Abre a mano {pagina} (lleva el token: no la compartas)."))
             return 1
     salida(f"Web de trabajo: {url} (el token va aparte, en el fragmento; para volver a abrirla, hk-os web).")
+    if pagina:                   # un navegador snap no lee repos fuera de /home ni bajo carpetas ocultas (issue #15)
+        salida(f"Abre a mano {pagina} si el navegador no puede leerla (lleva el token: no la compartas).")
     return 0
 
 

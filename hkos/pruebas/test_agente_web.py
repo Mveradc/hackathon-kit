@@ -556,6 +556,7 @@ class HkOsWeb(Base):
         self.assertEqual(cli.web(self.repo, abiertas.append, salida.append), 1)   # sin agente.vivo: no abre nada
         self.assertEqual(abiertas, [])
         self.a.puerto = self.puerto
+        self.reloj.t = time.time()                    # hk-os web no se fía de un agente.vivo viejo (issue #15)
         self.a.latir_vivo()
         self.assertEqual(cli.web(self.repo, abiertas.append, salida.append), 0)   # sin estado todavía (503): abre
         self.assertEqual(abiertas, [f"http://127.0.0.1:{self.puerto}/#t={self.a.web_token}"])
