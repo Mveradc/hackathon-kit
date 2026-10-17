@@ -83,6 +83,9 @@ class Fichero:
 # La tarea de un commit es el ID con que empieza su asunto («T07 · …», ADR-0002), no cualquier mención: un commit
 # del plan que dice «Ajuste del plan: T14 …» no es trabajo de T14 (en vivo, M8e).
 ID_EN_MENSAJE = re.compile(r"^\s*\[?(T\d{2,3})\b")
+# Issue #2 (hallazgos 2 y 5, ADR-0011): un commit es de este clon solo si una rama local lo recibió con `git commit`
+# aquí (su reflog lo dice). Ni el correo de git, ni traerlo con fetch, checkout, merge, pull, cherry-pick o rebase.
+CREADO_AQUI = re.compile(r"^commit(?: \((?:initial|amend)\))?: ")
 
 
 class SondeoGit:
@@ -108,7 +111,6 @@ class SondeoGit:
         self.vistos = list(d.get("vistos", []))
         self._vistos = set(self.vistos)
         self.pendientes = {}                     # id del evento → ("commit", sha) | ("push", punta)
-        self.correo = None                       # user.email del clon, para saber qué commits son de esta persona
         self.firma_arbol = None                  # el último `arbol` emitido por el demonio (no se repite igual)
         self.ultimo = self.ultimo_fetch = -1e18
 
@@ -126,27 +128,33 @@ class SondeoGit:
         return r.stdout if crudo else r.stdout.strip()   # crudo: `status --porcelain` empieza por un espacio
 
     def _log(self, rango, *mas):
-        """[(sha, hora en UTC, correo de quien hizo el commit, asunto)] del más viejo al más nuevo; None si git no puede
-        (punta desconocida)."""
-        t = self._git("log", "--reverse", "--format=%H%x1f%cI%x1f%ce%x1f%s", *mas, rango)
+        """[(sha, hora en UTC, asunto)] del más viejo al más nuevo; None si git no puede (punta desconocida)."""
+        t = self._git("log", "--reverse", "--format=%H%x1f%cI%x1f%s", *mas, rango)
         if t is None:
             return None
         salida = []
         for l in t.splitlines():
-            if l.count("\x1f") == 3:
-                sha, ts, correo, asunto = l.split("\x1f", 3)
+            if l.count("\x1f") == 2:
+                sha, ts, asunto = l.split("\x1f", 2)
                 ts = datetime.fromisoformat(ts).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-                salida.append((sha, ts, correo.lower(), asunto))
+                salida.append((sha, ts, asunto))
         return salida
 
-    def _propio(self, sha, correo):
-        """¿Es de esta persona un commit que llega por origin/main? Por el correo del clon (`user.email`); sin él, si lo
-        alcanza una rama local. Un commit de otra persona entra en el `incluye` del push, pero no como commit suyo."""
-        if self.correo is None:
-            self.correo = (self._git("config", "user.email") or "").lower()
-        if self.correo:
-            return correo == self.correo
-        return bool(self._git("for-each-ref", "--contains", sha, "--format=%(refname)", "refs/heads"))
+    def _creados(self):
+        """Los shas que una rama local de este clon (también las `worktree-agent-<id>`, cuyo reflog está en el git
+        común) recibió con `git commit`, `--amend` incluido: lo único que el demonio emite como commit de su persona.
+        Nunca el autor ni el committer de git, que cualquiera pone (ADR-0011). Lo que llegó de fuera (fetch, checkout de
+        una rama ajena, merge, pull, cherry-pick, rebase, reset) no tiene esa entrada y no se emite: ante la duda, el
+        commit se queda sin confirmar, que es el lado seguro. Sin reflog (o si git no puede), nada."""
+        ramas = (self._git("for-each-ref", "--format=%(refname)", "refs/heads") or "").split()
+        if not ramas:
+            return set()
+        salida = set()
+        for l in (self._git("log", "-g", "--format=%H%x1f%gs", *ramas, "--") or "").splitlines():
+            sha, _, motivo = l.partition("\x1f")
+            if CREADO_AQUI.match(motivo):
+                salida.add(sha)
+        return salida
 
     def _guardar(self):
         self.vistos = self.vistos[-self.MAX_VISTOS:]
@@ -223,10 +231,16 @@ class SondeoGit:
             self.ultimo_fetch = ahora
             self._git("fetch", "--quiet", "origin")
         punta = self._git("rev-parse", "refs/remotes/origin/main")
-        eventos = []
+        eventos, creados = [], None
+
+        def de_aqui(sha):
+            nonlocal creados
+            if creados is None:                  # una vez por vuelta, y solo si hay algún commit nuevo que mirar
+                creados = self._creados()
+            return sha in creados
         for rama in (self._git("for-each-ref", "--format=%(refname:short)", "refs/heads") or "").split():
-            for sha, ts, _, asunto in self._log(f"refs/remotes/origin/main..refs/heads/{rama}", "--no-merges") or []:
-                if sha not in self._vistos and not self._en_espera(sha):
+            for sha, ts, asunto in self._log(f"refs/remotes/origin/main..refs/heads/{rama}", "--no-merges") or []:
+                if sha not in self._vistos and not self._en_espera(sha) and de_aqui(sha):
                     eventos.append(self._commit(sha, ts, asunto, rama, False))
         if self.punta is None:                   # primera vez: lo que ya estaba subido no es un push nuevo
             self.punta = punta
@@ -237,10 +251,11 @@ class SondeoGit:
                 tramo = self._log(punta, "-n", "50") or []
             # Un merge (traer origin, por ejemplo) no es trabajo de una tarea: no sale como commit (en vivo, M8e).
             merges = set((self._git("rev-list", "--merges", f"{self.punta}..{punta}") or "").split())
-            for sha, ts, correo, asunto in tramo:
-                if sha not in self._vistos and not self._en_espera(sha) and sha not in merges and self._propio(sha, correo):
+            # Los de otras personas (o de otro clon) entran en el `incluye` del push, pero no como commits suyos.
+            for sha, ts, asunto in tramo:
+                if sha not in self._vistos and not self._en_espera(sha) and sha not in merges and de_aqui(sha):
                     eventos.append(self._commit(sha, ts, asunto, "origin/main", True))
-            incluye = [sha for sha, _, _, asunto in tramo if ID_EN_MENSAJE.search(asunto) or sha in self.ag.fusiones]
+            incluye = [sha for sha, _, asunto in tramo if ID_EN_MENSAJE.search(asunto) or sha in self.ag.fusiones]
             e = {"v": 1, "id": f"git-{self.ag.persona}-push-{punta[:12]}", "ts": self.ag.ahora(),
                  "actor": {"persona": self.ag.persona, "papel": "demonio"}, "tipo": "push", "fuente": "git",
                  "datos": {"sha": punta, "incluye": incluye}}
