@@ -56,6 +56,7 @@ EVENTOS_SSE_MAX = 200           # por mensaje (api.md §3)
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "index.html")
 TAILNET = ipaddress.ip_network("100.64.0.0/10")
 PRIVADAS = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
+FALLO = object()                # una lectura de git que falló (Novedades._en)
 
 
 class Invalido(Exception):
@@ -164,6 +165,43 @@ class Novedades:
             return None
         return servicios_mod.decodificar(r.stdout) if r.returncode == 0 else None
 
+    def _en(self, ref):
+        """servicios.md en `ref`: su texto, None si no está, o FALLO si no se ha podido leer (un fallo no es «no
+        estaba»: así contaría todas las filas como añadidas en el commit siguiente, ADR-0011)."""
+        esta = self.git(self.repo, "ls-tree", "--name-only", ref, SERVICIOS)
+        if esta is None:
+            return FALLO
+        if not esta.strip():
+            return None
+        texto = self._texto(ref, SERVICIOS)
+        return FALLO if texto is None else texto
+
+    def _version(self, sha):
+        """La versión de `sha` con la de sus padres reales, o None si falló alguna lectura: no se guarda en la caché y
+        se vuelve a leer en la vuelta siguiente. Mientras, la versión no está en la lista y no confirma nada."""
+        padres = self.git(self.repo, "log", "-1", "--format=%P", sha)
+        if padres is None:
+            return None
+        textos, texto = [self._en(p) for p in padres.split()], self._en(sha)
+        if texto is FALLO or any(t is FALLO for t in textos):
+            return None
+        return {"sha": sha, "textos_padres": textos, "texto": texto or ""}
+
+    def _bordes(self):
+        """Los commits del borde de un clon superficial (git no tiene sus padres: `%P` sale vacío y parecerían crear
+        el fichero con todas sus filas). set() si el clon es completo; None si no se sabe."""
+        superficial = (self.git(self.repo, "rev-parse", "--is-shallow-repository") or "").strip()
+        if superficial == "false":
+            return set()
+        ruta = (self.git(self.repo, "rev-parse", "--git-path", "shallow") or "").strip()
+        if superficial != "true" or not ruta:
+            return None
+        try:
+            with open(os.path.join(self.repo, ruta), encoding="utf-8") as f:
+                return set(f.read().split())
+        except OSError:
+            return None
+
     def _creacion(self, ref):
         """El sha del commit que creó servicios.md, solo si se sabe con certeza; si no, None (y ninguna fila es de
         /hack-scaffold, ADR-0011). Sin la simplificación de historia de `git log` (un merge que deja el fichero igual
@@ -207,17 +245,23 @@ class Novedades:
             return None
         log = self.git(self.repo, "log", "--full-history", "--reverse", "-n", str(SERVICIOS_COMMITS), "--format=%H %ct",
                        ref, "--", SERVICIOS) or ""
-        crea = self._creacion(ref)
+        # En un clon superficial (o si no se sabe si lo es) no hay creación conocida, y las versiones del borde no se
+        # leen: sin sus padres, todas sus filas saldrían añadidas por la persona de ese commit (ADR-0011).
+        bordes = self._bordes()
+        crea = self._creacion(ref) if bordes == set() else None
         versiones, cuando = [], None
         for linea in log.splitlines():
             partes = linea.split()
             if len(partes) != 2:
                 continue
             sha, cuando = partes
+            if bordes is None or sha in bordes:
+                continue
             if sha not in self._versiones:
-                padres = (self.git(self.repo, "log", "-1", "--format=%P", sha) or "").split()   # los padres reales
-                self._versiones[sha] = {"sha": sha, "textos_padres": [self._texto(p, SERVICIOS) for p in padres],
-                                        "texto": self._texto(sha, SERVICIOS) or ""}
+                version = self._version(sha)
+                if version is None:
+                    continue
+                self._versiones[sha] = version
             versiones.append(dict(self._versiones[sha], crea=sha == crea))
         rutas = (self.git(self.repo, "ls-tree", "-r", "--name-only", ref) or "").splitlines()[:RUTAS_MAX]
         return {"texto": texto, "versiones": versiones, "rutas": rutas, "autoridad": autoridad, "contratos": contratos,

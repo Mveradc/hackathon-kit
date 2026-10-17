@@ -4,6 +4,7 @@ Uso: uv run --no-project -m unittest discover -s hkos/pruebas -v
 """
 import json
 import os
+import pathlib
 import shutil
 import subprocess
 import sys
@@ -210,9 +211,8 @@ class Servicios(Base):
 INTRUSO = "| intruso | api/intruso/ | 9999 | — | /x | — |\n"
 
 
-class CreacionDelFichero(Base):
-    """Issue #2, hallazgo 1 (y sección 6, casos 1, 7 y 8): «el commit que creó servicios.md» sin depender de la
-    simplificación de historia de git log. Si no se sabe con certeza, ninguna fila es de /hack-scaffold."""
+class RepoGit(Base):
+    """Un repo con autoridad.md y contratos.md en su primer commit, y el relay que lee su servicios.md."""
 
     def setUp(self):
         super().setUp()
@@ -241,14 +241,18 @@ class CreacionDelFichero(Base):
         self.escribe(".hackathon/servicios.md", CABECERA + CONEXIONES)
         return self.commit("scaffold", "2026-11-25T18:00:00Z")
 
-    def servicios(self, eventos=()):
-        n = relay_mod.Novedades(self.repo, 300, web_nueva=True)
+    def servicios(self, eventos=(), repo=None):
+        n = relay_mod.Novedades(repo or self.repo, 300, web_nueva=True)
         n.sondear()
         r = relay_mod.Relay(os.path.join(self.dir, "relay"), PERSONAS, novedades=n, web_nueva=True)
         r.recibir({"eventos": list(eventos)})
         r.recalcular()
         self.assertIsNone(Esquema("estado.schema.json").error(r.estado))
-        return {x["nombre"]: x["confirmacion"] for x in r.estado["servicios"]["lista"]}, r
+        return self.lista(r), r
+
+    @staticmethod
+    def lista(r):
+        return {x["nombre"]: x["confirmacion"] for x in r.estado["servicios"]["lista"]}
 
     def commit_de(self, persona, sha):
         return {"v": 1, "id": f"git-{persona}-commit-{sha[:7]}", "ts": relay_mod.ahora_iso(),
@@ -258,6 +262,11 @@ class CreacionDelFichero(Base):
     def nada_de_scaffold(self, lista):
         for nombre, c in lista.items():
             self.assertEqual((c["valor"], c["de_scaffold"]), ("sin_confirmar", False), nombre)
+
+
+class CreacionDelFichero(RepoGit):
+    """Issue #2, hallazgo 1 (y sección 6, casos 1, 7 y 8): «el commit que creó servicios.md» sin depender de la
+    simplificación de historia de git log. Si no se sabe con certeza, ninguna fila es de /hack-scaffold."""
 
     def test_historia_lineal_si_es_de_scaffold(self):
         self.scaffold()
@@ -355,6 +364,111 @@ class CreacionDelFichero(Base):
             self.assertEqual([v["sha"] for v in r.novedades.servicios["versiones"]], shas)
             r.recalcular()
         self.nada_de_scaffold({x["nombre"]: x["confirmacion"] for x in r.estado["servicios"]["lista"]})
+
+
+MOTOR = "| motor | motor/ | {} | — | — | — |\n"
+CACHE = "| cache | api/cache/ | 6379 | — | — | @ana |\n"
+
+
+class LecturaFallida(RepoGit):
+    """Issue #10 (media, relay.py, caché `_versiones`): una lectura de git que falla no se guarda. Un `%P` fallido
+    no es «sin padres», ni un `git show` fallido del padre es «el fichero no existía»: en los dos casos todas las filas
+    contarían como añadidas por la persona del commit. La versión se vuelve a leer en la vuelta siguiente."""
+
+    def setUp(self):
+        super().setUp()
+        self.escribe(".hackathon/servicios.md", CABECERA + MOTOR.format(9000) + CONEXIONES)
+        self.commit("scaffold", "2026-11-25T18:00:00Z")
+        self.escribe(".hackathon/servicios.md", CABECERA + MOTOR.format(9000) + CACHE + CONEXIONES)
+        self.sha_luis = self.commit("luis añade la fila de ana", "2026-11-25T18:10:00Z")
+        self.escribe(".hackathon/servicios.md", CABECERA + MOTOR.format(9001) + CACHE + CONEXIONES)
+        self.sha_ana = self.commit("ana solo cambia el puerto de motor", "2026-11-25T18:20:00Z")
+        self.eventos = [self.commit_de("luis", self.sha_luis), self.commit_de("ana", self.sha_ana)]
+
+    def ronda(self, n, r):
+        n.sondear()
+        r.recalcular()
+        self.assertIsNone(Esquema("estado.schema.json").error(r.estado))
+        return self.lista(r)["cache"]
+
+    def test_sin_fallos_no_confirma(self):
+        lista, _ = self.servicios(self.eventos)
+        self.assertEqual((lista["cache"]["valor"], lista["cache"]["por"], lista["cache"]["faltan"]),
+                         ("sin_confirmar", ["luis"], ["ana"]))
+
+    def test_un_fallo_no_confirma_ni_se_guarda(self):
+        p_de_ana = ("log", "-1", "--format=%P", self.sha_ana)
+        casos = {                                        # (args) → si falla; el padre, mientras se lee la versión de ana
+            "%P del commit de ana": lambda a, en_ana: a == p_de_ana,
+            "ls-tree del padre": lambda a, en_ana: en_ana and a[:1] == ("ls-tree",) and self.sha_luis in a,
+            "git show del padre": lambda a, en_ana: en_ana and a == ("show", self.sha_luis),
+        }
+        for i, (nombre, falla) in enumerate(casos.items()):
+            with self.subTest(nombre):
+                n = relay_mod.Novedades(self.repo, 300, web_nueva=True)
+                quedan, en_ana = [1], [False]
+                git_real, texto_real = n.git, n._texto
+
+                def git_(repo, *args, **kw):
+                    en_ana[0] = en_ana[0] or args == p_de_ana
+                    if quedan[0] and falla(args, en_ana[0]):
+                        quedan[0] -= 1
+                        return None
+                    return git_real(repo, *args, **kw)
+
+                def texto_(ref, ruta):
+                    if quedan[0] and falla(("show", ref), en_ana[0]):
+                        quedan[0] -= 1
+                        return None
+                    return texto_real(ref, ruta)
+                n.git, n._texto = git_, texto_
+                r = relay_mod.Relay(os.path.join(self.dir, f"relay-{i}"), PERSONAS, novedades=n,
+                                    web_nueva=True)
+                r.recibir({"eventos": self.eventos})
+                cache = self.ronda(n, r)
+                self.assertEqual(quedan, [0])                                # el fallo ha ocurrido
+                self.assertEqual((cache["valor"], cache["por"]), ("sin_confirmar", ["luis"]))
+                self.assertNotIn(self.sha_ana, n._versiones)
+                cache = self.ronda(n, r)                                     # la vuelta siguiente la vuelve a leer
+                self.assertIn(self.sha_ana, n._versiones)
+                self.assertEqual(n._versiones[self.sha_ana]["textos_padres"],
+                                 [CABECERA + MOTOR.format(9000) + CACHE + CONEXIONES])
+                self.assertEqual((cache["valor"], cache["por"], cache["faltan"]), ("sin_confirmar", ["luis"], ["ana"]))
+
+
+class ClonSuperficial(RepoGit):
+    """Issue #10 (media, relay.py, `_nacimiento`): en un clon superficial el commit del borde no tiene padres y
+    parecía el único que crea servicios.md. Ahí no hay creación conocida (ninguna fila es de /hack-scaffold) y las
+    versiones del borde no cuentan: sin sus padres, todas sus filas saldrían añadidas por la persona de ese commit."""
+
+    def setUp(self):
+        super().setUp()
+        self.escribe(".hackathon/servicios.md", CABECERA + MOTOR.format(9000) + CONEXIONES)
+        self.commit("scaffold", "2026-11-25T18:00:00Z")
+        self.escribe(".hackathon/servicios.md", CABECERA + MOTOR.format(9000) + CACHE + CONEXIONES)
+        self.sha_luis = self.commit("luis añade la fila de ana", "2026-11-25T18:10:00Z")
+
+    def clon(self, profundidad):
+        destino = os.path.join(self.dir, f"clon-{profundidad}")
+        subprocess.run(["git", "clone", "-q", "--depth", str(profundidad), pathlib.Path(self.repo).as_uri(), destino],
+                       check=True, capture_output=True)
+        self.assertEqual(git(destino, "rev-parse", "--is-shallow-repository"), "true")
+        return destino
+
+    def test_el_repo_completo_si_tiene_scaffold(self):
+        lista, _ = self.servicios([self.commit_de("luis", self.sha_luis)])
+        self.assertEqual((lista["api"]["valor"], lista["api"]["de_scaffold"]), ("confirmada", True))
+
+    def test_depth_1_ni_scaffold_ni_filas_del_borde(self):
+        lista, _ = self.servicios([self.commit_de("luis", self.sha_luis)], repo=self.clon(1))
+        self.nada_de_scaffold(lista)                     # tampoco motor, de @luis, que está en su commit del borde
+        self.assertEqual({nombre: c["por"] for nombre, c in lista.items()}, {"api": [], "web": [], "motor": [],
+                                                                            "cache": []})
+
+    def test_depth_2_cuenta_lo_que_si_se_ve(self):
+        lista, _ = self.servicios([self.commit_de("luis", self.sha_luis)], repo=self.clon(2))
+        self.nada_de_scaffold(lista)
+        self.assertEqual((lista["cache"]["por"], lista["motor"]["por"]), (["luis"], []))
 
 
 if __name__ == "__main__":
