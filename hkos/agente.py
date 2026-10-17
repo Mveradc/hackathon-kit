@@ -18,6 +18,7 @@ import json
 import os
 import re
 import secrets
+import select
 import socket
 import subprocess
 import sys
@@ -61,6 +62,7 @@ PING_S = 20                      # el mismo que el relay: la web pasa a «sin co
 WEB_COLA = 200
 SOCKET_S = 10                    # issue #6: una petición a medias (cabeceras o cuerpo) no retiene un hilo para siempre
 STREAM_MAX = 8                   # clientes de /v1/stream a la vez (pestañas de la persona); el siguiente, 429
+CIERRE_S = 1                     # issue #15: cada cuánto mira /v1/stream si la pestaña ha cerrado, entre ping y ping
 
 
 def git_comun(repo):
@@ -935,11 +937,21 @@ def manejador(agente):
                 cabeceras.append(("Content-Security-Policy", CSP_WEB))
             self._responde(200, datos, tipo, cabeceras)
 
+        def _cerrado(self):
+            """Si el cliente de /v1/stream se ha ido: el socket se puede leer y da EOF (o un error). Lo que mande de
+            más no lo cierra."""
+            try:
+                return bool(select.select([self.connection], [], [], 0)[0]) and not self.connection.recv(
+                    1, socket.MSG_PEEK)
+            except (OSError, ValueError):
+                return True
+
         def _stream(self):
             """SSE para la web (api.md §4): `vista` al conectar y cada vez que cambia; `eventos` tal como llegan del
             relay; `ping` cada 20 s sin nada más, y con él otra `vista`: `servido_en` y lo «viejo» cambian con el
             tiempo, y la web tiene que decir lo mismo que /v1/vista y estado-equipo.md (issue #6, ADR-0009). Como mucho
-            STREAM_MAX clientes a la vez (429 al siguiente)."""
+            STREAM_MAX clientes a la vez (429 al siguiente). El hueco de una pestaña cerrada se libera en CIERRE_S, no
+            con el siguiente ping (issue #15)."""
             with agente.web_cambio:
                 lleno = agente.web_clientes >= STREAM_MAX
                 if not lleno:
@@ -962,7 +974,13 @@ def manejador(agente):
                 vista()
                 self.wfile.flush()
                 while True:
-                    visto, nuevos = agente.web_esperar(visto, PING_S)
+                    fin = time.monotonic() + PING_S
+                    while True:                 # issue #15: el hueco de una pestaña cerrada no espera al ping
+                        visto, nuevos = agente.web_esperar(visto, max(0, min(CIERRE_S, fin - time.monotonic())))
+                        if nuevos or time.monotonic() >= fin:
+                            break
+                        if self._cerrado():
+                            return
                     if not nuevos:
                         vista()
                         self.wfile.write(b"event: ping\ndata: \n\n")

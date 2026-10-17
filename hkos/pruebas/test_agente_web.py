@@ -422,6 +422,29 @@ class Suscripcion(Base):
         self.assertTrue(self.esperar(lambda: self.a.web_clientes == 1))
         self.stream_del_demonio()
 
+    def test_pestana_cerrada_libera_el_hueco_sin_esperar_al_ping(self):
+        """Issue #15, hallazgo 9 [reproducido]: el hueco de una pestaña cerrada solo se liberaba al escribir el
+        siguiente ping (PING_S, 20 s). Con el tope lleno, cerrar una y abrir otra daba 429 todo ese tiempo. Ahora se
+        ve el cierre del socket en CIERRE_S (1 s), con PING_S y STREAM_MAX sin tocar."""
+        self.assertEqual((agente_mod.PING_S, agente_mod.STREAM_MAX), (20, 8))
+        self.con_estado()
+        abiertas = []
+        for _ in range(agente_mod.STREAM_MAX):
+            c = http.client.HTTPConnection("127.0.0.1", self.puerto, timeout=10)
+            c.request("GET", "/v1/stream", headers=self.token())
+            r = c.getresponse()
+            self.assertEqual(r.status, 200)
+            self.assertEqual(lector_sse(r)()["event"], "vista")
+            abiertas.append((c, r))
+            self.addCleanup(c.close)
+            self.addCleanup(r.close)
+        self.assertEqual(pide(self.puerto, "GET", "/v1/stream", self.token())[0], 429)
+        c, r = abiertas.pop()
+        r.close()
+        c.close()
+        self.assertTrue(self.esperar(lambda: self.a.web_clientes == agente_mod.STREAM_MAX - 1, s=4))
+        self.stream_del_demonio()
+
 
 class SaludServicios(Base):
     def setUp(self):
