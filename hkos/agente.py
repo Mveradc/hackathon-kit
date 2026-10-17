@@ -83,9 +83,9 @@ class Fichero:
 # La tarea de un commit es el ID con que empieza su asunto («T07 · …», ADR-0002), no cualquier mención: un commit
 # del plan que dice «Ajuste del plan: T14 …» no es trabajo de T14 (en vivo, M8e).
 ID_EN_MENSAJE = re.compile(r"^\s*\[?(T\d{2,3})\b")
-# Issue #2 (hallazgos 2 y 5, ADR-0011): un commit es de este clon solo si una rama local lo recibió con `git commit`
-# aquí (su reflog lo dice). Ni el correo de git, ni traerlo con fetch, checkout, merge, pull, cherry-pick o rebase.
-CREADO_AQUI = re.compile(r"^commit(?: \((?:initial|amend)\))?: ")
+# Issue #2 (hallazgos 2 y 5, ADR-0011): un commit es de este clon solo si se creó aquí con `git commit` (o `git revert`,
+# issue #15) y el reflog lo dice. Ni el correo de git, ni traerlo con fetch, checkout, merge, pull, cherry-pick o rebase.
+CREADO_AQUI = re.compile(r"^(?:commit(?: \((?:initial|amend)\))?|revert): ")
 
 
 class SondeoGit:
@@ -141,16 +141,20 @@ class SondeoGit:
         return salida
 
     def _creados(self):
-        """Los shas que una rama local de este clon (también las `worktree-agent-<id>`, cuyo reflog está en el git
-        común) recibió con `git commit`, `--amend` incluido: lo único que el demonio emite como commit de su persona.
-        Nunca el autor ni el committer de git, que cualquiera pone (ADR-0011). Lo que llegó de fuera (fetch, checkout de
-        una rama ajena, merge, pull, cherry-pick, rebase, reset) no tiene esa entrada y no se emite: ante la duda, el
-        commit se queda sin confirmar, que es el lado seguro. Sin reflog (o si git no puede), nada."""
-        ramas = (self._git("for-each-ref", "--format=%(refname)", "refs/heads") or "").split()
-        if not ramas:
-            return set()
+        """Los shas creados con `git commit` (`--amend` incluido) o `git revert` en la copia principal o en un worktree
+        de worker: lo único que el demonio emite como commit de su persona. Salen de dos reflogs:
+        - el de HEAD de la copia principal, que sobrevive al borrado de la rama (issue #15: rama → commit → merge →
+          `branch -d` antes de la siguiente vuelta o con el demonio apagado) y recoge los commits con HEAD suelto que
+          después se rescatan con `switch -c`;
+        - el de las ramas `worktree-agent-<id>` (está en el git común), para los workers.
+        No el de las demás ramas: no dice desde qué worktree se hizo el commit, y uno que no es el principal ni de
+        worker puede ser de otra persona (issue #15). Nunca el autor ni el committer de git, que cualquiera pone
+        (ADR-0011). Lo que llegó de fuera (fetch, checkout de una rama ajena, merge, pull, cherry-pick, rebase, reset)
+        no tiene esa entrada y no se emite: ante la duda, el commit se queda sin confirmar, que es el lado seguro. Sin
+        reflog (o si git no puede), nada."""
+        workers = (self._git("for-each-ref", "--format=%(refname)", "refs/heads/worktree-agent-*") or "").split()
         salida = set()
-        for l in (self._git("log", "-g", "--format=%H%x1f%gs", *ramas, "--") or "").splitlines():
+        for l in (self._git("log", "-g", "--format=%H%x1f%gs", "HEAD", *workers, "--") or "").splitlines():
             sha, _, motivo = l.partition("\x1f")
             if CREADO_AQUI.match(motivo):
                 salida.add(sha)
