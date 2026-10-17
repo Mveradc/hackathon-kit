@@ -11,6 +11,7 @@ Lo que hay en el fichero (nombres, comandos, contratos) es dato del equipo: el O
 import hashlib
 import json
 import re
+import urllib.parse
 
 import contratos
 
@@ -79,6 +80,19 @@ def _puerto(v):
     return None
 
 
+def salud_valida(s):
+    """Una Salud que vale (api.md §10): una ruta que empieza por /, sin `..` y sin `//` al principio, tampoco una vez
+    descodificados los %XX (`/%2e%2e/admin`, en mayúsculas o en minúsculas, y `%252e`, codificado dos veces)."""
+    if not SALUD.match(s):
+        return False
+    formas = [s]
+    for _ in range(5):
+        formas.append(urllib.parse.unquote(formas[-1]))
+        if formas[-1] == formas[-2]:
+            return not any(".." in f or f.startswith("//") for f in formas)
+    return False                         # codificada más de cinco veces: ante la duda, no vale
+
+
 def _invalidos(tipo, campos):
     """Los campos que no valen, con el motivo («Salud «http://x» no es una ruta»)."""
     malos = []
@@ -91,7 +105,7 @@ def _invalidos(tipo, campos):
         if campos["puerto"] is not None and _puerto(campos["puerto"]) is None:
             malos.append(f"Puerto «{campos['puerto']}» no es un número de 1 a 65535")
         s = campos["salud"]
-        if s is not None and (not SALUD.match(s) or ".." in s or s.startswith("//")):
+        if s is not None and not salud_valida(s):
             malos.append(f"Salud «{s}» no es una ruta que empieza por /")
         if campos["dueno"] is not None and not USUARIO.match(campos["dueno"]):
             malos.append(f"Dueño «{campos['dueno']}» no es un @usuario")
@@ -177,34 +191,42 @@ def _conjunto(texto):
 
 def personas_de_commits(eventos):
     """{sha: persona} de los eventos `commit` (los emite el sondeo de git de cada demonio con su persona, también los
-    de sus workers, rama `worktree-agent-*`). Solo esto atribuye un commit: nunca el autor de git."""
+    de sus workers, rama `worktree-agent-*`). Solo esto atribuye un commit: nunca el autor de git. Un sha que emiten
+    demonios de personas distintas (una rama ajena en local, un merge local) no es de nadie: None, sea cual sea el orden."""
     salida = {}
     for e in eventos:
         sha = (e.get("datos") or {}).get("sha")
         if e.get("tipo") == "commit" and sha:
-            salida[sha] = e["actor"]["persona"]
+            persona = e["actor"]["persona"]
+            salida[sha] = persona if salida.get(sha, persona) == persona else None
     return salida
 
 
 def confirmaciones(versiones, sha_persona):
-    """Quién añadió cada fila. `versiones`: [{sha, textos_padres: [texto o None por padre]}, texto] de la más vieja a
-    la más nueva (los commits que tocan el fichero). Una fila «añadida» en un commit es un (tabla, clave) que está en
-    su versión y en la de ninguno de sus padres; mover una propuesta a su tabla es añadirla en la tabla nueva.
+    """Quién añadió cada fila. `versiones`: [{sha, textos_padres: [texto o None por padre], texto, crea}] de la más
+    vieja a la más nueva (los commits que tocan el fichero). Una fila «añadida» en un commit es un (tabla, clave) que
+    está en su versión y en la de ninguno de sus padres; mover una propuesta a su tabla es añadirla en la tabla nueva.
+    `crea`: el commit que creó el fichero, solo si quien lee la historia lo sabe con certeza (relay.Novedades). Sus
+    filas de Servicios y Conexiones (no las de Propuestas) cuentan como de /hack-scaffold si es el único de la lista
+    sin el fichero en sus padres y tiene como mucho un padre; si no, ninguna.
     → (por: {clave: set de personas}, autor: {(tabla, clave): persona o None, el último que la añadió},
-       inicial: set de claves del commit que creó el fichero)."""
-    por, autor, inicial = {}, {}, None
+       inicial: set de claves de /hack-scaffold)."""
+    por, autor = {}, {}
+    nacen = [v for v in versiones if all(t is None for t in v.get("textos_padres") or [])]
+    crea = [v for v in versiones if v.get("crea")]
+    inicial = set()
+    if len(crea) == 1 and nacen == crea and len(crea[0].get("textos_padres") or []) <= 1:
+        inicial = {c for t, c in _conjunto(crea[0]["texto"]) if t in (SERVICIOS, CONEXIONES)}
     for v in versiones:
         actual = _conjunto(v["texto"])
         padres = v.get("textos_padres") or []
-        if inicial is None and all(t is None for t in padres):
-            inicial = {c for _, c in actual}
         antes = set().union(*(_conjunto(t) for t in padres if t is not None))
         persona = sha_persona.get(v["sha"])
         for tabla, c in actual - antes:
             autor[(tabla, c)] = persona
             if persona:
                 por.setdefault(c, set()).add(persona)
-    return por, autor, inicial or set()
+    return por, autor, inicial
 
 
 def _bajo(ruta, base):
@@ -272,11 +294,21 @@ def calcular(texto, versiones, sha_persona, texto_autoridad, texto_contratos, ru
 
     filas = leido["filas"]
     servicios = [f for f in filas if f["tabla"] == SERVICIOS]
-    duenos_de = {f["campos"]["nombre"]: _dueno_autoridad(f["campos"]["carpeta"], secs) for f in servicios}
+    # Nombre → los dueños de cada fila con ese nombre. Un nombre repetido no dice de qué fila se habla: ni sus filas ni
+    # las conexiones que lo usan salen confirmadas (el fichero ya es «mal formado»).
+    duenos_de = {}
+    for f in servicios:
+        if f["campos"]["nombre"]:
+            duenos_de.setdefault(f["campos"]["nombre"], []).append(_dueno_autoridad(f["campos"]["carpeta"], secs))
+    repetidos = {n for n, ds in duenos_de.items() if len(ds) > 1}
+
+    def duenos_extremos(*nombres):
+        return sorted({d for n in nombres for d in duenos_de.get(n) or [] if d})
+
     lista = []
     for f in servicios:
         c, k = f["campos"], f["clave"]
-        dueno = duenos_de[c["nombre"]]
+        dueno = _dueno_autoridad(c["carpeta"], secs)
         for motivo in f["invalidos"]:
             desajuste("formato_invalido", f"«{c['nombre'] or ''}» (línea {f['linea']}): {motivo}", [dueno] if dueno
                       else [], k)
@@ -290,10 +322,12 @@ def calcular(texto, versiones, sha_persona, texto_autoridad, texto_contratos, ru
         elif distinto:
             desajuste("dueno_distinto", f"«{c['nombre']}»: Dueño «{c['dueno'] or '—'}», pero autoridad.md da "
                       f"«{c['carpeta']}» a @{dueno}", [dueno], k)
-        conf = confirmacion(k, [dueno] if dueno else [], distinto)
+        # Con un campo que no vale, la fila no se consulta (api.md §10): ni confirmada, ni Puerto ni Salud en `lista`.
+        conf = confirmacion(k, [dueno] if dueno else [], distinto or bool(f["invalidos"]) or c["nombre"] in repetidos)
         comprobado = (comprobados.get(k) or {}).get(dueno) if dueno else None   # solo el demonio del dueño
         puerto = _puerto(c["puerto"])
-        if conf["valor"] == "confirmada" and puerto is not None and not f["invalidos"] and comprobado:
+        salud = c["salud"] if c["salud"] is not None and salud_valida(c["salud"]) else None
+        if conf["valor"] == "confirmada" and puerto is not None and comprobado:
             v = comprobado.get("valor") or {}
             if v.get("escucha") is False:
                 desajuste("puerto_sin_respuesta", f"«{c['nombre']}» :{puerto} declarado, no responde", [dueno], k,
@@ -304,14 +338,13 @@ def calcular(texto, versiones, sha_persona, texto_autoridad, texto_contratos, ru
                           f"{codigo if codigo is not None else 'nada'}", [dueno], k, ts=comprobado["observado_en"],
                           fuente=comprobado["fuente"])
         lista.append({"clave": k, "nombre": (c["nombre"] or "")[:40], "carpeta": (c["carpeta"] or "")[:TEXTO_MAX],
-                      "puerto": puerto, "arranque": c["arranque"], "salud": c["salud"], "dueno": c["dueno"],
+                      "puerto": puerto, "arranque": c["arranque"], "salud": salud, "dueno": c["dueno"],
                       "dueno_autoridad": dueno, "confirmacion": conf, "comprobado": comprobado})
 
     conexiones = []
     for f in (f for f in filas if f["tabla"] == CONEXIONES):
         c, k = f["campos"], f["clave"]
-        extremos = [duenos_de.get(c["de"]), duenos_de.get(c["a"])]
-        duenos = sorted({d for d in extremos if d})
+        duenos = duenos_extremos(c["de"], c["a"])
         nombre = f"{c['de'] or ''} → {c['a'] or ''}"
         for motivo in f["invalidos"]:
             desajuste("formato_invalido", f"conexión «{nombre}» (línea {f['linea']}): {motivo}", duenos, k)
@@ -321,7 +354,8 @@ def calcular(texto, versiones, sha_persona, texto_autoridad, texto_contratos, ru
         if c["contrato"] is None or contratos.normal(c["contrato"]) not in titulos:
             desajuste("contrato_inexistente", f"conexión «{nombre}»: el contrato «{c['contrato'] or '—'}» no está en "
                       "docs/contratos.md", duenos, k)
-        bloqueada = bool(sin_extremo) or (None in extremos and reparto)
+        bloqueada = (bool(sin_extremo) or bool(f["invalidos"]) or any(x in repetidos for x in (c["de"], c["a"]))
+                     or reparto and any(None in duenos_de[x] for x in (c["de"], c["a"])))
         conf = confirmacion(k, duenos, bloqueada)
         resultado = pruebas.get(huella_prueba(c["prueba"])) if c["prueba"] else None
         if resultado and resultado.get("valor") == "falla":
@@ -338,7 +372,7 @@ def calcular(texto, versiones, sha_persona, texto_autoridad, texto_contratos, ru
             campos["puerto"] = _puerto(campos["puerto"])
             duenos = [d for d in [_dueno_autoridad(campos["carpeta"], secs)] if d]
         else:
-            duenos = sorted({d for d in (duenos_de.get(campos["de"]), duenos_de.get(campos["a"])) if d})
+            duenos = duenos_extremos(campos["de"], campos["a"])
         for motivo in f["invalidos"]:
             desajuste("formato_invalido", f"propuesta de la línea {f['linea']}: {motivo}")
         propuestas.append({"tipo": f["tipo"], "clave": f["clave"], "campos": campos, "duenos": duenos,

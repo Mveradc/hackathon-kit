@@ -57,10 +57,11 @@ BASE = md([API, WEB, MOTOR], [WEB_API, MOTOR_WEB])
 
 
 def historia(*pasos):
-    """[(sha, texto)] → versiones en orden, cada una con el texto de su padre (la anterior)."""
+    """[(sha, texto)] → versiones en orden, cada una con el texto de su padre (la anterior). La primera es la que crea el
+    fichero (`crea`, como lo marca relay.Novedades cuando lo sabe con certeza)."""
     versiones, anterior = [], None
     for sha, texto in pasos:
-        versiones.append({"sha": sha, "textos_padres": [anterior], "texto": texto})
+        versiones.append({"sha": sha, "textos_padres": [anterior], "texto": texto, "crea": not versiones})
         anterior = texto
     return versiones
 
@@ -227,6 +228,102 @@ class Confirmacion(unittest.TestCase):
         self.assertEqual(de(calc(m, versiones), "cache")["confirmacion"]["valor"], "sin_confirmar")
 
 
+class RevisionM9a(unittest.TestCase):
+    """Issue #2 (revisión independiente de M9a), hallazgos 1, 4, 5, 6, 9 y 13, y sus casos de la sección 6."""
+
+    def test_h1_sin_saber_que_commit_creo_el_fichero_nada_es_de_scaffold(self):
+        otra = md([API, ("intruso", "api/intruso/", "9999", "—", "/x", "@luis")], [])
+        sin_crea = [dict(v, crea=False) for v in historia(("s1", BASE))]
+        dos_raices = historia(("s1", BASE)) + [{"sha": "l1", "textos_padres": [], "texto": otra, "crea": False}]
+        dos_marcadas = historia(("s1", BASE)) + [{"sha": "l1", "textos_padres": [None], "texto": otra, "crea": True}]
+        merge_que_crea = [{"sha": "s1", "textos_padres": [None, None], "texto": BASE, "crea": True}]   # sección 6, caso 7
+        for nombre, versiones in (("sin crea", sin_crea), ("dos raíces", dos_raices), ("dos marcadas", dos_marcadas),
+                                  ("merge que crea", merge_que_crea)):
+            s = calc(BASE, versiones)
+            c = de(s, "api")["confirmacion"]
+            self.assertEqual((c["valor"], c["de_scaffold"]), ("sin_confirmar", False), nombre)
+            self.assertEqual(con(s, "motor")["confirmacion"]["valor"], "sin_confirmar", nombre)
+            self.assertEqual(servicios.confirmaciones(versiones, SHA)[2], set(), nombre)
+
+    def test_h4_nombre_repetido_no_confirma_nada_que_lo_use(self):
+        # [reproducido] @luis añade en un commit un segundo «api» en motor/api/ y la conexión motor → api
+        motor_api = ("motor", "api", "web → api", "`uv run pytest tests/test_motor_api.py`")
+        t = md([API, WEB, MOTOR, ("api", "motor/api/", "—", "—", "—", "@luis")], [WEB_API, MOTOR_WEB, motor_api])
+        s = calc(t, historia(("s1", BASE), ("l1", t)))
+        self.assertEqual(s["fichero"]["valor"], "mal formado")
+        c = next(x for x in s["conexiones"] if (x["de"], x["a"]) == ("motor", "api"))
+        self.assertEqual((c["confirmacion"]["valor"], c["duenos"]), ("sin_confirmar", ["ana", "luis"]))
+        apis = [x for x in s["lista"] if x["nombre"] == "api"]
+        self.assertEqual([(x["dueno_autoridad"], x["confirmacion"]["valor"]) for x in apis],
+                         [("ana", "sin_confirmar"), ("luis", "sin_confirmar")])
+        self.assertEqual(con(s, "web")["confirmacion"]["valor"], "sin_confirmar")    # web → api, de scaffold
+        self.assertEqual(con(s, "motor")["confirmacion"]["valor"], "confirmada")      # motor → web no usa «api»
+        self.assertEqual(de(s, "motor")["confirmacion"]["valor"], "confirmada")
+
+    def test_h5_mismo_sha_de_dos_personas_no_es_de_nadie(self):
+        def commit(persona, sha="c1"):
+            return {"tipo": "commit", "actor": {"persona": persona, "papel": "humano"}, "datos": {"sha": sha}}
+        for orden in ((commit("ana"), commit("luis")), (commit("luis"), commit("ana")),
+                      (commit("ana"), commit("luis"), commit("ana"))):
+            mapa = servicios.personas_de_commits(list(orden) + [commit("ana", "c2"), commit("ana", "c2")])
+            self.assertEqual(mapa, {"c1": None, "c2": "ana"})
+            t = md([API, WEB, MOTOR, ("cache", "api/cache/", "—", "—", "—", "@ana")], [WEB_API, MOTOR_WEB])
+            s = servicios.calcular(t, historia(("s1", BASE), ("c1", t)), mapa, AUTORIDAD, CONTRATOS, (), {}, {}, T)
+            c = de(s, "cache")["confirmacion"]
+            self.assertEqual((c["valor"], c["por"]), ("sin_confirmar", []))
+
+    def test_h6_fila_con_un_campo_que_no_vale_no_sale_confirmada(self):
+        # [reproducido] | api | api/ | 8000 | — | http://evil/ | @ana |, de /hack-scaffold
+        mala = ("api", "api/", "8000", "—", "http://evil/", "@ana")
+        t = md([mala, WEB, MOTOR], [WEB_API, MOTOR_WEB])
+        k = servicios.leer(t)["filas"][0]["clave"]
+        caido = {"valor": {"escucha": False, "salud": None}, "fuente": "demonio", "observado_en": T2}
+        s = calc(t, historia(("s1", t)), comprobados={k: {"ana": caido}})
+        api = de(s, "api")
+        self.assertEqual((api["confirmacion"]["valor"], api["salud"]), ("sin_confirmar", None))
+        self.assertTrue(api["confirmacion"]["de_scaffold"])
+        self.assertEqual(tipos(s), ["formato_invalido"])                 # ni puerto_sin_respuesta: no se consulta
+        self.assertEqual(s["desajustes"][0]["clave"], k)
+        # Carpeta o Puerto que no valen; una conexión con un campo que no vale
+        for fila in (("api", "api", "8000", "—", "/salud", "@ana"), ("api", "api/", "0", "—", "/salud", "@ana"),
+                     ("api", "api/", "x", "—", "/salud", "@ana")):
+            t = md([fila, WEB, MOTOR], [WEB_API, MOTOR_WEB])
+            self.assertEqual(de(calc(t, historia(("s1", t))), "api")["confirmacion"]["valor"], "sin_confirmar", fila)
+        larga = WEB_API[:3] + ("x" * 301,)
+        t = md([API, WEB, MOTOR], [larga, MOTOR_WEB])
+        self.assertEqual(con(calc(t, historia(("s1", t))), "web")["confirmacion"]["valor"], "sin_confirmar")
+
+    def test_h9_propuesta_del_commit_inicial_no_es_de_scaffold(self):
+        # [reproducido] el fichero inicial trae «cache» en Propuestas; @luis la pasa después a Servicios
+        cache = ("cache", "api/cache/", "6379", "—", "—", "@ana")
+        v1 = md([API, WEB, MOTOR], [WEB_API, MOTOR_WEB], prop_s=[cache + ("@ana", "2026-11-25 18:00")])
+        v2 = md([API, WEB, MOTOR, cache], [WEB_API, MOTOR_WEB])
+        s = calc(v2, historia(("s1", v1), ("l1", v2)))
+        c = de(s, "cache")["confirmacion"]
+        self.assertEqual((c["valor"], c["de_scaffold"], c["por"], c["faltan"]),
+                         ("sin_confirmar", False, ["luis"], ["ana"]))
+        self.assertTrue(de(s, "api")["confirmacion"]["de_scaffold"])
+        # lo mismo con una propuesta de conexión
+        motor_api = ("motor", "api", "web → api", "—")
+        v1 = md([API, WEB, MOTOR], [WEB_API], prop_c=[motor_api + ("@luis", "2026-11-25 18:00")])
+        v2 = md([API, WEB, MOTOR], [WEB_API, motor_api])
+        c = con(calc(v2, historia(("s1", v1), ("l1", v2))), "motor")["confirmacion"]
+        self.assertEqual((c["valor"], c["de_scaffold"], c["faltan"]), ("sin_confirmar", False, ["ana"]))
+
+    def test_h13_salud_con_puntos_codificados_no_vale(self):
+        # sección 6, caso 12: %2e%2e (mayúsculas, minúsculas, mezclado, dos veces), ? y # y @
+        for salud, vale in (("/salud/%2e%2e/%2e%2e/admin", False), ("/salud/%2E%2E/admin", False),
+                            ("/salud/.%2e/admin", False), ("/%2e%2E", False), ("/salud/%252e%252e/admin", False),
+                            ("/%2f%2fhost/salud", False), ("/salud?x=1", True), ("/api/health?x=1", True),
+                            ("/salud#x", False), ("/@host", True), ("/salud/%20x", True), ("/salud", True)):
+            self.assertEqual(servicios.salud_valida(salud), vale, salud)
+            t = md([API[:4] + (salud,) + API[5:], WEB, MOTOR], [WEB_API, MOTOR_WEB])
+            s = calc(t, historia(("s1", t)))
+            self.assertEqual(de(s, "api")["confirmacion"]["valor"], "confirmada" if vale else "sin_confirmar", salud)
+            self.assertEqual(de(s, "api")["salud"], salud if vale else None, salud)
+            self.assertEqual(tipos(s), [] if vale else ["formato_invalido"], salud)
+
+
 class Desajustes(unittest.TestCase):
     def test_salud_que_no_es_una_ruta(self):
         for salud in ("http://x/salud", "//host/salud", "/../salud", "salud"):
@@ -234,6 +331,7 @@ class Desajustes(unittest.TestCase):
             comprobado = {"valor": {"escucha": True, "salud": None}, "fuente": "demonio", "observado_en": T2}
             s = calc(t, historia(("s1", t)), comprobados={servicios.leer(t)["filas"][0]["clave"]: {"ana": comprobado}})
             self.assertEqual(tipos(s), ["formato_invalido"], salud)   # ni salud_falla: no se consulta
+            self.assertEqual((de(s, "api")["confirmacion"]["valor"], de(s, "api")["salud"]), ("sin_confirmar", None))
 
     def test_puerto_salud_prueba_y_contrato(self):
         t = md([API, WEB, MOTOR], [WEB_API, MOTOR_WEB, ("web", "motor", "web → motor", "—")])
