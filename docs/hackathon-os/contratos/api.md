@@ -365,7 +365,7 @@ Cada conexión con el demonio tiene un plazo de socket de 10 s (tras congelar, 2
   - emite `reclamo` (§2);
   - añade a `acciones.jsonl` la línea `{"id":"<id del evento>","tipo":"reclamo","tarea":"T12","ts":"<UTC>"}`, con un solo `write` en modo append.
 - **Entrega del turno:** `scripts/coordinacion/escucha.sh`, con el OS activo y `web_nueva: sí`, lee las líneas nuevas de `acciones.jsonl` en cada paso (el de las rojas).
-  - Para cada línea de menos de 10 minutos, intenta `mkdir <git común>/hackathon/os/entregado/accion-<id>`. Solo el monitor que lo consigue la entrega, así que la recibe **una** sesión de esa persona.
+  - Para cada línea con `0 ≤ edad < 600 s`, intenta `mkdir <git común>/hackathon/os/entregado/accion-<id>`. Solo el monitor que lo consigue la entrega, así que la recibe **una** sesión de esa persona. La edad es `EPOCHSECONDS` menos la época en ms del ID entre 1000, leída en base 10 aunque empiece por 0: una línea con la hora en el futuro no se entrega (tras congelar, 2026-10-17, PR #16, issue #10; antes, «de menos de 10 minutos»).
   - Imprime el texto fijo «hk-os · reclamaste T12 desde la web (HH:MM). Es tuya: cuando acabes lo que tienes entre manos, ponte con ella; su definición, con la herramienta tarea del MCP o en el plan.».
   - Del contenido de la línea solo usa el ID, validado otra vez con la regex. Ni el título ni nada de los issues.
 
