@@ -1,0 +1,58 @@
+# M9a (K-98): la web nueva del Hackathon OS. Quien usa el kit no instala Node: el compilado va subido en
+# hkos/web/nueva/. Aquí se comprueba que sale del fuente: tests de Vitest, vistas de ejemplo al día con proyeccion.py,
+# compilado sin URL externas e igual al subido (criterios 2, 3 y 4 de M9a, ADR-0009).
+name: Web de trabajo (M9a)
+on:
+  push:
+    paths:
+      - "hkos/**"
+      - "evals/coordinacion/simulador/**"
+      - "docs/hackathon-os/contratos/**"
+      - "docs/hackathon-os/diseno-web/sistema/tokens.json"
+      - ".github/workflows/web-m9a.yml"
+  pull_request:
+    paths:
+      - "hkos/**"
+      - "evals/coordinacion/simulador/**"
+      - "docs/hackathon-os/contratos/**"
+      - "docs/hackathon-os/diseno-web/sistema/tokens.json"
+      - ".github/workflows/web-m9a.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: hkos/web-src
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: hkos/web-src/package-lock.json
+      - name: uv (para las vistas de ejemplo)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Dependencias (versiones exactas del lock)
+        run: npm ci
+      - name: Vistas de ejemplo al día (G1–G6, G12, 5×20 desde el relay de verdad)
+        run: |
+          uv run --no-project scripts/vistas_ejemplo.py
+          git diff --exit-code -- test/vistas
+          test -z "$(git status --porcelain -- test/vistas)"
+      - name: Tests (Vitest y jsdom)
+        run: npm test
+      - name: Compilado
+        run: npm run build
+      - name: Sin URL externas y con lo que sirve el demonio
+        run: node scripts/comprueba_compilado.mjs
+      - name: El compilado subido coincide con el fuente
+        run: |
+          git status --porcelain -- ../web/nueva
+          git diff --exit-code -- ../web/nueva
+          test -z "$(git status --porcelain -- ../web/nueva)"

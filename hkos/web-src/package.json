@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "test": "vitest run",
-    "vistas": "uv run --no-project scripts/vistas_ejemplo.py"
+    "vistas": "uv run --no-project scripts/vistas_ejemplo.py",
+    "comprueba": "node scripts/comprueba_compilado.mjs"
   },
   "dependencies": {
     "@fontsource/ibm-plex-sans": "5.3.0",
