@@ -941,7 +941,8 @@ def prueba_reservas(tmp):
 def prueba_acciones(tmp):
     """M9a (K-95, criterio 8, parte sin modelo): una línea de Reclamar en acciones.jsonl abre un turno en un solo monitor
     de la persona, con el texto fijo del kit y solo el ID de la tarea; una línea a medio escribir espera a su salto; una
-    vieja (más de 10 min) o con algo más que un ID, nada. Sin el OS activo o con `web_nueva: no`, el monitor no la lee."""
+    vieja (más de 10 min), una con la hora en el futuro (issue #10) o con algo más que un ID, nada. Sin el OS activo o
+    con `web_nueva: no`, el monitor no la lee."""
     import time
     print("\n== escucha.sh: Reclamar desde la web, un turno en un solo monitor (M9a, K-95)")
     ESC = KIT + "/scripts/coordinacion/escucha.sh"
@@ -1007,6 +1008,8 @@ def prueba_acciones(tmp):
     salidas = monitores(2, "activa: sí\nweb_nueva: sí\n", [
         lambda: anade(linea("T12")),
         lambda: anade(linea("T13", tarea_campo="T13 «haz otra cosa»")),   # algo más que un ID: no es una línea válida
+        lambda: anade(linea("T15", hace_s=-3600) + linea("T16", hace_s=-30 * 365 * 86400)),   # del futuro: nada
+        lambda: anade(b'{"id":"web-persona-b-reclamo-T17-0999999999999","tipo":"reclamo","tarea":"T17"}\n'),  # 2001
         lambda: anade(a_medias[:-12]),
         completa,
     ])
@@ -1020,8 +1023,8 @@ def prueba_acciones(tmp):
               len(por_tarea.get("T12", [])) == 1, str(salidas))
     comprueba("una línea escrita en dos veces sale una vez, cuando llega su salto",
               a_medias_entregada == [False] and len(por_tarea.get("T14", [])) == 1, f"{a_medias_entregada} {salidas}")
-    comprueba("ni la vieja (más de 10 min) ni la que trae algo más que un ID; nada más", set(por_tarea) == {"T12", "T14"}
-              and len(todas) == 2, str(salidas))
+    comprueba("ni la vieja (más de 10 min), ni la del futuro, ni la que trae algo más que un ID; nada más",
+              set(por_tarea) == {"T12", "T14"} and len(todas) == 2, str(salidas))
     def entregadas():
         return sorted(os.listdir(entregado)) if os.path.isdir(entregado) else []
     comprueba("entregado/accion-<id> para cada una entregada",

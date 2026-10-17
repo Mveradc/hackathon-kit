@@ -123,7 +123,7 @@ os_rojas() {
 acciones_leidas=0
 os_acciones() {
   os_activo && os_web_nueva || return 0
-  local f=$OS_COMUN/hackathon/os/acciones.jsonl ent=$OS_COMUN/hackathon/os/entregado l n=0 id tarea ms hhmm
+  local f=$OS_COMUN/hackathon/os/acciones.jsonl ent=$OS_COMUN/hackathon/os/entregado l n=0 id tarea ms edad hhmm
   [[ -f $f ]] || return 0
   while IFS= read -r l; do                       # sin `|| [[ -n $l ]]`: una última línea sin salto aún no cuenta
     (( ++n > acciones_leidas )) || continue
@@ -131,8 +131,9 @@ os_acciones() {
     [[ $l =~ \"tipo\":\"reclamo\" && $l =~ \"tarea\":\"(T[0-9]{2,3})\" ]] || continue
     tarea=${BASH_REMATCH[1]}
     [[ $l =~ \"id\":\"(web-[a-z0-9-]{1,60}-reclamo-$tarea-([0-9]{10,16}))\" ]] || continue
-    id=${BASH_REMATCH[1]} ms=${BASH_REMATCH[2]}
-    (( EPOCHSECONDS - ms / 1000 < 600 )) || continue        # de menos de 10 minutos
+    id=${BASH_REMATCH[1]} ms=$(( 10#${BASH_REMATCH[2]} ))  # en base 10 aunque empiece por 0
+    edad=$(( EPOCHSECONDS - ms / 1000 ))
+    (( edad >= 0 && edad < 600 )) || continue               # de menos de 10 minutos, y nunca del futuro
     [[ -d $ent ]] || mkdir -p "$ent" 2>/dev/null
     mkdir "$ent/accion-$id" 2>/dev/null || continue         # ya la entregó otro monitor
     printf -v hhmm '%(%H:%M)T' $(( ms / 1000 ))
