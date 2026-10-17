@@ -18,6 +18,7 @@ import json
 import os
 import re
 import secrets
+import select
 import socket
 import subprocess
 import sys
@@ -61,6 +62,7 @@ PING_S = 20                      # el mismo que el relay: la web pasa a «sin co
 WEB_COLA = 200
 SOCKET_S = 10                    # issue #6: una petición a medias (cabeceras o cuerpo) no retiene un hilo para siempre
 STREAM_MAX = 8                   # clientes de /v1/stream a la vez (pestañas de la persona); el siguiente, 429
+CIERRE_S = 1                     # issue #15: cada cuánto mira /v1/stream si la pestaña ha cerrado, entre ping y ping
 
 
 def git_comun(repo):
@@ -83,9 +85,9 @@ class Fichero:
 # La tarea de un commit es el ID con que empieza su asunto («T07 · …», ADR-0002), no cualquier mención: un commit
 # del plan que dice «Ajuste del plan: T14 …» no es trabajo de T14 (en vivo, M8e).
 ID_EN_MENSAJE = re.compile(r"^\s*\[?(T\d{2,3})\b")
-# Issue #2 (hallazgos 2 y 5, ADR-0011): un commit es de este clon solo si una rama local lo recibió con `git commit`
-# aquí (su reflog lo dice). Ni el correo de git, ni traerlo con fetch, checkout, merge, pull, cherry-pick o rebase.
-CREADO_AQUI = re.compile(r"^commit(?: \((?:initial|amend)\))?: ")
+# Issue #2 (hallazgos 2 y 5, ADR-0011): un commit es de este clon solo si se creó aquí con `git commit` (o `git revert`,
+# issue #15) y el reflog lo dice. Ni el correo de git, ni traerlo con fetch, checkout, merge, pull, cherry-pick o rebase.
+CREADO_AQUI = re.compile(r"^(?:commit(?: \((?:initial|amend)\))?|revert): ")
 
 
 class SondeoGit:
@@ -141,16 +143,20 @@ class SondeoGit:
         return salida
 
     def _creados(self):
-        """Los shas que una rama local de este clon (también las `worktree-agent-<id>`, cuyo reflog está en el git
-        común) recibió con `git commit`, `--amend` incluido: lo único que el demonio emite como commit de su persona.
-        Nunca el autor ni el committer de git, que cualquiera pone (ADR-0011). Lo que llegó de fuera (fetch, checkout de
-        una rama ajena, merge, pull, cherry-pick, rebase, reset) no tiene esa entrada y no se emite: ante la duda, el
-        commit se queda sin confirmar, que es el lado seguro. Sin reflog (o si git no puede), nada."""
-        ramas = (self._git("for-each-ref", "--format=%(refname)", "refs/heads") or "").split()
-        if not ramas:
-            return set()
+        """Los shas creados con `git commit` (`--amend` incluido) o `git revert` en la copia principal o en un worktree
+        de worker: lo único que el demonio emite como commit de su persona. Salen de dos reflogs:
+        - el de HEAD de la copia principal, que sobrevive al borrado de la rama (issue #15: rama → commit → merge →
+          `branch -d` antes de la siguiente vuelta o con el demonio apagado) y recoge los commits con HEAD suelto que
+          después se rescatan con `switch -c`;
+        - el de las ramas `worktree-agent-<id>` (está en el git común), para los workers.
+        No el de las demás ramas: no dice desde qué worktree se hizo el commit, y uno que no es el principal ni de
+        worker puede ser de otra persona (issue #15). Nunca el autor ni el committer de git, que cualquiera pone
+        (ADR-0011). Lo que llegó de fuera (fetch, checkout de una rama ajena, merge, pull, cherry-pick, rebase, reset)
+        no tiene esa entrada y no se emite: ante la duda, el commit se queda sin confirmar, que es el lado seguro. Sin
+        reflog (o si git no puede), nada."""
+        workers = (self._git("for-each-ref", "--format=%(refname)", "refs/heads/worktree-agent-*") or "").split()
         salida = set()
-        for l in (self._git("log", "-g", "--format=%H%x1f%gs", *ramas, "--") or "").splitlines():
+        for l in (self._git("log", "-g", "--format=%H%x1f%gs", "HEAD", *workers, "--") or "").splitlines():
             sha, _, motivo = l.partition("\x1f")
             if CREADO_AQUI.match(motivo):
                 salida.add(sha)
@@ -931,11 +937,21 @@ def manejador(agente):
                 cabeceras.append(("Content-Security-Policy", CSP_WEB))
             self._responde(200, datos, tipo, cabeceras)
 
+        def _cerrado(self):
+            """Si el cliente de /v1/stream se ha ido: el socket se puede leer y da EOF (o un error). Lo que mande de
+            más no lo cierra."""
+            try:
+                return bool(select.select([self.connection], [], [], 0)[0]) and not self.connection.recv(
+                    1, socket.MSG_PEEK)
+            except (OSError, ValueError):
+                return True
+
         def _stream(self):
             """SSE para la web (api.md §4): `vista` al conectar y cada vez que cambia; `eventos` tal como llegan del
             relay; `ping` cada 20 s sin nada más, y con él otra `vista`: `servido_en` y lo «viejo» cambian con el
             tiempo, y la web tiene que decir lo mismo que /v1/vista y estado-equipo.md (issue #6, ADR-0009). Como mucho
-            STREAM_MAX clientes a la vez (429 al siguiente)."""
+            STREAM_MAX clientes a la vez (429 al siguiente). El hueco de una pestaña cerrada se libera en CIERRE_S, no
+            con el siguiente ping (issue #15)."""
             with agente.web_cambio:
                 lleno = agente.web_clientes >= STREAM_MAX
                 if not lleno:
@@ -958,7 +974,13 @@ def manejador(agente):
                 vista()
                 self.wfile.flush()
                 while True:
-                    visto, nuevos = agente.web_esperar(visto, PING_S)
+                    fin = time.monotonic() + PING_S
+                    while True:                 # issue #15: el hueco de una pestaña cerrada no espera al ping
+                        visto, nuevos = agente.web_esperar(visto, max(0, min(CIERRE_S, fin - time.monotonic())))
+                        if nuevos or time.monotonic() >= fin:
+                            break
+                        if self._cerrado():
+                            return
                     if not nuevos:
                         vista()
                         self.wfile.write(b"event: ping\ndata: \n\n")

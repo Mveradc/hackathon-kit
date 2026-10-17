@@ -267,6 +267,106 @@ class SondeoGit(unittest.TestCase):
         self.assertEqual((e["datos"]["sha"], e["actor"]["papel"], e["actor"]["agente"]),
                          (git(wt, "rev-parse", "HEAD"), "worker", "c3d4"))
 
+    def test_rama_fusionada_y_borrada_antes_de_la_vuelta(self):
+        """Issue #15, hallazgo 1 [reproducido]: rama → commit → merge --ff-only en main → branch -d → push, sin una
+        vuelta en medio. El reflog de main solo dice «merge t08: Fast-forward» y el de t08 se fue con la rama; antes
+        solo salía el push. El de HEAD de la copia principal conserva el `commit:`."""
+        a = self.agente()
+        self.vuelta(a)
+        sha = self.commit("T08 · en su rama", rama="t08")
+        git(self.repo, "checkout", "-q", "main")
+        git(self.repo, "merge", "-q", "--ff-only", "t08")
+        git(self.repo, "branch", "-q", "-d", "t08")
+        git(self.repo, "push", "-q", "origin", "main")
+        self.vuelta(a)
+        self.assertEqual([(e["tipo"], e["datos"]["sha"], e["datos"].get("alcanzable")) for e in self.git_del_relay()],
+                         [("commit", sha, True), ("push", sha, None)])
+        self.assertEqual(self.git_del_relay()[0]["actor"], {"persona": "persona-b", "papel": "humano"})
+
+    def test_rama_fusionada_y_borrada_con_el_demonio_apagado(self):
+        """Issue #15, hallazgo 1: lo mismo sin subir y con el demonio apagado; al volver, sale de main (sin alcanzar) y
+        al subirlo no se repite."""
+        self.vuelta(self.agente())
+        sha = self.commit("T08 · con el demonio apagado", rama="t08")
+        git(self.repo, "checkout", "-q", "main")
+        git(self.repo, "merge", "-q", "--ff-only", "t08")
+        git(self.repo, "branch", "-q", "-d", "t08")
+        a = self.agente()
+        self.vuelta(a)
+        self.assertEqual([(e["tipo"], e["datos"]["sha"], e["datos"]["rama"]) for e in self.git_del_relay()],
+                         [("commit", sha, "main")])
+        git(self.repo, "push", "-q", "origin", "main")
+        self.vuelta(a)
+        self.assertEqual(self.commits_emitidos(), [sha])
+
+    def test_head_suelto_rescatado_con_switch_c(self):
+        """Issue #15, hallazgo 8 [reproducido]: commit con HEAD suelto y después `switch -c rescate` (el reflog de la
+        rama dice «branch: Created from HEAD»). Antes no salía; el reflog de HEAD lo tiene."""
+        a = self.agente()
+        self.vuelta(a)
+        git(self.repo, "checkout", "-q", "--detach")
+        sha = self.commit("T08 · sin rama")
+        git(self.repo, "switch", "-q", "-c", "rescate")
+        self.vuelta(a)
+        self.assertEqual([(e["tipo"], e["datos"]["sha"], e["datos"]["rama"]) for e in self.git_del_relay()],
+                         [("commit", sha, "rescate")])
+
+    def test_revert_cuenta_como_propio(self):
+        """Issue #15, hallazgo 8: `git revert` crea aquí un commit nuevo (reflog «revert: Revert "…"»), como un
+        `revert --no-commit` seguido de `git commit`, que ya contaba. Antes no salía."""
+        a = self.agente()
+        self.vuelta(a)
+        otro = self.otro_clon()
+        ajeno = self.commit_en(otro, "T05 · de A")
+        git(otro, "push", "-q", "origin", "main")
+        git(self.repo, "pull", "-q", "--ff-only", "origin", "main")
+        git(self.repo, "revert", "--no-edit", ajeno)
+        revertido = git(self.repo, "rev-parse", "HEAD")
+        self.vuelta(a)
+        self.assertEqual(self.commits_emitidos(), [revertido])
+
+    def test_worktree_que_no_es_de_worker_no_es_de_esta_persona(self):
+        """Issue #15, hallazgo 7 [reproducido]: dos personas en worktrees del mismo git común (un demonio, el de B). Lo
+        que A hace en su worktree no sale como de B, ni en su rama ni tras fusionarla en main y subirla. Lo de un
+        worker (worktree-agent-*) sigue saliendo como worker."""
+        a = self.agente()
+        self.vuelta(a)
+        wt = os.path.join(self.tmp, "wt-a")
+        git(self.repo, "worktree", "add", "-q", "-b", "trabajo-de-a", wt)
+        with open(os.path.join(wt, "a.txt"), "a", encoding="utf-8") as f:
+            f.write("de A\n")
+        git(wt, "-c", "user.name=A", "-c", "user.email=a@example.com", "commit", "-qam", "T05 · de A")
+        de_a = git(wt, "rev-parse", "HEAD")
+        wk = os.path.join(self.tmp, "wt-worker")
+        git(self.repo, "worktree", "add", "-q", "-b", "worktree-agent-e5f6", wk)
+        with open(os.path.join(wk, "w.txt"), "w", encoding="utf-8") as f:
+            f.write("del worker\n")
+        git(wk, "add", "w.txt"); git(wk, "commit", "-qm", "T11 · del worker")
+        del_worker = git(wk, "rev-parse", "HEAD")
+        self.vuelta(a)
+        self.assertEqual([(e["datos"]["sha"], e["actor"]["papel"]) for e in self.git_del_relay()],
+                         [(del_worker, "worker")])
+        git(self.repo, "merge", "-q", "--ff-only", "trabajo-de-a")
+        git(self.repo, "push", "-q", "origin", "main")
+        self.vuelta(a)
+        self.assertNotIn(de_a, self.commits_emitidos())
+        self.assertEqual([e["datos"]["incluye"] for e in self.git_del_relay() if e["tipo"] == "push"], [[de_a]])
+
+    def test_reflog_de_otra_rama_no_cuenta(self):
+        """Issue #15, hallazgo 6 (a): `update-ref -m "commit: x"` en una rama que no es la de HEAD ni de worker deja
+        un sha ajeno con `commit:` en su reflog. Antes salía como de esta persona; ya no se lee ese reflog. Las
+        variantes sobre HEAD siguen abiertas (riesgo aceptado, en el PR)."""
+        a = self.agente()
+        self.vuelta(a)
+        otro = self.otro_clon()
+        git(otro, "checkout", "-q", "-b", "feature")
+        ajeno = self.commit_en(otro, "T05 · de A")
+        git(otro, "push", "-q", "origin", "feature")
+        git(self.repo, "fetch", "-q", "origin")
+        git(self.repo, "update-ref", "-m", "commit: x", "refs/heads/robada", ajeno)
+        self.vuelta(a)
+        self.assertEqual(self.commits_emitidos(), [])
+
     def test_sin_confirmar_se_reemite_con_el_mismo_id(self):
         a = self.agente()
         self.vuelta(a)
