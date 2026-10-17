@@ -120,18 +120,20 @@ os_rojas() {
 # sesión de esa persona la convierte en un turno con un texto fijo del kit. De la línea solo se usa el ID de la tarea,
 # validado otra vez; la hora sale del ID del evento (época en ms), sin procesos. Lo entrega el monitor que consigue
 # crear entregado/accion-<id> (mkdir es atómico). Solo con el OS activo y `web_nueva: sí`; sin ellos no lee nada.
+# La línea tiene que ser entera la que escribe acciones.py, `{"id":…,"tipo":"reclamo","tarea":…,"ts":…}`: así el tipo es
+# el campo de primer nivel y vale exactamente «reclamo» (ni `reclamo_fallido`, ni un `"tipo":"reclamo"` anidado).
 acciones_leidas=0
 os_acciones() {
   os_activo && os_web_nueva || return 0
   local f=$OS_COMUN/hackathon/os/acciones.jsonl ent=$OS_COMUN/hackathon/os/entregado l n=0 id tarea ms edad hhmm
+  local re='^\{"id":"(web-[a-z0-9-]{1,60}-reclamo-(T[0-9]{2,3})-([0-9]{10,16}))","tipo":"reclamo","tarea":"(T[0-9]{2,3})"(,"ts":"[0-9TZ:.+-]{1,40}")?\}$'
   [[ -f $f ]] || return 0
   while IFS= read -r l; do                       # sin `|| [[ -n $l ]]`: una última línea sin salto aún no cuenta
     (( ++n > acciones_leidas )) || continue
     acciones_leidas=$n
-    [[ $l =~ \"tipo\":\"reclamo\" && $l =~ \"tarea\":\"(T[0-9]{2,3})\" ]] || continue
-    tarea=${BASH_REMATCH[1]}
-    [[ $l =~ \"id\":\"(web-[a-z0-9-]{1,60}-reclamo-$tarea-([0-9]{10,16}))\" ]] || continue
-    id=${BASH_REMATCH[1]} ms=$(( 10#${BASH_REMATCH[2]} ))  # en base 10 aunque empiece por 0
+    [[ ${l%$'\r'} =~ $re && ${BASH_REMATCH[2]} == "${BASH_REMATCH[4]}" ]] || continue
+    tarea=${BASH_REMATCH[2]}
+    id=${BASH_REMATCH[1]} ms=$(( 10#${BASH_REMATCH[3]} ))  # en base 10 aunque empiece por 0
     edad=$(( EPOCHSECONDS - ms / 1000 ))
     (( edad >= 0 && edad < 600 )) || continue               # de menos de 10 minutos, y nunca del futuro
     [[ -d $ent ]] || mkdir -p "$ent" 2>/dev/null

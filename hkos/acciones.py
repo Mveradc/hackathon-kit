@@ -3,7 +3,8 @@
 token, JSON, tamaño). Cada una devuelve (código HTTP, cuerpo JSON). Sin modelo y solo con la biblioteca estándar.
 
 - Anotar añade la nota a `.hackathon/criterios.md` de origin/main con un índice temporal (`nota.index`), commit-tree y
-  push, sin tocar la copia ni el índice de la persona. Si el push se rechaza, repite una vez sobre el origin/main nuevo.
+  push, sin tocar la copia ni el índice de la persona. Si el push se rechaza, repite una vez sobre el origin/main nuevo
+  (si aún no se ha movido, espera un poco a que el otro push acabe). Un push sin informe que sí entró da 200.
 - Reclamar asigna el issue con el gh de la persona (si hay GitHub), emite `reclamo` (fuente web) y deja una línea en
   `acciones.jsonl` para el monitor (escucha.sh), que abre un turno con un texto fijo del kit.
 """
@@ -14,6 +15,7 @@ import signal
 import subprocess
 import tempfile
 import threading
+import time
 import unicodedata
 from datetime import datetime
 
@@ -35,26 +37,40 @@ VENTANA_S = 600                  # lo que el monitor entrega (10 min): un reclam
 ETIQUETA = {"en_curso": "en curso", "en_revision": "en revisión", "no_cerrada": "no cerrada"}
 MARGEN_RELOJ_S = 300             # un reclamo con la hora en el futuro más allá de esto (reloj atrasado después) no cuenta
 PLAZO_GIT, PLAZO_GH = 60, 30     # segundos; pasado el plazo se mata el árbol de procesos entero
+ESPERAS_BASE, ESPERA_BASE_S = 3, 1   # push rechazado y origin/main sin moverse: otro push puede tener main.lock aún
+CERROJO_RECLAMAR_S = 5           # Reclamar no espera más que esto a otra acción en curso (un Anotar colgado): 503
 GH = ["gh"]
 FALLIDO = "reclamo_fallido"      # línea de acciones.jsonl de un `gh issue edit` que falló: sin id, el monitor no la lee
+# Si es True, solo cuenta para el tope un `gh issue edit` que GitHub rechazó (`GraphQL: …` o `HTTP 4xx`); un plazo
+# vencido, un 5xx o un error de red no (con GitHub caído, diez clics no dejan a nadie una hora en 429). Falso hasta que
+# lo decidan los contratos (api.md §4, R-30): la salida de gh no es una interfaz estable, y GitHub también da por GraphQL
+# fallos suyos («Something went wrong while executing your query»). Formatos: HTTPError y GraphQLError de go-gh.
+FALLIDO_SOLO_RECHAZO = False
+RECHAZO_GH = re.compile(r"(?:^|: )(?:GraphQL: |HTTP 4[0-9]{2}\b)", re.M)
 REPO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$")
-# Además de Cc: los invisibles de dirección (LRM, RLM, ALM, incrustaciones, aislamientos) y de formato (BOM, espacios
-# de anchura cero, separadores invisibles, anotaciones interlineales).
-CONTROL = re.compile(r"[\u061c\u200b\u200e\u200f\u202a-\u202e\u2060-\u2064\u2066-\u2069\ufeff\ufff9-\ufffb]")
+# Además de Cc, Cf (formato: dirección, BOM, anchura cero, etiquetas U+E00xx…) salvo el ZWJ de los emojis, y Cs (un
+# surrogate suelto de `json.loads` se codificaría como bytes crudos: `\udcc2\udcbb` llegaría a main como «»»). Más los
+# invisibles que no son Cf: el CGJ, los rellenos de hangul y las etiquetas sin asignar.
+QUITAR = {"Cc", "Cf", "Cs"}
+INVISIBLES = re.compile("[\u034f\u115f\u1160\u3164\U000e0000-\U000e007f]")
 # Las comillas de las vistas (constitución V: una nota no puede cerrar las suyas en estado-equipo.md), también escritas
-# como entidad HTML, y el HTML: un `<!--` o una etiqueta esconderían en GitHub lo que viene detrás.
+# como entidad HTML.
 COMILLAS = re.compile(r"[«»]|&(?:laquo|raquo|#0*171|#0*187|#x0*ab|#x0*bb);", re.I)
-ETIQUETA_HTML = re.compile(r"<[A-Za-z/!?][^<>]*>|<(?=[A-Za-z/!?])")
+# El HTML: un `<!--` o una etiqueta esconderían en GitHub lo que viene detrás. CommonMark solo ve HTML (etiquetas,
+# comentarios, declaraciones, `<?`) cuando a `<` le sigue una letra ASCII, `/`, `!` o `?`: ese `<` pasa a ser `‹`
+# (U+2039, sin descomposición NFKC y distinto de «»), y el texto se queda entero (`a‹b y c>d`). Un autoenlace
+# (`<https://…>`, sin espacios ni `<>` dentro) se deja: CommonMark lo mira antes que el HTML y no esconde nada.
+HTML = re.compile(r"(<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\s<>]*>)|<(?=[A-Za-z/!?])")
 
 
 def sanear(texto):
     """Una sola línea (api.md §4): saltos y tabuladores a un espacio, espacios repetidos a uno, sin caracteres de
     control ni invisibles, sin «», sin HTML y sin `#` ni `>` al principio (no abre un título ni una cita)."""
     t = "".join(" " if c in "\r\n\t\v\f\x85\u2028\u2029" else c for c in texto)
-    t = CONTROL.sub("", "".join(c for c in t if unicodedata.category(c) != "Cc"))
+    t = INVISIBLES.sub("", "".join(c for c in t if c == "\u200d" or unicodedata.category(c) not in QUITAR))
     previo = None
-    while previo != t:                     # hasta que no quede nada: quitar «<b>» de «<<b>!--» deja otro «<!--»
-        previo, t = t, ETIQUETA_HTML.sub("", COMILLAS.sub("", t))
+    while previo != t:                     # hasta que no quede nada: quitar «» de «<«!--» deja otro «<!--»
+        previo, t = t, HTML.sub(lambda m: m.group(1) or "\u2039", COMILLAS.sub("", t))
     t = re.sub(r"\s+", " ", t).strip()
     return re.sub(r"^[#>\s]+", "", t)
 
@@ -100,7 +116,7 @@ def texto_nota(n, persona, cuando):
 def anadir(original, texto, en_blanco=True):
     """`texto` al final de `original` (bytes), con una línea en blanco delante, respetando la codificación (UTF-8, con
     o sin BOM, o UTF-16 LE o BE con su BOM) y los finales de línea del fichero: solo se añaden líneas, para que
-    merge=union funcione."""
+    merge=union funcione. `texto` va en estricto: de la nota nunca sale un byte que no sea UTF-8 (o UTF-16) válido."""
     bom, cod, errores = b"", "utf-8", "surrogateescape"
     for marca, utf16 in ((b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be")):
         if original.startswith(marca):
@@ -110,14 +126,61 @@ def anadir(original, texto, en_blanco=True):
     cola = previo.rstrip("\r\n")
     if cola:
         cola += salto * (2 if en_blanco else 1)
-    return bom + (cola + texto.replace("\n", salto)).encode(cod, errores)
+    return bom + cola.encode(cod, errores) + texto.replace("\n", salto).encode(cod)
 
 
-def matar_arbol(p):
-    """El proceso y todo lo que lanzó (git-remote-https, ssh, un helper…): taskkill /T en Windows; en Linux y macOS, su
-    grupo de procesos (lo crea `ejecutar`)."""
+if os.name == "nt":
+    import ctypes
+    from ctypes import wintypes
+
+    class _Basicos(ctypes.Structure):                      # JOBOBJECT_BASIC_LIMIT_INFORMATION
+        _fields_ = [("PerProcessUserTimeLimit", ctypes.c_int64), ("PerJobUserTimeLimit", ctypes.c_int64),
+                    ("LimitFlags", wintypes.DWORD), ("MinimumWorkingSetSize", ctypes.c_size_t),
+                    ("MaximumWorkingSetSize", ctypes.c_size_t), ("ActiveProcessLimit", wintypes.DWORD),
+                    ("Affinity", ctypes.c_size_t), ("PriorityClass", wintypes.DWORD),
+                    ("SchedulingClass", wintypes.DWORD)]
+
+    class _Limites(ctypes.Structure):                      # JOBOBJECT_EXTENDED_LIMIT_INFORMATION
+        _fields_ = [("BasicLimitInformation", _Basicos), ("IoInfo", ctypes.c_uint64 * 6),
+                    ("ProcessMemoryLimit", ctypes.c_size_t), ("JobMemoryLimit", ctypes.c_size_t),
+                    ("PeakProcessMemoryUsed", ctypes.c_size_t), ("PeakJobMemoryUsed", ctypes.c_size_t)]
+
+    _k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    _k32.CreateJobObjectW.restype = wintypes.HANDLE
+    _k32.CreateJobObjectW.argtypes = (wintypes.LPVOID, wintypes.LPCWSTR)
+    _k32.SetInformationJobObject.argtypes = (wintypes.HANDLE, ctypes.c_int, wintypes.LPVOID, wintypes.DWORD)
+    _k32.AssignProcessToJobObject.argtypes = (wintypes.HANDLE, wintypes.HANDLE)
+    _k32.TerminateJobObject.argtypes = (wintypes.HANDLE, wintypes.UINT)
+    _k32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    _ntdll = ctypes.WinDLL("ntdll")
+    _ntdll.NtResumeProcess.restype = ctypes.c_long
+    _ntdll.NtResumeProcess.argtypes = (wintypes.HANDLE,)
+    CREATE_SUSPENDED, JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE, JobObjectExtendedLimitInformation = 0x4, 0x2000, 9
+
+
+def crear_trabajo():
+    """Un Job Object de Windows que mata a todos sus procesos al cerrarlo, o None. Lo que lance un proceso del trabajo
+    entra en él, aunque su padre ya haya salido (los hijos de fork de MSYS: el `sh` de un helper, un ProxyCommand…),
+    que es justo lo que `taskkill /T`, que sigue ParentProcessId, no veía (issue #18)."""
+    trabajo = _k32.CreateJobObjectW(None, None)
+    if not trabajo:
+        return None
+    limites = _Limites()
+    limites.BasicLimitInformation.LimitFlags = JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
+    if not _k32.SetInformationJobObject(trabajo, JobObjectExtendedLimitInformation, ctypes.byref(limites),
+                                        ctypes.sizeof(limites)):
+        _k32.CloseHandle(trabajo)
+        return None
+    return trabajo
+
+
+def matar_arbol(p, trabajo=None):
+    """El proceso y todo lo que lanzó (git-remote-https, ssh, un helper…): en Windows, su Job Object (si no se pudo
+    crear, taskkill /T); en Linux y macOS, su grupo de procesos (lo crea `ejecutar`)."""
     try:
-        if os.name == "nt":
+        if trabajo:
+            _k32.TerminateJobObject(trabajo, 1)
+        elif os.name == "nt":
             subprocess.run(["taskkill", "/F", "/T", "/PID", str(p.pid)], stdin=subprocess.DEVNULL,
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15)
         else:
@@ -134,21 +197,35 @@ def matar_arbol(p):
 def ejecutar(args, entrada=None, env=None, plazo=60):
     """(código, stdout, stderr) en bytes. La entrada y las salidas van por ficheros temporales y no por tuberías: así
     nada espera a que un nieto que siga vivo las cierre (en Windows, `run(timeout=…)` mataba git y se quedaba esperando
-    a git-remote-https). Pasado el plazo, mata el árbol entero y lanza TimeoutExpired."""
-    with tempfile.TemporaryFile() as fin, tempfile.TemporaryFile() as fout, tempfile.TemporaryFile() as ferr:
-        if entrada is not None:
-            fin.write(entrada)
-            fin.seek(0)
-        p = subprocess.Popen(args, stdin=fin if entrada is not None else subprocess.DEVNULL, stdout=fout, stderr=ferr,
-                             env=env, start_new_session=os.name != "nt")
-        try:
-            codigo = p.wait(timeout=plazo)
-        except BaseException:
-            matar_arbol(p)
-            raise
-        fout.seek(0)
-        ferr.seek(0)
-        return codigo, fout.read(), ferr.read()
+    a git-remote-https). Pasado el plazo, mata el árbol entero y lanza TimeoutExpired. En Windows, el proceso nace
+    suspendido, entra en su Job Object y solo entonces arranca: ningún hijo nace fuera; al cerrar el trabajo, lo que
+    quede vivo muere también."""
+    trabajo = crear_trabajo() if os.name == "nt" else None
+    try:
+        with tempfile.TemporaryFile() as fin, tempfile.TemporaryFile() as fout, tempfile.TemporaryFile() as ferr:
+            if entrada is not None:
+                fin.write(entrada)
+                fin.seek(0)
+            p = subprocess.Popen(args, stdin=fin if entrada is not None else subprocess.DEVNULL, stdout=fout,
+                                 stderr=ferr, env=env, start_new_session=os.name != "nt",
+                                 creationflags=CREATE_SUSPENDED if trabajo else 0)
+            try:
+                if trabajo:
+                    if not _k32.AssignProcessToJobObject(trabajo, int(p._handle)):
+                        _k32.CloseHandle(trabajo)
+                        trabajo = None                  # sin trabajo (no debería pasar desde Windows 8): taskkill /T
+                    if _ntdll.NtResumeProcess(int(p._handle)) != 0:
+                        raise OSError("no se pudo arrancar el proceso suspendido")
+                codigo = p.wait(timeout=plazo)
+            except BaseException:
+                matar_arbol(p, trabajo)
+                raise
+            fout.seek(0)
+            ferr.seek(0)
+            return codigo, fout.read(), ferr.read()
+    finally:
+        if trabajo:
+            _k32.CloseHandle(trabajo)
 
 
 def gh_real(args):
@@ -214,10 +291,15 @@ class Acciones:
         self.plazo = PLAZO_GIT
 
     def __call__(self, ruta, cuerpo):
-        with self.cerrojo:
-            if ruta == "/v1/anotar":
+        if ruta == "/v1/anotar":
+            with self.cerrojo:
                 return self.anotar(cuerpo)
+        if not self.cerrojo.acquire(timeout=CERROJO_RECLAMAR_S):   # un Anotar colgado: «ocupado», no esperar sin más
+            return 503, {"error": "ocupado"}
+        try:
             return self.reclamar(cuerpo)
+        finally:
+            self.cerrojo.release()
 
     # --- Anotar ---
     def _git(self, *args, entrada=None, indice=False):
@@ -248,13 +330,35 @@ class Acciones:
         sha = self._ok("hash-object", "-w", "--stdin", entrada=datos)
         self._ok("update-index", "--add", "--cacheinfo", f"100644,{sha},{ruta}", indice=True)
 
-    def _intento(self, nota, mensaje, antes=None):
-        """Un intento entero (pasos 1–6 de api.md §4). El sha subido; Rechazado si el push no es un avance rápido.
-        `antes`: el rechazo del intento anterior; si origin/main no se ha movido desde él, no era una carrera."""
+    def _fetch(self):
         self._ok("fetch", "--quiet", "--no-tags", "origin", "+refs/heads/main:refs/remotes/origin/main")
-        base = self._ok("rev-parse", "--verify", "-q", "refs/remotes/origin/main^{commit}")
-        if antes and base == antes.base:
-            raise FalloGit(f"git push: {antes.detalle}")
+        return self._ok("rev-parse", "--verify", "-q", "refs/remotes/origin/main^{commit}")
+
+    def _base(self, antes):
+        """El origin/main sobre el que hacer el commit. `antes`: el rechazo del intento anterior. Si origin/main no se
+        ha movido desde él, puede que el otro push aún tenga main.lock (un hook reference-transaction, un fsync lento):
+        espera ESPERA_BASE_S y vuelve a mirar, ESPERAS_BASE veces como mucho y sin pasar del plazo. Si sigue igual, no
+        era una carrera (un main.lock huérfano, el disco del remoto lleno): FalloGit con el motivo del rechazo."""
+        for vuelta in range(ESPERAS_BASE + 1):
+            base = self._fetch()
+            if not antes or base != antes.base:
+                return base
+            if vuelta == ESPERAS_BASE or time.monotonic() + ESPERA_BASE_S > self.limite:
+                raise FalloGit(f"git push: {antes.detalle}")
+            time.sleep(ESPERA_BASE_S)
+
+    def _subio(self, sha):
+        """Un push que falló sin informe (plazo vencido, red cortada, un post-receive lento): ¿entró el commit? Así un
+        502 nunca invita a repetir una nota que ya está en main (issue #18)."""
+        try:
+            self._fetch()
+            return self._git("merge-base", "--is-ancestor", sha, "refs/remotes/origin/main")[0] == 0
+        except FalloGit:
+            return False
+
+    def _intento(self, nota, mensaje, antes=None):
+        """Un intento entero (pasos 1–6 de api.md §4). El sha subido; Rechazado si el push no es un avance rápido."""
+        base = self._base(antes)
         try:
             os.remove(self.indice)
         except OSError:
@@ -262,8 +366,8 @@ class Acciones:
         self._ok("read-tree", base, indice=True)
         original = self._fichero(CRITERIOS)
         if original is None:
-            with open(PLANTILLA, "rb") as f:
-                original = f.read()
+            with open(PLANTILLA, "rb") as f:              # con LF, como manda .gitattributes, sea cual sea la copia
+                original = f.read().replace(b"\r\n", b"\n")
         self._escribir(CRITERIOS, anadir(original, nota))
         atributos = self._fichero(".gitattributes") or b""
         lineas = atributos.decode("utf-8", "replace").splitlines()
@@ -273,11 +377,18 @@ class Acciones:
         sha = self._ok("commit-tree", arbol, "-p", base, "-m", mensaje)
         if self.antes_del_push:
             self.antes_del_push()
-        c, out, err = self._git("push", "--no-verify", "--porcelain", "origin", f"{sha}:refs/heads/main")
+        try:
+            c, out, err = self._git("push", "--no-verify", "--porcelain", "origin", f"{sha}:refs/heads/main")
+        except FalloGit:
+            if self._subio(sha):
+                return sha
+            raise
         if c != 0:
             motivo = rechazo(out.decode("utf-8", "replace"))
             if motivo and CARRERA.search(motivo):
                 raise Rechazado(motivo, base, primera_linea(err, motivo))
+            if self._subio(sha):
+                return sha
             raise FalloGit("git push: " + primera_linea(err, motivo or f"sale con {c}"))
         return sha
 
@@ -288,6 +399,7 @@ class Acciones:
         tz = self.ag.tz or datetime.now().astimezone().tzinfo
         nota = texto_nota(n, self.ag.persona, fecha(self.ag.ahora()).astimezone(tz))
         mensaje = f"Criterio: {PAPELES[n['papel']]} · {n['que_dijo'][:50]}"
+        self.limite = time.monotonic() + self.plazo      # las esperas del reintento no pasan de aquí
         try:
             try:
                 sha = self._intento(nota, mensaje)
@@ -381,7 +493,8 @@ class Acciones:
                 return 409, {"error": f"tu gh es @{self.login}, no @{self.ag.persona}"}
             c, _, err = self.gh(["issue", "edit", str(t["issue"]), "--repo", repo, "--add-assignee", "@me"])
             if c != 0:
-                self._registrar({"tipo": FALLIDO, "tarea": tid, "ts": self.ag.ahora()})
+                if not FALLIDO_SOLO_RECHAZO or RECHAZO_GH.search(err or ""):
+                    self._registrar({"tipo": FALLIDO, "tarea": tid, "ts": self.ag.ahora()})
                 return 502, {"error": "gh issue edit: " + primera_linea(err, f"sale con {c}")}
             issue = t["issue"]
         ts = self.ag.ahora()
