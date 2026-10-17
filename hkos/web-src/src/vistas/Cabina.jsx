@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, Panel, ProvenanceTag, StatusPulse } from "../componentes/componentes.jsx";
 import { arroba, autorPropuesta, canal, hace, hora, nombrePropuesta, serviciosDe, trabajoDe } from "../formato.js";
-import { Colision, Desajuste, estadoPersona, Grafo, Tarea, Vacio } from "./comun.jsx";
+import { Colision, Desajuste, Grafo, Tarea, Vacio } from "./comun.jsx";
 
 // Cabina (pantallas/cabina.dc.html), la vista por defecto: lo de una persona. Lo tuyo, lo que puedes reclamar, lo que
 // te necesita, el equipo de un vistazo y Anotar. Confirmar no está en la web (M9a): se dice como texto.
@@ -96,10 +96,9 @@ export function Cabina({ respuesta, eventos, sinConexion, reclamo, anotar }) {
 
   let pulso = <StatusPulse state="idle" label="Sin sesión" />;
   if (yo) {
-    const st = estadoPersona(yo, vista);
     const papeles = Object.entries(yo.papeles || {}).map(([k, n]) => `${n} ${k}`).join(", ");
     pulso = yo.activos
-      ? <StatusPulse state={st === "stale" ? "stale" : "live"} label={`Tu sesión: ${papeles}${yo.haciendo.length ? ` · ${yo.haciendo.join(", ")}` : ""}`} />
+      ? <StatusPulse state={yo.viejo ? "stale" : "live"} label={`Tu sesión: ${papeles}${yo.haciendo.length ? ` · ${yo.haciendo.join(", ")}` : ""}`} />
       : <StatusPulse state={yo.viejo ? "stale" : "idle"} label={yo.ultima_senal ? `Sin sesión desde ${hora(yo.ultima_senal)}` : "Sin sesión"} />;
   }
 

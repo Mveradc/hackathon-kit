@@ -1,17 +1,18 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { arroba, ETIQUETAS, hace, serviciosDe, tarjetas, TRABAJO, trabajoDe } from "../src/formato.js";
+import { arroba, ETIQUETAS, serviciosDe, tarjetas, TRABAJO, trabajoDe } from "../src/formato.js";
 import { Cabina } from "../src/vistas/Cabina.jsx";
 import { Fuentes } from "../src/vistas/comun.jsx";
 import { Red } from "../src/vistas/Red.jsx";
 import { Servicios } from "../src/vistas/Servicios.jsx";
 import { Tablero } from "../src/vistas/Tablero.jsx";
-import { casos, tablas } from "./ayuda.js";
+import { casos, diceAntiguedad, tablas } from "./ayuda.js";
 
 // Criterio 3 de M9a y ADR-0009 (prueba doble, parte 2): con las vistas de G1–G6, G12 y el estado de 5×20 (que validan
 // contra estado.schema.json: scripts/vistas_ejemplo.py), cada vista pinta cada estado, dueño, colisión, antigüedad y
 // desajuste con el mismo texto que trae la vista. Lo que la web repite de proyeccion.py (trabajoDe, serviciosDe,
-// ETIQUETAS y TRABAJO) se compara con lo que calculó Python (`esperado` y tablas.json), no con la propia web.
+// ETIQUETAS y TRABAJO) se compara con lo que calculó Python (`esperado` y tablas.json), no con la propia web; cada
+// «hace X», con la antigüedad en segundos que da proyeccion.py (`antiguedades`), sin pasar por hace().
 
 const CASOS = casos();
 
@@ -42,7 +43,21 @@ function texto(el) {
   return el.textContent.replace(/\s+/g, " ");
 }
 
-function compruebaTarea(raiz, t, servido) {
+/** El «hace X» pintado dice la antigüedad que calculó proyeccion.py para ese observado_en (`edades`, de Python). */
+function compruebaHace(pintado, obs, edades) {
+  const s = edades[obs];
+  expect(s, `antigüedad de ${obs} en las vistas de ejemplo`).toBeTypeOf("number");
+  expect(diceAntiguedad(pintado, s), `«${pintado}» para ${s} s (proyeccion.py)`).toBe(true);
+}
+
+/** El <time datetime=observado_en> de un elemento, con su «hace X» comparado con Python. */
+function compruebaTiempo(el, obs, edades) {
+  const tiempo = el.querySelector(`time[datetime="${obs}"]`);
+  expect(tiempo, `antigüedad de ${obs}`).not.toBeNull();
+  compruebaHace(tiempo.textContent, obs, edades);
+}
+
+function compruebaTarea(raiz, t, edades) {
   const tarjetas = raiz.querySelectorAll(`[data-tarea="${t.id}"]`);
   expect(tarjetas.length, `tarjeta de ${t.id}`).toBeGreaterThan(0);
   for (const el of tarjetas) {
@@ -51,16 +66,14 @@ function compruebaTarea(raiz, t, servido) {
     expect(s).toContain(t.etiqueta);
     expect(el.querySelector(".hk-task__owner").textContent).toBe(arroba(t.dueno));
     expect(s).toContain(t.estado_declarado ? `declarado (${t.fuente})` : t.fuente);
-    const tiempo = el.querySelector(`time[datetime="${t.observado_en}"]`);
-    expect(tiempo, `antigüedad de ${t.id}`).not.toBeNull();
-    expect(tiempo.textContent).toBe(hace(t.observado_en, servido));
+    compruebaTiempo(el, t.observado_en, edades);
     if (t.declarado) expect(s).toContain("a mano");
     for (const d of t.cumplidas_por_cierre || []) expect(s).toContain(`⚑ ${d} cerrada a mano`);
     for (const e of t.espera || []) expect(s).toContain(e.id);
   }
 }
 
-function compruebaColision(raiz, c, servido) {
+function compruebaColision(raiz, c, edades) {
   const el = raiz.querySelector(`[data-colision="${c.id}"]`);
   expect(el, `colisión ${c.id}`).not.toBeNull();
   const s = texto(el);
@@ -69,21 +82,21 @@ function compruebaColision(raiz, c, servido) {
   for (const r of c.rutas) expect(s).toContain(r);
   for (const p of c.personas) expect(s).toContain(`@${p}`);
   if (c.contrato) expect(s).toContain(`contrato «${c.contrato}»`);
-  expect(s).toContain(hace(c.observado_en, servido));
+  compruebaHace(el.querySelector(".hk-alert__detail").textContent.split(" · ").at(-1), c.observado_en, edades);
 }
 
-function compruebaDesajuste(raiz, d, servido) {
+function compruebaDesajuste(raiz, d, edades) {
   const els = [...raiz.querySelectorAll(`[data-desajuste="${d.tipo}"]`)].filter((el) => texto(el).includes(d.detalle));
   expect(els.length, `desajuste «${d.detalle}»`).toBeGreaterThan(0);
   for (const el of els) {
-    expect(el.querySelector(`time[datetime="${d.observado_en}"]`).textContent).toBe(hace(d.observado_en, servido));
+    compruebaTiempo(el, d.observado_en, edades);
     expect(texto(el)).toContain(d.fuente);
     for (const r of d.rutas || []) expect(texto(el)).toContain(r);
   }
 }
 
-describe.each(CASOS)("$nombre", ({ respuesta, esperado }) => {
-  const { vista, servido_en: servido } = respuesta;
+describe.each(CASOS)("$nombre", ({ respuesta, esperado, antiguedades: edades }) => {
+  const { vista } = respuesta;
 
   it("trabajoDe y serviciosDe dan, para cada persona, lo mismo que proyeccion.trabajo y servicios_de", () => {
     expect(Object.keys(esperado).sort()).toEqual(vista.personas.map((p) => p.persona).sort());
@@ -96,12 +109,14 @@ describe.each(CASOS)("$nombre", ({ respuesta, esperado }) => {
 
   it("tablero: todas las tareas por dueño, las colisiones y la presencia «vieja» de la vista", () => {
     const { container } = render(<Tablero {...props(respuesta)} />);
-    for (const t of tarjetas(vista)) compruebaTarea(container, t, servido);
-    for (const c of vista.colisiones) compruebaColision(container, c, servido);
+    for (const t of tarjetas(vista)) compruebaTarea(container, t, edades);
+    for (const c of vista.colisiones) compruebaColision(container, c, edades);
     for (const p of vista.personas) {
       const col = container.querySelector(`[data-columna="${p.persona}"]`);
       expect(col, `columna de @${p.persona}`).not.toBeNull();
       expect(!!col.querySelector(".hk-columna__cab .hk-pulse--stale")).toBe(p.viejo);
+      // Sin estado de persona calculado (ADR-0009): ni «espera» ni «fallo» por colisiones o tareas paradas.
+      expect(col.querySelector(".hk-columna__cab .hk-pulse--wait, .hk-columna__cab .hk-pulse--fail")).toBeNull();
       for (const t of tarjetas(vista).filter((x) => x.dueno === p.persona)) {
         expect(col.querySelector(`[data-tarea="${t.id}"]`), `${t.id} en la columna de @${p.persona}`).not.toBeNull();
       }
@@ -110,10 +125,10 @@ describe.each(CASOS)("$nombre", ({ respuesta, esperado }) => {
 
   it("red: lo que está en curso, todas las colisiones y todo lo que no cuadra", () => {
     const { container } = render(<Red {...props(respuesta)} />);
-    for (const t of vista.columnas.haciendo) compruebaTarea(container, t, servido);
-    for (const t of tarjetas(vista).filter((x) => x.estado === "parada" || x.estado === "no_cerrada")) compruebaTarea(container, t, servido);
-    for (const c of vista.colisiones) compruebaColision(container, c, servido);
-    for (const d of vista.servicios?.desajustes || []) compruebaDesajuste(container, d, servido);
+    for (const t of vista.columnas.haciendo) compruebaTarea(container, t, edades);
+    for (const t of tarjetas(vista).filter((x) => x.estado === "parada" || x.estado === "no_cerrada")) compruebaTarea(container, t, edades);
+    for (const c of vista.colisiones) compruebaColision(container, c, edades);
+    for (const d of vista.servicios?.desajustes || []) compruebaDesajuste(container, d, edades);
     const hechas = vista.columnas.hecho.length, total = tarjetas(vista).length;
     expect(texto(container)).toContain(`${hechas}/${total}`);
   });
@@ -124,12 +139,14 @@ describe.each(CASOS)("$nombre", ({ respuesta, esperado }) => {
       const py = esperado[p.persona];
       const r = { ...respuesta, persona: p.persona };
       const { container, unmount } = render(<Cabina {...props(r)} />);
+      const pulso = container.querySelector('[data-vista="cabina"] > .hk-cabecera .hk-pulse');
+      expect(pulso.classList.contains("hk-pulse--stale"), `pulso de @${p.persona}`).toBe(p.viejo);
       const lo = container.querySelector('[aria-label="Lo tuyo"]');
       const pintadas = [...lo.querySelectorAll("[data-tarea]")].map((el) => el.getAttribute("data-tarea"));
       expect(pintadas, `«Lo tuyo» de @${p.persona}, en el orden de proyeccion.trabajo`).toEqual(py.trabajo);
-      for (const id of py.trabajo) compruebaTarea(lo, porId.get(id), servido);
+      for (const id of py.trabajo) compruebaTarea(lo, porId.get(id), edades);
       const necesitan = container.querySelector('[aria-label="Te necesitan"]');
-      for (const c of vista.colisiones.filter((x) => x.personas.includes(p.persona))) compruebaColision(necesitan, c, servido);
+      for (const c of vista.colisiones.filter((x) => x.personas.includes(p.persona))) compruebaColision(necesitan, c, edades);
       const desajustes = new Map((vista.servicios?.desajustes || []).map((d) => [JSON.stringify([d.tipo, d.clave ?? null, d.detalle]), d]));
       const filas = [...necesitan.querySelectorAll("[data-sin-confirmar]")].map((el) => ["fila", el.getAttribute("data-sin-confirmar")]);
       const propuestas = [...necesitan.querySelectorAll("[data-propuesta]")].map((el) => ["propuesta", el.getAttribute("data-propuesta")]);
@@ -138,7 +155,7 @@ describe.each(CASOS)("$nombre", ({ respuesta, esperado }) => {
       for (const k of py.servicios.filter((x) => x[0] !== "fila" && x[0] !== "propuesta" && x[0] !== "codigo_fuera")) {
         const d = desajustes.get(JSON.stringify(k));
         expect(d, `desajuste ${JSON.stringify(k)} en la vista`).toBeDefined();
-        compruebaDesajuste(necesitan, d, servido);
+        compruebaDesajuste(necesitan, d, edades);
       }
       unmount();
     }
@@ -162,8 +179,7 @@ describe.each(CASOS)("$nombre", ({ respuesta, esperado }) => {
       for (const f of x.confirmacion.faltan) expect(t).toContain(`@${f}`);
       if (x.comprobado) {
         expect(t).toContain(x.comprobado.valor.escucha ? "responde" : "no responde");
-        expect(el.querySelector(`time[datetime="${x.comprobado.observado_en}"]`).textContent)
-          .toBe(hace(x.comprobado.observado_en, servido));
+        compruebaTiempo(el, x.comprobado.observado_en, edades);
       }
     }
     for (const x of s.conexiones) {
@@ -173,7 +189,7 @@ describe.each(CASOS)("$nombre", ({ respuesta, esperado }) => {
       if (x.resultado) expect(texto(el)).toContain(`la prueba ${x.resultado.valor}`);
     }
     for (const p of s.propuestas) expect(container.querySelector(`[data-propuesta="${p.clave}"]`)).not.toBeNull();
-    for (const d of s.desajustes) compruebaDesajuste(container, d, servido);
+    for (const d of s.desajustes) compruebaDesajuste(container, d, edades);
   });
 
   it("cabecera: cada fuente con su antigüedad y su «viejo» tal cual", () => {
@@ -182,9 +198,17 @@ describe.each(CASOS)("$nombre", ({ respuesta, esperado }) => {
       const el = container.querySelector(`[data-fuente="${k}"]`);
       expect(el, `fuente ${k}`).not.toBeNull();
       expect(el.classList.contains("is-stale")).toBe(d.viejo);
-      expect(el.querySelector(`time[datetime="${d.observado_en}"]`).textContent).toBe(hace(d.observado_en, servido));
+      compruebaTiempo(el, d.observado_en, edades);
     }
   });
+});
+
+describe("diceAntiguedad (la comparación con los segundos de proyeccion.py)", () => {
+  it.each([
+    ["hace 0 s", 0, true], ["hace 59 s", 59, true], ["hace 60 s", 60, false], ["hace 1 min", 60, true],
+    ["hace 2 min", 179, true], ["hace 3 min", 179, false], ["hace 59 min", 3599, true], ["hace 1 h", 3600, true],
+    ["hace 23 h", 86399, true], ["hace 1 d", 86400, true], ["hace 24 h", 86400, false], ["hace 5 min", undefined, false],
+  ])("«%s» con %s s → %s", (texto, s, si) => expect(diceAntiguedad(texto, s)).toBe(si));
 });
 
 describe("las vistas de ejemplo cubren lo que hay que comprobar", () => {
@@ -198,6 +222,8 @@ describe("las vistas de ejemplo cubren lo que hay que comprobar", () => {
     expect(CASOS.some((c) => c.respuesta.vista.personas.some((p) => p.viejo))).toBe(true);
     expect(todas.some((t) => t.estado_declarado)).toBe(true);
     expect(CASOS.some((c) => c.respuesta.vista.servicios?.desajustes.length)).toBe(true);
+    const edades = CASOS.flatMap((c) => Object.values(c.antiguedades));
+    expect(edades.some((s) => s < 60) && edades.some((s) => s >= 60 && s < 3600)).toBe(true);
     expect(new Set(CASOS.map((c) => c.nombre.split(" ")[0]))).toEqual(new Set(["5x20", "G1", "G2", "G3", "G4", "G5", "G6", "G12"]));
   });
 });

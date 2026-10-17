@@ -168,6 +168,8 @@ body {
 .hk-node.is-fail .hk-node__halo { stroke: var(--state-fail); animation: hk-halo var(--hk-pulse-fail) var(--hk-ease) infinite; }
 .hk-node.is-ok .hk-node__core { stroke: var(--state-ok); }
 .hk-node.is-stale .hk-node__core { stroke: var(--state-stale); stroke-dasharray: 3 3; }
+.hk-node.is-off { opacity: .45; }
+.hk-node.is-off .hk-node__core { stroke: var(--line-strong); }
 .hk-node__glyph { font-family: var(--font-mono); font-size: 11px; font-weight: 500; fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
 .hk-node__label { font-family: var(--font-sans); font-size: 12px; fill: var(--ink-muted); text-anchor: middle; }
 .hk-node__state { font-family: var(--font-mono); font-size: 10px; text-anchor: middle; letter-spacing: .06em; }

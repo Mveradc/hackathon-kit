@@ -1,6 +1,6 @@
 import { CollisionAlert, ProvenanceTag, StatusPulse, TaskCard } from "../componentes/componentes.jsx";
 import { TeamGraph } from "../componentes/TeamGraph.jsx";
-import { arroba, canal, DESAJUSTE, ETIQUETAS, hace, hora, tarjetas } from "../formato.js";
+import { arroba, canal, DESAJUSTE, ETIQUETAS, hace, hora } from "../formato.js";
 
 // Piezas que comparten las cuatro vistas. Cada una pinta campos de la vista tal cual (ADR-0009).
 
@@ -73,14 +73,9 @@ function iniciales(p) {
   return (base.slice(0, 2) || "?").toUpperCase();
 }
 
-export function estadoPersona(p, vista) {
-  if (p.viejo) return "stale";
-  if ((vista.colisiones || []).some((c) => c.gravedad === "rojo" && c.personas.includes(p.persona))) return "fail";
-  if (tarjetas(vista).some((t) => t.dueno === p.persona && (t.estado === "parada" || t.estado === "no_cerrada"))) return "wait";
-  return p.activos ? "live" : "idle";
-}
-
-/** El equipo como red: relay en el centro, GitHub aparte, personas alrededor y sus agentes activos (vista.personas). */
+/** El equipo como red: relay en el centro, GitHub aparte, personas alrededor y sus agentes activos (vista.personas).
+ *  Cada nodo pinta solo campos de la vista: una persona es «viejo» si lo dice `p.viejo` y nada más (ADR-0009). Sin
+ *  GitHub (`fuentes.github.valor === "no"`, M8h) no es un dato viejo: el nodo sale apagado y sin arista. */
 export function construirGrafo(respuesta, yo, w, h) {
   const v = respuesta.vista;
   const relayCaido = respuesta.relay?.conectado === false;
@@ -88,18 +83,19 @@ export function construirGrafo(respuesta, yo, w, h) {
   const sinGithub = fg?.valor === "no";
   const nodes = [
     { id: "relay", kind: "relay", x: w / 2, y: h / 2, glyph: "RLY", label: "relay", state: relayCaido || fr?.viejo ? "stale" : undefined },
-    { id: "gh", kind: "github", x: w - 44, y: 40, glyph: "GH", label: sinGithub ? "sin GitHub" : "GitHub", state: fg?.viejo ? "stale" : undefined },
+    { id: "gh", kind: "github", x: w - 44, y: 40, glyph: "GH", label: sinGithub ? "sin GitHub" : "GitHub",
+      state: sinGithub ? "off" : fg?.viejo ? "stale" : undefined },
   ];
-  const edges = [{ id: "e-gh", from: "relay", to: "gh", channel: "github", stale: relayCaido || !!fg?.viejo || sinGithub }];
+  const edges = sinGithub ? [] : [{ id: "e-gh", from: "relay", to: "gh", channel: "github", stale: relayCaido || !!fg?.viejo }];
   const ps = v.personas || [];
   const rx = w / 2 - 70, ry = h / 2 - 56;
   ps.forEach((p, i) => {
     const a = Math.PI * (0.85 + (2 * i) / Math.max(ps.length, 1));
     const x = w / 2 + rx * Math.cos(a), y = h / 2 + ry * Math.sin(a);
     const id = `p-${p.persona}`;
-    nodes.push({ id, kind: "person", x, y, glyph: iniciales(p), label: p.persona === yo ? "tú" : `@${p.persona}`,
-      state: estadoPersona(p, v) });
     const vieja = !!p.viejo;
+    nodes.push({ id, kind: "person", x, y, glyph: iniciales(p), label: p.persona === yo ? "tú" : `@${p.persona}`,
+      state: vieja ? "stale" : undefined });
     edges.push({ id: `e-${p.persona}`, from: id, to: "relay", channel: "relay", stale: vieja || relayCaido || !!fr?.viejo });
     const orq = Math.min(p.papeles?.orquestador || 0, 1), workers = Math.min(p.papeles?.worker || 0, 4);
     const fuera = (k, d) => ({ x: x + Math.cos(a + k) * d, y: y + Math.sin(a + k) * d });

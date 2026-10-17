@@ -21,11 +21,20 @@ on:
 permissions:
   contents: read
 jobs:
+  # En Ubuntu y en Windows (Git Bash, con core.autocrlf como en un Windows de verdad): el compilado y las vistas de
+  # ejemplo tienen que salir idénticos a los subidos en los dos.
   web:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    env:
+      PYTHONIOENCODING: utf-8     # la consola del runner de Windows es cp1252
     defaults:
       run:
+        shell: bash               # en Windows, Git Bash
         working-directory: hkos/web-src
     steps:
       - uses: actions/checkout@v4
@@ -34,10 +43,11 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: hkos/web-src/package-lock.json
-      - name: uv (para las vistas de ejemplo)
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: uv (para las vistas de ejemplo), versión fija
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7   # v10.2.0
+        with:
+          version: "0.12.24"
+          enable-cache: false
       - name: Dependencias (versiones exactas del lock)
         run: npm ci
       - name: Vistas de ejemplo al día (G1–G6, G12, 5×20 desde el relay de verdad)

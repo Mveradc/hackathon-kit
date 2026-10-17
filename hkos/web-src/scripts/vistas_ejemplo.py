@@ -11,7 +11,9 @@ GET /v1/vista (api.md §4): {servido_en, persona, relay, vista}. La web solo pin
 
 Para que los tests de la web no se comparen consigo mismos, cada caso lleva también `esperado`, lo que calcula
 proyeccion.py para cada persona de la vista: {persona: {trabajo: [ids en el orden de TRABAJO], servicios: [claves de
-servicios_de]}}. Y tablas.json, las tablas ETIQUETAS y TRABAJO de proyeccion.py que la web repite.
+servicios_de]}}; y `antiguedades`, la antigüedad en segundos que da proyeccion.py (la de `viejo` y del MCP) de cada
+`observado_en` de la vista respecto de `servido_en`: {observado_en: segundos}. Y tablas.json, las tablas ETIQUETAS y
+TRABAJO de proyeccion.py que la web repite.
 
 Uso (desde hkos/web-src): uv run --no-project scripts/vistas_ejemplo.py   → test/vistas/*.json
 """
@@ -39,6 +41,18 @@ SALIDA = os.path.join(WEB, "test", "vistas")
 ESQUEMA = Esquema("estado.schema.json")
 
 
+def observados(x):
+    """Todos los `observado_en` de la vista, a cualquier profundidad."""
+    if isinstance(x, dict):
+        if isinstance(x.get("observado_en"), str):
+            yield x["observado_en"]
+        for y in x.values():
+            yield from observados(y)
+    elif isinstance(x, list):
+        for y in x:
+            yield from observados(y)
+
+
 def respuesta(estado, persona):
     err = ESQUEMA.error(estado)
     if err is not None:
@@ -48,7 +62,8 @@ def respuesta(estado, persona):
     return {"servido_en": ahora, "persona": persona, "relay": {"conectado": True, "desde": ahora}, "vista": v,
             "esperado": {p["persona"]: {"trabajo": [t["id"] for t in proyeccion.trabajo(v, p["persona"])],
                                         "servicios": [x["clave"] for x in proyeccion.servicios_de(v, p["persona"])]}
-                         for p in v["personas"]}}
+                         for p in v["personas"]},
+            "antiguedades": {o: proyeccion._edad(o, ahora) for o in sorted(set(observados(v)))}}
 
 
 def escribe(fichero, datos):
