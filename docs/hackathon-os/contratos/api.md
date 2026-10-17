@@ -283,11 +283,13 @@ Colisiones (M8g): las calcula `modelo.calcular` con `hkos/colisiones.py` y `hkos
 |---|---|---|---|
 | `GET /` y `GET /assets/<fichero>` | No | Los ficheros de `hkos/web/nueva/` (el compilado). Lista blanca: `index.html` en `/` y lo que exista en `assets/`, sin `..` ni subcarpetas fuera de ella. Tipos por extensión (`.js`, `.css`, `.woff2`, `.svg`, `.png`). El HTML no lleva datos ni el token | `200`, o `404` |
 | `GET /v1/vista` | Sí | `{servido_en, persona, relay: {conectado, desde}, vista}`. `vista` = `proyeccion.vista(estado.json local, ahora)`, con `servicios` (§3) y `umbrales.fuente_s` = `umbral_viejo_s`. `relay` es del transporte (el demonio oye o no al relay), como `relay=ok\|viejo` en la cabecera de `estado-equipo.md` y con el mismo valor | `200`; `503` `{"error":"sin estado"}` si aún no hay `estado.json` |
-| `GET /v1/stream` | Sí | SSE. Al conectar, `event: vista` con lo mismo que `/v1/vista`. Después, `vista` cada vez que llega un estado nuevo del relay o cambia `relay.conectado`; `eventos` tal como llegan del relay (§3), sin cambiarlos; `ping` cada 20 s | `text/event-stream` |
+| `GET /v1/stream` | Sí | SSE. Al conectar, `event: vista` con lo mismo que `/v1/vista`. Después, `vista` cada vez que llega un estado nuevo del relay o cambia `relay.conectado`; `eventos` tal como llegan del relay (§3), sin cambiarlos; `ping` cada 20 s sin nada más, precedido de otra `vista` calculada en ese momento, para que `servido_en` y lo «viejo» avancen con el tiempo como en `/v1/vista` y `estado-equipo.md` (tras congelar, 2026-10-17, PR #12, issue #6). Sin `estado.json`, la `vista` no se manda y solo van los `ping`. Como mucho 8 clientes a la vez | `text/event-stream`; `429 {"error":"demasiados clientes"}` con 8 ya conectados (el hueco se libera al cortarse uno) |
 | `POST /v1/anotar` | Sí | Anotar (abajo) | `200 {"ok":true,"sha":…}`; `400` con el campo que no vale; `409` si el push se rechaza dos veces; `502` si git falla por otra cosa (con el motivo en una línea) |
 | `POST /v1/reclamar` | Sí | Reclamar (abajo) | `200 {"ok":true,"issue":n\|null}`; `404` si la tarea no existe; `409` si no está libre o es de otro dueño; `429` por encima del tope; `502` si `gh` falla |
 
 Las acciones exigen además `Content-Type: application/json` (si no, `415`) y un cuerpo de 4 KB como mucho (si no, `413`).
+
+Cada conexión con el demonio tiene un plazo de socket de 10 s (tras congelar, 2026-10-17, PR #12, issue #6): un `POST` cuyo cuerpo prometido (`Content-Length`) no llega en ese plazo recibe `408 {"error":"cuerpo"}` y se cierra la conexión; si ni siquiera llega la línea de la petición, la conexión se cierra sin respuesta.
 
 **Cómo lee la web** (ADR-0010):
 - Toma el token del fragmento, lo quita de la URL con `history.replaceState` y lo guarda solo en memoria.
