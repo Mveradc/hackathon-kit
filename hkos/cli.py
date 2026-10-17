@@ -12,6 +12,7 @@
   hk-os remoto [--iniciar | --volver]     quien coordina, sin GitHub: el remoto del equipo (remoto.py)
   hk-os compilar [--seco]                 lleva las tareas de .hackathon/plan.md a issues hk-tarea (M8e)
   hk-os recoger [--salida <zip>]          tras el ensayo: los datos del OS de este clon, sin token (M8h)
+  hk-os web                               abre la web de trabajo de este clon (M9a, con web_nueva: sí en os.md)
   hk-os agente …                          el demonio (lo lanza sesion.sh; ver agente.py)
 """
 import json
@@ -22,6 +23,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import webbrowser
 import zipfile
 from email.utils import parsedate_to_datetime
 
@@ -30,11 +32,11 @@ import agente  # noqa: E402
 import compilar  # noqa: E402
 import relay  # noqa: E402
 import remoto as remoto_mod  # noqa: E402
-from red import equipo  # noqa: E402
+from red import equipo, web_nueva  # noqa: E402
 
 USO = __doc__.split("\n\n", 1)[1]
-# Lo que `recoger` nunca mete en el zip: secretos, el índice temporal y el remoto (código).
-NO_RECOGER = {"token", "relay.url", "wip.index", "wip.pathspecs"}
+# Lo que `recoger` nunca mete en el zip: secretos, los índices temporales y el remoto (código).
+NO_RECOGER = {"token", "relay.url", "wip.index", "wip.pathspecs", "web.token", "nota.index"}
 
 
 def _principal(comun):
@@ -260,6 +262,55 @@ def recoger(cwd=".", destino=None, salida=print):
     return 0
 
 
+def web(cwd=".", abrir=webbrowser.open, salida=print):
+    """M9a (api.md §4): abre http://127.0.0.1:<puerto>/#t=<token> si el demonio de este clon responde por /salud con
+    su git común y sirve la web. El token va en el fragmento, que el navegador no envía; no se imprime."""
+    comun = agente.git_comun(cwd)
+    principal = _principal(comun)
+    carpeta = os.path.join(comun, "hackathon", "os")
+    if not web_nueva(os.path.join(principal, ".hackathon", "os.md")):
+        salida("hk-os web: la web de trabajo está apagada en este clon: pon «web_nueva: sí» en .hackathon/os.md "
+               "(y súbelo, es para todo el equipo).")
+        return 1
+    try:
+        with open(os.path.join(carpeta, "agente.vivo"), encoding="utf-8") as f:
+            puerto = int(f.readline().strip())
+        with urllib.request.urlopen(f"http://127.0.0.1:{puerto}/salud", timeout=2) as r:
+            primera = r.read().decode("utf-8", errors="replace").split("\n", 1)[0]
+    except (OSError, ValueError):
+        primera, puerto = "", None
+    esperada = f"hk-os {comun}"
+    if os.name == "nt":                                  # en Windows, sin distinguir mayúsculas (como el arranque)
+        primera, esperada = primera.lower(), esperada.lower()
+    if primera != esperada:
+        salida("hk-os web: el demonio de este clon no está en marcha. Se lanza al abrir una sesión de Claude Code "
+               "aquí; después, vuelve a probar.")
+        return 1
+    try:
+        with open(os.path.join(carpeta, "web.token"), encoding="utf-8") as f:
+            token = f.read().strip()
+    except OSError:
+        token = ""
+    url = f"http://127.0.0.1:{puerto}/"
+    servida = False
+    if token:
+        req = urllib.request.Request(url + "v1/vista", headers={"X-HK-Token": token})
+        try:
+            urllib.request.urlopen(req, timeout=2).close()
+            servida = True
+        except urllib.error.HTTPError as ex:
+            servida = ex.code == 503                     # sin estado.json todavía: la web ya está y lo dirá
+        except OSError:
+            pass
+    if not servida:
+        salida("hk-os web: el demonio de este clon arrancó antes de «web_nueva: sí». Cierra las sesiones de Claude "
+               "Code de este clon y termina el proceso de hkos/agente.py; la próxima sesión lo lanza con la web.")
+        return 1
+    abrir(f"{url}#t={token}")
+    salida(f"Web de trabajo: {url} (el token va aparte, en el fragmento; para volver a abrirla, hk-os web).")
+    return 0
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     for flujo in (sys.stdout, sys.stderr):         # la consola de Windows (cp1252) no escribe «→» ni otros del plan
@@ -293,6 +344,8 @@ def main(argv=None):
     if orden == "recoger":
         destino = resto[1] if len(resto) == 2 and resto[0] == "--salida" else None
         return recoger(destino=destino)
+    if orden == "web":
+        return web()
     if orden == "agente":
         return agente.main(resto)
     print(USO, file=sys.stderr)

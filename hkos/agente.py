@@ -12,14 +12,19 @@ hay otro y sale. Se apaga solo tras `apagado_min` sin eventos nuevos y sin sesio
 import argparse
 import glob
 import hashlib
+import hmac
+import http.client
 import json
 import os
 import re
+import secrets
+import socket
 import subprocess
 import sys
 import threading
 import time
 import urllib.error
+import urllib.parse
 import urllib.request
 from collections import deque
 from datetime import datetime, timedelta, timezone
@@ -30,8 +35,9 @@ from colisiones_merge import Publicador  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from estados import fecha  # noqa: E402
 import proyeccion  # noqa: E402
+import servicios  # noqa: E402
 from normaliza import Contexto, Normalizador, relativa  # noqa: E402
-from red import Servidor, ahora_iso, conf  # noqa: E402
+from red import Servidor, ahora_iso, conf, web_nueva  # noqa: E402
 
 CICLO_S = 1
 ESTADO_S = 3                     # M8f: GET /v1/estado con ETag (P15)
@@ -41,6 +47,16 @@ TTL_S = 90                       # R-18: una sesión sin señales deja de estar 
 LOTE_MAX = 200
 ESPERA_MAX_S = 30
 LOG_MAX = 1024 * 1024
+# M9a (api.md §4, ADR-0010): la web de trabajo, solo con `web_nueva: sí`.
+WEB_NUEVA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "nueva")
+TIPOS_WEB = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".woff2": "font/woff2",
+             ".svg": "image/svg+xml", ".png": "image/png"}
+CSP_WEB = ("default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; "
+           "img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
+ACCIONES = ("/v1/anotar", "/v1/reclamar")
+ACCION_MAX = 4096
+PING_S = 20                      # el mismo que el relay: la web pasa a «sin conexión» tras max(umbral_viejo_s, 40 s)
+WEB_COLA = 200
 
 
 def git_comun(repo):
@@ -245,6 +261,125 @@ class SondeoGit:
             self._guardar()
 
 
+def mensajes_sse(r):
+    """(event, data, id) de cada mensaje de un text/event-stream, hasta que se cierra."""
+    evento, datos, ident = None, [], None
+    while True:
+        crudo = r.readline()
+        if not crudo:
+            return
+        l = crudo.decode("utf-8", errors="replace").rstrip("\r\n")
+        if not l:
+            if evento or datos:
+                yield evento or "message", "\n".join(datos), ident
+            evento, datos, ident = None, [], None
+            continue
+        k, _, v = l.partition(":")
+        v = v[1:] if v.startswith(" ") else v
+        if k == "event":
+            evento = v
+        elif k == "data":
+            datos.append(v)
+        elif k == "id":
+            ident = v
+
+
+class Suscripcion:
+    """M9a (api.md §4): con `web_nueva: sí`, el demonio lee `GET /v1/stream` del relay en vez de sondear /v1/estado.
+    `estado` sustituye a la respuesta del sondeo y `eventos` se reenvía tal cual a la web. Si el stream se corta, el
+    ciclo vuelve al sondeo cada 3 s hasta que reconecta (espera creciente hasta 30 s)."""
+    TIEMPO_S = 2 * PING_S + 5    # sin nada (ni ping) en este tiempo, el stream se da por cortado
+
+    def __init__(self, ag):
+        self.ag = ag
+
+    def correr(self, parar):
+        espera = 1
+        while not parar.is_set():
+            url, token = self.ag._relay()
+            if url:
+                try:
+                    req = urllib.request.Request(url + "/v1/stream", headers={"Authorization": f"Bearer {token}"})
+                    with urllib.request.urlopen(req, timeout=self.TIEMPO_S) as r:
+                        for evento, datos, ident in mensajes_sse(r):
+                            espera = 1
+                            self.ag.mensaje_relay(evento, datos, ident)
+                            if parar.is_set():
+                                return
+                except (OSError, ValueError, http.client.HTTPException):
+                    pass
+                self.ag.corte_relay()
+            parar.wait(espera)
+            espera = min(espera * 2, ESPERA_MAX_S)
+
+
+class SaludServicios:
+    """M9a (api.md §4, ADR-0011): cada 15 s, puerto y salud de los servicios confirmados de esta persona, solo en
+    127.0.0.1. Emite `servicio.estado` una vez al arrancar y después solo cuando cambia (escucha, salud). Nunca ejecuta
+    Arranque ni Prueba, y no consulta filas sin confirmar, de otra persona o con un formato que no vale."""
+    CADA_S, CONEXION_S, HTTP_S, LEER_MAX = 15, 0.5, 2, 4096
+
+    def __init__(self, ag):
+        self.ag = ag
+        self.ultimo, self.emitidos, self.cuando = {}, set(), -1e18   # lo último emitido por clave (servicios.json)
+
+    def candidatos(self, estado):
+        s = (estado or {}).get("servicios") or {}
+        malos = {d.get("clave") for d in s.get("desajustes", []) if d.get("tipo") == "formato_invalido"}
+        for x in s.get("lista", []):
+            p, salud = x.get("puerto"), x.get("salud")
+            if ((x.get("confirmacion") or {}).get("valor") == "confirmada" and x.get("dueno_autoridad") == self.ag.persona
+                    and isinstance(p, int) and 1 <= p <= 65535 and x.get("clave") not in malos
+                    and servicios.NOMBRE.match(x.get("nombre") or "")
+                    and (salud is None or (servicios.SALUD.match(salud) and ".." not in salud
+                                           and not salud.startswith("//")))):
+                yield x
+
+    def comprobar(self, puerto, salud):
+        """(escucha, salud): si el puerto acepta en 127.0.0.1 y el código HTTP de GET <Salud> (None sin Salud o sin
+        respuesta). Sin seguir redirecciones y leyendo como mucho 4 KB."""
+        try:
+            socket.create_connection(("127.0.0.1", puerto), timeout=self.CONEXION_S).close()
+        except OSError:
+            return False, None
+        if salud is None:
+            return True, None
+        c = http.client.HTTPConnection("127.0.0.1", puerto, timeout=self.HTTP_S)
+        try:
+            c.request("GET", salud)
+            r = c.getresponse()
+            r.read(self.LEER_MAX)
+            codigo = r.status
+        except (OSError, http.client.HTTPException):
+            codigo = None
+        finally:
+            c.close()
+        return True, codigo if isinstance(codigo, int) and 100 <= codigo <= 599 else None
+
+    def ciclo(self):
+        if self.ag.reloj() - self.cuando < self.CADA_S:
+            return []
+        self.cuando = self.ag.reloj()
+        with self.ag.lock:
+            estado = self.ag.estado
+        eventos = []
+        for x in list(self.candidatos(estado)):
+            escucha, salud = self.comprobar(x["puerto"], x.get("salud"))
+            k = x["clave"]
+            valor = {"escucha": escucha, "salud": salud}
+            if k in self.emitidos and self.ultimo.get(k) == valor:
+                continue
+            self.emitidos.add(k)
+            self.ultimo[k] = valor
+            eventos.append({"v": 1, "id": f"demonio-{self.ag.persona}-servicio-{k}-{int(self.ag.reloj() * 1000)}",
+                            "ts": self.ag.ahora(), "actor": {"persona": self.ag.persona, "papel": "demonio"},
+                            "tipo": "servicio.estado", "fuente": "demonio",
+                            "datos": {"servicio": x["nombre"], "clave": k, "puerto": x["puerto"], **valor}})
+        if eventos:
+            self.ag._escribe("servicios.json", json.dumps(self.ultimo, ensure_ascii=False))
+        return eventos
+
+
 class Agente:
     def __init__(self, repo, persona, apagado_min=None, reloj=time.time, ahora=ahora_iso):
         self.repo = repo
@@ -291,6 +426,106 @@ class Agente:
         self.vivo, self.puerto = os.path.join(self.dir, "agente.vivo"), None
         # Nivel 2 (M8g): la publicación del trabajo en curso, con `publicar_wip: sí`. La lanza main() en su hilo.
         self.wip = Publicador(self.principal, self.dir, self.persona, lambda k: conf(os_md, k), log=self.log)
+        # M9a (api.md §4): la web de trabajo, la suscripción al SSE del relay y la salud de los servicios propios.
+        self.web_nueva = web_nueva(os_md)
+        self.web_token = self._token_web() if self.web_nueva else None
+        self.en_stream, self.md_pendiente, self.relay_ultimo_bueno = False, False, None
+        self.web_cambio = threading.Condition()
+        self.web_seq, self.web_cola = 0, deque(maxlen=WEB_COLA)     # (seq, evento, datos): lo que va a /v1/stream
+        self.suscripcion, self.salud_servicios = Suscripcion(self), SaludServicios(self)
+
+    # --- web de trabajo (M9a) ---
+    def _token_web(self):
+        """web.token: 32 bytes aleatorios en hex, creado la primera vez y reutilizado (fuera de git, ADR-0010)."""
+        ruta = os.path.join(self.dir, "web.token")
+        try:
+            with open(ruta, encoding="utf-8") as f:
+                token = f.read().strip()
+            if re.fullmatch(r"[0-9a-f]{64}", token):
+                return token
+        except OSError:
+            pass
+        token = secrets.token_hex(32)
+        self._escribe("web.token", token + "\n")
+        try:
+            os.chmod(ruta, 0o600)
+        except OSError:
+            pass
+        return token
+
+    def token_valido(self, dado):
+        return bool(self.web_token) and hmac.compare_digest((dado or "").encode("utf-8"), self.web_token.encode("utf-8"))
+
+    def a_la_web(self, evento, datos=None):
+        """Un mensaje para los clientes de /v1/stream: `vista` (se calcula al enviarlo) o `eventos` (tal cual)."""
+        with self.web_cambio:
+            self.web_seq += 1
+            self.web_cola.append((self.web_seq, evento, datos))
+            self.web_cambio.notify_all()
+
+    def web_esperar(self, visto, espera):
+        """(seq, mensajes posteriores a `visto`), esperando como mucho `espera` s a que haya alguno."""
+        with self.web_cambio:
+            if self.web_seq == visto:
+                self.web_cambio.wait(espera)
+            return self.web_seq, [(e, d) for s, e, d in self.web_cola if s > visto]
+
+    def vista_web(self):
+        """El cuerpo de /v1/vista y del evento `vista` (api.md §4); None sin estado.json todavía."""
+        with self.lock:
+            estado, caido, desde = self.estado, self.relay_caido_desde, self.relay_ultimo_bueno
+        if estado is None:
+            return None
+        ahora = self.ahora()
+        return {"servido_en": ahora, "persona": self.persona, "relay": {"conectado": caido is None, "desde": desde},
+                "vista": proyeccion.vista(estado, ahora=ahora, umbral_viejo_s=self.umbral_viejo_s)}
+
+    def accion(self, ruta, cuerpo):
+        """Anotar y Reclamar (K-95). Hasta entonces, la ruta existe con sus comprobaciones de seguridad y nada más."""
+        return 501, {"error": "sin implementar"}
+
+    def mensaje_relay(self, evento, datos, ident=None):
+        """Un mensaje del SSE del relay (lo llama Suscripcion en su hilo)."""
+        if evento == "eventos":
+            self.a_la_web("eventos", datos.encode("utf-8"))
+        with self.lock:
+            self.en_stream = True
+            self.relay_ultimo_bueno = self.ahora()
+            cambio = self.relay_caido_desde is not None
+            self.relay_caido_desde = None
+            if evento == "estado":
+                try:
+                    estado = json.loads(datos)
+                except ValueError:
+                    estado = None
+                if isinstance(estado, dict):
+                    self.estado = estado
+                    self.etag = f'"{ident}"' if ident else None
+                    self._escribe("estado.json", json.dumps(estado, ensure_ascii=False))
+                    cambio = True
+            if cambio:
+                self.md_pendiente = True
+                self.a_la_web("vista")
+
+    def corte_relay(self):
+        """El stream del relay se ha cortado (o no conecta): el ciclo vuelve al sondeo enseguida. `relay.conectado` es
+        false desde el corte hasta el primer mensaje nuevo."""
+        with self.lock:
+            estaba, self.en_stream = self.en_stream, False
+            self.ultimo_estado = -1e18
+            if estaba and self.relay_caido_desde is None:
+                self.relay_caido_desde = self.ahora()
+                self.md_pendiente = True
+                self.a_la_web("vista")
+
+    def ciclo_servicios(self):
+        eventos = self.salud_servicios.ciclo()
+        with self.lock:
+            for e in eventos:
+                if self.esquema.valido(e):
+                    self.cola.append(e)
+                else:
+                    self.invalidos += 1
 
     # --- posiciones ---
     def _ruta_pos(self):
@@ -504,8 +739,8 @@ class Agente:
     # --- proyección (M8f) ---
     def recibir_estado(self):
         """Cada ESTADO_S, `GET /v1/estado` con If-None-Match (la alternativa de P15 al SSE: un 304 no cuesta nada).
-        Devuelve True si llegó uno nuevo."""
-        if self.reloj() - self.ultimo_estado < ESTADO_S:
+        Devuelve True si llegó uno nuevo. Con el stream del relay vivo (M9a), no sondea: el estado llega por ahí."""
+        if self.en_stream or self.reloj() - self.ultimo_estado < ESTADO_S:
             return False
         self.ultimo_estado = self.reloj()
         url, token = self._relay()
@@ -520,14 +755,14 @@ class Agente:
                 self.etag = r.headers.get("ETag")
         except urllib.error.HTTPError as ex:
             if ex.code == 304:
-                self.relay_caido_desde = None
+                self.relay_caido_desde, self.relay_ultimo_bueno = None, self.ahora()
                 return False
             self.relay_caido_desde = self.relay_caido_desde or self.ahora()
             return False
         except (OSError, ValueError):
             self.relay_caido_desde = self.relay_caido_desde or self.ahora()
             return False
-        self.relay_caido_desde = None
+        self.relay_caido_desde, self.relay_ultimo_bueno = None, self.ahora()
         self.estado = estado
         self._escribe("estado.json", json.dumps(estado, ensure_ascii=False))
         return True
@@ -575,7 +810,11 @@ class Agente:
             self.enviar()
             caido = self.relay_caido_desde
             nuevo = self.recibir_estado()
-            self.escribir_md(nuevo or caido != self.relay_caido_desde)
+            cambio = nuevo or caido != self.relay_caido_desde
+            if cambio and self.web_nueva:
+                self.a_la_web("vista")
+            self.escribir_md(cambio or self.md_pendiente)     # md_pendiente: lo que trajo el stream del relay
+            self.md_pendiente = False
 
 
 def manejador(agente):
@@ -586,18 +825,160 @@ def manejador(agente):
         def log_message(self, *args):
             pass
 
-        def do_GET(self):
-            if self.path != "/salud":
-                self.send_response(404)
-                self.send_header("Content-Length", "0")
-                self.end_headers()
-                return
-            datos = agente.salud().encode("utf-8")
-            self.send_response(200)
-            self.send_header("Content-Type", "text/plain; charset=utf-8")
+        def _responde(self, codigo, datos=b"", tipo=None, cabeceras=()):
+            self.send_response(codigo)
+            if tipo:
+                self.send_header("Content-Type", tipo)
+            for k, v in cabeceras:
+                self.send_header(k, v)
             self.send_header("Content-Length", str(len(datos)))
             self.end_headers()
-            self.wfile.write(datos)
+            if datos:
+                self.wfile.write(datos)
+
+        def _json(self, codigo, obj):
+            self._responde(codigo, json.dumps(obj, ensure_ascii=False).encode("utf-8"), "application/json; charset=utf-8",
+                           [("Cache-Control", "no-store")])
+
+        def _local(self):
+            """Reglas comunes de M9a (ADR-0010): solo con `web_nueva: sí` (si no, 404, como en M8h); `Host` y, si viene,
+            `Origin` de 127.0.0.1 o localhost con este puerto (403 contra DNS rebinding y otras páginas)."""
+            if not agente.web_nueva:
+                self._responde(404)
+                return False
+            puerto = self.server.server_address[1]
+            locales = {f"127.0.0.1:{puerto}", f"localhost:{puerto}"}
+            origen = self.headers.get("Origin")
+            if (self.headers.get("Host") or "").lower() not in locales or (
+                    origen is not None and origen.lower() not in {"http://" + h for h in locales}):
+                self._json(403, {"error": "origen"})
+                return False
+            return True
+
+        def _con_token(self, consulta):
+            """El token, solo en X-HK-Token. Uno en la query (t=, token=) no vale nunca, ni con la cabecera buena."""
+            q = urllib.parse.parse_qs(consulta, keep_blank_values=True)
+            if "t" in q or "token" in q or not agente.token_valido(self.headers.get("X-HK-Token")):
+                self._json(401, {"error": "token"})
+                return False
+            return True
+
+        def _estatico(self, ruta):
+            """El compilado de hkos/web/nueva/: index.html en / y lo que exista en assets/, sin subcarpetas."""
+            if ruta == "/":
+                fichero, tipo = os.path.join(WEB_NUEVA, "index.html"), "text/html; charset=utf-8"
+            else:
+                m = re.fullmatch(r"/assets/([A-Za-z0-9][A-Za-z0-9._-]*)", ruta)
+                tipo = m and TIPOS_WEB.get(os.path.splitext(m.group(1))[1].lower())
+                if not tipo:
+                    self._responde(404)
+                    return
+                fichero = os.path.join(WEB_NUEVA, "assets", m.group(1))
+            try:
+                with open(fichero, "rb") as f:
+                    datos = f.read()
+            except OSError:
+                self._responde(404)
+                return
+            cabeceras = [("Cache-Control", "no-store"), ("X-Content-Type-Options", "nosniff"),
+                         ("Referrer-Policy", "no-referrer")]
+            if ruta == "/":
+                cabeceras.append(("Content-Security-Policy", CSP_WEB))
+            self._responde(200, datos, tipo, cabeceras)
+
+        def _stream(self):
+            """SSE para la web (api.md §4): `vista` al conectar y cada vez que cambia; `eventos` tal como llegan del
+            relay; `ping` cada 20 s sin nada más."""
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.end_headers()
+            visto, _ = agente.web_esperar(-1, 0)
+
+            def vista():
+                cuerpo = agente.vista_web()
+                if cuerpo is not None:
+                    self.wfile.write(b"event: vista\ndata: " + json.dumps(cuerpo, ensure_ascii=False, separators=(
+                        ",", ":")).encode("utf-8") + b"\n\n")
+            try:
+                vista()
+                self.wfile.flush()
+                while True:
+                    visto, nuevos = agente.web_esperar(visto, PING_S)
+                    if not nuevos:
+                        self.wfile.write(b"event: ping\ndata: \n\n")
+                    hecha = False
+                    for evento, datos in nuevos:
+                        if evento == "vista" and not hecha:        # varias seguidas: con la última basta
+                            vista()
+                            hecha = True
+                        elif evento == "eventos":
+                            self.wfile.write(b"event: eventos\ndata: " + datos + b"\n\n")
+                    self.wfile.flush()
+            except OSError:
+                return
+
+        def do_GET(self):
+            if self.path == "/salud":
+                self._responde(200, agente.salud().encode("utf-8"), "text/plain; charset=utf-8")
+                return
+            if not self._local():
+                return
+            partes = urllib.parse.urlsplit(self.path)
+            ruta = partes.path
+            if ruta == "/" or ruta.startswith("/assets/"):
+                self._estatico(ruta)
+            elif ruta in ("/v1/vista", "/v1/stream"):
+                if not self._con_token(partes.query):
+                    return
+                if ruta == "/v1/stream":
+                    self._stream()
+                    return
+                cuerpo = agente.vista_web()
+                if cuerpo is None:
+                    self._json(503, {"error": "sin estado"})
+                else:
+                    self._json(200, cuerpo)
+            else:
+                self._json(404, {"error": "ruta"})
+
+        def do_POST(self):
+            try:
+                n = int(self.headers.get("Content-Length", "0"))
+            except ValueError:
+                n = -1
+            # Leído antes de cualquier respuesta (en Windows, cerrar sin leer da un RST); lo grande, sin guardarlo.
+            datos = self.rfile.read(n) if 0 <= n <= 16 * ACCION_MAX else None
+            if datos is not None and n > ACCION_MAX:
+                datos = None
+            if not self._local():
+                return
+            partes = urllib.parse.urlsplit(self.path)
+            if partes.path not in ACCIONES:
+                self._json(404, {"error": "ruta"})
+                return
+            # Primero el tipo: un formulario (text/plain, sin la cabecera del token) sale con 415, no con 401.
+            if (self.headers.get("Content-Type") or "").split(";")[0].strip().lower() != "application/json":
+                self._json(415, {"error": "Content-Type"})
+                return
+            if not self._con_token(partes.query):
+                return
+            if n > ACCION_MAX:
+                self._json(413, {"error": "cuerpo"})
+                return
+            try:
+                if datos is None:
+                    raise ValueError
+                cuerpo = json.loads(datos.decode("utf-8"))
+            except (ValueError, UnicodeDecodeError):
+                self._json(400, {"error": "el cuerpo no es JSON", "campo": None})
+                return
+            codigo, obj = agente.accion(partes.path, cuerpo)
+            self._json(codigo, obj)
+
+        def do_OPTIONS(self):
+            """Ningún preflight se autoriza: 405 y ninguna cabecera Access-Control-* (ADR-0010)."""
+            self._responde(405, cabeceras=[("Allow", "GET, POST")])
 
     return Manejador
 
@@ -650,6 +1031,18 @@ def main(argv=None):
                 agente.log(f"wip: error: {ex!r}")
             parar.wait(5)
     threading.Thread(target=publicar, daemon=True).start()
+    if agente.web_nueva:
+        def comprobar_servicios():
+            """M9a: puerto y salud de los servicios propios, en su hilo (una consulta puede tardar 2,5 s)."""
+            while not parar.is_set():
+                try:
+                    agente.ciclo_servicios()
+                except Exception as ex:  # la salud de un servicio no tumba al demonio
+                    agente.log(f"servicios: error: {ex!r}")
+                parar.wait(1)
+        threading.Thread(target=agente.suscripcion.correr, args=(parar,), daemon=True).start()
+        threading.Thread(target=comprobar_servicios, daemon=True).start()
+        agente.log(f"web de trabajo: http://127.0.0.1:{a.puerto}/ (se abre con hk-os web)")
     try:
         while True:
             try:
