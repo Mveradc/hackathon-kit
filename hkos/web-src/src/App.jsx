@@ -18,13 +18,20 @@ function Portada({ children }) {
   return <main className="hk-app"><div className="hk-portada"><span className="hk-producto">Hackathon OS</span>{children}</div></main>;
 }
 
-/** `token`: el de /#t=, solo en memoria. `fetchImpl`: el fetch del navegador (los tests pasan un demonio falso). */
-export function App({ token, fetchImpl }) {
+function textoModo(d) {
+  if (d.modo !== "sondeo") return "";
+  if (d.motivo === "lleno") return " · sin stream: tu demonio no admite más (demasiadas pestañas o clientes abiertos); pidiendo cada 3 s";
+  return " · sin stream, pidiendo cada 3 s";
+}
+
+/** `token`: el de /#t=, solo en memoria. `fetchImpl`: el fetch del navegador (los tests pasan un demonio falso).
+ *  `pestanas`: navigator.locks y BroadcastChannel para leer un solo stream por navegador (null: uno por pestaña). */
+export function App({ token, fetchImpl, pestanas = null }) {
   const [vista, setVista] = useState("cabina");
   const [tema, setTema] = useState(temaInicial);
   const [ocupado, setOcupado] = useState(null);
   const [aviso, setAviso] = useState(null);
-  const d = useDemonio({ token, fetchImpl });
+  const d = useDemonio({ token, fetchImpl, pestanas });
 
   useEffect(() => {
     document.documentElement.dataset.theme = tema;
@@ -83,7 +90,7 @@ export function App({ token, fetchImpl }) {
         <header className="hk-cabecera">
           <div className="hk-cabecera__izq">
             <span className="hk-producto">Hackathon OS</span>
-            <span className="hk-sub">@{d.respuesta.persona}{d.modo === "sondeo" ? " · sin stream, pidiendo cada 3 s" : ""}</span>
+            <span className="hk-sub">@{d.respuesta.persona}{textoModo(d)}</span>
           </div>
           <div className="hk-cabecera__der">
             <Fuentes respuesta={d.respuesta} />

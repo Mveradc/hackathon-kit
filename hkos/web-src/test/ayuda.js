@@ -74,12 +74,14 @@ const respuestaHttp = (status, datos, body) => ({
  *   - `fetchImpl` hace de fetch; guarda cada petición en `peticiones`;
  *   - GET /v1/stream devuelve un stream que el test llena con `vista(r)`, `eventos([…])`, `ping()` o `corta()`;
  *   - GET /v1/vista devuelve `vistaActual`;
- *   - POST /v1/anotar y /v1/reclamar contestan lo que diga `acciones[ruta]` ({status, datos}), por defecto 200.
+ *   - POST /v1/anotar y /v1/reclamar contestan lo que diga `acciones[ruta]` ({status, datos}), por defecto 200;
+ *   - con `streamLleno`, GET /v1/stream contesta 429, como el demonio con todos sus streams ocupados.
  */
-export function demonioFalso({ vistaActual = null, acciones = {} } = {}) {
-  const d = { peticiones: [], streams: [], vistaActual, acciones };
+export function demonioFalso({ vistaActual = null, acciones = {}, streamLleno = false } = {}) {
+  const d = { peticiones: [], streams: [], vistaActual, acciones, streamLleno };
   d.fetchImpl = vi.fn(async (url, init = {}) => {
     d.peticiones.push({ url, ...init, headers: { ...(init.headers || {}) } });
+    if (url === "/v1/stream" && d.streamLleno) return respuestaHttp(429, { error: "demasiados clientes" });
     if (url === "/v1/stream") {
       const s = streamFalso();
       d.streams.push(s);
@@ -95,6 +97,70 @@ export function demonioFalso({ vistaActual = null, acciones = {} } = {}) {
   d.ping = () => ultimo().manda("event: ping\ndata: \n\n");
   d.corta = () => ultimo().cierra();
   return d;
+}
+
+/**
+ * Un navegador falso con varias pestañas del mismo origen: navigator.locks (un cerrojo exclusivo por nombre, que se
+ * concede por orden de llegada y se suelta al resolverse la promesa de quien lo tiene; una petición en espera se
+ * cancela con su `signal`) y BroadcastChannel (entrega asíncrona, copiada con structuredClone, a los demás canales del
+ * mismo nombre, nunca a sí mismo). `pestanas` es lo que espera useDemonio; `duenos(nombre)`, cuántos lo tienen ahora.
+ */
+export function navegadorFalso() {
+  const canales = new Set(), cerrojos = new Map();
+  class Canal {
+    constructor(nombre) {
+      this.nombre = nombre;
+      this.onmessage = null;
+      canales.add(this);
+    }
+    postMessage(m) {
+      for (const c of canales) {
+        if (c !== this && c.nombre === this.nombre) {
+          const copia = structuredClone(m);
+          queueMicrotask(() => canales.has(c) && c.onmessage?.({ data: copia }));
+        }
+      }
+    }
+    close() {
+      canales.delete(this);
+    }
+  }
+  const cola = (nombre) => cerrojos.get(nombre) || cerrojos.set(nombre, { dueno: 0, espera: [] }).get(nombre);
+  const siguiente = (nombre) => {
+    const q = cola(nombre);
+    if (q.dueno || !q.espera.length) return;
+    const p = q.espera.shift();
+    q.dueno = 1;
+    queueMicrotask(async () => {
+      try {
+        p.resolve(await p.cb({ name: nombre, mode: "exclusive" }));
+      } catch (e) {
+        p.reject(e);
+      } finally {
+        q.dueno = 0;
+        siguiente(nombre);
+      }
+    });
+  };
+  const locks = {
+    request: (nombre, opciones, cb) => new Promise((resolve, reject) => {
+      const p = { cb, resolve, reject }, q = cola(nombre);
+      opciones?.signal?.addEventListener("abort", () => {
+        const i = q.espera.indexOf(p);
+        if (i >= 0) {
+          q.espera.splice(i, 1);
+          reject(new DOMException("abortado", "AbortError"));
+        }
+      });
+      q.espera.push(p);
+      siguiente(nombre);
+    }),
+  };
+  return {
+    pestanas: { locks, Canal, huella: async (t) => `h-${t}` },
+    duenos: (nombre) => cola(nombre).dueno,
+    canales: () => canales.size,
+  };
 }
 
 /** El fin de la animación CSS de un paquete o destello. En jsdom, React decide por el estilo del <div> si escucha
