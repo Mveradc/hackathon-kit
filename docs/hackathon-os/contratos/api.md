@@ -337,7 +337,12 @@ Cada conexión con el demonio tiene un plazo de socket de 10 s (tras congelar, 2
   5. `write-tree` y `commit-tree -p origin/main -m "Criterio: <papel> · <primeros 50 caracteres de que_dijo>"`, con la identidad de git del clon y sin coautoría;
   6. `git push --no-verify origin <sha>:refs/heads/main`.
 
-  Si el push se rechaza por no ser avance rápido, repite una vez desde el paso 1. Si vuelve a fallar, `409` y la web lo dice. Nunca hay merge, rebase, checkout ni stash en la copia. Mismo entorno de git sin preguntas que el publicador de M8g (`GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`, `GIT_ASKPASS` vacío, `ssh -o BatchMode=yes`, `credential.interactive=false`).
+  Si el push se rechaza por no ser avance rápido, repite una vez desde el paso 1. Si vuelve a fallar, `409` y la web lo dice.
+  - «Se rechaza por no ser avance rápido» (tras congelar, 2026-10-17, PR #16, issue #10) es lo que dice la línea `!` de `refs/heads/main` en la salida de `push --porcelain`; el stderr no se mira. Cuenta como carrera `[rejected] …` o `[remote rejected] (failed to update ref | failed to lock | cannot lock ref … | incorrect old value … | reference already exists)`. Cualquier otro rechazo (por ejemplo, un hook que lo rechaza) da `502` sin reintento.
+  - Los motivos del remoto también salen con su disco lleno o con un `main.lock` huérfano, así que el reintento comprueba tras su `fetch` que `origin/main` ya no es el padre del commit rechazado (con cualquiera de los motivos de carrera). Si no se ha movido, no era una carrera: `502` con el motivo, sin volver a subir.
+  - Cada orden de git tiene un plazo de 60 s. Pasado, se mata el árbol de procesos entero (`taskkill /F /T` en Windows; en Linux y macOS, su grupo de procesos con `SIGKILL`) y da `502 {"error":"git <orden>: sin respuesta en 60 s"}`.
+
+  Nunca hay merge, rebase, checkout ni stash en la copia. Mismo entorno de git sin preguntas que el publicador de M8g (`GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`, `GIT_ASKPASS` vacío, `ssh -o BatchMode=yes`, `credential.interactive=false`).
 - **Después:** no emite evento ni avisa por GitHub. Los demás la ven en novedades cuando el relay hace su fetch, y la propia persona, en el siguiente `git pull`.
 
 **Reclamar** (`POST /v1/reclamar`):
