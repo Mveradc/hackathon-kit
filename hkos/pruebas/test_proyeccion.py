@@ -135,6 +135,41 @@ class Markdown(unittest.TestCase):
         self.assertNotIn("@persona-b (B)", md)                  # la propia persona no va en «Equipo»
         self.assertTrue(md.endswith("## Detalle\nRuta: C:/r/.git/hackathon/os/estado.json\n"))
 
+    def test_novedad_larga_no_sale_de_sus_comillas(self):
+        """Nota del PR #16: el recorte a 110 se comía la » de dentro y el autor quedaba dentro de la « de fuera."""
+        def cierre(linea):
+            """Lo que va detrás de la » que cierra la primera «; None si no se cierra."""
+            dentro, prof = linea[linea.index("«"):], 0
+            for i, c in enumerate(dentro):
+                prof += (c == "«") - (c == "»")
+                if prof == 0:
+                    return dentro[i + 1:]
+            return None
+
+        largo = "Ana (jurado): «" + "x" * 300 + "»"
+        casos = [(largo, "@persona-a"),                                       # la » de dentro, más allá del recorte
+                 (largo[:200], "@persona-a"),                                 # el relay ya la cortó (resumen[:200])
+                 ("«a «b «c " + "y" * 200, "@persona-a"),                    # varias abiertas
+                 ("fuera» » de más «dentro", "@persona-a ↔ @persona-b"),     # » sin su « (no cierra la de fuera)
+                 ("corto «y» bien", "@" + "p" * 59),                          # autor largo (≤ 60 en el relay)
+                 ("x" * 300, None)]
+        for resumen, autor in casos:
+            n = {"tipo": "criterio", "resumen": resumen, "observado_en": "2026-11-20T10:05:00Z"}
+            if autor:
+                n["autor"] = autor
+            linea = p.linea_novedad(n, timezone.utc)
+            self.assertLessEqual(len(linea), p.LINEA_MAX + 2, linea)
+            self.assertEqual(cierre(linea), f" ({autor})" if autor else "", linea)
+        self.assertEqual(p.linea_novedad({"tipo": "criterio", "resumen": largo, "autor": "@persona-a",
+                                          "observado_en": "2026-11-20T10:05:00Z"}, timezone.utc),
+                         "- 10:05 · criterio · «Ana (jurado): «" + "x" * 94 + "…»» (@persona-a)")
+        self.assertEqual(p.linea_novedad({"tipo": "decision", "resumen": "fuera» » de más «dentro",
+                                          "observado_en": "2026-11-20T10:05:00Z"}, timezone.utc),
+                         "- 10:05 · decisión · «fuera de más «dentro»»")
+        self.assertEqual(p.linea_novedad({"tipo": "decision", "resumen": "#12: vale «así»", "autor": "@a ↔ @b",
+                                          "observado_en": "2026-11-20T10:05:00Z"}, timezone.utc),
+                         "- 10:05 · decisión · «#12: vale «así»» (@a ↔ @b)")
+
     def test_reservas_de_otras_personas_seccion_firma_y_tsv(self):
         """M8g (K-73): la sección «Reservas» y reservas.tsv solo llevan las de las demás; la firma no lleva horas."""
         e = estado_base()

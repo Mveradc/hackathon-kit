@@ -194,6 +194,22 @@ def _linea(texto):
     return _corta(" ".join(texto.split()), LINEA_MAX)
 
 
+def _entrecomilla(texto, n):
+    """«texto», recortado a n caracteres antes de entrecomillarlo y con sus comillas de dentro equilibradas: una » sin
+    su « se quita y cada « que el recorte deja abierta se cierra antes de la » de fuera. Así el texto nunca sale de sus
+    comillas ni se lleva dentro lo que va detrás, como el autor (constitución V, nota del PR #16)."""
+    salida, prof = [], 0
+    for c in _corta(" ".join(texto.split()), n):
+        if c == "»":
+            if not prof:
+                continue
+            prof -= 1
+        elif c == "«":
+            prof += 1
+        salida.append(c)
+    return "«" + "".join(salida) + "»" * prof + "»"
+
+
 def _cuando(x, ahora, tz, vieja_s=None):
     viejo = vieja_s is not None and _edad(x["observado_en"], ahora) > vieja_s
     return f"{_hora(x['observado_en'], tz)} · {x['fuente']}" + (" · viejo" if viejo else "")
@@ -248,8 +264,16 @@ def linea_servicio(x, tz):
 
 def linea_novedad(n, tz):
     tipo = {"decision": "decisión", "criterio": "criterio", "escalado": "escalado"}.get(n.get("tipo"), n.get("tipo", ""))
-    autor = f" ({n['autor']})" if n.get("autor") else ""
-    return "- " + _linea(f"{_hora(n['observado_en'], tz)} · {tipo} · «{_corta(n.get('resumen', ''), 110)}»{autor}")
+    cabeza = " ".join(f"{_hora(n['observado_en'], tz)} · {tipo} ·".split()) + " "
+    autor = f" ({' '.join(n['autor'].split())})" if n.get("autor") else ""
+    # El resumen se recorta (110 como mucho) para que la línea entera, con sus comillas y el autor, quepa en LINEA_MAX:
+    # si la cortara _linea, se perdería la » de fuera y el autor.
+    sitio, largo = LINEA_MAX - len(cabeza) - len(autor), 110
+    cita = _entrecomilla(n.get("resumen", ""), largo)
+    while len(cita) > sitio and largo > 1:
+        largo -= 1
+        cita = _entrecomilla(n.get("resumen", ""), largo)
+    return "- " + _linea(cabeza + cita + autor)
 
 
 def linea_persona(p, v, tz):
