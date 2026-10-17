@@ -148,7 +148,7 @@ class Novedades:
         self.repo, self.umbral_s, self.reloj, self.git = repo, umbral_s, reloj, git
         self.lista, self.ultimo_ok, self.fallando = [], None, False
         self.contratos, self.aviso, self._avisados = [], aviso, set()
-        self.web_nueva, self.servicios, self._versiones = web_nueva, None, {}
+        self.web_nueva, self.servicios, self._versiones, self._crea = web_nueva, None, {}, (None, None)
 
     def _leer(self, ruta):
         for ref in ("refs/remotes/origin/main", "HEAD"):
@@ -164,6 +164,40 @@ class Novedades:
             return None
         return servicios_mod.decodificar(r.stdout) if r.returncode == 0 else None
 
+    def _creacion(self, ref):
+        """El sha del commit que creó servicios.md, solo si se sabe con certeza; si no, None (y ninguna fila es de
+        /hack-scaffold, ADR-0011). Sin la simplificación de historia de `git log` (un merge que deja el fichero igual
+        al de una rama esconde la otra) ni rename: en toda la historia de `ref` tiene que haber un único commit en el
+        que el fichero está y no está en ninguno de sus padres, con como mucho un padre y sin venir de un renombrado.
+        Dos (una rama sin ancestro común con el scaffold, un fichero borrado y vuelto a crear) ya son la duda."""
+        punta = self.git(self.repo, "rev-parse", "--verify", "-q", ref)
+        if punta is not None and self._crea[0] == punta:
+            return self._crea[1]
+        self._crea = (punta, self._nacimiento(ref))
+        return self._crea[1]
+
+    def _nacimiento(self, ref):
+        log = self.git(self.repo, "log", "--full-history", "-m", "--no-renames", "--diff-filter=A", "--format=%H",
+                       ref, "--", SERVICIOS)
+        if log is None:
+            return None
+        nacen = []
+        for sha in dict.fromkeys(log.split()):            # con -m, un merge sale una vez por padre
+            padres = self.git(self.repo, "log", "-1", "--format=%P", sha)
+            if padres is None:
+                return None
+            padres = padres.split()
+            if all(self.git(self.repo, "cat-file", "-e", f"{p}:{SERVICIOS}") is None for p in padres):
+                nacen.append((sha, padres))
+        if len(nacen) != 1 or len(nacen[0][1]) > 1:
+            return None
+        sha, padres = nacen[0]
+        if padres:
+            cambios = self.git(self.repo, "diff-tree", "-r", "-M", "--name-status", "--no-commit-id", padres[0], sha)
+            if cambios is None or any(l.startswith("R") and l.split("\t")[-1] == SERVICIOS for l in cambios.splitlines()):
+                return None
+        return sha
+
     def _leer_servicios(self, autoridad, contratos):
         """Lo de origin/main que necesita servicios.calcular, o None sin servicios.md."""
         ref = next((r for r in ("refs/remotes/origin/main", "HEAD")
@@ -171,8 +205,9 @@ class Novedades:
         texto = self._texto(ref, SERVICIOS) if ref else None
         if texto is None:
             return None
-        log = self.git(self.repo, "log", "--reverse", "-n", str(SERVICIOS_COMMITS), "--format=%H %ct", ref, "--",
-                       SERVICIOS) or ""
+        log = self.git(self.repo, "log", "--full-history", "--reverse", "-n", str(SERVICIOS_COMMITS), "--format=%H %ct",
+                       ref, "--", SERVICIOS) or ""
+        crea = self._creacion(ref)
         versiones, cuando = [], None
         for linea in log.splitlines():
             partes = linea.split()
@@ -183,7 +218,7 @@ class Novedades:
                 padres = (self.git(self.repo, "log", "-1", "--format=%P", sha) or "").split()   # los padres reales
                 self._versiones[sha] = {"sha": sha, "textos_padres": [self._texto(p, SERVICIOS) for p in padres],
                                         "texto": self._texto(sha, SERVICIOS) or ""}
-            versiones.append(self._versiones[sha])
+            versiones.append(dict(self._versiones[sha], crea=sha == crea))
         rutas = (self.git(self.repo, "ls-tree", "-r", "--name-only", ref) or "").splitlines()[:RUTAS_MAX]
         return {"texto": texto, "versiones": versiones, "rutas": rutas, "autoridad": autoridad, "contratos": contratos,
                 "observado_en": iso_us(float(cuando)) if cuando else iso_us(self.reloj())}
@@ -502,7 +537,7 @@ class Relay:
         del último `arbol` de cada actor."""
         sha_persona = servicios_mod.personas_de_commits(eventos)
         shas = tuple(v["sha"] for v in leido["versiones"])
-        clave = (shas, tuple(sha_persona.get(s) for s in shas))
+        clave = (shas, tuple(v.get("crea") for v in leido["versiones"]), tuple(sha_persona.get(s) for s in shas))
         if clave != self._conf_clave:
             self._conf_clave, self._conf = clave, servicios_mod.confirmaciones(leido["versiones"], sha_persona)
         comprobados, pruebas, arboles = {}, {}, {}
