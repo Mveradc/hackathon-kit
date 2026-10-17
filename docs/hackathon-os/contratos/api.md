@@ -271,6 +271,7 @@ Colisiones (M8g): las calcula `modelo.calcular` con `hkos/colisiones.py` y `hkos
 
 ### Web de trabajo (M9a; solo con `web_nueva: sí`; ADR-0009, ADR-0010, ADR-0011)
 **Token local.** Al arrancar, si no existe, el demonio crea `<git común>/hackathon/os/web.token` con 32 bytes aleatorios en hex (`secrets.token_hex(32)`). Se reutiliza en cada arranque y se compara en tiempo constante. `hk-os web` lo lee, comprueba el demonio por `/salud` (si no responde, lo dice y no abre nada) y abre `http://127.0.0.1:<puerto>/#t=<token>` en el navegador (`webbrowser`). También imprime la URL **sin** el token y cómo volver a abrirla.
+- **Fuera de Windows** (Linux y macOS; tras congelar, 2026-10-17, PR #11: otros usuarios ven los argumentos de cualquier proceso en `/proc/*/cmdline` o con `ps`, issue #6), el navegador no recibe la URL con el token. `hk-os web` escribe `<git común>/hackathon/os/web.html`, con permisos 0600 desde que se crea (temporal con `O_CREAT|O_EXCL` y `os.replace`), una página que redirige a la URL con el token (`meta refresh` y un enlace, `referrer` `no-referrer`), y al navegador solo le pasa `file:///…/web.html`. Si no hay navegador, dice qué fichero abrir a mano, sin imprimir el token. En Windows no cambia nada: la línea de órdenes de un proceso de otro usuario solo la leen los administradores.
 
 **Reglas comunes a todas las rutas de M9a** (no a `/salud`):
 - **`Host`** igual a `127.0.0.1:<puerto>` o `localhost:<puerto>`; si no, `403` (contra DNS rebinding).
@@ -441,6 +442,7 @@ Inyección (scripts/os/delta.sh):
 | Refs de trabajo en curso | `refs/hackathon/wip/<persona>` en el remoto (opt-in) | Refs, no ramas |
 | `servicios.md` (M9a, §10) | `.hackathon/` | Sí |
 | `web.token` (token local de la web), `acciones.jsonl` (las acciones de la web, solo crece), `nota.index` (el índice temporal de Anotar), `servicios.json` (lo último que emitió el demonio por `clave`), `entregado/accion-<id>` (directorio: la acción ya la entregó un monitor) (M9a) | `<git común>/hackathon/os/` | No |
+| `web.html` (fuera de Windows: la página 0600 que redirige a la web con el token; la escribe `hk-os web`, §4, y `hk-os recoger` la deja fuera, como `web.token`) (tras congelar, 2026-10-17, PR #11) | `<git común>/hackathon/os/` | No |
 | La web nueva: fuente y compilado (M9a) | `hkos/web-src/` y `hkos/web/nueva/` del plugin | Sí (el compilado también: nadie instala Node) |
 
 `<git común>` (`git rev-parse --git-common-dir`) es compartido entre la copia principal y todos los worktrees de esa persona, así que los hooks de los workers leen y escriben lo mismo que los de la sesión principal. El estado propio de los scripts del buzón sigue en `<git dir>/hackathon/` como en la 0.3.2.
