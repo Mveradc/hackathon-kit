@@ -561,16 +561,24 @@ Fuera de servicios: docs/, README.md, CLAUDE.md
 **Lectura:**
 - Secciones por su título exacto (`## Servicios`, `## Conexiones`, `## Propuestas de servicios`, `## Propuestas de conexiones`); el orden no importa, y las de propuestas pueden faltar. Se toleran BOM, UTF-16 y `\r` (como `hk_leer`).
 - Filas: las líneas que empiezan por `|`, menos la cabecera y la de guiones. Las celdas se separan por `|` sin escapar y se recortan. Una celda vacía o `—` es «sin valor».
-- **Nombre:** `[a-z0-9][a-z0-9_-]{0,39}`, único.
+- **Nombre:** `[a-z0-9][a-z0-9_-]{0,39}`, único. Con un nombre repetido, ni sus filas ni las conexiones que lo usan salen confirmadas, y los dueños de esas conexiones son los de todas las filas con ese nombre (tras congelar, 2026-10-17, PR #7, issue #2, hallazgo 4).
 - **Carpeta:** relativa, con `/` al final, sin `..` ni `/` al principio.
 - **Puerto:** entero de 1 a 65535, o sin valor.
 - **Arranque** y **Prueba:** texto (≤ 300), con o sin comillas invertidas alrededor. El OS **nunca** los ejecuta.
-- **Salud:** sin valor, o una ruta `^/[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*$` sin `..` y sin `//` al principio (ADR-0011).
+- **Salud:** sin valor, o una ruta `^/[A-Za-z0-9._~!$&'()*+,;=:@%/?-]*$` sin `..` y sin `//` al principio (ADR-0011), tampoco después de descodificar los `%XX` (`%2e%2e`, `%2f%2f`, `%252e`), hasta 5 veces; si aún cambia tras la quinta, no vale (tras congelar, 2026-10-17, PR #7, issue #2, hallazgo 13).
 - **Dueño:** `@usuario` de la tabla de `coordinacion.md`, o sin valor si aún no hay reparto (`/hack-scaffold` corre antes que `/hack-plan`). Sin valor, el dueño es el de `autoridad.md` y no hay desajuste; un `@usuario` distinto del de `autoridad.md` sí lo es (ADR-0011).
 - **De** y **A:** nombres de servicios de `## Servicios`.
 - **Contrato:** el título de un bloque `##` de `docs/contratos.md`, sin `##`.
 - **Propuestas:** el mismo formato que su tabla (Servicios o Conexiones), con las mismas reglas por campo, más **Autor** (`@usuario`) y **Hora** (`AAAA-MM-DD HH:MM`), que son declarados (dato).
 - `Fuera de servicios:` es una sola línea, con rutas separadas por comas (una carpeta acaba en `/`). Siempre están fuera, aunque no se escriban, `.hackathon/`, `.claude/`, `.github/` y los ficheros de la raíz que empiezan por `.`.
 - **Mal formado** (una sección con una fila que no se puede partir, o dos servicios con el mismo nombre): `servicios.fichero` = `mal formado`, con la línea en el detalle. Las filas buenas se siguen mostrando y las malas salen como desajuste `formato_invalido`. Un campo que no vale en una fila buena (Puerto, Salud, Carpeta) también es `formato_invalido`, y esa fila no se consulta.
+- **Una fila que no vale** (tras congelar, 2026-10-17, PR #7, issue #2, hallazgo 6): con algún campo que no vale, la fila (servicio o conexión) queda `sin_confirmar`, y en `servicios.lista` un Puerto o una Salud que no valen van como `null`. El motivo sigue en el desajuste `formato_invalido`, con la `clave` de la fila. `lista` no tiene otra marca de «fila que no vale» (el esquema no la admite).
 
 **Clave de una fila:** los 12 primeros hex del sha256 del JSON de sus campos normalizados, en el orden de su tabla: Servicios = nombre, carpeta, puerto, arranque, salud, dueño; Conexiones = de, a, contrato, prueba. Normalizar es recortar, quitar las comillas invertidas de alrededor y pasar `—` a `null`. Una fila de Propuestas tiene la clave de la fila que propone: la de sus columnas sin Autor ni Hora. La confirmación (quién añadió cada clave, qué dueños hacen falta) es la de ADR-0011.
+
+**Historia que lee el relay** (tras congelar, 2026-10-17, PR #7, issue #2, hallazgos 1, 5 y 9):
+- las versiones del fichero salen de `git log --full-history` (hasta 200 commits), sin la simplificación de historia de `git log`;
+- **el commit que creó el fichero** se busca en toda la historia de `origin/main` (`git log --full-history -m --no-renames --diff-filter=A`): tiene que haber **uno solo** en el que el fichero está y no está en ninguno de sus padres, con como mucho un padre y que no venga de un renombrado (`diff-tree -M`). Si no (una rama sin ancestro común con el scaffold, un fichero borrado y vuelto a crear, un merge que lo crea, un renombrado), ninguna fila es de `/hack-scaffold`;
+- además, ese commit tiene que estar entre los 200 que se leen y ser el único de ellos sin el fichero en sus padres: con más de 200 commits en el fichero, ninguna fila es de `/hack-scaffold`;
+- de ese commit solo cuentan como de `/hack-scaffold` las filas de `## Servicios` y `## Conexiones`, no las de Propuestas;
+- un sha que emiten como `commit` demonios de personas distintas no se atribuye a nadie, sea cual sea el orden de llegada.
