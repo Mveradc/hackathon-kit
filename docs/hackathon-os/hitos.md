@@ -2,7 +2,7 @@
 
 Cada hito construye solo lo que exige su validación (regla del kit). Un hito se cierra cuando se cumplen sus criterios, se anota el resultado en `evals/coordinacion/prueba.md` (sección «M8x») y el detalle en `docs/historial.md`. Entre paréntesis, los requisitos que cubre.
 
-Dependencias: `M8.0 → M8a → M8b → (M8c ∥ M8d) → M8e → M8f → M8g → M8h`. M8c y M8d se pueden hacer en paralelo una vez congelados los contratos.
+Dependencias: `M8.0 → M8a → M8b → (M8c ∥ M8d) → M8e → M8f → M8g → M8h (fase 1) → M9a → M8h (fases 2 y 3)` (M9a se adelanta al ensayo por decisión del usuario, 2026-10-17). M8c y M8d se pueden hacer en paralelo una vez congelados los contratos.
 
 Corte para una versión reducida: con M8a–M8f hay OS (estado común sin colisiones). M8g es el diferencial. M8h es obligatorio antes de usarlo con un equipo real.
 
@@ -138,15 +138,52 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 
 ---
 
+## M9a · Web de trabajo, nivel A (R-33; ADR-0009, ADR-0010, ADR-0011)
+Abierto el 2026-10-17 por decisión del usuario: se construye **antes** de la fase 2 de M8h (el ensayo), para ensayar con ella. M8h sigue abierto: su fase 2 (ensayo) y su fase 3 (K-84, criterio 6, 0.4.0) van detrás de M9a. Plan aprobado: `C:/Users/mvera/.claude/plans/streamed-sparking-teacup.md`. Diseño: `docs/hackathon-os/diseno-web/` (sistema y cuatro pantallas).
+
+**Alcance (cerrado por el usuario)**
+- Web en React + Vite detrás de `web_nueva:` en `os.md`. El fuente, en `hkos/web-src/`; el compilado, subido en `hkos/web/nueva/`. Nadie instala Node (VII); sin CDN y con las fuentes dentro del repo (VIII). Con el interruptor apagado, todo sigue como hoy y la web clásica del relay es el respaldo.
+- La sirve el demonio de cada persona en `127.0.0.1` (ADR-0010). Cuatro vistas sobre el `estado.json` actual: red (grafo del equipo), tablero por persona, cabina personal (por defecto) y servicios. Respeta el sistema de diseño (tokens, componentes, color por procedencia, latidos).
+- La animación dice la verdad: un paquete por arista solo con un evento real del relay (SSE `eventos`); lo viejo, gris, discontinuo y quieto; `prefers-reduced-motion` respetado.
+- `.hackathon/servicios.md` (ADR-0011): lo genera `/hack-scaffold`; el demonio del dueño comprueba puerto y salud; el resultado de la Prueba de cada conexión se lee cuando alguien la corre (el OS no la ejecuta). Los desajustes salen en la vista; un cambio hecho fuera del portátil del dueño sale «declarado, sin confirmar».
+- Dos acciones, y solo dos: **Anotar** (el demonio añade la nota a `criterios.md` de `origin/main` con autor y hora, commit y push, sin modelo y sin tocar la copia de la persona) y **Reclamar** (asigna el issue con el `gh` de la persona y deja una línea para su monitor, que abre un turno con texto fijo).
+- Fuera: confirmar desde la web, botones de commit y push, nivel B. Lo que las pantallas enseñan y queda fuera se pinta como texto, no como botón.
+
+**Criterios de validación**
+1. Con `web_nueva: no`, todo como hoy: `hkos/pruebas`, `prueba_hooks.py`, `igualdad.py`, `robustez.py` y `colisiones_vivo.py` en verde; el demonio da 404 en `/`, el relay no emite `eventos` y `prueba.sh` no escribe; `comprobar.py` sin regresiones con un reto, sin coordinación.
+2. Sin Node ni CDN para quien la usa: `web_vivo.py` carga todo desde el demonio y no encuentra ninguna URL externa en `hkos/web/nueva/`; el CI recompila y el diff con lo subido sale vacío; `claude plugin validate .` pasa.
+3. Cuatro vistas, cabina por defecto: Vitest pinta G1–G6 y G12, y cada estado, dueño, colisión, antigüedad y desajuste sale en el DOM igual que en la vista; `igualdad.py` (vista del demonio, `estado-equipo.md` y MCP) coincide también en servicios (ADR-0009).
+4. La animación dice la verdad: con temporizadores falsos, sin eventos no hay paquetes; N ids dan N paquetes y un id repetido, ninguno; con `reduced-motion`, ninguno; presencia vieja o relay caído dejan la arista `stale` y quieta; sin nada del demonio en `umbral_viejo_s`, toda la página sale «sin conexión», gris y quieta, con la hora del último dato. En vivo (`web_vivo.py`), 5 eventos del simulador llegan a la web del demonio en ≤ 2 s y ninguno más en 60 s.
+5. Servicios (`servicios_vivo.py`, remoto `bare` y dos clones), cada caso en ≤ 30 s: puerto declarado sin respuesta; fichero fuera de todo servicio; Prueba corrida y fallando (con comando, procedencia y antigüedad); fila cambiada por otra persona, «declarado por @x, sin confirmar», y confirmada al pasarla su dueño desde Propuestas; comando de Prueba cambiado, sin confirmar; sha reescrito, sin confirmar y nunca confirmado; fila añadida por un worker de su dueño, confirmada; Salud que no es una ruta (`http://…`, `/../`), desajuste y sin consulta.
+6. Seguridad (`acciones_seguridad.py`): un token en la query no vale (401); una acción sin token da 401; con `Host` u `Origin` ajenos, 403; como formulario `text/plain`, 415; `OPTIONS` no da cabeceras CORS; el relay no tiene rutas de acción y el demonio solo escucha en `127.0.0.1`.
+7. Anotar (dos clones y el sandbox): la nota llega a `criterios.md` de `origin/main` con autor, hora y «Anotado por»; `git status` y el índice de la persona no cambian; la otra persona la ve en novedades en ≤ 60 s; sin coautoría; una entrada con salto de línea o `#` sale saneada; con un push rechazado (otra nota subida antes), reintenta una vez sobre el `origin/main` nuevo y las dos notas quedan; si vuelve a fallar, la web lo dice y la copia de la persona no cambia.
+8. Reclamar (sandbox, @hk-persona-b): el issue queda asignado con su `gh` y la tarea sale «reclamada · declarado (web)»; una tarea de otro dueño se rechaza; sin GitHub, solo el evento; la sesión interactiva de esa persona recibe **un** turno con el texto fijo (prueba interactiva del usuario).
+9. Cadena: `/hack-scaffold` con el reto 03 y la coordinación genera un `servicios.md` que `hkos/servicios.py` lee sin errores de formato; el `autoridad.md` de `/hack-plan` lleva la regla de servicios; `comprobar.py` sin regresiones.
+
+*Nota (M9a, decisiones del usuario al abrirlo y al revisar los ADR, 2026-10-17):*
+- **Fases**, cada una enseñada al usuario antes de seguir: K-90 y K-91 (Paso 0, ADR y contratos); K-92–K-97 (servidor y datos); K-98 (web); K-99 (validación con modelo y en sandbox).
+- **Servicios iniciales:** las filas del commit que crea `servicios.md` cuentan como «de /hack-scaffold», confirmadas (ADR-0011).
+- **Precisiones de la revisión** (en los ADR):
+  - el token nunca va en la query; la página lo quita de la URL al leerlo y lo guarda solo en memoria; `/v1/stream` se lee con `fetch` (ADR-0010);
+  - si el push de Anotar se rechaza, reintenta una vez sobre el `origin/main` nuevo y, si falla, lo dice en la web, sin merge en la copia (ADR-0010; criterio 7);
+  - sin datos del demonio en `umbral_viejo_s`, toda la página pasa a «sin conexión» (ADR-0009; criterio 4);
+  - Salud solo admite una ruta que empieza por `/` (ADR-0011; criterio 5).
+- **Orden de recorte si el 28 de octubre va con retraso:**
+  1. Primero, la confirmación por commits: `servicios.md` se pinta todo como «declarado», y los desajustes de puerto, salud y contrato siguen. Sale del criterio 5 la parte de confirmación.
+  2. Después, la vista de tablero: quedan la cabina, la red y los servicios.
+
+  **No se recortan:** el respaldo de la web clásica, la seguridad de ADR-0010 y las dos acciones.
+
+---
+
 ## Después del M8 (Pendiente)
-- **Web de trabajo (nivel A).** Cubre R-33 y va más allá: la web pasa a ser donde se trabaja y la terminal se usa lo menos posible, porque es donde más cosas se rompen por accidente. Claude Code sigue abierto en la terminal o el IDE de cada persona; la web es su mando.
-  - **Rediseño en React + Vite, detrás de un interruptor.** El código fuente, en su propia carpeta; el compilado, subido en `hkos/web/`, para que nadie instale Node (principio VII). Sin CDN: todo dentro del repo (principio VIII; en un evento puede haber solo LAN). Necesita un ADR que reformule el principio IV («misma fuente y mismos campos» en lugar de «mismo código») y una prueba de igualdad web/md como la de `simulador/igualdad.py`.
-  - **Reclamar una tarea desde la web** y que la sesión de esa persona se ponga con ella. Camino propuesto: clic → demonio local de la persona (asigna el issue con su `gh`) → línea para su monitor → el monitor abre un turno con un texto fijo («reclamada T12 desde la web»), o la tarea pasa a su orquestador si está activo. Reutiliza el mecanismo de la roja, comprobado con `interactivo.py`. Respeta `autoridad.md` y `hk confirmo` (R-33).
-  - **Notas desde la web**, con la misma propagación que `/hack-note`: el demonio añade la nota a `criterios.md` con autor y hora, hace commit y push y avisa por el relay, sin modelo. Por decidir: si `/hack-note` hace algo con el modelo y, si lo hace, si eso se pierde o se hace después.
+- **Web de trabajo (nivel A).** La primera parte es M9a (arriba): React + Vite, cuatro vistas, `servicios.md`, Anotar y Reclamar. Queda para después:
   - **Botones para las operaciones de terminal que se rompen** (commit y push de `.hackathon/`, `hk-os unir`, confirmar). Cada botón ejecuta un comando ya comprobado; nada de comandos libres.
-  - **Seguridad, en un ADR que amplíe el principio V y ADR-0008.** Las acciones solo van de la web de una persona a **su** demonio, en `127.0.0.1`, con token local y protección contra peticiones de otras páginas del navegador. Nunca por el relay: con el token del equipo, cualquiera podría poner a trabajar al Claude de otro. El texto que llega a la sesión es fijo, y el contenido de los issues sigue siendo dato entrecomillado. Lo que se hace desde la web se muestra como declarado, no derivado (principio II), y cuenta para el tope de 60 escrituras por hora a GitHub (R-30).
+  - **Confirmar desde la web** (lo que hoy es `hk confirmo` o pasar una fila de Propuestas en `servicios.md`), con las reglas de seguridad de ADR-0010.
+  - **El resultado de la Prueba desde CI** (ADR-0011: en M9a solo se ve lo que corre una sesión de Claude Code).
+  - **Que Reclamar pase la tarea al orquestador** si está activo (en M9a, el turno lo abre el monitor de la sesión).
   - **Nivel B, solo como idea (fuera de alcance por ahora):** la web como cabina, con el demonio lanzando sesiones en segundo plano (`claude -p` o el Agent SDK) por tarea y worktree; permisos, preguntas, gasto y fallos, en la web. Es lo que hace Vibe Kanban; el kit se diferencia por la sincronización del equipo. Se replantea cuando el nivel A esté probado.
-  - **Orden:** después del ensayo y de la 0.4.0. Qué botones van primero lo decide lo que mida el ensayo (sección 7 de `evals/coordinacion/ensayo/hoja.md`, idas a la terminal).
+  - **Orden:** después del ensayo y de la 0.4.0. Qué botones van primero lo decide lo que mida el ensayo (sección 7 de `evals/coordinacion/ensayo/hoja.md`, idas a la terminal), que se hace ya con la web de M9a.
 - Nivel 2b con Mergiraf (R-34).
 - Vista de jurado: cobertura de `criterios.md` por tareas y evidencias (R-35).
 - Ruta crítica y riesgo de entrega (R-36).

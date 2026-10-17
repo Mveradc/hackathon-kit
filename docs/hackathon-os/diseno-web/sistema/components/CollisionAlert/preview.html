@@ -1,0 +1,15 @@
+<!-- @dsCard group="Datos" height=240 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>CollisionAlert</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var K = window.HkOS, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'grid',gap:'10px',padding:'16px'}},
+  h(K.CollisionAlert,{severity:'rojo',level:3,path:'motor/api.py',contract:'motor → web',people:['ana','luis'],age:'hace 20 s',
+    actions:[h(K.Button,{key:1,variant:'primary'},'Ver diff'),h(K.Button,{key:2},'Avisar a @luis')]}),
+  h(K.CollisionAlert,{severity:'amarillo',level:1,path:'web/src/',people:['marta'],age:'reserva de @marta · hace 3 min'})));
+</script>
+</body>
+</html>

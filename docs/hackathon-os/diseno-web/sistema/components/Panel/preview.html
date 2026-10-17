@@ -1,0 +1,14 @@
+<!-- @dsCard group="Layout" height=200 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Panel</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var K = window.HkOS, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'24px',padding:'16px'}},
+  h(K.Panel,{title:'Tareas', meta:'14/31'}, h('span',{className:'hk-meta'},'contenido del panel')),
+  h(K.Panel,{title:'Colisiones', meta:'1 abierta', tone:'fail'}, h('span',{className:'hk-meta'},'un rojo abierto: el borde late'))));
+</script>
+</body>
+</html>

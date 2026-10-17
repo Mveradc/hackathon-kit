@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Hackathon OS · Tablero por persona</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/hkos/tokens.css">
+<link rel="stylesheet" href="ds/hkos/components/bundle.css">
+<script src="ds/hkos/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Space+Grotesk:wght@500;600&amp;display=swap">
+<style>
+body{margin:0;background:#05070d}
+a{color:#22d3ee}a:hover{color:#67e8f9}
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="min-height: 1040px; background: var(--void); color: var(--ink); font-family: var(--font-sans); box-sizing: border-box; padding: 28px 32px 40px;">
+<div style="max-width: 1376px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px;">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
+<div style="display: flex; align-items: center; gap: 20px; flex-wrap: wrap;">
+<span style="font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Hackathon OS</span>
+<div style="display: flex; align-items: center; gap: 10px;">
+<span style="font-family: var(--font-mono); font-size: 13px; color: var(--ink-muted);">14/31</span>
+<div style="width: 180px; height: 4px; border-radius: 999px; background: var(--surface-200);"><div style="width: 45%; height: 4px; border-radius: 999px; background: var(--state-ok);"></div></div>
+<span style="font-size: 12px; color: var(--ink-muted);">próximo hito: <span style="color: var(--relay); font-weight: 600;">Demo mínima, 14:00</span></span>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="relay" age="hace 2 s"></x-import>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="github" age="hace 40 s"></x-import>
+<span style="font-family: var(--font-mono); font-size: 13px;">T−17:42</span>
+</div>
+</header>
+
+<div role="alert" style="display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--state-fail); background: var(--fail-soft);">
+<x-import component-from-global-scope="HkOS.StatusPulse" state="fail" label="Colisión roja · nivel 3"></x-import>
+<span style="font-family: var(--font-mono); font-size: 13px;">motor/api.py</span>
+<span style="font-size: 13px; color: var(--ink-muted); flex: 1 1 260px;">@ana y @luis tocan el contrato «motor → web» a la vez · hace 20 s</span>
+<div style="display: flex; gap: 8px;">
+<x-import component-from-global-scope="HkOS.Button" variant="primary">Ver diff</x-import>
+<x-import component-from-global-scope="HkOS.Button">Avisar a @luis</x-import>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start;">
+<div style="flex: 999 1 820px; min-width: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 16px; align-items: start;">
+<sc-for list="{{cols}}" as="c" hint-placeholder-count="5">
+<section style="display: flex; flex-direction: column; gap: 10px; padding: 14px; border-radius: var(--radius-lg); background: var(--surface-100); box-shadow: {{c.shadow}};">
+<header style="display: flex; align-items: center; gap: 10px; padding-bottom: 10px; border-bottom: 1px solid var(--line);">
+<span style="width: 34px; height: 34px; flex: none; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 11px; font-weight: 500; border: 2px {{c.ringStyle}} {{c.ring}}; background: var(--surface-200);">{{c.glyph}}</span>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0;">
+<span style="font-weight: 600;">{{c.name}}</span>
+<x-import component-from-global-scope="HkOS.StatusPulse" state="{{c.pulse}}" label="{{c.status}}"></x-import>
+</div>
+</header>
+<span style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint);">{{c.agents}}</span>
+<sc-for list="{{c.tasks}}" as="t" hint-placeholder-count="2">
+<x-import component-from-global-scope="HkOS.TaskCard" id="{{t.id}}" title="{{t.title}}" owner="{{t.owner}}" state="{{t.state}}" source="{{t.source}}" age="{{t.age}}" stale="{{t.stale}}"></x-import>
+</sc-for>
+<sc-if value="{{c.claimable}}" hint-placeholder-val="{{no}}">
+<x-import component-from-global-scope="HkOS.Button" variant="solid">Reclamar T12</x-import>
+</sc-if>
+</section>
+</sc-for>
+</div>
+
+<aside style="flex: 1 1 300px; min-width: 0;">
+<x-import component-from-global-scope="HkOS.Panel" title="Actividad" meta="en vivo">
+<sc-for list="{{feed}}" as="f" hint-placeholder-count="8">
+<div style="display: flex; flex-direction: column; gap: 4px; padding-bottom: 10px; border-bottom: 1px solid var(--line);">
+<span style="font-size: 13px; line-height: 18px;">{{f.text}}</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="{{f.source}}" age="{{f.age}}" by="{{f.by}}"></x-import>
+</div>
+</sc-for>
+</x-import>
+</aside>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var panel = "var(--panel)";
+    return {
+      theme: this.props.theme ?? "dark",
+      no: false,
+      cols: [
+        { name: "@ana", glyph: "AN", ring: "var(--relay)", ringStyle: "solid", pulse: "live", status: "Sesión viva", shadow: panel, agents: "orquestador · 2 workers (1 con fallo)", claimable: false,
+          tasks: [
+            { id: "T07", title: "Esquema de la API motor → web", owner: "ana", state: "en_curso", source: "relay", age: "hace 4 s", stale: false },
+            { id: "T08", title: "Validación de entradas", owner: "ana", state: "fallo", source: "git", age: "compuerta · hace 1 min", stale: false }
+          ] },
+        { name: "@luis", glyph: "LU", ring: "var(--state-wait)", ringStyle: "solid", pulse: "wait", status: "Parado 24 min", shadow: "var(--glow-wait)", agents: "1 worker", claimable: false,
+          tasks: [
+            { id: "T09", title: "Carga del dataset", owner: "luis", state: "parada", source: "git", age: "hace 24 min", stale: false },
+            { id: "T11", title: "Modelo base de predicción", owner: "luis", state: "en_revision", source: "git", age: "hace 1 min", stale: false }
+          ] },
+        { name: "@marta", glyph: "MA", ring: "var(--state-stale)", ringStyle: "dashed", pulse: "stale", status: "Sin señal 9 min", shadow: panel, agents: "sin agentes", claimable: false,
+          tasks: [
+            { id: "T14", title: "Vista de resultados", owner: "marta", state: "en_curso", source: "relay", age: "hace 9 min", stale: true },
+            { id: "T03", title: "Hello world del front", owner: "marta", state: "integrada", source: "git", age: "hace 40 min", stale: false }
+          ] },
+        { name: "@pablo", glyph: "PA", ring: "var(--relay)", ringStyle: "solid", pulse: "live", status: "Sesión viva", shadow: panel, agents: "sin agentes", claimable: false,
+          tasks: [
+            { id: "T16", title: "Guion del pitch", owner: "pablo", state: "en_curso", source: "relay", age: "hace 12 s", stale: false },
+            { id: "T02", title: "Repo y despliegue", owner: "pablo", state: "publicada", source: "github", age: "hace 2 h", stale: false }
+          ] },
+        { name: "Sin dueño", glyph: "—", ring: "var(--line-strong)", ringStyle: "dashed", pulse: "idle", status: "3 pendientes", shadow: panel, agents: "listas para reclamar", claimable: true,
+          tasks: [
+            { id: "T12", title: "Endpoint de predicción", owner: "", state: "pendiente", source: "github", age: "hace 1 min", stale: false },
+            { id: "T18", title: "Gráfica de comparación", owner: "", state: "pendiente", source: "github", age: "hace 1 min", stale: false }
+          ] }
+      ],
+      feed: [
+        { text: "Colisión roja en motor/api.py (@ana, @luis)", source: "relay", age: "hace 20 s", by: "" },
+        { text: "@pablo edita docs/pitch.md", source: "relay", age: "hace 12 s", by: "" },
+        { text: "La compuerta rechaza el informe de w2 (T08): sin pruebas", source: "git", age: "hace 1 min", by: "" },
+        { text: "T11 pasa a revisión", source: "git", age: "hace 1 min", by: "" },
+        { text: "Issue #41: ¿probabilidades o clases?", source: "github", age: "hace 3 min", by: "" },
+        { text: "T03 cerrada a mano", source: "declarado", age: "hace 8 min", by: "@marta" },
+        { text: "@marta sin señal desde hace 9 min", source: "relay", age: "hace 9 min", by: "" }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

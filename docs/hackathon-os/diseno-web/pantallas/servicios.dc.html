@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Hackathon OS · Servicios</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/hkos/tokens.css">
+<link rel="stylesheet" href="ds/hkos/components/bundle.css">
+<script src="ds/hkos/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Space+Grotesk:wght@500;600&amp;display=swap">
+<style>
+body{margin:0;background:#05070d}
+a{color:#22d3ee}a:hover{color:#67e8f9}
+@keyframes hk-run-x{0%{transform:translateX(0);opacity:0}10%{opacity:1}85%{opacity:1}100%{transform:translateX(112px);opacity:0}}
+@keyframes hk-run-y{0%{transform:translateY(0);opacity:0}10%{opacity:1}85%{opacity:1}100%{transform:translateY(156px);opacity:0}}
+@media (prefers-reduced-motion: reduce){.hk-run{animation:none !important;opacity:0}}
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="position: relative; width: 1440px; height: 1040px; background: var(--void); color: var(--ink); font-family: var(--font-sans); overflow: hidden;">
+
+<div style="position: absolute; left: 0; top: 0; width: 1000px; height: 1040px; background: radial-gradient(circle, var(--line) 1px, transparent 1.5px) 0 0 / 16px 16px;"></div>
+
+<svg width="119" height="8" viewBox="0 0 119 8" preserveAspectRatio="none" style="position: absolute; left: 280px; top: 256px; width: 119px; height: 8px; overflow: visible; fill: none; stroke: var(--relay); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-1" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#22d3ee" stroke="none" style="stroke: none; fill: #22d3ee; fill: context-stroke"/></marker></defs><path d="M 0 4 L 115 4" marker-end="url(#dc-arrow-head-filled-1)"></path></svg>
+<svg width="119" height="8" viewBox="0 0 119 8" preserveAspectRatio="none" style="position: absolute; left: 616px; top: 256px; width: 119px; height: 8px; overflow: visible; fill: none; stroke: var(--state-fail); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-2" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#fb7185" stroke="none" style="stroke: none; fill: #fb7185; fill: context-stroke"/></marker></defs><path d="M 0 4 L 115 4" marker-end="url(#dc-arrow-head-filled-2)"></path></svg>
+<svg width="8" height="163" viewBox="0 0 8 163" preserveAspectRatio="none" style="position: absolute; left: 504px; top: 308px; width: 8px; height: 163px; overflow: visible; fill: none; stroke: var(--line-strong); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-3" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#546a99" stroke="none" style="stroke: none; fill: #546a99; fill: context-stroke"/></marker></defs><path d="M 4 0 L 4 159" marker-end="url(#dc-arrow-head-filled-3)"></path></svg>
+<svg width="119" height="8" viewBox="0 0 119 8" preserveAspectRatio="none" style="position: absolute; left: 617px; top: 516px; width: 119px; height: 8px; overflow: visible; fill: none; stroke: var(--line-strong); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-4" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#546a99" stroke="none" style="stroke: none; fill: #546a99; fill: context-stroke"/></marker></defs><path d="M 119 4 L 4 4" marker-end="url(#dc-arrow-head-filled-4)"></path></svg>
+<svg width="8" height="163" viewBox="0 0 8 163" preserveAspectRatio="none" style="position: absolute; left: 840px; top: 308px; width: 8px; height: 163px; overflow: visible; fill: none; stroke: var(--declared); stroke-width: 2; stroke-dasharray: 6 6; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-5" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#a78bfa" stroke="none" style="stroke: none; fill: #a78bfa; fill: context-stroke"/></marker></defs><path d="M 4 0 L 4 159" marker-end="url(#dc-arrow-head-filled-5)"></path></svg>
+<svg width="8" height="163" viewBox="0 0 8 163" preserveAspectRatio="none" style="position: absolute; left: 840px; top: 569px; width: 8px; height: 163px; overflow: visible; fill: none; stroke: var(--line-strong); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round"><defs><marker id="dc-arrow-head-filled-6" orient="auto" markerWidth="5" markerHeight="5" refX="2" refY="2" overflow="visible"><path d="M0 0 L4 2 L0 4 Z" fill="#546a99" stroke="none" style="stroke: none; fill: #546a99; fill: context-stroke"/></marker></defs><path d="M 4 163 L 4 4" marker-end="url(#dc-arrow-head-filled-6)"></path></svg>
+
+<div class="hk-run" aria-hidden="true" style="position: absolute; left: 280px; top: 256px; width: 8px; height: 8px; border-radius: 999px; background: var(--relay); box-shadow: 0 0 10px var(--relay); animation: hk-run-x 1.4s cubic-bezier(.2,.7,.2,1) infinite;"></div>
+<div class="hk-run" aria-hidden="true" style="position: absolute; left: 504px; top: 308px; width: 8px; height: 8px; border-radius: 999px; background: var(--git); box-shadow: 0 0 10px var(--git); animation: hk-run-y 2.2s cubic-bezier(.2,.7,.2,1) infinite 0.6s;"></div>
+
+<div style="position: absolute; left: 64px; top: 212px; width: 216px; height: 96px; box-sizing: border-box; padding: 12px 14px; display: flex; align-items: center; background: var(--surface-100); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: var(--panel); font-size: 13px; line-height: 18px;"><span><b style="font-family: var(--font-mono); font-size: 15px;">web</b> <span style="font-family: var(--font-mono); color: var(--ink-faint);">:5173</span><br><span style="color: var(--ink-muted);">React + Vite · @marta</span><br><span style="color: var(--state-ok); font-weight: 600;">● responde</span></span></div>
+<div style="position: absolute; left: 400px; top: 212px; width: 216px; height: 96px; box-sizing: border-box; padding: 12px 14px; display: flex; align-items: center; background: var(--surface-100); border: 2px solid var(--relay); border-radius: 8px; box-shadow: var(--glow-relay); font-size: 13px; line-height: 18px;"><span><b style="font-family: var(--font-mono); font-size: 15px;">api</b> <span style="font-family: var(--font-mono); color: var(--ink-faint);">:8000</span><br><span style="color: var(--ink-muted);">FastAPI · @ana</span><br><span style="color: var(--relay); font-weight: 600;">● responde · editándose</span></span></div>
+<div style="position: absolute; left: 736px; top: 212px; width: 216px; height: 96px; box-sizing: border-box; padding: 12px 14px; display: flex; align-items: center; background: var(--surface-100); border: 1px solid var(--state-fail); border-radius: 8px; box-shadow: var(--glow-fail); animation: hk-glow-fail 0.9s ease-in-out infinite; font-size: 13px; line-height: 18px;"><span><b style="font-family: var(--font-mono); font-size: 15px;">motor</b> <span style="font-family: var(--font-mono); color: var(--ink-faint);">módulo</span><br><span style="color: var(--ink-muted);">Python · @luis</span><br><span style="color: var(--state-fail); font-weight: 600;">● 2 pruebas del contrato fallan</span></span></div>
+<div style="position: absolute; left: 400px; top: 472px; width: 216px; height: 96px; box-sizing: border-box; padding: 12px 14px; display: flex; align-items: center; background: var(--surface-100); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: var(--panel); font-size: 13px; line-height: 18px;"><span><b style="font-family: var(--font-mono); font-size: 15px;">almacén</b><br><span style="color: var(--ink-muted);">SQLite · data/app.db</span><br><span style="color: var(--state-ok); font-weight: 600;">● 12 MB, crece</span></span></div>
+<div style="position: absolute; left: 736px; top: 472px; width: 216px; height: 96px; box-sizing: border-box; padding: 12px 14px; display: flex; align-items: center; background: var(--surface-100); border: 1px solid var(--state-wait); border-radius: 8px; box-shadow: var(--glow-wait); animation: hk-glow-wait 1.8s ease-in-out infinite; font-size: 13px; line-height: 18px;"><span><b style="font-family: var(--font-mono); font-size: 15px;">datos</b> <span style="font-family: var(--font-mono); color: var(--ink-faint);">:8001</span><br><span style="color: var(--ink-muted);">ETL · @luis</span><br><span style="color: var(--state-wait); font-weight: 600;">● declarado, no responde</span></span></div>
+<div style="position: absolute; left: 736px; top: 732px; width: 216px; height: 96px; box-sizing: border-box; padding: 12px 14px; display: flex; align-items: center; background: var(--surface-200); border: 1px dashed var(--line-strong); border-radius: 8px; font-size: 13px; line-height: 18px;"><span><b style="font-family: var(--font-mono); font-size: 15px;">ficheros del reto</b><br><span style="color: var(--ink-muted);">externo · solo lectura</span><br><span style="color: var(--ink-faint);">lo da la organización</span></span></div>
+
+<div style="position: absolute; left: 300px; top: 228px; width: 80px; text-align: center; font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--relay);">web → api</div>
+<div style="position: absolute; left: 628px; top: 228px; width: 96px; text-align: center; font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--state-fail);">motor → web</div>
+<div style="position: absolute; left: 520px; top: 382px; width: 32px; font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--ink-muted);">SQL</div>
+<div style="position: absolute; left: 646px; top: 492px; width: 60px; text-align: center; font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--ink-muted);">escribe</div>
+<div style="position: absolute; left: 856px; top: 374px; width: 120px; font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--declared);">propuesto<br>sin confirmar</div>
+<div style="position: absolute; left: 856px; top: 642px; width: 32px; font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--ink-muted);">CSV</div>
+
+<div style="position: absolute; left: 64px; top: 48px; width: 860px; display: flex; flex-direction: column; gap: 6px;">
+<span style="font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Servicios</span>
+<span style="font-size: 14px; color: var(--ink-muted);">Lo que hay en marcha y cómo se habla entre sí. El mapa sale de servicios.md; el estado de cada caja, de lo que el OS comprueba.</span>
+</div>
+
+<nav aria-label="Vistas" style="position: absolute; left: 1040px; top: 52px; width: 336px; display: flex; gap: 4px; padding: 4px; border-radius: 10px; background: var(--surface-100); box-shadow: var(--panel);">
+<a href="red.dc.html" style="flex: 1 1 0; text-align: center; padding: 8px 0; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;">Tareas</a>
+<a href="#" aria-current="page" style="flex: 1 1 0; text-align: center; padding: 8px 0; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--relay); background: var(--relay-soft); text-decoration: none;">Servicios</a>
+</nav>
+
+<div style="position: absolute; left: 64px; top: 900px; width: 900px; display: flex; flex-wrap: wrap; gap: 12px 24px; font-size: 12px; line-height: 16px; color: var(--ink-muted);">
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 18px; height: 2px; background: var(--relay);"></span>tráfico real ahora (simulado aquí)</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 18px; height: 2px; background: var(--state-fail);"></span>contrato roto</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 18px; height: 0; border-top: 2px dashed var(--declared);"></span>propuesto por un agente, sin confirmar</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 18px; height: 2px; background: var(--line-strong);"></span>declarado y sin novedad</span>
+<span style="display: inline-flex; align-items: center; gap: 6px;"><span style="width: 14px; height: 10px; border: 1px dashed var(--line-strong); border-radius: 3px;"></span>externo</span>
+</div>
+
+<div style="position: absolute; left: 1040px; top: 124px; width: 336px; display: flex; flex-direction: column; gap: 20px;">
+<x-import component-from-global-scope="HkOS.Panel" title="api" meta="seleccionado">
+<div style="display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 8px 12px; font-size: 13px; line-height: 18px;">
+<span style="color: var(--ink-faint);">Dueño</span><span>@ana</span>
+<span style="color: var(--ink-faint);">Carpeta</span><span style="font-family: var(--font-mono);">api/</span>
+<span style="color: var(--ink-faint);">Arranque</span><span style="font-family: var(--font-mono); overflow-wrap: anywhere;">uv run uvicorn api.main:app</span>
+<span style="color: var(--ink-faint);">Salud</span><span style="font-family: var(--font-mono);">GET /salud · 200</span>
+<span style="color: var(--ink-faint);">Contratos</span><span>«web → api» <span style="color: var(--state-ok);">pasa</span><br>«motor → web» <span style="color: var(--state-fail);">falla</span></span>
+</div>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="/hack-scaffold" age="servicios.md · hace 3 h"></x-import>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="relay" age="salud comprobada hace 5 s"></x-import>
+</x-import>
+<x-import component-from-global-scope="HkOS.Panel" title="Cambio propuesto" meta="1" tone="wait">
+<span style="font-size: 14px; line-height: 20px;">El agente de @luis quiere que <b>motor</b> lea las features directamente de <b>datos</b>. Es una conexión nueva y la decide @luis.</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="agente de @luis" age="hace 2 min"></x-import>
+<div style="display: flex; gap: 8px;">
+<x-import component-from-global-scope="HkOS.Button" variant="solid">Confirmar</x-import>
+<x-import component-from-global-scope="HkOS.Button">Rechazar</x-import>
+</div>
+</x-import>
+<x-import component-from-global-scope="HkOS.Panel" title="No cuadra" meta="2">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<x-import component-from-global-scope="HkOS.StatusPulse" state="wait" label="datos no responde"></x-import>
+<span style="font-size: 13px; line-height: 18px; color: var(--ink-muted);">servicios.md dice :8001, pero nadie escucha ahí.</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="relay" age="hace 30 s"></x-import>
+</div>
+<div style="display: flex; flex-direction: column; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line);">
+<x-import component-from-global-scope="HkOS.StatusPulse" state="wait" label="Código sin servicio"></x-import>
+<span style="font-size: 13px; line-height: 18px; color: var(--ink-muted);"><span style="font-family: var(--font-mono);">scripts/descarga.py</span> no pertenece a ningún servicio declarado.</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="git" age="commit a3f9c1e · hace 6 min"></x-import>
+</div>
+</x-import>
+</div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { theme: this.props.theme ?? "dark" };
+  }
+}
+</script>
+</body>
+</html>

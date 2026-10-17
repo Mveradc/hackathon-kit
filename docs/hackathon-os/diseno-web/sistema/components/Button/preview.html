@@ -1,0 +1,14 @@
+<!-- @dsCard group="Acciones" height=72 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Button</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var K = window.HkOS, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'flex',flexWrap:'wrap',gap:'12px',padding:'16px'}},
+  h(K.Button,{variant:'solid'},'Reclamar T12'), h(K.Button,{variant:'primary'},'Anotar'), h(K.Button,null,'Ver en GitHub'),
+  h(K.Button,{variant:'primary',busy:true},'Publicando'), h(K.Button,{variant:'danger'},'Descartar'), h(K.Button,{disabled:true},'Confirmar')));
+</script>
+</body>
+</html>

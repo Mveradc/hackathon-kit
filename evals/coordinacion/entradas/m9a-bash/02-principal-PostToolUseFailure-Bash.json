@@ -1,0 +1,20 @@
+{
+ "session_id": "00000000-0000-0000-0000-0000000000a9",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-tmp-repo\\sesion.jsonl",
+ "cwd": "C:\\Users\\persona-a\\tmp\\repo",
+ "prompt_id": "00000000-0000-0000-0000-000000000000",
+ "permission_mode": "bypassPermissions",
+ "effort": {
+  "level": "medium"
+ },
+ "hook_event_name": "PostToolUseFailure",
+ "tool_name": "Bash",
+ "tool_input": {
+  "command": "bash -c \"echo fallo-a-proposito >&2; exit 3\"",
+  "description": "Imprime un error en stderr y sale con código 3"
+ },
+ "tool_use_id": "toolu_017UVLCaLcQLeszcDita46TR",
+ "error": "Exit code 3\nfallo-a-proposito",
+ "is_interrupt": false,
+ "duration_ms": 248
+}

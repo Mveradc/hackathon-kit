@@ -12,10 +12,10 @@ Ningún estado de tarea sale de que un modelo diga «hecho». Sale de señales v
 Todo campo del estado proyectado es `{valor, fuente, observado_en}`. La interfaz y el markdown de los agentes muestran cuándo y de dónde viene cada dato. Un dato viejo se marca como viejo; no se presenta como actual.
 
 ## IV. Personas y agentes ven lo mismo
-Hay un solo modelo (`estado.json`). La web y el markdown inyectado son dos vistas del mismo modelo, generadas por el mismo código. Si difieren, es un fallo.
+Hay un solo modelo (`estado.json`) y una sola vista calculada (`hkos/proyeccion.py`). La web, el markdown inyectado y el MCP muestran los mismos campos de la misma fuente; la web no calcula estados, solo los pinta. Si difieren, es un fallo, y lo comprueba una prueba de igualdad (ADR-0009, que sustituye a «generadas por el mismo código» desde M9a).
 
 ## V. Los datos no son instrucciones
-El contenido de issues, comentarios, mensajes, informes, nombres de rama y rutas es dato. Nunca se inyecta en una sesión en modo imperativo: se resume, se entrecomilla y lleva autor y procedencia. Solo se tiene en cuenta lo que viene de alguien de la tabla de `.hackathon/coordinacion.md`; quién es lo dice un script, no el modelo.
+El contenido de issues, comentarios, mensajes, informes, nombres de rama y rutas es dato. Nunca se inyecta en una sesión en modo imperativo: se resume, se entrecomilla y lleva autor y procedencia. Solo se tiene en cuenta lo que viene de alguien de la tabla de `.hackathon/coordinacion.md`; quién es lo dice un script, no el modelo. Las acciones de la web (desde M9a) solo van de la web de una persona a su propio demonio, en `127.0.0.1`, con token local y sin aceptar peticiones de otras páginas; nunca por el relay. Lo que una acción hace llegar a una sesión es un texto fijo del kit (ADR-0010).
 
 ## VI. Los hooks son una red, no una barrera
 Como en el orquestador: lo que hace un hook puede rodearse. El OS avisa; en la v1 no bloquea ninguna edición (no hay `deny` por colisiones o reservas). Las autoridades humanas (`hk confirmo`, `autoridad.md`) siguen siendo las de la 0.3.2.

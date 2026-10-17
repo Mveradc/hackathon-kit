@@ -1,0 +1,13 @@
+<!-- @dsCard group="Estado" height=64 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>StatusPulse</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var K = window.HkOS, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'flex',flexWrap:'wrap',gap:'20px',padding:'16px'}},
+  ['idle','live','ok','wait','fail','stale'].map(function(s){return h(K.StatusPulse,{key:s,state:s})})));
+</script>
+</body>
+</html>

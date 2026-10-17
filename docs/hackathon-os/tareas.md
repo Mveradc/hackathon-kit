@@ -191,3 +191,59 @@ Hecho cuando: criterio 4 de M8h, con la hoja de observación rellena en `evals/c
 ### K-84 · Documentación y publicación
 Puedes tocar: `README.md`, `README.es.md`, `docs/limitaciones.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`
 Hecho cuando: criterios 5 y 6 de M8h.
+
+## M9a · Web de trabajo, nivel A
+
+Se adelanta a K-83 (el ensayo) por decisión del usuario (2026-10-17). Diseño en `docs/hackathon-os/diseno-web/`. Todo lo de M9a corre solo con `web_nueva: sí` en `os.md`.
+
+### K-90 · Paso 0 de M9a
+Cubre: — · Puedes tocar: scratchpad (fuera del repo del kit)
+Hecho cuando: anotado en `evals/coordinacion/prueba.md` («M9a, Paso 0»):
+- si `PostToolUseFailure` de Bash llega con `tool_input.command` cuando el comando sale ≠ 0 (entrada real capturada y anonimizada en `evals/coordinacion/entradas/`). Si no llega, la alternativa la decide el usuario;
+- las versiones exactas de React, Vite y Vitest;
+- la licencia (OFL) y el tamaño en woff2 de Space Grotesk, IBM Plex Sans y JetBrains Mono;
+- que una línea en un fichero que lee `escucha.sh` abre un turno, con `interactivo.py`.
+
+### K-91 · ADR, constitución y contratos
+Cubre: R-33 · Depende de: K-90 · Puedes tocar: `docs/hackathon-os/adr/0009-*.md`, `0010-*.md`, `0011-*.md`, `docs/hackathon-os/constitucion.md`, `docs/hackathon-os/contratos/`
+Contratos que aplican: ADR-0006, ADR-0008
+Hecho cuando: ADR-0009–0011 escritos con lo que decidió el usuario; IV reformulado y V ampliado en la constitución; `api.md` (§0, §1, §3, §4, §6, §7) y los dos esquemas sin `[POR DECIDIR]`, y los esquemas validan con el validador de M8b. `api.md` §4 recoge las precisiones de la revisión: el token solo en `X-HK-Token`, nunca en la query; `/v1/stream` leído con `fetch`; el reintento único de Anotar; la regla de Salud. Lo revisa el usuario antes de K-92.
+
+### K-92 · `servicios.md` [P]
+Cubre: R-33 · Depende de: K-91 · Puedes tocar: `skills/hack-scaffold/templates/servicios.md`, `skills/hack-scaffold/SKILL.md` (paso de coordinación), `skills/hack-plan/templates/autoridad.md`, `hkos/servicios.py`, `hkos/pruebas/`
+Contratos que aplican: ADR-0011
+Hecho cuando: `hkos/servicios.py` pasa su tabla de casos (fila confirmada; cambiada por otra persona; comando de Prueba cambiado; sha desconocido; dueño que no coincide con `autoridad.md`; fila de Propuestas que su dueño pasa a su sección; fila añadida por un worker de su dueño, rama `worktree-agent-*`; Salud que no es una ruta: `http://…`, `//host`, `/../`; fichero fuera de todo servicio; filas iniciales de `/hack-scaffold`).
+
+### K-93 · Relay: servicios y SSE `eventos` [P]
+Cubre: R-26, R-33 · Depende de: K-92 · Puedes tocar: `hkos/relay.py`, `hkos/modelo.py`
+Contratos que aplican: `api.md` §3, ADR-0011
+Hecho cuando: con `web_nueva: sí`, `estado.json` lleva `servicios` (de `origin/main` del clon del relay y de los eventos `commit`, `servicio.estado` y `prueba`) y `/v1/stream` emite `eventos` (lista blanca de campos, pulso `github`); con `no`, el stream es el de hoy (`carga.py` e `igualdad.py` sin cambios).
+
+### K-94 · Demonio: la web, los datos y la salud
+Cubre: R-26, R-33 · Depende de: K-93 · Puedes tocar: `hkos/agente.py`, `hkos/cli.py`, `bin/hk-os`
+Contratos que aplican: `api.md` §4, ADR-0010
+Hecho cuando: criterios 2 y 6 de M9a; con `web_nueva: sí`, el demonio se suscribe al SSE del relay y comprueba puerto y salud de los servicios confirmados de su persona (evento `servicio.estado` solo al cambiar); `hk-os web` abre la URL con el token en el fragmento.
+
+### K-95 · Acciones: Anotar y Reclamar
+Cubre: R-30, R-33 · Depende de: K-94 · Puedes tocar: `hkos/acciones.py`, `hkos/agente.py` (rutas de acción), `scripts/coordinacion/escucha.sh`, `evals/coordinacion/prueba_hooks.py`
+Contratos que aplican: `api.md` §4 y §5, ADR-0010
+Hecho cuando: criterios 7 y 8 de M9a (incluido el push de Anotar rechazado: un reintento sobre el `origin/main` nuevo y, si falla, aviso en la web sin tocar la copia); `prueba_hooks.py` comprueba que una línea de `acciones.jsonl` sale en un solo monitor y que, sin OS activo, el monitor no la lee.
+
+### K-96 · `prueba.sh` [P]
+Cubre: R-33 · Depende de: K-91 · Puedes tocar: `scripts/os/prueba.sh`, `scripts/os/comun.sh`, `hooks/hooks.json`, `hkos/normaliza.py`, `evals/coordinacion/prueba_hooks.py`
+Contratos que aplican: `api.md` §1 y §2
+Hecho cuando: `prueba_hooks.py`: un Bash cuyo comando es exactamente la Prueba de una conexión deja una línea cruda `prueba` (pasa o falla) que el normalizador convierte en un evento válido; cualquier otro comando no deja nada; sin OS activo o con `web_nueva: no`, nada.
+
+### K-97 · Proyección de servicios
+Cubre: R-24, R-28 · Depende de: K-93 · Puedes tocar: `hkos/proyeccion.py`, `scripts/os/delta.sh`, `scripts/coordinacion/sesion.sh`, `evals/coordinacion/simulador/`
+Contratos que aplican: `api.md` §6, ADR-0009
+Hecho cuando: la vista lleva el bloque `servicios`; `estado-equipo.md` lleva `## Servicios` (desajustes y propuestas que afectan a la persona) y su firma, dentro del presupuesto de R-24; `igualdad.py` pasa con G1–G6 y el guion nuevo G12 (servicios).
+
+### K-98 · Web React + Vite
+Cubre: R-26, R-33 · Depende de: K-94, K-97 · Puedes tocar: `hkos/web-src/`, `hkos/web/nueva/`, `.github/workflows/web-m9a.yml`
+Contratos que aplican: ADR-0009, `docs/hackathon-os/diseno-web/`
+Hecho cuando: criterios 2, 3 y 4 de M9a; cabina por defecto; el token, fuera de la URL nada más leerlo y solo en memoria; el stream, con `fetch` y `X-HK-Token`; «sin conexión» tras `umbral_viejo_s` sin datos; `TeamGraph` reescrito para React 19, no copiado de `diseno-web/`: refs como prop y sin `forwardRef`, y cada paquete ligado a un `id` de evento, que se lanza una vez y se retira al acabar su animación de CSS o SVG, sin temporizadores que generen actividad; los siete componentes con sus nombres, props y clases `hk-*`; fuentes dentro del repo; el CI en verde.
+
+### K-99 · Validación con modelo y en sandbox
+Depende de: todo lo anterior · Puedes tocar: `evals/coordinacion/`, carpetas de prueba en `../`
+Hecho cuando: criterios 1, 5, 8 y 9 de M9a; `/hack-scaffold` y `/hack-plan` con el reto 03 y la coordinación activa; Anotar y Reclamar en `Mveradc/hk-sandbox` con @hk-persona-b; resultados en `evals/coordinacion/prueba.md` («M9a»).

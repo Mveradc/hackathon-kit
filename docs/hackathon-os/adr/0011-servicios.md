@@ -1,0 +1,46 @@
+# ADR-0011 · `servicios.md`: formato, quién lo escribe y quién lo confirma
+
+Estado: **aceptada** (2026-10-17, por el usuario al abrir M9a).
+
+## Contexto
+La vista de servicios de M9a enseña qué hay en marcha (servicios con su carpeta, su puerto y su dueño), cómo se hablan entre sí (conexiones con su contrato) y qué no cuadra. Hace falta un fichero que lo declare, que lo puedan editar personas y agentes, y una regla verificable para distinguir lo confirmado de lo que un agente ha propuesto.
+
+## Decisión
+- **Dónde y quién lo genera:** `.hackathon/servicios.md`, versionado. Lo genera `/hack-scaffold` en su paso de coordinación (sin coordinación no se crea: el núcleo del kit no cambia). Después lo pueden editar personas y agentes.
+- **Formato:** tres secciones con tablas, más una línea:
+  - `## Servicios`: Nombre | Carpeta | Puerto | Arranque | Salud | Dueño. Puerto y Salud son opcionales (`—`). Puerto es un entero de 1 a 65535. **Salud solo admite una ruta** que empieza por `/`, sin esquema, sin host, sin `..` y sin espacios (`/salud`, `/api/health?x=1`); cualquier otra cosa (`http://…`, `//host/…`, `/../`) hace de la fila un desajuste, y el demonio no la consulta.
+  - `## Conexiones`: De | A | Contrato | Prueba. «Contrato» es el título de un bloque de `docs/contratos.md`; «Prueba» es un comando.
+  - `## Propuestas`: filas con el mismo formato que las de Servicios o Conexiones, más Autor y Hora, para lo que declara un agente sin confirmar. Al confirmarse, la fila pasa a Servicios o Conexiones.
+  - `Fuera de servicios:` las carpetas que no cuentan para «código fuera de cualquier servicio» (`docs/`, `.hackathon/`…).
+- **El OS nunca ejecuta** «Arranque» ni «Prueba». De la Prueba solo lee el resultado cuando alguien la corre: un hook (`scripts/os/prueba.sh`) detecta en el Bash de una sesión de Claude Code el comando exacto de una conexión y deja si pasó o falló. La web enseña el comando junto al resultado, con procedencia y antigüedad. Lo que una persona corre en su propia terminal no se ve (el resultado desde CI queda para después).
+- **Salud:** el demonio del dueño comprueba, solo para **sus** servicios confirmados con una Salud válida y solo en `127.0.0.1:<Puerto>`, si el puerto acepta conexiones y qué responde `GET <Salud>` (con tiempo máximo y sin seguir redirecciones). Lo emite como evento `servicio.estado` solo cuando cambia.
+- **Quién confirma:** la regla está en `autoridad.md`: un servicio lo confirma su dueño; una conexión, los dueños de sus dos extremos. El dueño de un servicio es la persona cuyas carpetas de `autoridad.md` contienen la carpeta del servicio, no la columna «Dueño». Si la columna dice otra cosa, es un desajuste y la fila no está confirmada.
+- **Qué significa «confirmado»:** **hecho desde el portátil del dueño** (la persona o sus agentes). **No** significa «decidido por una persona». Basta para el mapa de los propios servicios. Lo que necesite una decisión humana según `autoridad.md` (por ejemplo, cambiar un contrato) sigue con `hk confirmo`, como en la 0.3.2.
+- **Cómo se calcula** (en el relay, sobre `origin/main` de su clon, en el mismo bucle que las novedades y los contratos):
+  - la clave de una fila son todos sus campos normalizados (sin espacios de más ni comillas invertidas);
+  - para cada fila de Servicios o Conexiones, se reúnen las personas cuyos commits **añadieron** una fila con esa misma clave, en cualquier sección (`git log -p` del fichero);
+  - la fila está confirmada si ese conjunto incluye al dueño (servicio) o a los dos dueños (conexión). Si no, es «declarado por @x, sin confirmar», donde @x es quien la añadió;
+  - cambiar cualquier campo da una clave nueva, así que la fila vuelve a «sin confirmar». En particular, si cambia el comando de Prueba de una fila confirmada: la Prueba es código ejecutable;
+  - la persona de cada commit sale **solo** de los eventos `commit` de los demonios (sha → persona), **nunca** del autor de git, que cualquiera puede poner. Si un rebase o un squash cambian los shas, la fila puede salir «sin confirmar» por error, pero nunca «confirmada» por error;
+  - **commits de los workers** (comprobado en el código el 2026-10-17): el sondeo de git del demonio (`hkos/agente.py`, `SondeoGit.ciclo`) recorre todas las ramas locales, incluidas las `worktree-agent-<id>` de los worktrees (comparten refs con la copia principal). Emite cada commit nuevo con la persona del demonio y el actor `worker`, cubierto por `hkos/pruebas/test_sondeo_git.py`. El orquestador integra con `merge --no-ff` y después `merge --ff-only` (`agents/orquestador.md`), así que los shas de los workers llegan intactos a `origin/main` y se atribuyen a la persona. El merge no se emite como commit, pero la fila la añade el commit del worker, no el merge. Quedan dos huecos: lo que solo esté en la resolución de un conflicto de merge, y un commit de worker cuya rama se borre antes del siguiente ciclo (15 s) y no llegue a `main`. En los dos, la fila sale sin confirmar, nunca confirmada por error. La tabla de casos de K-92 incluye una fila añadida por un worker;
+  - las filas que estaban en el commit que creó el fichero cuentan como «de /hack-scaffold», confirmadas;
+  - una fila de Propuestas siempre es «declarado, sin confirmar». Su Autor y su Hora son dato; si no coinciden con la persona del commit, se enseña la del commit.
+- **Desajustes que salen en la vista:**
+  - puerto declarado sin nadie escuchando, o una salud que no responde 2xx;
+  - Puerto o Salud con un formato que no vale (la fila no se consulta);
+  - código fuera de cualquier servicio: ficheros de `origin/main` y del último `arbol` de cada persona que no están en la carpeta de ningún servicio ni en «Fuera de servicios»;
+  - contrato con la Prueba fallando en su último resultado;
+  - dueño de la columna distinto del de `autoridad.md`;
+  - una conexión cuyo contrato no existe en `docs/contratos.md`.
+
+## Alternativas descartadas
+- **Columna «Confirma»:** se puede escribir desde cualquier portátil; lo verificable es de dónde viene el commit.
+- **`hk confirmo` en un issue para cada fila:** más fuerte (un agente no lo falsifica), pero no funciona sin GitHub (modo de K-80) y enlazar un issue con una fila es frágil. Se mantiene para las decisiones humanas.
+- **`docs/servicios.md`, junto a `contratos.md`:** es estado del equipo durante el evento, como `autoridad.md`; va en `.hackathon/`.
+- **Que el OS ejecute la Prueba o el Arranque:** sería ejecutar código que un agente puede haber cambiado.
+
+## Riesgos aceptados
+- «Confirmado» no prueba que una persona lo haya revisado: lo hizo su portátil, quizá un agente suyo.
+- Las filas iniciales de `/hack-scaffold` se dan por confirmadas sin atribución por evento.
+- Rebase y squash pueden dejar filas sin confirmar hasta que el dueño las vuelva a tocar. Lo mismo, una fila que solo aparece en la resolución de un conflicto de merge, o el commit de un worker cuya rama se borra antes de que el demonio la vea. El ensayo mira si pasa.
+- Las pruebas corridas fuera de Claude Code no se ven.

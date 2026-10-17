@@ -1,0 +1,45 @@
+<!-- @dsCard group="Grafo" height=360 subtitle="Simulación: en producción, los eventos llegan del relay" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>TeamGraph</title></head>
+<body>
+<div id="root" style="padding:12px"></div>
+<script>
+  var K = window.HkOS, h = React.createElement;
+  var nodes = [
+    { id: "relay", kind: "relay", x: 320, y: 150, glyph: "RLY", label: "relay" },
+    { id: "gh", kind: "github", x: 560, y: 60, glyph: "GH", label: "GitHub" },
+    { id: "ana", kind: "person", x: 150, y: 70, glyph: "AN", label: "@ana" },
+    { id: "luis", kind: "person", x: 470, y: 220, glyph: "LU", label: "@luis", state: "wait" },
+    { id: "marta", kind: "person", x: 140, y: 240, glyph: "MA", label: "@marta", state: "stale" },
+    { id: "orq", kind: "orchestrator", x: 70, y: 150, glyph: "O", label: "orq." },
+    { id: "w1", kind: "worker", x: 25, y: 85, glyph: "w1" },
+    { id: "w2", kind: "worker", x: 25, y: 215, glyph: "w2", state: "fail" }
+  ];
+  var edges = [
+    { id: "e-ana", from: "ana", to: "relay", channel: "relay" },
+    { id: "e-luis", from: "luis", to: "relay", channel: "relay" },
+    { id: "e-marta", from: "marta", to: "relay", channel: "relay", stale: true },
+    { id: "e-gh", from: "relay", to: "gh", channel: "github" },
+    { id: "e-orq", from: "ana", to: "orq", channel: "local" },
+    { id: "e-w1", from: "orq", to: "w1", channel: "local" },
+    { id: "e-w2", from: "orq", to: "w2", channel: "local" }
+  ];
+  var live = ["e-ana", "e-luis", "e-gh", "e-orq", "e-w1"];
+  function Demo() {
+    var s = React.useState([]), ev = s[0], set = s[1];
+    React.useEffect(function () {
+      var n = 0;
+      var t = setInterval(function () {
+        var e = live[Math.floor(Math.random() * live.length)];
+        n += 1;
+        set(function (old) { return old.slice(-20).concat([{ id: "ev" + n, edge: e, reverse: Math.random() < .4 }]); });
+      }, 700);
+      return function () { clearInterval(t); };
+    }, []);
+    return h(K.TeamGraph, { nodes: nodes, edges: edges, events: ev, width: 620, height: 300, label: "Equipo de ejemplo" });
+  }
+  ReactDOM.createRoot(document.getElementById("root")).render(h(Demo));
+</script>
+</body>
+</html>

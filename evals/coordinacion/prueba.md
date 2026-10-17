@@ -1016,3 +1016,17 @@ El ensayo (fase 2 de M8h) se aplaza: hacen falta varias personas con Claude Code
 ## Resultados
 - `hkos/pruebas`: 198 OK. `prueba_hooks.py`: 0 fallos. Simulador G1–G6 e igualdad de vistas: OK. `colisiones_vivo.py`: 0 fallos. `robustez.py`: 45/45.
 - Gasto: 0 USD, sin escrituras en GitHub.
+
+# M9a, Paso 0 (K-90, 2026-10-17)
+M9a (web de trabajo) se adelanta al ensayo de M8h por decisión del usuario. Antes de congelar contratos (K-91), lo que había que comprobar. Plugin de juguete en el scratchpad: `PostToolUse` y `PostToolUseFailure` con `matcher: Bash`, que vuelcan su entrada (como el de M8.0).
+
+| Pregunta | Respuesta |
+|---|---|
+| ¿Llega `PostToolUseFailure` de Bash con el comando cuando sale ≠ 0? | **Sí.** `claude -p` (Haiku, Windows, Git Bash) con `echo pasa`, `bash -c "…; exit 3"` y `python -c "…sys.exit(1)"`: el primero da `PostToolUse` (con `tool_response.stdout`, sin código de salida); los otros dos dan `PostToolUseFailure` con `tool_input.command` exacto, `error` = `"Exit code 3\nfallo-a-proposito"` / `"Exit code 1"` e `is_interrupt: false`. `prueba.sh` puede saber si la Prueba pasó (`PostToolUse`) o falló (`PostToolUseFailure`) sin ejecutarla. Entradas anonimizadas en `entradas/m9a-bash/` |
+| Versiones de React, Vite y Vitest | Las últimas con **al menos dos semanas** el 2026-10-17 (las más nuevas tenían 2–12 días): `react` y `react-dom` 19.3.0 (2026-09-09), `vite` 8.3.2 (2026-10-01), `@vitejs/plugin-react` 6.1.1 (2026-08-28), `vitest` 5.0.3 (2026-09-30), `jsdom` 30.1.1 (2026-09-22), `@testing-library/react` 16.3.3 (2026-08-27). Que se lleven bien entre sí (peer deps) se comprueba en K-98 con `npm ci` |
+| Fuentes: licencia y tamaño | Las tres en `@fontsource/*` 5.3.0, **OFL-1.1** (se suben con su licencia). Pesos que usa el sistema (`bundle.css`): IBM Plex Sans 400 y 600, JetBrains Mono 400 y 500, Space Grotesk 500 y 600. Subconjunto latino en woff2: 22,6 + 24,3 + 21,2 + 21,8 + 13,3 + 13,3 KB = **≈114 KB** los seis. El latino cubre á, ñ, «», ·, pero no «→» (U+2192), que sale con la fuente de reserva |
+| ¿Una línea que lee `escucha.sh` abre un turno? | Ya comprobado: es el mismo mecanismo que la roja nueva de la prueba interactiva (`interactivo.py`, 2026-10-15: «sola y una vez»). La línea de Reclamar se prueba de verdad en el criterio 8 de M9a (sesión interactiva del usuario) |
+
+Además, revisado en el código para ADR-0011: los commits de los workers (ramas `worktree-agent-*`) los emite el sondeo de git del demonio con la persona del demonio y el actor `worker` (`hkos/pruebas/test_sondeo_git.py`). El orquestador integra con `merge --no-ff` + `--ff-only`, así que sus shas llegan intactos a `main`.
+
+Gasto: 0,0044 USD.

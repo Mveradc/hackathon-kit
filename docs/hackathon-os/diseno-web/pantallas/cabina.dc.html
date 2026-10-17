@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Hackathon OS · Mi cabina</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/hkos/tokens.css">
+<link rel="stylesheet" href="ds/hkos/components/bundle.css">
+<script src="ds/hkos/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Space+Grotesk:wght@500;600&amp;display=swap">
+<style>
+body{margin:0;background:#05070d}
+a{color:#22d3ee}a:hover{color:#67e8f9}
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="min-height: 1040px; background: var(--void); color: var(--ink); font-family: var(--font-sans); box-sizing: border-box; padding: 28px 32px 40px;">
+<div style="max-width: 1376px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
+<div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+<span style="width: 40px; height: 40px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 12px; font-weight: 500; border: 2px solid var(--relay); box-shadow: var(--glow-relay); background: var(--surface-200);">AN</span>
+<div style="display: flex; flex-direction: column; gap: 2px;">
+<span style="font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Hola, @ana</span>
+<x-import component-from-global-scope="HkOS.StatusPulse" state="live" label="Tu sesión trabaja en T07 · orquestador con 2 workers"></x-import>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="relay" age="hace 2 s"></x-import>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="github" age="hace 40 s"></x-import>
+<span style="font-family: var(--font-mono); font-size: 13px;">T−17:42</span>
+</div>
+</header>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+
+<div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+<x-import component-from-global-scope="HkOS.Panel" title="Lo tuyo" meta="{{mineCount}}">
+<sc-for list="{{mine}}" as="t" hint-placeholder-count="3">
+<x-import component-from-global-scope="HkOS.TaskCard" id="{{t.id}}" title="{{t.title}}" owner="ana" state="{{t.state}}" source="{{t.source}}" age="{{t.age}}"></x-import>
+</sc-for>
+<sc-if value="{{sent}}" hint-placeholder-val="{{no}}">
+<div role="status" style="display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border-radius: var(--radius-md); background: var(--relay-soft); border: 1px solid var(--relay);">
+<span style="font-size: 13px; font-weight: 600; color: var(--relay);">{{sentText}}</span>
+<span style="font-size: 12px; color: var(--ink-muted);">Issue asignado con tu gh; tu monitor abre un turno con un texto fijo.</span>
+</div>
+</sc-if>
+</x-import>
+<x-import component-from-global-scope="HkOS.Panel" title="Para reclamar" meta="{{freeCount}}">
+<sc-for list="{{free}}" as="t" hint-placeholder-count="3">
+<div style="display: flex; align-items: center; gap: 10px;">
+<div style="flex: 1 1 auto; min-width: 0;">
+<x-import component-from-global-scope="HkOS.TaskCard" id="{{t.id}}" title="{{t.title}}" state="pendiente" source="github" age="{{t.age}}"></x-import>
+</div>
+<x-import component-from-global-scope="HkOS.Button" variant="primary" on-click="{{t.claim}}">Reclamar</x-import>
+</div>
+</sc-for>
+</x-import>
+</div>
+
+<div style="flex: 1 1 420px; min-width: 0;">
+<x-import component-from-global-scope="HkOS.Panel" title="Te necesitan" meta="3" tone="fail">
+<x-import component-from-global-scope="HkOS.CollisionAlert" severity="rojo" level="{{three}}" path="motor/api.py" contract="motor → web" people="{{pRojo}}" age="hace 20 s"></x-import>
+<div style="display: flex; gap: 8px; flex-wrap: wrap;">
+<x-import component-from-global-scope="HkOS.Button" variant="primary">Ver diff</x-import>
+<x-import component-from-global-scope="HkOS.Button">Pedir a tu sesión que espere</x-import>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: var(--radius-md); background: var(--surface-200); border: 1px solid var(--state-wait); box-shadow: var(--glow-wait);">
+<x-import component-from-global-scope="HkOS.StatusPulse" state="wait" label="Tu confirmación"></x-import>
+<span style="font-size: 14px; line-height: 20px;">El agente de @luis propone que el endpoint devuelva probabilidades, no clases. Lo decides tú según autoridad.md.</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="github" age="issue #41 · hace 3 min"></x-import>
+<div style="display: flex; gap: 8px; flex-wrap: wrap;">
+<x-import component-from-global-scope="HkOS.Button" variant="solid">Confirmar</x-import>
+<x-import component-from-global-scope="HkOS.Button">Responder</x-import>
+</div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding: 12px; border-radius: var(--radius-md); background: var(--surface-200); border: 1px solid var(--state-fail);">
+<x-import component-from-global-scope="HkOS.StatusPulse" state="fail" label="Worker w2 rechazado"></x-import>
+<span style="font-size: 14px; line-height: 20px;">La compuerta rechazó el informe de T08: no trae la salida de las pruebas.</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="git" age="compuerta · hace 1 min"></x-import>
+<div style="display: flex; gap: 8px;">
+<x-import component-from-global-scope="HkOS.Button">Ver informe</x-import>
+</div>
+</div>
+</x-import>
+</div>
+
+<div style="flex: 1 1 380px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+<x-import component-from-global-scope="HkOS.Panel" title="Equipo" meta="eventos simulados">
+<x-import component-from-global-scope="HkOS.TeamGraph" nodes="{{nodes}}" edges="{{edges}}" events="{{events}}" width="{{gw}}" height="{{gh}}" label="El equipo de un vistazo"></x-import>
+</x-import>
+<x-import component-from-global-scope="HkOS.Panel" title="Anotar" meta="va a criterios.md">
+<div style="display: flex; flex-direction: column; gap: 8px;">
+<label for="quien" style="font-size: 12px; color: var(--ink-muted);">Quién lo dijo</label>
+<select id="quien" value="{{who}}" onChange="{{onWho}}" style="font-family: var(--font-sans); font-size: 14px; padding: 8px 10px; border-radius: var(--radius-md); border: 1px solid var(--line-strong); background: var(--surface-200); color: var(--ink);">
+<option value="Jurado">Jurado</option>
+<option value="Mentor">Mentor</option>
+<option value="Organización">Organización</option>
+</select>
+<label for="nota" style="font-size: 12px; color: var(--ink-muted);">Qué dijo</label>
+<textarea id="nota" rows="3" value="{{draft}}" onChange="{{onDraft}}" placeholder="«Valoraremos que la demo funcione con datos reales»" style="font-family: var(--font-sans); font-size: 14px; line-height: 20px; padding: 8px 10px; border-radius: var(--radius-md); border: 1px solid var(--line-strong); background: var(--surface-200); color: var(--ink); resize: vertical;"></textarea>
+<div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap;">
+<span style="font-size: 12px; color: var(--ink-faint);">Se añade con tu nombre y la hora, commit y push solos.</span>
+<x-import component-from-global-scope="HkOS.Button" variant="primary" on-click="{{addNote}}">Anotar</x-import>
+</div>
+</div>
+<sc-for list="{{notes}}" as="n" hint-placeholder-count="2">
+<div style="display: flex; flex-direction: column; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line);">
+<span style="font-size: 13px; line-height: 18px;"><span style="font-weight: 600;">{{n.who}}:</span> «{{n.text}}»</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="{{n.by}}" age="{{n.age}}"></x-import>
+</div>
+</sc-for>
+</x-import>
+</div>
+
+</div>
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = {
+      events: [], claimed: [], sentText: "", draft: "", who: "Jurado",
+      notes: [{ who: "Mentor", text: "Que el pitch enseñe un caso real, no solo la arquitectura", by: "@pablo", age: "hace 25 min" }]
+    };
+  }
+  componentDidMount() {
+    var live = ["e-ana", "e-luis", "e-gh", "e-orq", "e-p"];
+    var n = 0, self = this;
+    this.timer = setInterval(function () {
+      n += 1;
+      var e = live[Math.floor(Math.random() * live.length)];
+      self.setState(function (s) { return { events: s.events.slice(-20).concat([{ id: "ev" + n, edge: e, reverse: Math.random() < 0.4 }]) }; });
+    }, 750);
+  }
+  componentWillUnmount() { clearInterval(this.timer); }
+  renderVals() {
+    var self = this, s = this.state;
+    var pool = [
+      { id: "T12", title: "Endpoint de predicción", age: "hace 1 min" },
+      { id: "T18", title: "Gráfica de comparación", age: "hace 1 min" },
+      { id: "T21", title: "Pruebas del contrato motor → web", age: "hace 6 min" }
+    ];
+    var mine = [
+      { id: "T07", title: "Esquema de la API motor → web", state: "en_curso", source: "relay", age: "hace 4 s" },
+      { id: "T08", title: "Validación de entradas", state: "fallo", source: "git", age: "hace 1 min" }
+    ].concat(pool.filter(function (t) { return s.claimed.indexOf(t.id) >= 0; }).map(function (t) {
+      return { id: t.id, title: t.title, state: "reclamada", source: "declarado", age: "ahora" };
+    }));
+    var free = pool.filter(function (t) { return s.claimed.indexOf(t.id) < 0; }).map(function (t) {
+      return Object.assign({}, t, { claim: function () {
+        self.setState({ claimed: s.claimed.concat([t.id]), sentText: t.id + " es tuya. Tu sesión se pone con ella al acabar T07." });
+      } });
+    });
+    return {
+      theme: this.props.theme ?? "dark",
+      no: false, three: 3, gw: 400, gh: 260,
+      pRojo: ["ana", "luis"],
+      mine: mine, mineCount: String(mine.length), free: free, freeCount: String(free.length),
+      sent: s.sentText !== "", sentText: s.sentText,
+      draft: s.draft, who: s.who, notes: s.notes,
+      onDraft: function (e) { self.setState({ draft: e.target.value }); },
+      onWho: function (e) { self.setState({ who: e.target.value }); },
+      addNote: function () {
+        var txt = (s.draft || "").trim();
+        if (!txt) return;
+        self.setState({ draft: "", notes: [{ who: s.who, text: txt, by: "@ana", age: "ahora" }].concat(s.notes) });
+      },
+      events: s.events,
+      nodes: [
+        { id: "relay", kind: "relay", x: 200, y: 125, glyph: "RLY" },
+        { id: "gh", kind: "github", x: 355, y: 40, glyph: "GH" },
+        { id: "ana", kind: "person", x: 70, y: 55, glyph: "AN", label: "tú" },
+        { id: "luis", kind: "person", x: 330, y: 195, glyph: "LU", state: "wait" },
+        { id: "marta", kind: "person", x: 70, y: 200, glyph: "MA", state: "stale" },
+        { id: "pablo", kind: "person", x: 220, y: 30, glyph: "PA" },
+        { id: "orq", kind: "orchestrator", x: 155, y: 220, glyph: "O" }
+      ],
+      edges: [
+        { id: "e-ana", from: "ana", to: "relay", channel: "relay" },
+        { id: "e-luis", from: "luis", to: "relay", channel: "relay" },
+        { id: "e-marta", from: "marta", to: "relay", channel: "relay", stale: true },
+        { id: "e-p", from: "pablo", to: "relay", channel: "relay" },
+        { id: "e-gh", from: "relay", to: "gh", channel: "github" },
+        { id: "e-orq", from: "ana", to: "orq", channel: "local" }
+      ]
+    };
+  }
+}
+</script>
+</body>
+</html>

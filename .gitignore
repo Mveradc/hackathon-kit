@@ -16,3 +16,5 @@ __pycache__/
 
 # Vídeo promocional (composición HTML, script de render y MP4): solo en local
 /video/
+.claude/settings.local.json
+.claude/worktrees/

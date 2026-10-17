@@ -1,0 +1,15 @@
+<!-- @dsCard group="Estado" height=64 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>ProvenanceTag</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var K = window.HkOS, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'flex',flexWrap:'wrap',gap:'16px',padding:'16px'}},
+  h(K.ProvenanceTag,{source:'relay',age:'hace 4 s'}), h(K.ProvenanceTag,{source:'git',age:'hace 2 min'}),
+  h(K.ProvenanceTag,{source:'github',age:'hace 40 s'}), h(K.ProvenanceTag,{source:'declarado',by:'@ana',age:'hace 6 min'}),
+  h(K.ProvenanceTag,{source:'github',age:'hace 12 min',stale:true})));
+</script>
+</body>
+</html>

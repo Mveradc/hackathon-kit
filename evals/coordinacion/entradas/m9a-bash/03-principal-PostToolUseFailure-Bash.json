@@ -1,0 +1,20 @@
+{
+ "session_id": "00000000-0000-0000-0000-0000000000a9",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-tmp-repo\\sesion.jsonl",
+ "cwd": "C:\\Users\\persona-a\\tmp\\repo",
+ "prompt_id": "00000000-0000-0000-0000-000000000000",
+ "permission_mode": "bypassPermissions",
+ "effort": {
+  "level": "medium"
+ },
+ "hook_event_name": "PostToolUseFailure",
+ "tool_name": "Bash",
+ "tool_input": {
+  "command": "python -c \"import sys; sys.exit(1)\"",
+  "description": "Ejecuta Python que sale con código 1"
+ },
+ "tool_use_id": "toolu_01QKEAGuKzCGXCRFeuNQembT",
+ "error": "Exit code 1",
+ "is_interrupt": false,
+ "duration_ms": 290
+}

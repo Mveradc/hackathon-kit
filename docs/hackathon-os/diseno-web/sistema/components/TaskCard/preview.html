@@ -1,0 +1,17 @@
+<!-- @dsCard group="Datos" height=300 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>TaskCard</title></head>
+<body>
+<div id="root"></div>
+<script>
+  var K = window.HkOS, h = React.createElement;
+  ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'grid',gap:'10px',padding:'16px'}},
+  h(K.TaskCard,{id:'T07',title:'Esquema de la API motor → web',owner:'ana',state:'en_curso',source:'relay',age:'hace 4 s'}),
+  h(K.TaskCard,{id:'T12',title:'Endpoint de predicción',state:'pendiente',source:'github',age:'hace 1 min',action:h(K.Button,{variant:'primary'},'Reclamar')}),
+  h(K.TaskCard,{id:'T09',title:'Carga del dataset de Acerinox',owner:'luis',state:'parada',source:'git',age:'hace 24 min'}),
+  h(K.TaskCard,{id:'T03',title:'Hello world del front',owner:'marta',state:'integrada',source:'declarado',declaredBy:'@marta',age:'hace 8 min'}),
+  h(K.TaskCard,{id:'T15',title:'Demo mínima',owner:'pablo',state:'en_curso',source:'github',age:'hace 14 min',stale:true})));
+</script>
+</body>
+</html>

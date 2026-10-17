@@ -5,7 +5,7 @@ Estado: **aceptada** (2026-10-14, tras el Paso 0 de M8.0; hallazgo P1 en `docs/c
 ## Decisión
 - El relay calcula `estado.json` (esquema en `contratos/estado.schema.json`). Es la única fuente de las vistas.
 - Vistas, generadas por el mismo módulo (`proyeccion`):
-  - **web** de solo lectura servida por el relay (HTML estático + SSE; sin framework ni build);
+  - **web** de solo lectura servida por el relay (HTML estático + SSE; sin framework ni build). Desde M9a, con `web_nueva: sí`, la web nueva (React + Vite, compilada) la sirve el demonio de cada persona (ADR-0009 y ADR-0010); esta sigue como respaldo;
   - **`estado-equipo.md`** por persona, escrito por su demonio, que leen los hooks de inyección;
   - **MCP**: `estado()`, `tarea(id)`, `colisiones()`, más `reclamar(id)` y `reservar(rutas, ttl)`.
 - Un test de igualdad en el simulador: para cada guion, las tres vistas dan los mismos estados, dueños, colisiones y antigüedades (R-28).

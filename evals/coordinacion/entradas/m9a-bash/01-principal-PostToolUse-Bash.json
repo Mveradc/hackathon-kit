@@ -1,0 +1,25 @@
+{
+ "session_id": "00000000-0000-0000-0000-0000000000a9",
+ "transcript_path": "C:\\Users\\persona-a\\.claude\\projects\\C--Users-persona-a-tmp-repo\\sesion.jsonl",
+ "cwd": "C:\\Users\\persona-a\\tmp\\repo",
+ "prompt_id": "00000000-0000-0000-0000-000000000000",
+ "permission_mode": "bypassPermissions",
+ "effort": {
+  "level": "medium"
+ },
+ "hook_event_name": "PostToolUse",
+ "tool_name": "Bash",
+ "tool_input": {
+  "command": "echo pasa",
+  "description": "Imprime \"pasa\""
+ },
+ "tool_response": {
+  "stdout": "pasa",
+  "stderr": "",
+  "interrupted": false,
+  "isImage": false,
+  "noOutputExpected": false
+ },
+ "tool_use_id": "toolu_012WsmXqCbjFsxrfJarqYE6F",
+ "duration_ms": 2583
+}
