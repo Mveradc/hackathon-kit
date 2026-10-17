@@ -36,29 +36,19 @@ import agente  # noqa: E402
 import compilar  # noqa: E402
 import relay  # noqa: E402
 import remoto as remoto_mod  # noqa: E402
+from permisos import escribe_privado  # noqa: E402
 from red import equipo, web_nueva  # noqa: E402
 
 USO = __doc__.split("\n\n", 1)[1]
 # Lo que `recoger` nunca mete en el zip: secretos, los índices temporales y el remoto (código).
 NO_RECOGER = {"token", "relay.url", "wip.index", "wip.pathspecs", "web.token", "nota.index", "web.html", "web.html.tmp",
-              "token.tmp", "relay.url.tmp"}
+              "token.tmp", "relay.url.tmp", "web.token.tmp"}
+TEMPORAL = re.compile(r"(\.\d+)?\.tmp$")    # el .tmp de permisos.escribe_privado y el .<pid>.tmp del demonio
 # agente.vivo se renueva cada 15 s: con más de 60, el demonio está muerto. El criterio de scripts/os/delta.sh (VIVO_S,
 # línea 22, y la comprobación de la línea 190).
 VIVO_S = 60
 LINUX = sys.platform.startswith("linux")
 TCP_PROC = ("/proc/net/tcp", "/proc/net/tcp6")
-
-
-def _escribe_privado(ruta, texto):
-    """Un secreto en disco, 0600 desde que existe (O_EXCL en un .tmp y os.replace): sin la ventana de umask de
-    open(…, "w") ni el modo de un fichero anterior. En Windows, el modo no cambia el ACL que hereda de la carpeta."""
-    try:
-        os.remove(ruta + ".tmp")
-    except OSError:
-        pass
-    with os.fdopen(os.open(ruta + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as f:
-        f.write(texto)
-    os.replace(ruta + ".tmp", ruta)
 
 
 def _principal(comun):
@@ -203,7 +193,7 @@ def unir(url, token, cwd=".", persona=None, remoto=None, salida=print):
     carpeta = os.path.join(comun, "hackathon", "os")
     os.makedirs(carpeta, exist_ok=True)
     for nombre, valor in (("relay.url", url), ("token", token)):
-        _escribe_privado(os.path.join(carpeta, nombre), valor + "\n")
+        escribe_privado(os.path.join(carpeta, nombre), valor + "\n")
     if persona is not None:
         # Sin GitHub, la persona se declara (no se verifica): hk_yo la toma de aquí antes de preguntar a gh, y
         # sesion.sh avisa una vez si gh dice otra cosa cuando vuelve la red (ADR-0002, nota de M8h).
@@ -264,7 +254,7 @@ def recoger(cwd=".", destino=None, salida=print):
                 z.writestr(zipfile.ZipInfo.from_file(raiz, f"os/{rel}/"), b"")
                 vacias += 1
             for f in ficheros:
-                if f in NO_RECOGER:
+                if f in NO_RECOGER or TEMPORAL.sub("", f) in NO_RECOGER:
                     continue
                 z.write(os.path.join(raiz, f), "os/" + (f if rel == "." else f"{rel}/{f}"))
                 n += 1
@@ -303,7 +293,7 @@ def abrir_navegador(url, carpeta):
     if os.name == "nt":
         return webbrowser.open(url)
     ruta = os.path.join(carpeta, "web.html")
-    _escribe_privado(ruta, PAGINA_WEB.format(url=html.escape(url, quote=True)))
+    escribe_privado(ruta, PAGINA_WEB.format(url=html.escape(url, quote=True)))
     return webbrowser.open(pathlib.Path(ruta).as_uri())
 
 

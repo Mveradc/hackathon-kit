@@ -39,6 +39,7 @@ from estados import fecha  # noqa: E402
 import proyeccion  # noqa: E402
 import servicios  # noqa: E402
 from normaliza import Contexto, Normalizador, relativa  # noqa: E402
+import permisos  # noqa: E402
 from red import Servidor, ahora_iso, conf, web_nueva  # noqa: E402
 
 CICLO_S = 1
@@ -480,12 +481,14 @@ class Agente:
             with open(ruta, encoding="utf-8") as f:
                 token = f.read().strip()
             if re.fullmatch(r"[0-9a-f]{64}", token):
+                if not permisos.es_privado(ruta):        # uno de antes, 0644 o con el ACL heredado: se reescribe igual
+                    permisos.escribe_privado(ruta, token + "\n", tmp=f"{ruta}.{os.getpid()}.tmp")
                 return token
         except OSError:
             pass
         token = secrets.token_hex(32)
-        # Linux y macOS: el fichero nace ya con 0600, sin ventana entre escribirlo y el chmod (issue #6).
-        self._escribe("web.token", token + "\n", modo=None if os.name == "nt" else 0o600)
+        # Nace ya solo para este usuario (0600, o en Windows un ACL sin herencia), sin ventana (issue #6 y #15).
+        permisos.escribe_privado(ruta, token + "\n", tmp=f"{ruta}.{os.getpid()}.tmp")
         return token
 
     def token_valido(self, dado):
@@ -822,21 +825,12 @@ class Agente:
         # M8g: las reservas de las demás personas, para el aviso de reserva.sh (solo builtins de bash).
         self._escribe("reservas.tsv", proyeccion.reservas_tsv(v, self.persona, self.tz or datetime.now().astimezone().tzinfo))
 
-    def _escribe(self, nombre, texto, modo=None):
-        """Escritura atómica: quien lee (sesion.sh, delta.sh, el MCP) nunca ve un fichero a medias. Con `modo`, el
-        temporal se crea nuevo con esos permisos (O_EXCL), y no con los de la umask."""
+    def _escribe(self, nombre, texto):
+        """Escritura atómica: quien lee (sesion.sh, delta.sh, el MCP) nunca ve un fichero a medias. Los secretos, con
+        permisos.escribe_privado."""
         ruta = os.path.join(self.dir, nombre)
         tmp = f"{ruta}.{os.getpid()}.tmp"
-        abrir = None
-        if modo is not None:
-            try:
-                os.remove(tmp)
-            except OSError:
-                pass
-
-            def abrir(r, flags):
-                return os.open(r, flags | os.O_EXCL, modo)
-        with open(tmp, "w", encoding="utf-8", newline="\n", opener=abrir) as f:
+        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
             f.write(texto)
         os.replace(tmp, ruta)
 
