@@ -8,23 +8,36 @@ const DIR = join(dirname(fileURLToPath(import.meta.url)), "vistas") + "/";
 
 const TABLAS = "tablas.json";
 
-/** Las vistas de ejemplo (scripts/vistas_ejemplo.py): [{nombre, respuesta, esperado}], con lo que serviría el demonio
- *  y lo que calcula proyeccion.py para cada persona ({persona: {trabajo, servicios}}). */
+/** Las vistas de ejemplo (scripts/vistas_ejemplo.py): [{nombre, respuesta, esperado, antiguedades}], con lo que
+ *  serviría el demonio, lo que calcula proyeccion.py para cada persona ({persona: {trabajo, servicios}}) y la
+ *  antigüedad en segundos de cada observado_en según proyeccion.py ({observado_en: segundos}). */
 export function casos() {
   const salida = [];
   for (const f of readdirSync(DIR).filter((x) => x.endsWith(".json") && x !== TABLAS).sort()) {
     const { nombre, casos: lista } = JSON.parse(readFileSync(DIR + f, "utf-8"));
     lista.forEach((c, i) => {
-      const { tras, esperado, ...respuesta } = c;
-      salida.push({ nombre: `${nombre}${tras != null ? ` t=${tras}` : ""} #${i} @${c.persona}`, respuesta, esperado });
+      const { tras, esperado, antiguedades, ...respuesta } = c;
+      salida.push({ nombre: `${nombre}${tras != null ? ` t=${tras}` : ""} #${i} @${c.persona}`, respuesta, esperado, antiguedades });
     });
   }
   return salida;
 }
 
 export function caso(nombre, i = 0) {
-  const { esperado, ...c } = JSON.parse(readFileSync(DIR + `${nombre}.json`, "utf-8")).casos[i];
+  const { esperado, antiguedades, ...c } = JSON.parse(readFileSync(DIR + `${nombre}.json`, "utf-8")).casos[i];
   return c;
+}
+
+// Unidad del «hace N unidad»: [segundos de la unidad, desde, hasta (sin incluir)].
+const UNIDAD = { s: [1, 0, 60], min: [60, 60, 3600], h: [3600, 3600, 86400], d: [86400, 86400, Infinity] };
+
+/** ¿El «hace N unidad» que pinta la web dice los `segundos` que calculó proyeccion.py? Sin usar hace() de la web:
+ *  la unidad es la mayor que cabe y N, el entero de segundos / unidad. */
+export function diceAntiguedad(texto, segundos) {
+  const m = /^hace (\d+) (s|min|h|d)$/.exec(texto);
+  if (!m || !Number.isInteger(segundos)) return false;
+  const [paso, desde, hasta] = UNIDAD[m[2]];
+  return segundos >= desde && segundos < hasta && Math.floor(segundos / paso) === Number(m[1]);
 }
 
 /** ETIQUETAS y TRABAJO de proyeccion.py, tal cual. */
@@ -88,6 +101,13 @@ export function demonioFalso({ vistaActual = null, acciones = {} } = {}) {
  *  `animationend` o `webkitAnimationEnd`: se mandan los dos (en un navegador solo llega el que toca). */
 export function terminaAnimacion(el) {
   for (const tipo of ["animationend", "webkitAnimationEnd"]) el.dispatchEvent(new Event(tipo, { bubbles: true }));
+}
+
+/** La pestaña oculta o visible (document.hidden y visibilitychange, como hace el navegador). */
+export function pestanaOculta(si) {
+  Object.defineProperty(document, "hidden", { configurable: true, get: () => si });
+  Object.defineProperty(document, "visibilityState", { configurable: true, get: () => (si ? "hidden" : "visible") });
+  document.dispatchEvent(new Event("visibilitychange"));
 }
 
 /** prefers-reduced-motion simulado (jsdom no trae matchMedia). */

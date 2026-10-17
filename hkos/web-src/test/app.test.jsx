@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.jsx";
+import { SIN_VISTA_MS } from "../src/datos/demonio.js";
 import { tomarToken } from "../src/datos/token.js";
 import { horaLocal } from "../src/formato.js";
 import { caso, demonioFalso, movimientoReducido, terminaAnimacion } from "./ayuda.js";
@@ -83,6 +84,52 @@ describe("transporte", () => {
     expect(streams()).toBe(3);
     expect(vistas()).toBeGreaterThanOrEqual(2);
     for (const p of d.peticiones) expect(p.headers["X-HK-Token"]).toBe(TOKEN);
+  });
+
+  it("una conexión medio abierta (sin cierre ni datos): al pasar a «sin conexión» aborta el stream, sondea y reconecta", async () => {
+    const r = caso("G12");
+    r.vista.umbrales.fuente_s = 10;                       // mandan los 40 s
+    const { d, container } = await monta();
+    d.vista(r);
+    await flush();
+    const vistas = () => d.peticiones.filter((p) => p.url === "/v1/vista").length;
+    const streams = () => d.peticiones.filter((p) => p.url === "/v1/stream");
+    await act(async () => { await vi.advanceTimersByTimeAsync(39_000); });
+    expect(streams()[0].signal.aborted).toBe(false);
+    expect(vistas()).toBe(0);
+    // El stream sigue «abierto» (read() no vuelve nunca): sin el aborto, la web se quedaría colgada aquí.
+    await act(async () => { await vi.advanceTimersByTimeAsync(2_000); });
+    expect(container.querySelector("main").dataset.sinConexion).toBe("si");
+    expect(streams()[0].signal.aborted).toBe(true);
+    expect(vistas()).toBeGreaterThanOrEqual(1);
+    await act(async () => { await vi.advanceTimersByTimeAsync(1_000); });
+    expect(streams().length).toBe(2);
+    d.vista(r);
+    await flush();
+    expect(container.querySelector("main").dataset.sinConexion).toBe("no");
+    expect(container.querySelector(".hk-sub").textContent).not.toContain("sin stream");
+  });
+
+  it("stream conectado pero sin ninguna `vista` (el demonio aún sin estado): pide /v1/vista una vez y dice que no tiene estado", async () => {
+    const { d } = await monta();
+    const vistas = () => d.peticiones.filter((p) => p.url === "/v1/vista").length;
+    d.ping();
+    await act(async () => { await vi.advanceTimersByTimeAsync(SIN_VISTA_MS - 100); });
+    expect(screen.getByRole("status").textContent).toContain("Conectando con tu demonio");
+    expect(vistas()).toBe(0);
+    await act(async () => { await vi.advanceTimersByTimeAsync(200); });
+    expect(screen.getByRole("status").textContent).toContain("aún no tiene estado");
+    expect(vistas()).toBe(1);
+    for (let i = 0; i < 3; i++) {
+      d.ping();
+      await act(async () => { await vi.advanceTimersByTimeAsync(15_000); });
+    }
+    expect(vistas()).toBe(1);
+    expect(d.peticiones.filter((p) => p.url === "/v1/stream").length).toBe(1);
+    // Cuando el demonio ya tiene estado, la `vista` del stream lo pinta tal cual.
+    d.vista(caso("G12"));
+    await flush();
+    expect(screen.getByRole("heading", { name: /Hola, @persona-a/ })).toBeTruthy();
   });
 });
 

@@ -6,12 +6,29 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 //   - el paquete es una animación CSS (hk-packet-viaje) y se retira en su `animationend`; la arista se ilumina con
 //     otra (hk-edge-flash) que también se retira sola. Ningún temporizador crea ni retira actividad;
 //   - por una arista `stale` no viaja nada; con `paused` (la web sin conexión) tampoco;
+//   - con la pestaña oculta (document.hidden) es como `paused`: el navegador no despacha `animationend`, así que lo
+//     que llega entonces se da por visto sin animarlo y lo que estaba en vuelo se retira; al volver no se anima nada
+//     de lo que pasó mientras;
+//   - como mucho PAQUETES_MAX paquetes y DESTELLOS_MAX destellos a la vez (se quedan los más nuevos);
 //   - con prefers-reduced-motion no hay paquetes: la arista solo se ilumina.
-// Añadido respecto de index.d.ts: `paused` y `ref`.
+// Añadido respecto de index.d.ts: `paused`, `ref` y el estado de nodo `off` (apagado, sin palabra: p. ej. sin GitHub).
 
 const R = { relay: 26, github: 22, person: 20, orchestrator: 15, worker: 11 };
 const VISTOS_MAX = 5000;
+export const PAQUETES_MAX = 24;
+export const DESTELLOS_MAX = 24;
 const CONSULTA = "(prefers-reduced-motion: reduce)";
+
+function suscribirVisibilidad(cb) {
+  if (typeof document === "undefined") return () => {};
+  document.addEventListener("visibilitychange", cb);
+  return () => document.removeEventListener("visibilitychange", cb);
+}
+const oculta = () => typeof document !== "undefined" && !!document.hidden;
+
+export function usePestanaOculta() {
+  return useSyncExternalStore(suscribirVisibilidad, oculta, () => false);
+}
 
 function suscribir(cb) {
   if (typeof window === "undefined" || !window.matchMedia) return () => {};
@@ -36,8 +53,10 @@ function extremos(e, porId) {
 }
 
 export function TeamGraph({ nodes = [], edges = [], events = [], width = 640, height = 320, packetMs = 900, label,
-  className, paused = false, ref }) {
+  className, paused: pausado = false, ref }) {
   const quieto = useReducedMotion();
+  const oculto = usePestanaOculta();
+  const paused = pausado || oculto;
   const [paquetes, setPaquetes] = useState([]);
   const [destellos, setDestellos] = useState([]);
   const vistos = useRef(new Set());
@@ -55,18 +74,18 @@ export function TeamGraph({ nodes = [], edges = [], events = [], width = 640, he
       vistos.current = new Set([...vistos.current].slice(-VISTOS_MAX / 2));
       for (const ev of events) vistos.current.add(ev.id);
     }
-    if (paused || !nuevos.length) return;
+    if (paused || oculta() || !nuevos.length) return;
     const vivos = nuevos.filter((ev) => {
       const e = aristas.current.get(ev.edge);
       return e && !e.stale;
     });
     if (!vivos.length) return;
-    setDestellos((d) => [...d, ...vivos.map((ev) => ({ id: ev.id, edge: ev.edge }))]);
-    if (!quieto) setPaquetes((p) => [...p, ...vivos]);
+    setDestellos((d) => [...d, ...vivos.map((ev) => ({ id: ev.id, edge: ev.edge }))].slice(-DESTELLOS_MAX));
+    if (!quieto) setPaquetes((p) => [...p, ...vivos].slice(-PAQUETES_MAX));
   }, [events, paused, quieto]);
 
-  // Lo que estaba en vuelo por una arista que se ha quedado vieja (o con la web sin conexión) se retira: si no, al
-  // volver se montaría otra vez y animaría algo que ya no está pasando.
+  // Lo que estaba en vuelo por una arista que se ha quedado vieja (o con la web sin conexión, o con la pestaña oculta)
+  // se retira: si no, al volver se montaría otra vez y animaría algo que ya no está pasando.
   useEffect(() => {
     const vale = (x) => !paused && aristas.current.get(x.edge) && !aristas.current.get(x.edge).stale;
     const vuela = (x) => !quieto && vale(x);
@@ -106,6 +125,7 @@ export function TeamGraph({ nodes = [], edges = [], events = [], width = 640, he
       {nodes.map((n) => {
         const r = R[n.kind] || 14;
         const s = n.state && n.state !== "live" && n.state !== "idle" ? n.state : null;
+        // `off` no lleva palabra: no es un estado de dato (p. ej. sin GitHub), solo el nodo apagado.
         const palabra = { wait: "ESPERA", fail: "FALLO", stale: "VIEJO", ok: "OK" }[s];
         return (
           <g key={n.id} data-nodo={n.id} className={cx("hk-node", `hk-node--${n.kind}`, s && `is-${s}`, n.state === "live" && "is-live")}>
