@@ -164,6 +164,72 @@ class SondeoGit(unittest.TestCase):
         self.vuelta(a)
         self.assertTrue(self.git_del_relay()[-1]["ts"].endswith("Z"))
 
+    def otro_clon(self, correo="a@example.com"):
+        otro = os.path.join(self.tmp, "otro")
+        subprocess.run(["git", "clone", "-q", os.path.join(self.tmp, "remoto.git"), otro], check=True)
+        git(otro, "config", "user.name", "A"); git(otro, "config", "user.email", correo)
+        return otro
+
+    def commit_en(self, clon, mensaje):
+        with open(os.path.join(clon, "a.txt"), "a", encoding="utf-8") as f:
+            f.write(mensaje + "\n")
+        git(clon, "commit", "-qam", mensaje)
+        return git(clon, "rev-parse", "HEAD")
+
+    def commits_emitidos(self):
+        return [e["datos"]["sha"] for e in self.git_del_relay() if e["tipo"] == "commit"]
+
+    def test_el_correo_de_git_no_hace_suyo_un_commit(self):
+        """Issue #2, hallazgo 2 (ADR-0011): otro clon hace un commit con el user.email de esta persona y lo sube. Antes,
+        el demonio lo emitía como suyo por el correo del committer. Ahora solo emite lo que se hizo con `git commit` en
+        este clon: entra en el `incluye` del push, pero no como commit. Es también el caso del mismo dueño con dos
+        clones: lo emite el demonio del clon donde se hizo, no el otro."""
+        a = self.agente()
+        self.vuelta(a)
+        otro = self.otro_clon(correo="b@example.com")
+        sha = self.commit_en(otro, "T05 · con el correo de B")
+        git(otro, "push", "-q", "origin", "main")
+        self.reloj.t += 60                                          # que toque fetch
+        self.vuelta(a)
+        self.assertEqual([(e["tipo"], e["datos"].get("incluye")) for e in self.git_del_relay()], [("push", [sha])])
+        git(self.repo, "pull", "-q", "--ff-only", "origin", "main")    # traerlo a main tampoco lo hace suyo
+        self.vuelta(a)
+        self.assertEqual(self.commits_emitidos(), [])
+
+    def test_lo_traido_de_fuera_no_se_emite(self):
+        """Issue #2, hallazgo 5: los commits de otra persona que este clon solo ha traído (fetch y checkout de su rama,
+        merge local, cherry-pick, rebase) no salen como suyos aunque estén en una rama local fuera de origin/main. Lo
+        que se hace aquí encima con `git commit` (también --amend), sí."""
+        a = self.agente()
+        self.vuelta(a)
+        otro = self.otro_clon()
+        git(otro, "checkout", "-q", "-b", "feature")
+        ajenos = [self.commit_en(otro, "T05 · de A"), self.commit_en(otro, "T05 · más de A")]
+        git(otro, "push", "-q", "origin", "feature")
+        git(self.repo, "fetch", "-q", "origin")
+        git(self.repo, "checkout", "-q", "-b", "feature", "origin/feature")            # la rama de A, en local
+        git(self.repo, "checkout", "-q", "-b", "mezcla", "main")
+        git(self.repo, "merge", "-q", "--no-ff", "-m", "Merge de feature", "origin/feature")
+        git(self.repo, "checkout", "-q", "-b", "elegido", "main")
+        git(self.repo, "cherry-pick", ajenos[0])
+        git(self.repo, "checkout", "-q", "-b", "propia", "main")
+        self.escribe("b.txt", "propio\n")
+        git(self.repo, "add", "b.txt"); git(self.repo, "commit", "-qm", "T08 · base propia")
+        propio = git(self.repo, "rev-parse", "HEAD")
+        git(self.repo, "checkout", "-q", "-b", "rebasado", "origin/feature")
+        git(self.repo, "rebase", "-q", "propia")                                       # A encima de lo propio
+        self.vuelta(a)
+        self.assertEqual(self.commits_emitidos(), [propio])
+        git(self.repo, "checkout", "-q", "feature")
+        encima = self.commit("T05 · lo mío encima")
+        git(self.repo, "commit", "-q", "--amend", "-m", "T05 · lo mío encima, corregido")
+        corregido = git(self.repo, "rev-parse", "HEAD")
+        self.vuelta(a)
+        self.assertEqual(self.commits_emitidos(), [propio, corregido])
+        self.assertNotIn(encima, self.commits_emitidos())               # el de antes del amend ya no está en la rama
+        for e in self.git_del_relay():
+            self.assertEqual(e["actor"]["persona"], "persona-b")
+
     def test_solo_el_id_del_principio_y_sin_merges(self):
         """«Ajuste del plan: T14 …» no es de T14; un merge al traer origin no es un commit de tarea (en vivo, M8e)."""
         a = self.agente()
@@ -185,6 +251,21 @@ class SondeoGit(unittest.TestCase):
         self.vuelta(a)
         [e] = self.git_del_relay()
         self.assertEqual((e.get("tarea"), e["actor"]["papel"], e["actor"]["agente"]), ("T11", "worker", "a1b2"))
+
+    def test_commit_en_un_worktree_de_worker(self):
+        """ADR-0011: el commit de un worker en su worktree sale como de la persona: el reflog de su rama está en el git
+        común, así que cuenta como hecho con `git commit` en este clon."""
+        a = self.agente()
+        self.vuelta(a)
+        wt = os.path.join(self.tmp, "wt")
+        git(self.repo, "worktree", "add", "-q", "-b", "worktree-agent-c3d4", wt)
+        with open(os.path.join(wt, "w.txt"), "w", encoding="utf-8") as f:
+            f.write("del worker\n")
+        git(wt, "add", "w.txt"); git(wt, "commit", "-qm", "T11 · del worker")
+        self.vuelta(a)
+        [e] = self.git_del_relay()
+        self.assertEqual((e["datos"]["sha"], e["actor"]["papel"], e["actor"]["agente"]),
+                         (git(wt, "rev-parse", "HEAD"), "worker", "c3d4"))
 
     def test_sin_confirmar_se_reemite_con_el_mismo_id(self):
         a = self.agente()

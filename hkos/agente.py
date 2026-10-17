@@ -52,12 +52,15 @@ LOG_MAX = 1024 * 1024
 WEB_NUEVA = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "nueva")
 TIPOS_WEB = {".js": "text/javascript; charset=utf-8", ".css": "text/css; charset=utf-8", ".woff2": "font/woff2",
              ".svg": "image/svg+xml", ".png": "image/png"}
-CSP_WEB = ("default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; "
+# Sin 'unsafe-inline' (issue #6): React pone los style={{…}} por CSSOM, que la CSP no bloquea.
+CSP_WEB = ("default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; "
            "img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 ACCIONES = ("/v1/anotar", "/v1/reclamar")
 ACCION_MAX = 4096
 PING_S = 20                      # el mismo que el relay: la web pasa a «sin conexión» tras max(umbral_viejo_s, 40 s)
 WEB_COLA = 200
+SOCKET_S = 10                    # issue #6: una petición a medias (cabeceras o cuerpo) no retiene un hilo para siempre
+STREAM_MAX = 8                   # clientes de /v1/stream a la vez (pestañas de la persona); el siguiente, 429
 
 
 def git_comun(repo):
@@ -80,6 +83,9 @@ class Fichero:
 # La tarea de un commit es el ID con que empieza su asunto («T07 · …», ADR-0002), no cualquier mención: un commit
 # del plan que dice «Ajuste del plan: T14 …» no es trabajo de T14 (en vivo, M8e).
 ID_EN_MENSAJE = re.compile(r"^\s*\[?(T\d{2,3})\b")
+# Issue #2 (hallazgos 2 y 5, ADR-0011): un commit es de este clon solo si una rama local lo recibió con `git commit`
+# aquí (su reflog lo dice). Ni el correo de git, ni traerlo con fetch, checkout, merge, pull, cherry-pick o rebase.
+CREADO_AQUI = re.compile(r"^commit(?: \((?:initial|amend)\))?: ")
 
 
 class SondeoGit:
@@ -105,7 +111,6 @@ class SondeoGit:
         self.vistos = list(d.get("vistos", []))
         self._vistos = set(self.vistos)
         self.pendientes = {}                     # id del evento → ("commit", sha) | ("push", punta)
-        self.correo = None                       # user.email del clon, para saber qué commits son de esta persona
         self.firma_arbol = None                  # el último `arbol` emitido por el demonio (no se repite igual)
         self.ultimo = self.ultimo_fetch = -1e18
 
@@ -123,27 +128,33 @@ class SondeoGit:
         return r.stdout if crudo else r.stdout.strip()   # crudo: `status --porcelain` empieza por un espacio
 
     def _log(self, rango, *mas):
-        """[(sha, hora en UTC, correo de quien hizo el commit, asunto)] del más viejo al más nuevo; None si git no puede
-        (punta desconocida)."""
-        t = self._git("log", "--reverse", "--format=%H%x1f%cI%x1f%ce%x1f%s", *mas, rango)
+        """[(sha, hora en UTC, asunto)] del más viejo al más nuevo; None si git no puede (punta desconocida)."""
+        t = self._git("log", "--reverse", "--format=%H%x1f%cI%x1f%s", *mas, rango)
         if t is None:
             return None
         salida = []
         for l in t.splitlines():
-            if l.count("\x1f") == 3:
-                sha, ts, correo, asunto = l.split("\x1f", 3)
+            if l.count("\x1f") == 2:
+                sha, ts, asunto = l.split("\x1f", 2)
                 ts = datetime.fromisoformat(ts).astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
-                salida.append((sha, ts, correo.lower(), asunto))
+                salida.append((sha, ts, asunto))
         return salida
 
-    def _propio(self, sha, correo):
-        """¿Es de esta persona un commit que llega por origin/main? Por el correo del clon (`user.email`); sin él, si lo
-        alcanza una rama local. Un commit de otra persona entra en el `incluye` del push, pero no como commit suyo."""
-        if self.correo is None:
-            self.correo = (self._git("config", "user.email") or "").lower()
-        if self.correo:
-            return correo == self.correo
-        return bool(self._git("for-each-ref", "--contains", sha, "--format=%(refname)", "refs/heads"))
+    def _creados(self):
+        """Los shas que una rama local de este clon (también las `worktree-agent-<id>`, cuyo reflog está en el git
+        común) recibió con `git commit`, `--amend` incluido: lo único que el demonio emite como commit de su persona.
+        Nunca el autor ni el committer de git, que cualquiera pone (ADR-0011). Lo que llegó de fuera (fetch, checkout de
+        una rama ajena, merge, pull, cherry-pick, rebase, reset) no tiene esa entrada y no se emite: ante la duda, el
+        commit se queda sin confirmar, que es el lado seguro. Sin reflog (o si git no puede), nada."""
+        ramas = (self._git("for-each-ref", "--format=%(refname)", "refs/heads") or "").split()
+        if not ramas:
+            return set()
+        salida = set()
+        for l in (self._git("log", "-g", "--format=%H%x1f%gs", *ramas, "--") or "").splitlines():
+            sha, _, motivo = l.partition("\x1f")
+            if CREADO_AQUI.match(motivo):
+                salida.add(sha)
+        return salida
 
     def _guardar(self):
         self.vistos = self.vistos[-self.MAX_VISTOS:]
@@ -220,10 +231,16 @@ class SondeoGit:
             self.ultimo_fetch = ahora
             self._git("fetch", "--quiet", "origin")
         punta = self._git("rev-parse", "refs/remotes/origin/main")
-        eventos = []
+        eventos, creados = [], None
+
+        def de_aqui(sha):
+            nonlocal creados
+            if creados is None:                  # una vez por vuelta, y solo si hay algún commit nuevo que mirar
+                creados = self._creados()
+            return sha in creados
         for rama in (self._git("for-each-ref", "--format=%(refname:short)", "refs/heads") or "").split():
-            for sha, ts, _, asunto in self._log(f"refs/remotes/origin/main..refs/heads/{rama}", "--no-merges") or []:
-                if sha not in self._vistos and not self._en_espera(sha):
+            for sha, ts, asunto in self._log(f"refs/remotes/origin/main..refs/heads/{rama}", "--no-merges") or []:
+                if sha not in self._vistos and not self._en_espera(sha) and de_aqui(sha):
                     eventos.append(self._commit(sha, ts, asunto, rama, False))
         if self.punta is None:                   # primera vez: lo que ya estaba subido no es un push nuevo
             self.punta = punta
@@ -234,10 +251,11 @@ class SondeoGit:
                 tramo = self._log(punta, "-n", "50") or []
             # Un merge (traer origin, por ejemplo) no es trabajo de una tarea: no sale como commit (en vivo, M8e).
             merges = set((self._git("rev-list", "--merges", f"{self.punta}..{punta}") or "").split())
-            for sha, ts, correo, asunto in tramo:
-                if sha not in self._vistos and not self._en_espera(sha) and sha not in merges and self._propio(sha, correo):
+            # Los de otras personas (o de otro clon) entran en el `incluye` del push, pero no como commits suyos.
+            for sha, ts, asunto in tramo:
+                if sha not in self._vistos and not self._en_espera(sha) and sha not in merges and de_aqui(sha):
                     eventos.append(self._commit(sha, ts, asunto, "origin/main", True))
-            incluye = [sha for sha, _, _, asunto in tramo if ID_EN_MENSAJE.search(asunto) or sha in self.ag.fusiones]
+            incluye = [sha for sha, _, asunto in tramo if ID_EN_MENSAJE.search(asunto) or sha in self.ag.fusiones]
             e = {"v": 1, "id": f"git-{self.ag.persona}-push-{punta[:12]}", "ts": self.ag.ahora(),
                  "actor": {"persona": self.ag.persona, "papel": "demonio"}, "tipo": "push", "fuente": "git",
                  "datos": {"sha": punta, "incluye": incluye}}
@@ -338,24 +356,35 @@ class SaludServicios:
 
     def comprobar(self, puerto, salud):
         """(escucha, salud): si el puerto acepta en 127.0.0.1 y el código HTTP de GET <Salud> (None sin Salud o sin
-        respuesta). Sin seguir redirecciones y leyendo como mucho 4 KB."""
+        respuesta). Sin seguir redirecciones y leyendo como mucho 4 KB. HTTP_S es el plazo de toda la consulta, no de
+        cada recv (issue #6): un servicio que responde a gotas no bloquea el hilo ni deja sin mirar a los demás. Solo
+        hace falta la línea de estado, así que se lee hasta ella."""
         try:
-            socket.create_connection(("127.0.0.1", puerto), timeout=self.CONEXION_S).close()
+            s = socket.create_connection(("127.0.0.1", puerto), timeout=self.CONEXION_S)
         except OSError:
             return False, None
-        if salud is None:
-            return True, None
-        c = http.client.HTTPConnection("127.0.0.1", puerto, timeout=self.HTTP_S)
-        try:
-            c.request("GET", salud)
-            r = c.getresponse()
-            r.read(self.LEER_MAX)
-            codigo = r.status
-        except (OSError, http.client.HTTPException):
-            codigo = None
-        finally:
-            c.close()
-        return True, codigo if isinstance(codigo, int) and 100 <= codigo <= 599 else None
+        datos = b""
+        with s:
+            if salud is None:
+                return True, None
+            fin = time.monotonic() + self.HTTP_S
+            try:
+                s.settimeout(self.HTTP_S)
+                s.sendall(f"GET {salud} HTTP/1.1\r\nHost: 127.0.0.1:{puerto}\r\nAccept-Encoding: identity\r\n"
+                          "Connection: close\r\n\r\n".encode("ascii"))
+                while b"\n" not in datos and len(datos) < self.LEER_MAX:
+                    resto = fin - time.monotonic()
+                    if resto <= 0:
+                        break
+                    s.settimeout(resto)
+                    trozo = s.recv(self.LEER_MAX - len(datos))
+                    if not trozo:
+                        break
+                    datos += trozo
+            except (OSError, UnicodeEncodeError):
+                pass
+        m = re.match(rb"HTTP/1\.[01] ([1-5][0-9][0-9])(?: [^\r\n]*)?\r?\n", datos)
+        return True, int(m.group(1)) if m else None
 
     def ciclo(self):
         if self.ag.reloj() - self.cuando < self.CADA_S:
@@ -433,6 +462,7 @@ class Agente:
         self.en_stream, self.md_pendiente, self.relay_ultimo_bueno = False, False, None
         self.web_cambio = threading.Condition()
         self.web_seq, self.web_cola = 0, deque(maxlen=WEB_COLA)     # (seq, evento, datos): lo que va a /v1/stream
+        self.web_clientes = 0                                          # clientes de /v1/stream ahora (tope STREAM_MAX)
         self.suscripcion, self.salud_servicios = Suscripcion(self), SaludServicios(self)
         self.acciones = Acciones(self)
 
@@ -448,11 +478,8 @@ class Agente:
         except OSError:
             pass
         token = secrets.token_hex(32)
-        self._escribe("web.token", token + "\n")
-        try:
-            os.chmod(ruta, 0o600)
-        except OSError:
-            pass
+        # Linux y macOS: el fichero nace ya con 0600, sin ventana entre escribirlo y el chmod (issue #6).
+        self._escribe("web.token", token + "\n", modo=None if os.name == "nt" else 0o600)
         return token
 
     def token_valido(self, dado):
@@ -789,11 +816,21 @@ class Agente:
         # M8g: las reservas de las demás personas, para el aviso de reserva.sh (solo builtins de bash).
         self._escribe("reservas.tsv", proyeccion.reservas_tsv(v, self.persona, self.tz or datetime.now().astimezone().tzinfo))
 
-    def _escribe(self, nombre, texto):
-        """Escritura atómica: quien lee (sesion.sh, delta.sh, el MCP) nunca ve un fichero a medias."""
+    def _escribe(self, nombre, texto, modo=None):
+        """Escritura atómica: quien lee (sesion.sh, delta.sh, el MCP) nunca ve un fichero a medias. Con `modo`, el
+        temporal se crea nuevo con esos permisos (O_EXCL), y no con los de la umask."""
         ruta = os.path.join(self.dir, nombre)
         tmp = f"{ruta}.{os.getpid()}.tmp"
-        with open(tmp, "w", encoding="utf-8", newline="\n") as f:
+        abrir = None
+        if modo is not None:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+
+            def abrir(r, flags):
+                return os.open(r, flags | os.O_EXCL, modo)
+        with open(tmp, "w", encoding="utf-8", newline="\n", opener=abrir) as f:
             f.write(texto)
         os.replace(tmp, ruta)
 
@@ -828,6 +865,7 @@ def manejador(agente):
     class Manejador(BaseHTTPRequestHandler):
         server_version = "hk-os-agente"
         sys_version = ""
+        timeout = SOCKET_S
 
         def log_message(self, *args):
             pass
@@ -895,24 +933,34 @@ def manejador(agente):
 
         def _stream(self):
             """SSE para la web (api.md §4): `vista` al conectar y cada vez que cambia; `eventos` tal como llegan del
-            relay; `ping` cada 20 s sin nada más."""
-            self.send_response(200)
-            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
-            self.send_header("Cache-Control", "no-store")
-            self.end_headers()
-            visto, _ = agente.web_esperar(-1, 0)
-
-            def vista():
-                cuerpo = agente.vista_web()
-                if cuerpo is not None:
-                    self.wfile.write(b"event: vista\ndata: " + json.dumps(cuerpo, ensure_ascii=False, separators=(
-                        ",", ":")).encode("utf-8") + b"\n\n")
+            relay; `ping` cada 20 s sin nada más, y con él otra `vista`: `servido_en` y lo «viejo» cambian con el
+            tiempo, y la web tiene que decir lo mismo que /v1/vista y estado-equipo.md (issue #6, ADR-0009). Como mucho
+            STREAM_MAX clientes a la vez (429 al siguiente)."""
+            with agente.web_cambio:
+                lleno = agente.web_clientes >= STREAM_MAX
+                if not lleno:
+                    agente.web_clientes += 1
+            if lleno:
+                self._json(429, {"error": "demasiados clientes"})
+                return
             try:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.end_headers()
+                visto, _ = agente.web_esperar(-1, 0)
+
+                def vista():
+                    cuerpo = agente.vista_web()
+                    if cuerpo is not None:
+                        self.wfile.write(b"event: vista\ndata: " + json.dumps(cuerpo, ensure_ascii=False, separators=(
+                            ",", ":")).encode("utf-8") + b"\n\n")
                 vista()
                 self.wfile.flush()
                 while True:
                     visto, nuevos = agente.web_esperar(visto, PING_S)
                     if not nuevos:
+                        vista()
                         self.wfile.write(b"event: ping\ndata: \n\n")
                     hecha = False
                     for evento, datos in nuevos:
@@ -924,6 +972,9 @@ def manejador(agente):
                     self.wfile.flush()
             except OSError:
                 return
+            finally:
+                with agente.web_cambio:
+                    agente.web_clientes -= 1
 
         def do_GET(self):
             if self.path == "/salud":
@@ -955,7 +1006,12 @@ def manejador(agente):
             except ValueError:
                 n = -1
             # Leído antes de cualquier respuesta (en Windows, cerrar sin leer da un RST); lo grande, sin guardarlo.
-            datos = self.rfile.read(n) if 0 <= n <= 16 * ACCION_MAX else None
+            try:
+                datos = self.rfile.read(n) if 0 <= n <= 16 * ACCION_MAX else None
+            except TimeoutError:                            # un cuerpo que no llega en SOCKET_S (issue #6)
+                self.close_connection = True
+                self._json(408, {"error": "cuerpo"})
+                return
             if datos is not None and n > ACCION_MAX:
                 datos = None
             if not self._local():
