@@ -26,6 +26,12 @@ jobs:
         run: |
           irm https://astral.sh/uv/install.ps1 | iex
           "$env:USERPROFILE\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - name: Sin jq (el runner lo trae por Chocolatey; Git Bash no)
+        run: |
+          mkdir -p "$RUNNER_TEMP/sin-jq"
+          printf '#!/bin/sh\necho "jq no está en Git Bash: el kit no debe usarlo" >&2\nexit 127\n' > "$RUNNER_TEMP/sin-jq/jq"
+          chmod +x "$RUNNER_TEMP/sin-jq/jq"
+          cygpath -w "$RUNNER_TEMP/sin-jq" >> "$GITHUB_PATH"
       - name: Versiones y entorno
         run: |
           cmd //c ver; git --version; uv --version; bash --version | head -1
