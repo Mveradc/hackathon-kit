@@ -289,6 +289,8 @@ Colisiones (M8g): las calcula `modelo.calcular` con `hkos/colisiones.py` y `hkos
 | `POST /v1/anotar` | Sí | Anotar (abajo) | `200 {"ok":true,"sha":…}`; `400` con el campo que no vale; `409` si el push se rechaza dos veces; `502` si git falla por otra cosa (con el motivo en una línea) |
 | `POST /v1/reclamar` | Sí | Reclamar (abajo) | `200 {"ok":true,"issue":n\|null}`; `404` si la tarea no existe; `409` si no está libre o es de otro dueño; `429` por encima del tope; `502` si `gh` falla |
 
+El hueco de un cliente de `/v1/stream` que cierra se libera en 1 s, sin esperar al `ping` (tras congelar, 2026-10-17, PR #20, issue #15, hallazgo 9): entre `ping` y `ping`, cada segundo sin nada que mandar, el demonio mira si la conexión da EOF o un error y, si es así, termina el stream. Lo que el cliente mande de más no lo cierra.
+
 Las acciones exigen además `Content-Type: application/json` (si no, `415`) y un cuerpo de 4 KB como mucho (si no, `413`).
 
 Cada conexión con el demonio tiene un plazo de socket de 10 s (tras congelar, 2026-10-17, PR #12, issue #6): un `POST` cuyo cuerpo prometido (`Content-Length`) no llega en ese plazo recibe `408 {"error":"cuerpo"}` y se cierra la conexión; si ni siquiera llega la línea de la petición, la conexión se cierra sin respuesta.
