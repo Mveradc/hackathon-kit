@@ -930,6 +930,105 @@ def prueba_reservas(tmp):
         os.remove(os.path.join(r, ".hackathon", "os.md"))
 
 
+def prueba_acciones(tmp):
+    """M9a (K-95, criterio 8, parte sin modelo): una línea de Reclamar en acciones.jsonl abre un turno en un solo monitor
+    de la persona, con el texto fijo del kit y solo el ID de la tarea; una línea a medio escribir espera a su salto; una
+    vieja (más de 10 min) o con algo más que un ID, nada. Sin el OS activo o con `web_nueva: no`, el monitor no la lee."""
+    import time
+    print("\n== escucha.sh: Reclamar desde la web, un turno en un solo monitor (M9a, K-95)")
+    ESC = KIT + "/scripts/coordinacion/escucha.sh"
+    base = os.path.join(tmp, "acciones"); os.makedirs(base)
+    r = repo_os(base, "clon")
+    osdir = os.path.join(r, ".git", "hackathon", "os"); os.makedirs(osdir)
+    registro, entregado = os.path.join(osdir, "acciones.jsonl"), os.path.join(osdir, "entregado")
+    gh = os.path.join(base, "gh-falso").replace("\\", "/")
+    llamadas = os.path.join(base, "gh-llamadas.txt").replace("\\", "/")
+    open(gh, "w", newline="\n").write('#!/usr/bin/env bash\necho "$*" >> "' + llamadas + '"\n'
+                                      'case "$*" in *"api user"*) echo persona-b ;; esac\nexit 0\n')
+    ejecutable(gh)
+    open(os.path.join(r, ".hackathon", "coordinacion.md"), "w", encoding="utf-8").write(
+        "activa: sí\nrepo: equipo/reto\n\n| Persona | GitHub |\n|---|---|\n| B | @persona-b |\n")
+    osmd = os.path.join(r, ".hackathon", "os.md")
+
+    def linea(tarea, hace_s=0, salto=True, tarea_campo=None):
+        ms = int((time.time() - hace_s) * 1000)
+        return (json.dumps({"id": f"web-persona-b-reclamo-{tarea}-{ms}", "tipo": "reclamo", "tarea": tarea_campo or tarea,
+                            "ts": "2026-11-20T10:00:00.000000Z"}, separators=(",", ":")) + ("\n" if salto else "")).encode()
+
+    def anade(datos):
+        with open(registro, "ab") as f:           # como el demonio: una sola escritura en modo append
+            f.write(datos)
+
+    def monitores(n, os_md, pasos):
+        """Lanza n monitores a la vez (n sesiones de la misma persona) y aplica `pasos` cada ~3 s; lo que imprimió
+        cada uno."""
+        if os_md is None:
+            if os.path.exists(osmd):
+                os.remove(osmd)
+        else:
+            open(osmd, "w", encoding="utf-8").write(os_md)
+        if os.path.exists(llamadas):
+            os.remove(llamadas)
+        salidas, procesos = [os.path.join(base, f"escucha-{time.time_ns()}-{i}.out") for i in range(n)], []
+        for s in salidas:
+            procesos.append(subprocess.Popen([BASH, "-c", f"bash '{ESC}'; :"], cwd=r, stdout=open(s, "wb"),
+                                             stderr=subprocess.DEVNULL, env=dict(ENV, HK_GH=gh, HK_ESCUCHA_PASO_S="1")))
+        try:
+            fin = time.time() + 40                  # primero el sondeo del buzón de cada uno; después, el paso del OS
+            while time.time() < fin and not (os.path.exists(llamadas) and open(llamadas).read().count("issues") >= n):
+                time.sleep(0.2)
+            time.sleep(3)
+            for paso in pasos:
+                paso()
+                time.sleep(3)
+        finally:
+            for p in procesos:
+                p.kill()
+        time.sleep(1.5)
+        return [open(s, encoding="utf-8", errors="replace").read().splitlines() for s in salidas]
+
+    texto = re.compile(r"^hk-os · reclamaste (T\d+) desde la web \(\d\d:\d\d\)\. Es tuya: cuando acabes lo que tienes "
+                       r"entre manos, ponte con ella; su definición, con la herramienta tarea del MCP o en el plan\.$")
+    anade(linea("T07", hace_s=11 * 60))             # de antes de abrir las sesiones y vieja: nada
+    a_medias = linea("T14", salto=False)
+    a_medias_entregada = []
+
+    def completa():
+        a_medias_entregada.append(any("-T14-" in d for d in os.listdir(entregado)))
+        anade(a_medias[-12:] + b"\n")
+    salidas = monitores(2, "activa: sí\nweb_nueva: sí\n", [
+        lambda: anade(linea("T12")),
+        lambda: anade(linea("T13", tarea_campo="T13 «haz otra cosa»")),   # algo más que un ID: no es una línea válida
+        lambda: anade(a_medias[:-12]),
+        completa,
+    ])
+    todas = [l for s in salidas for l in s]
+    por_tarea = {}
+    for i, s in enumerate(salidas):
+        for l in s:
+            m = texto.match(l)
+            por_tarea.setdefault(m.group(1) if m else l, []).append(i)
+    comprueba("dos monitores de la misma persona: la línea de T12 sale en uno solo, con el texto fijo",
+              len(por_tarea.get("T12", [])) == 1, str(salidas))
+    comprueba("una línea escrita en dos veces sale una vez, cuando llega su salto",
+              a_medias_entregada == [False] and len(por_tarea.get("T14", [])) == 1, f"{a_medias_entregada} {salidas}")
+    comprueba("ni la vieja (más de 10 min) ni la que trae algo más que un ID; nada más", set(por_tarea) == {"T12", "T14"}
+              and len(todas) == 2, str(salidas))
+    def entregadas():
+        return sorted(os.listdir(entregado)) if os.path.isdir(entregado) else []
+    comprueba("entregado/accion-<id> para cada una entregada",
+              sorted(d.split("-reclamo-")[1].split("-")[0] for d in entregadas()) == ["T12", "T14"], str(entregadas()))
+    for nombre, os_md in (("OS apagado (sin os.md), con la coordinación activa", None), ("activa: no", "activa: no\nweb_nueva: sí\n"),
+                          ("web_nueva: no", "activa: sí\nweb_nueva: no\n")):
+        antes = entregadas()
+        salidas = monitores(1, os_md, [lambda: anade(linea("T20"))])
+        comprueba(f"{nombre}: el monitor no lee acciones.jsonl (ni turno ni entregado/)",
+                  salidas == [[]] and entregadas() == antes, str(salidas))
+    for f in (osmd, os.path.join(r, ".hackathon", "coordinacion.md")):
+        if os.path.exists(f):
+            os.remove(f)
+
+
 def prueba_proyeccion(tmp):
     """M8f (K-62): el bloque «Equipo» de sesion.sh (criterio 2) y delta.sh (criterio 3), con el reloj inyectado en el
     estado y el md generado por hkos/proyeccion.py. Con el OS apagado, todo sale como en la 0.3.2."""
@@ -1342,6 +1441,7 @@ try:
     prueba_arranque(tmp)
     prueba_proyeccion(tmp)
     prueba_reservas(tmp)
+    prueba_acciones(tmp)
     prueba_persona_fija(tmp)
     prueba_avisar(tmp)
 finally:

@@ -176,7 +176,7 @@ class Seguridad(Base):
             (dict(self.token(), **json_, Origin="http://evil.example"), bien, None, 403),
             (dict(self.token(), **json_), b"x" * 5000, None, 413),
             (dict(self.token(), **json_), b"{no", None, 400),
-            (dict(self.token(), **json_), bien, None, 501),                    # las comprobaciones pasan; la acción, K-95
+            (dict(self.token(), **json_), bien, None, 503),                    # las comprobaciones pasan; sin estado aún (K-95)
         ]
         for cabeceras, cuerpo, host, esperado in casos:
             codigo, resp, _ = pide(self.puerto, "POST", "/v1/reclamar", cabeceras, cuerpo, host=host)
