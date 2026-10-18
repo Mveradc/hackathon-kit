@@ -565,12 +565,17 @@ class Agente:
         try:
             with open(ruta, encoding="utf-8") as f:
                 token = f.read().strip()
-            if re.fullmatch(r"[0-9a-f]{64}", token):
+        except OSError:
+            token = ""
+        if re.fullmatch(r"[0-9a-f]{64}", token):
+            try:
                 if not permisos.es_privado(ruta):        # uno de antes, 0644 o con el ACL heredado: se reescribe igual
                     permisos.escribe_privado(ruta, token + "\n", tmp=f"{ruta}.{os.getpid()}.tmp")
-                return token
-        except OSError:
-            pass
+            except OSError as ex:
+                # Issue #27: si no se puede (en Windows, abierto en otro proceso), se sigue con el mismo token, para que
+                # las pestañas abiertas no den 401; se vuelve a intentar en el próximo arranque.
+                self.log(f"web.token: no se ha podido dejar privado, sigue el mismo: {ex!r}")
+            return token
         token = secrets.token_hex(32)
         # Nace ya solo para este usuario (0600, o en Windows un ACL sin herencia), sin ventana (issue #6 y #15).
         permisos.escribe_privado(ruta, token + "\n", tmp=f"{ruta}.{os.getpid()}.tmp")

@@ -30,6 +30,7 @@ FUTURO_S = 5  # el de delta.sh y cli.FUTURO_S
 HKOS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HKOS)
 import cli  # noqa: E402
+import permisos  # noqa: E402
 
 CRITERIOS = "# Criterios\n\n## 2026-11-25 18:00 · Ana (jurado)\n- Qué dijo: que se vea el reparto\n"
 ENTREGAS = ("accion-web-ana-anotar-1", "accion-web-ana-reclamo-T42-2")
@@ -377,6 +378,52 @@ class UnirPermisos(unittest.TestCase):
         self.assertEqual(sorted(os.listdir(self.os)), ["relay.url", "token"])
         with open(os.path.join(self.os, "token"), encoding="utf-8") as f:
             self.assertEqual(f.read(), "otro\n")
+
+
+class UnirTodoONada(unittest.TestCase):
+    """Issue #27: unir escribía relay.url y luego token. Si el segundo os.replace fallaba (en Windows, WinError 5 con el
+    token abierto por el demonio, el MCP o OneDrive, más allá de los reintentos), quedaban la URL nueva con el token
+    viejo, un traceback y token.tmp. Ahora los dos o ninguno, sin .tmp, y un mensaje. Aquí el fallo se simula en todos
+    los sistemas; test_permisos.py lo hace en Windows con un open() de verdad."""
+
+    def setUp(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        git(d, "init", "-q", "-b", "main", "repo")
+        self.repo = os.path.join(d, "repo")
+        self.os = os.path.join(self.repo, ".git", "hackathon", "os")
+
+    def unir_sin_token(self):
+        replace = os.replace
+
+        def falla(src, dst):
+            if os.path.basename(dst) == "token":
+                raise PermissionError(13, "Acceso denegado (simulado: WinError 5)", dst)
+            return replace(src, dst)
+        err = io.StringIO()
+        with socket.socket() as s:                              # un puerto cerrado: el relay no responde
+            s.bind(("127.0.0.1", 0))
+            puerto = s.getsockname()[1]
+        with mock.patch("os.replace", falla), mock.patch.object(permisos, "REEMPLAZO_S", 0.2, create=True), \
+                contextlib.redirect_stderr(err):
+            rc = cli.unir(f"http://127.0.0.1:{puerto}", "nuevo", cwd=self.repo, salida=lambda *_: None)
+        self.assertEqual(rc, 1)
+        self.assertIn("no he podido guardar relay.url y token", err.getvalue())
+        salida = {}
+        for n in sorted(os.listdir(self.os)):
+            with open(os.path.join(self.os, n), encoding="utf-8") as f:
+                salida[n] = f.read()
+        return salida
+
+    def test_con_los_de_antes_quedan_los_dos_como_estaban(self):
+        os.makedirs(self.os)
+        for nombre, texto in (("relay.url", "http://10.0.0.1:7777\n"), ("token", "viejo\n")):
+            with open(os.path.join(self.os, nombre), "w", encoding="utf-8") as f:
+                f.write(texto)
+        self.assertEqual(self.unir_sin_token(), {"relay.url": "http://10.0.0.1:7777\n", "token": "viejo\n"})
+
+    def test_sin_los_de_antes_no_queda_ninguno(self):
+        self.assertEqual(self.unir_sin_token(), {})
 
 
 class UnirArgumentos(unittest.TestCase):

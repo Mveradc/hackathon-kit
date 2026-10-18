@@ -4,7 +4,8 @@ token, JSON, tamaño). Cada una devuelve (código HTTP, cuerpo JSON). Sin modelo
 
 - Anotar añade la nota a `.hackathon/criterios.md` de origin/main con un índice temporal (`nota.index`), commit-tree y
   push, sin tocar la copia ni el índice de la persona. Si el push se rechaza, repite una vez sobre el origin/main nuevo
-  (si aún no se ha movido, espera un poco a que el otro push acabe). Un push sin informe que sí entró da 200.
+  (si aún no se ha movido, espera un poco a que el otro push acabe). Un push sin informe que sí entró da 200, y
+  repetir una nota que ya está en origin/main (misma persona, mismo texto, hace un momento) no la duplica.
 - Reclamar asigna el issue con el gh de la persona (si hay GitHub), emite `reclamo` (fuente web) y deja una línea en
   `acciones.jsonl` para el monitor (escucha.sh), que abre un turno con un texto fijo del kit.
 """
@@ -38,6 +39,10 @@ ETIQUETA = {"en_curso": "en curso", "en_revision": "en revisión", "no_cerrada":
 MARGEN_RELOJ_S = 300             # un reclamo con la hora en el futuro más allá de esto (reloj atrasado después) no cuenta
 PLAZO_GIT, PLAZO_GH = 60, 30     # segundos; pasado el plazo se mata el árbol de procesos entero
 ESPERAS_BASE, ESPERA_BASE_S = 3, 1   # push rechazado y origin/main sin moverse: otro push puede tener main.lock aún
+# Un push sin informe: cuánto se sigue mirando si entró (el remoto puede actualizar main después: un pre-receive lento
+# ya tiene el pack y sigue aunque el cliente muera) y cada cuánto (issue #27).
+SUBIO_S, SUBIO_ESPERA_S = 10, 1.5
+REPETIDA_S = 600                 # la misma nota de la misma persona en origin/main hace menos de esto: no se repite
 CERROJO_RECLAMAR_S = 5           # Reclamar no espera más que esto a otra acción en curso (un Anotar colgado): 503
 GH = ["gh"]
 FALLIDO = "reclamo_fallido"      # línea de acciones.jsonl de un `gh issue edit` que falló: sin id, el monitor no la lee
@@ -113,14 +118,41 @@ def texto_nota(n, persona, cuando):
             f"- Anotado por: @{persona}\n")
 
 
+def codificacion(original):
+    """(BOM, codificación, errores) de un fichero en bytes: UTF-8 (con o sin BOM) o UTF-16 LE o BE con su BOM."""
+    for marca, utf16 in ((b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be")):
+        if original.startswith(marca):
+            return marca, utf16, "replace"
+    return b"", "utf-8", "surrogateescape"
+
+
+CABECERA = re.compile(r"## (\d{4}-\d{2}-\d{2} \d{2}:\d{2}) · (.*)")
+
+
+def ya_anotada(original, texto, cuando):
+    """True si `original` (criterios.md en bytes) ya tiene `texto` (la nota de texto_nota, con «Anotado por») con una
+    hora a menos de REPETIDA_S de `cuando`: lo mismo, de la misma persona, hace un momento. Es lo que pasa al repetir
+    un Anotar que dio 502 aunque la nota sí entró (un push sin informe, la red cortada al comprobarlo; issue #27)."""
+    bom, cod, errores = codificacion(original)
+    lineas = original[len(bom):].decode(cod, errores).replace("\r\n", "\n").split("\n")
+    nueva = texto.rstrip("\n").split("\n")
+    m = CABECERA.fullmatch(nueva[0])
+    buscado = [m.group(2), *nueva[1:]]
+    for i, linea in enumerate(lineas):
+        c = CABECERA.fullmatch(linea)
+        if not c or [c.group(2), *lineas[i + 1:i + len(nueva)]] != buscado:
+            continue
+        hora = datetime.strptime(c.group(1), "%Y-%m-%d %H:%M").replace(tzinfo=cuando.tzinfo)
+        if abs((cuando.replace(second=0, microsecond=0) - hora).total_seconds()) < REPETIDA_S:
+            return True
+    return False
+
+
 def anadir(original, texto, en_blanco=True):
     """`texto` al final de `original` (bytes), con una línea en blanco delante, respetando la codificación (UTF-8, con
     o sin BOM, o UTF-16 LE o BE con su BOM) y los finales de línea del fichero: solo se añaden líneas, para que
     merge=union funcione. `texto` va en estricto: de la nota nunca sale un byte que no sea UTF-8 (o UTF-16) válido."""
-    bom, cod, errores = b"", "utf-8", "surrogateescape"
-    for marca, utf16 in ((b"\xff\xfe", "utf-16-le"), (b"\xfe\xff", "utf-16-be")):
-        if original.startswith(marca):
-            bom, cod, errores = marca, utf16, "replace"
+    bom, cod, errores = codificacion(original)
     previo = original[len(bom):].decode(cod, errores)
     salto = "\r\n" if "\r\n" in previo else "\n"
     cola = previo.rstrip("\r\n")
@@ -302,15 +334,16 @@ class Acciones:
             self.cerrojo.release()
 
     # --- Anotar ---
-    def _git(self, *args, entrada=None, indice=False):
+    def _git(self, *args, entrada=None, indice=False, plazo=None):
         env = dict(os.environ, **ENTORNO)
         if indice:
             env["GIT_INDEX_FILE"] = self.indice
+        plazo = plazo or self.plazo
         try:
             c, out, err = ejecutar(["git", *SIN_CREDENCIALES, "-C", self.ag.principal, *args], entrada=entrada,
-                                   env=env, plazo=self.plazo)
+                                   env=env, plazo=plazo)
         except subprocess.TimeoutExpired:
-            raise FalloGit(f"git {args[0]}: sin respuesta en {self.plazo} s")
+            raise FalloGit(f"git {args[0]}: sin respuesta en {plazo} s")
         except (OSError, subprocess.SubprocessError) as ex:
             raise FalloGit(f"git {args[0]}: {ex}")
         return c, out, err.decode("utf-8", "replace")
@@ -330,8 +363,8 @@ class Acciones:
         sha = self._ok("hash-object", "-w", "--stdin", entrada=datos)
         self._ok("update-index", "--add", "--cacheinfo", f"100644,{sha},{ruta}", indice=True)
 
-    def _fetch(self):
-        self._ok("fetch", "--quiet", "--no-tags", "origin", "+refs/heads/main:refs/remotes/origin/main")
+    def _fetch(self, plazo=None):
+        self._ok("fetch", "--quiet", "--no-tags", "origin", "+refs/heads/main:refs/remotes/origin/main", plazo=plazo)
         return self._ok("rev-parse", "--verify", "-q", "refs/remotes/origin/main^{commit}")
 
     def _base(self, antes):
@@ -347,17 +380,28 @@ class Acciones:
                 raise FalloGit(f"git push: {antes.detalle}")
             time.sleep(ESPERA_BASE_S)
 
-    def _subio(self, sha):
-        """Un push que falló sin informe (plazo vencido, red cortada, un post-receive lento): ¿entró el commit? Así un
-        502 nunca invita a repetir una nota que ya está en main (issue #18)."""
-        try:
-            self._fetch()
-            return self._git("merge-base", "--is-ancestor", sha, "refs/remotes/origin/main")[0] == 0
-        except FalloGit:
-            return False
+    def _subio(self, sha, base, insistir=True):
+        """Un push que falló (plazo vencido, red cortada, un post-receive lento): ¿entró el commit? Así un 502 nunca
+        invita a repetir una nota que ya está en main (issue #18). Sin informe (`insistir`), mira varias veces durante
+        SUBIO_S: el remoto puede actualizar main después del primer fetch (un pre-receive lento) y el fetch puede fallar
+        por la red (issue #27). Deja de mirar si origin/main se ha movido a otra cosa sin el commit: ya no puede entrar."""
+        fin = time.monotonic() + SUBIO_S
+        while True:
+            try:
+                punta = self._fetch(plazo=max(1, min(self.plazo, int(fin - time.monotonic()))))
+                if self._git("merge-base", "--is-ancestor", sha, "refs/remotes/origin/main")[0] == 0:
+                    return True
+                if punta != base:
+                    return False
+            except FalloGit as ex:
+                self.ag.log(f"anotar: ¿entró el push? {ex}")
+            if not insistir or time.monotonic() + SUBIO_ESPERA_S >= fin:
+                return False
+            time.sleep(SUBIO_ESPERA_S)
 
-    def _intento(self, nota, mensaje, antes=None):
-        """Un intento entero (pasos 1–6 de api.md §4). El sha subido; Rechazado si el push no es un avance rápido."""
+    def _intento(self, nota, cuando, mensaje, antes=None):
+        """Un intento entero (pasos 1–6 de api.md §4). El sha subido; Rechazado si el push no es un avance rápido. Si la
+        misma nota ya está en origin/main (un intento anterior que dio 502 pero entró), el origin/main, sin repetirla."""
         base = self._base(antes)
         try:
             os.remove(self.indice)
@@ -368,6 +412,9 @@ class Acciones:
         if original is None:
             with open(PLANTILLA, "rb") as f:              # con LF, como manda .gitattributes, sea cual sea la copia
                 original = f.read().replace(b"\r\n", b"\n")
+        elif ya_anotada(original, nota, cuando):
+            self.ag.log(f"anotar: la misma nota ya está en origin/main ({base[:12]}); no se repite")
+            return base
         self._escribir(CRITERIOS, anadir(original, nota))
         atributos = self._fichero(".gitattributes") or b""
         lineas = atributos.decode("utf-8", "replace").splitlines()
@@ -380,14 +427,14 @@ class Acciones:
         try:
             c, out, err = self._git("push", "--no-verify", "--porcelain", "origin", f"{sha}:refs/heads/main")
         except FalloGit:
-            if self._subio(sha):
+            if self._subio(sha, base):
                 return sha
             raise
         if c != 0:
             motivo = rechazo(out.decode("utf-8", "replace"))
             if motivo and CARRERA.search(motivo):
                 raise Rechazado(motivo, base, primera_linea(err, motivo))
-            if self._subio(sha):
+            if self._subio(sha, base, insistir=not motivo):    # con informe del remoto (un hook), basta con mirar una vez
                 return sha
             raise FalloGit("git push: " + primera_linea(err, motivo or f"sale con {c}"))
         return sha
@@ -397,15 +444,16 @@ class Acciones:
         if error:
             return 400, {"error": error[1], "campo": error[0]}
         tz = self.ag.tz or datetime.now().astimezone().tzinfo
-        nota = texto_nota(n, self.ag.persona, fecha(self.ag.ahora()).astimezone(tz))
+        cuando = fecha(self.ag.ahora()).astimezone(tz)
+        nota = texto_nota(n, self.ag.persona, cuando)
         mensaje = f"Criterio: {PAPELES[n['papel']]} · {n['que_dijo'][:50]}"
         self.limite = time.monotonic() + self.plazo      # las esperas del reintento no pasan de aquí
         try:
             try:
-                sha = self._intento(nota, mensaje)
+                sha = self._intento(nota, cuando, mensaje)
             except Rechazado as primero:
                 try:
-                    sha = self._intento(nota, mensaje, primero)   # una vez, sobre el origin/main nuevo
+                    sha = self._intento(nota, cuando, mensaje, primero)   # una vez, sobre el origin/main nuevo
                 except Rechazado as ex:
                     self.ag.log(f"anotar: push rechazado dos veces ({ex})")
                     return 409, {"error": "otra nota se subió a la vez, también al reintentar"}

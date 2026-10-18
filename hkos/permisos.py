@@ -7,23 +7,89 @@ fuera del perfil (C:\\dev\\…, D:\\…), «Usuarios autentificados» lo lee y l
 con su descriptor, no después) con un DACL protegido, sin herencia, y una sola entrada: control total para el usuario
 del proceso, por su SID (no por su nombre: no depende del idioma del sistema). os.replace conserva ese DACL, así que un
 fichero de antes con el ACL heredado queda corregido al reescribirse.
+
+En Windows, os.replace falla con WinError 5 mientras otro proceso tiene abierto el destino (los open() de Python y de
+Git Bash no piden FILE_SHARE_DELETE): el demonio lee token y relay.url en cada vuelta, el MCP también, y un sincronizador
+como OneDrive los abre para subirlos. Por eso se reintenta un rato corto antes de rendirse (issue #27).
 """
 import os
+import time
 
 WINDOWS = os.name == "nt"
+REEMPLAZO_S, REEMPLAZO_ESPERA_S = 2.0, 0.05     # en Windows, cuánto se reintenta os.replace con el destino abierto
+
+
+def _temporal(tmp, texto):
+    _quita(tmp)
+    fd = _crea_windows(tmp) if WINDOWS else os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8", errors="surrogateescape", newline="\n") as f:
+            f.write(texto)
+    except BaseException:
+        _quita(tmp)
+        raise
+
+
+def _quita(ruta):
+    try:
+        os.remove(ruta)
+    except OSError:
+        pass
+
+
+def reemplaza(tmp, ruta):
+    """os.replace; en Windows, si el destino está abierto en otro proceso (PermissionError), lo reintenta con una
+    espera corta durante REEMPLAZO_S como mucho. Si no lo consigue, la excepción, con el temporal aún en su sitio."""
+    fin = time.monotonic() + REEMPLAZO_S
+    while True:
+        try:
+            return os.replace(tmp, ruta)
+        except PermissionError:
+            if not WINDOWS or time.monotonic() + REEMPLAZO_ESPERA_S > fin:
+                raise
+            time.sleep(REEMPLAZO_ESPERA_S)
 
 
 def escribe_privado(ruta, texto, tmp=None):
-    """Escribe `texto` en `ruta`, atómico y solo para el usuario actual. `tmp`: el temporal (por defecto ruta.tmp)."""
+    """Escribe `texto` en `ruta`, atómico y solo para el usuario actual. `tmp`: el temporal (por defecto ruta.tmp).
+    Si falla, `ruta` queda como estaba y no queda temporal."""
     tmp = tmp or ruta + ".tmp"
+    _temporal(tmp, texto)
     try:
-        os.remove(tmp)
-    except OSError:
-        pass
-    fd = _crea_windows(tmp) if WINDOWS else os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    with os.fdopen(fd, "w", encoding="utf-8", newline="\n") as f:
-        f.write(texto)
-    os.replace(tmp, ruta)
+        reemplaza(tmp, ruta)
+    except BaseException:
+        _quita(tmp)
+        raise
+
+
+def escribe_privados(ficheros):
+    """Varios ficheros privados [(ruta, texto)], todos o ninguno: si uno no se puede reemplazar (en Windows, abierto
+    en otro proceso más allá de REEMPLAZO_S), los ya escritos vuelven a lo que tenían (o desaparecen, si no existían)
+    y no queda ningún temporal. Así `hk-os unir` nunca deja la URL de un relay con el token de otro."""
+    previos, hechos = [], []
+    try:
+        for ruta, texto in ficheros:
+            try:
+                with open(ruta, encoding="utf-8", errors="surrogateescape", newline="") as f:
+                    previos.append(f.read())
+            except FileNotFoundError:
+                previos.append(None)
+            _temporal(ruta + ".tmp", texto)
+        for (ruta, _), previo in zip(ficheros, previos):
+            reemplaza(ruta + ".tmp", ruta)
+            hechos.append((ruta, previo))
+    except BaseException:
+        for ruta, _ in ficheros:
+            _quita(ruta + ".tmp")
+        for ruta, previo in reversed(hechos):
+            try:
+                if previo is None:
+                    os.remove(ruta)
+                else:
+                    escribe_privado(ruta, previo)
+            except OSError:
+                pass                     # se ha hecho lo posible; la excepción original es la que cuenta
+        raise
 
 
 def es_privado(ruta):

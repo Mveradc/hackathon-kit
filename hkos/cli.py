@@ -36,7 +36,7 @@ import agente  # noqa: E402
 import compilar  # noqa: E402
 import relay  # noqa: E402
 import remoto as remoto_mod  # noqa: E402
-from permisos import escribe_privado  # noqa: E402
+from permisos import escribe_privado, escribe_privados  # noqa: E402
 from red import equipo, web_nueva  # noqa: E402
 
 USO = __doc__.split("\n\n", 1)[1]
@@ -195,8 +195,13 @@ def unir(url, token, cwd=".", persona=None, remoto=None, salida=print):
             return 2
     carpeta = os.path.join(comun, "hackathon", "os")
     os.makedirs(carpeta, exist_ok=True)
-    for nombre, valor in (("relay.url", url), ("token", token)):
-        escribe_privado(os.path.join(carpeta, nombre), valor + "\n")
+    try:                                 # los dos o ninguno: nunca la URL de un relay con el token de otro (issue #27)
+        escribe_privados([(os.path.join(carpeta, n), v + "\n") for n, v in (("relay.url", url), ("token", token))])
+    except OSError as ex:
+        print(f"hk-os unir: no he podido guardar relay.url y token en {carpeta} ({ex}); se quedan como estaban. "
+              "Si otro programa los tiene abiertos (un sincronizador como OneDrive), espera un momento y repite.",
+              file=sys.stderr)
+        return 1
     if persona is not None:
         # Sin GitHub, la persona se declara (no se verifica): hk_yo la toma de aquí antes de preguntar a gh, y
         # sesion.sh avisa una vez si gh dice otra cosa cuando vuelve la red (ADR-0002, nota de M8h).

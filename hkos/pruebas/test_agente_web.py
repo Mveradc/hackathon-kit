@@ -169,6 +169,35 @@ class Token(Base):
                 self.assertEqual(f.read(), datos)
         self.assertEqual([n for n in os.listdir(self.dir) if n.endswith(".tmp")], [])
 
+    def test_web_token_de_antes_que_no_se_puede_reescribir(self):
+        """Issue #27: un web.token de antes, que no es privado, y su reescritura falla (en Windows, el PermissionError
+        [WinError 5] de os.replace con un lector abierto). Antes se generaba uno nuevo y las pestañas abiertas daban
+        401. Ahora sigue el mismo, queda en el log y se vuelve a intentar en el próximo arranque."""
+        ruta = os.path.join(self.dir, "web.token")
+        viejo = "d" * 64
+        with open(ruta, "w", encoding="utf-8") as f:
+            f.write(viejo + "\n")
+        escribe = agente_mod.permisos.escribe_privado
+
+        def falla(destino, *a, **k):
+            if os.path.basename(destino) == "web.token":
+                raise PermissionError(13, "Acceso denegado (simulado: WinError 5)", destino)
+            return escribe(destino, *a, **k)
+        with mock.patch.object(agente_mod.permisos, "es_privado", return_value=False), \
+                mock.patch.object(agente_mod.permisos, "escribe_privado", side_effect=falla) as espia:
+            otro = agente_mod.Agente(self.repo, PERSONA, reloj=self.reloj, ahora=lambda: self.ahora)
+        self.assertEqual(otro.web_token, viejo)
+        self.assertIn("web.token", [os.path.basename(c.args[0]) for c in espia.call_args_list])   # sí se intentó
+        with open(ruta, encoding="utf-8") as f:
+            self.assertEqual(f.read(), viejo + "\n")
+        with open(os.path.join(self.dir, "agente.log"), encoding="utf-8") as f:
+            self.assertIn("web.token: no se ha podido dejar privado", f.read())
+        self.assertEqual([n for n in os.listdir(self.dir) if n.startswith("web.token.")], [])
+        with mock.patch.object(agente_mod.permisos, "es_privado", return_value=False):    # el siguiente arranque
+            tercero = agente_mod.Agente(self.repo, PERSONA, reloj=self.reloj, ahora=lambda: self.ahora)
+        self.assertEqual(tercero.web_token, viejo)
+        self.assertTrue(agente_mod.permisos.es_privado(ruta))
+
 
 class Seguridad(Base):
     """Criterio 6 de M9a (ADR-0010), en el proceso; evals/coordinacion/acciones_seguridad.py lo repite en vivo."""
