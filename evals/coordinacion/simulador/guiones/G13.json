@@ -1,0 +1,1025 @@
+{
+ "nombre": "G13-jurado",
+ "descripcion": "M10 (R-35), vista de jurado sobre el reto 03: 8 notas en criterios.md (de /hack-note y de Anotar; dos en el mismo minuto, una que corrige a otra, una de fuerza «dato» recogida solo en pitch.md, una con texto imperativo), el plan con las etiquetas «(criterios: …)» desde sáb 11:41, tareas que avanzan hasta publicada, T11 publicada que vuelve a en curso (J6 B), T20 cerrada a mano (⚑) y persona-c sin señales desde sáb 11:50. Lo que tiene que salir, como hechos, en g13/hechos.json; lo comprueba g13_g14.py.",
+ "tareas": "guiones/g13/tareas.json",
+ "entradas": {
+  "criterios.md": "guiones/g13/criterios.md",
+  "plan.md": "guiones/g13/plan.md",
+  "pitch.md": "guiones/g13/pitch.md"
+ },
+ "hechos": "guiones/g13/hechos.json",
+ "pasos": [
+  {
+   "t": 1200,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "mcp",
+   "tipo": "reclamo",
+   "tarea": "T11"
+  },
+  {
+   "t": 1230,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 2100,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 2400,
+   "persona": "persona-c",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "cc00001",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "Criterio: el pitch dura cinco minutos"
+  },
+  {
+   "t": 2460,
+   "persona": "persona-c",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "cc00001",
+    "incluye": []
+   }
+  },
+  {
+   "t": 3000,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 3900,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 4800,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 5400,
+   "persona": "persona-a",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "aa00001",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "Criterio: Jorge valora que cada acción cite su cifra"
+  },
+  {
+   "t": 5460,
+   "persona": "persona-a",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "aa00001",
+    "incluye": []
+   }
+  },
+  {
+   "t": 5700,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 6600,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 6600,
+   "persona": "persona-c",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "cc00002",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "Criterio: las dudas, solo por #embat-dudas"
+  },
+  {
+   "t": 6660,
+   "persona": "persona-c",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "cc00002",
+    "incluye": []
+   }
+  },
+  {
+   "t": 7500,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 8400,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 9000,
+   "persona": "persona-c",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "cc00003",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "Pitch: guion con las notas del jurado"
+  },
+  {
+   "t": 9060,
+   "persona": "persona-c",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "cc00003",
+    "incluye": []
+   }
+  },
+  {
+   "t": 9120,
+   "github": "cerrar",
+   "tarea": "T20",
+   "por": "persona-c"
+  },
+  {
+   "t": 9300,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 10200,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 11100,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 12000,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 12900,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 13800,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 14700,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t11.jsx"
+   ]
+  },
+  {
+   "t": 15300,
+   "persona": "persona-b",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "111c0de",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "T11 · Score, curva de 24 meses y flecha",
+   "tarea": "T11"
+  },
+  {
+   "t": 15600,
+   "persona": "persona-b",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "111c0de",
+    "incluye": [
+     "111c0de"
+    ]
+   }
+  },
+  {
+   "t": 50400,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "mcp",
+   "tipo": "reclamo",
+   "tarea": "T06"
+  },
+  {
+   "t": 50430,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t06.py"
+   ]
+  },
+  {
+   "t": 51300,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t06.py"
+   ]
+  },
+  {
+   "t": 52200,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t06.py"
+   ]
+  },
+  {
+   "t": 53100,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t06.py"
+   ]
+  },
+  {
+   "t": 54000,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t06.py"
+   ]
+  },
+  {
+   "t": 54900,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t06.py"
+   ]
+  },
+  {
+   "t": 55800,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t06.py"
+   ]
+  },
+  {
+   "t": 56700,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t06.py"
+   ]
+  },
+  {
+   "t": 57000,
+   "persona": "persona-a",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "aa00002",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "Criterio: un mes malo no puede hundir el score"
+  },
+  {
+   "t": 57060,
+   "persona": "persona-a",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "aa00002",
+    "incluye": []
+   }
+  },
+  {
+   "t": 57900,
+   "persona": "persona-a",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "061c0de",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "T06 · Score suavizado con tendencia",
+   "tarea": "T06"
+  },
+  {
+   "t": 58200,
+   "persona": "persona-a",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "061c0de",
+    "incluye": [
+     "061c0de"
+    ]
+   }
+  },
+  {
+   "t": 58500,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "mcp",
+   "tipo": "reclamo",
+   "tarea": "T08"
+  },
+  {
+   "t": 58530,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t08.py"
+   ]
+  },
+  {
+   "t": 59400,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t08.py"
+   ]
+  },
+  {
+   "t": 60000,
+   "persona": "persona-a",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "aa00003",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "Plan: etiquetas (criterios: …) de /hack-check aplicar"
+  },
+  {
+   "t": 60060,
+   "persona": "persona-a",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "aa00003",
+    "incluye": []
+   }
+  },
+  {
+   "t": 60300,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t08.py"
+   ]
+  },
+  {
+   "t": 60600,
+   "persona": "persona-c",
+   "papel": "principal",
+   "sesion": "s-c",
+   "fuente": "mcp",
+   "tipo": "reclamo",
+   "tarea": "T23"
+  },
+  {
+   "t": 61200,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t08.py"
+   ]
+  },
+  {
+   "t": 61620,
+   "persona": "persona-a",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "081c0de",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "T08 · Tres reglas que citan su cifra",
+   "tarea": "T08"
+  },
+  {
+   "t": 61920,
+   "persona": "persona-a",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "081c0de",
+    "incluye": [
+     "081c0de"
+    ]
+   }
+  },
+  {
+   "t": 62100,
+   "persona": "persona-a",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "aa00004",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "Criterio: corrige la nota del 2026-09-19 10:40"
+  },
+  {
+   "t": 62160,
+   "persona": "persona-a",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "aa00004",
+    "incluye": []
+   }
+  },
+  {
+   "t": 63000,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "mcp",
+   "tipo": "reclamo",
+   "tarea": "T13"
+  },
+  {
+   "t": 63030,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t13.jsx"
+   ]
+  },
+  {
+   "t": 63900,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t13.jsx"
+   ]
+  },
+  {
+   "t": 64800,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t13.jsx"
+   ]
+  },
+  {
+   "t": 65700,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t13.jsx"
+   ]
+  },
+  {
+   "t": 66600,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t13.jsx"
+   ]
+  },
+  {
+   "t": 67500,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t13.jsx"
+   ]
+  },
+  {
+   "t": 68400,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t13.jsx"
+   ]
+  },
+  {
+   "t": 69300,
+   "persona": "persona-b",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "112c0de",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "T11 · Flecha de tendencia en color",
+   "tarea": "T11"
+  },
+  {
+   "t": 69600,
+   "persona": "persona-b",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "131c0de",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "T13 · Acciones con su cifra destacada",
+   "tarea": "T13"
+  },
+  {
+   "t": 72000,
+   "persona": "persona-b",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "131c0de",
+    "incluye": [
+     "112c0de",
+     "131c0de"
+    ]
+   }
+  },
+  {
+   "t": 72600,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "mcp",
+   "tipo": "reclamo",
+   "tarea": "T17"
+  },
+  {
+   "t": 72630,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t17.jsx"
+   ]
+  },
+  {
+   "t": 73500,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t17.jsx"
+   ]
+  },
+  {
+   "t": 74400,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t17.jsx"
+   ]
+  },
+  {
+   "t": 75300,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t17.jsx"
+   ]
+  },
+  {
+   "t": 76200,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t17.jsx"
+   ]
+  },
+  {
+   "t": 77100,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t17.jsx"
+   ]
+  },
+  {
+   "t": 78000,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t17.jsx"
+   ]
+  },
+  {
+   "t": 78900,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t17.jsx"
+   ]
+  },
+  {
+   "t": 79800,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "web/src/t17.jsx"
+   ]
+  },
+  {
+   "t": 80700,
+   "persona": "persona-b",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "171c0de",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "T17 · Build limpio para el despliegue",
+   "tarea": "T17"
+  },
+  {
+   "t": 81000,
+   "persona": "persona-b",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "171c0de",
+    "incluye": [
+     "171c0de"
+    ]
+   }
+  },
+  {
+   "t": 82800,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "mcp",
+   "tipo": "reclamo",
+   "tarea": "T09"
+  },
+  {
+   "t": 82830,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t09.py"
+   ]
+  },
+  {
+   "t": 83700,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t09.py"
+   ]
+  },
+  {
+   "t": 84600,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t09.py"
+   ]
+  },
+  {
+   "t": 85500,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t09.py"
+   ]
+  },
+  {
+   "t": 86400,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t09.py"
+   ]
+  },
+  {
+   "t": 87300,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/src/motor/t09.py"
+   ]
+  },
+  {
+   "t": 88500,
+   "persona": "persona-a",
+   "papel": "humano",
+   "fuente": "git",
+   "tipo": "commit",
+   "datos": {
+    "sha": "091c0de",
+    "rama": "main",
+    "alcanzable": false
+   },
+   "asunto": "T09 · Motor y web en una URL pública",
+   "tarea": "T09"
+  },
+  {
+   "t": 88800,
+   "persona": "persona-a",
+   "papel": "demonio",
+   "fuente": "git",
+   "tipo": "push",
+   "datos": {
+    "sha": "091c0de",
+    "incluye": [
+     "091c0de"
+    ]
+   }
+  }
+ ],
+ "esperado": [
+  {
+   "tras": 61200,
+   "tareas": {
+    "T06": "publicada",
+    "T08": "en_curso",
+    "T09": "pendiente",
+    "T11": "publicada",
+    "T13": "lista",
+    "T17": "lista",
+    "T20": "lista",
+    "T23": "reclamada"
+   },
+   "declarado": {
+    "T20": "cerrada"
+   }
+  },
+  {
+   "tras": 70200,
+   "tareas": {
+    "T06": "publicada",
+    "T08": "publicada",
+    "T09": "pendiente",
+    "T11": "en_curso",
+    "T13": "en_curso",
+    "T17": "lista",
+    "T20": "lista",
+    "T23": "reclamada"
+   }
+  },
+  {
+   "tras": 91800,
+   "tareas": {
+    "T06": "publicada",
+    "T08": "publicada",
+    "T09": "publicada",
+    "T11": "publicada",
+    "T13": "publicada",
+    "T17": "publicada",
+    "T20": "lista",
+    "T23": "reclamada"
+   },
+   "declarado": {
+    "T20": "cerrada",
+    "T11": null
+   }
+  }
+ ]
+}
