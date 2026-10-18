@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Button, Panel, ProvenanceTag, StatusPulse } from "../componentes/componentes.jsx";
 import { arroba, autorPropuesta, canal, hace, hora, nombrePropuesta, serviciosDe, trabajoDe } from "../formato.js";
-import { Colision, Desajuste, Grafo, Tarea, Vacio } from "./comun.jsx";
+import { Colision, Desajuste, Grafo, Tarea, TextoNovedad, Vacio } from "./comun.jsx";
 
 // Cabina (pantallas/cabina.dc.html), la vista por defecto: lo de una persona. Lo tuyo, lo que puedes reclamar, lo que
 // te necesita, el equipo de un vistazo y Anotar. Confirmar no está en la web (M9a): se dice como texto.
@@ -157,8 +157,8 @@ export function Cabina({ respuesta, eventos, sinConexion, reclamo, anotar }) {
           </Panel>
           <Panel title="Novedades" meta={String((vista.novedades || []).length)}>
             {(vista.novedades || []).length ? vista.novedades.map((n, i) => (
-              <div key={i} className="hk-bloque">
-                <span className="hk-texto">{n.tipo === "decision" ? "decisión" : n.tipo} · «{n.resumen}»{n.autor ? ` (${n.autor})` : ""}</span>
+              <div key={i} className="hk-bloque" data-novedad={i}>
+                <span className="hk-texto"><TextoNovedad n={n} /></span>
                 <ProvenanceTag source="git" label={hora(n.observado_en)} age={hace(n.observado_en, servido)} at={n.observado_en} />
               </div>
             )) : <Vacio>Ninguna.</Vacio>}

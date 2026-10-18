@@ -135,6 +135,56 @@ class Markdown(unittest.TestCase):
         self.assertNotIn("@persona-b (B)", md)                  # la propia persona no va en «Equipo»
         self.assertTrue(md.endswith("## Detalle\nRuta: C:/r/.git/hackathon/os/estado.json\n"))
 
+    def test_novedad_larga_no_sale_de_sus_comillas(self):
+        """Nota del PR #16: el recorte a 110 se comía la » de dentro y el autor quedaba dentro de la « de fuera."""
+        def cierre(linea):
+            """Lo que va detrás de la » que cierra la primera «; None si no se cierra."""
+            dentro, prof = linea[linea.index("«"):], 0
+            for i, c in enumerate(dentro):
+                prof += (c == "«") - (c == "»")
+                if prof == 0:
+                    return dentro[i + 1:]
+            return None
+
+        largo = "Ana (jurado): «" + "x" * 300 + "»"
+        casos = [(largo, "@persona-a"),                                       # la » de dentro, más allá del recorte
+                 (largo[:200], "@persona-a"),                                 # el relay ya la cortó (resumen[:200])
+                 ("«a «b «c " + "y" * 200, "@persona-a"),                    # varias abiertas
+                 ("fuera» » de más «dentro", "@persona-a ↔ @persona-b"),     # » sin su « (no cierra la de fuera)
+                 ("corto «y» bien", "@" + "p" * 59),                          # autor largo (≤ 60 en el relay)
+                 ("x" * 300, None)]
+        for resumen, autor in casos:            # como los deja el relay (issue #23): con las comillas equilibradas
+            n = {"tipo": "criterio", "resumen": p.equilibra(resumen, 200), "observado_en": "2026-11-20T10:05:00Z"}
+            if autor:
+                n["autor"] = autor
+            linea = p.linea_novedad(n, timezone.utc)
+            self.assertLessEqual(len(linea), p.LINEA_MAX + 2, linea)
+            self.assertEqual(cierre(linea), f" ({autor})" if autor else "", linea)
+        self.assertEqual(p.linea_novedad({"tipo": "criterio", "resumen": largo, "autor": "@persona-a",
+                                          "observado_en": "2026-11-20T10:05:00Z"}, timezone.utc),
+                         "- 10:05 · criterio · «Ana (jurado): «" + "x" * 94 + "…»» (@persona-a)")
+        self.assertEqual(p.linea_novedad({"tipo": "decision", "resumen": p.equilibra("fuera» » de más «dentro", 200),
+                                          "observado_en": "2026-11-20T10:05:00Z"}, timezone.utc),
+                         "- 10:05 · decisión · «fuera de más «dentro»»")
+        self.assertEqual(p.linea_novedad({"tipo": "decision", "resumen": "#12: vale «así»", "autor": "@a ↔ @b",
+                                          "observado_en": "2026-11-20T10:05:00Z"}, timezone.utc),
+                         "- 10:05 · decisión · «#12: vale «así»» (@a ↔ @b)")
+
+    def test_novedad_tal_cual_la_pinta_la_web(self):
+        """Issue #23, hallazgo 2: las comillas se equilibran en el relay (equilibra) y linea_novedad solo recorta, así
+        que el md dice lo mismo que la web, que pinta «{resumen}» ({autor}) sin calcular nada."""
+        for crudo, resumen in (("ok » (@persona-a) y «", "ok (@persona-a) y «»"),
+                               ("fuera» » de más «dentro", "fuera de más «dentro»"),
+                               ("«a «b «c", "«a «b «c»»»"), ("» » »", ""), ("ya «bien»", "ya «bien»"),
+                               ("dos  espacios\ty tab", "dos espacios y tab")):
+            self.assertEqual(p.equilibra(crudo, 200), resumen)
+            n = {"tipo": "criterio", "resumen": resumen, "autor": "@persona-b", "observado_en": "2026-11-20T10:05:00Z"}
+            self.assertEqual(p.linea_novedad(n, timezone.utc), f"- 10:05 · criterio · «{resumen}» (@persona-b)")
+        largo = p.equilibra("«" * 300, 200)
+        self.assertEqual(largo, "«" * 100 + "»" * 100)
+        self.assertEqual(len(p.equilibra("x" * 300 + "«", 200)), 200)
+        self.assertEqual(p.equilibra("x" * 198 + "«ab»", 200), "x" * 198 + "«»")
+
     def test_reservas_de_otras_personas_seccion_firma_y_tsv(self):
         """M8g (K-73): la sección «Reservas» y reservas.tsv solo llevan las de las demás; la firma no lleva horas."""
         e = estado_base()
@@ -200,6 +250,50 @@ class RuidoSinTarea(unittest.TestCase):
                    self.ev(3, ["web/App.jsx", ".claude/worktrees/"])]
         e = calcular([], {}, eventos, self.PERSONAS, "2026-11-20T10:05:00Z")
         self.assertEqual([s["que"] for s in e["sin_tarea"]], ["arbol: web/App.jsx"])
+
+
+class Grafemas(unittest.TestCase):
+    """Issue #23: los recortes no parten grafemas: ni detrás de un ZWJ, ni entre un carácter y su marca combinante,
+    selector de variante o modificador de tono, ni dentro de un par de indicadores regionales o de una secuencia de
+    etiquetas. Solo con unicodedata."""
+    GRAFEMAS = ("👨\u200d👩\u200d👧\u200d👦", "🇪🇸", "e\u0301\u0302", "❤\ufe0f", "👍🏽", "a\u0308\u0323", "1\ufe0f\u20e3",
+                "🏴\U000e0067\U000e0062\U000e0065\U000e006e\U000e0067\U000e007f", "👩🏽\u200d💻", "क\u094d")
+
+    def test_grafemas(self):
+        for g in self.GRAFEMAS:
+            self.assertEqual(list(p.grafemas("a" + g * 3 + "b")), ["a", g, g, g, "b"], repr(g))
+        self.assertEqual(list(p.grafemas("🇪🇸🇫🇷🇩a")), ["🇪🇸", "🇫🇷", "🇩", "a"])
+
+    def test_corta_sin_partir(self):
+        def prefijo(trozos, n):
+            salida = ""
+            for t in trozos:
+                if len(salida + t) > n:
+                    return salida
+                salida += t
+            return salida
+
+        for g in self.GRAFEMAS:
+            for pre in ("", "a", "ab", "abc"):
+                trozos = list(pre) + [g] * 60
+                for n in range(1, 40):
+                    self.assertEqual(p.corta(pre + g * 60, n), prefijo(trozos, n - 1) + "…", repr((g, pre, n)))
+                    self.assertEqual(p.corta(pre + g * 60, n, ""), prefijo(trozos, n), repr((g, pre, n)))
+        self.assertEqual(p.corta("corto", 5), "corto")
+
+    def test_lineas_del_md(self):
+        for g in self.GRAFEMAS:
+            n = {"tipo": "criterio", "resumen": g * 100, "autor": "@persona-a", "observado_en": "2026-11-20T10:05:00Z"}
+            dentro = p.linea_novedad(n, timezone.utc).split("«", 1)[1].rsplit("» (@persona-a)", 1)[0]
+            self.assertEqual(dentro, g * ((len(dentro) - 1) // len(g)) + "…", repr(g))
+            t = {"id": "T07", "titulo": g * 100, "etiqueta": "en curso", "observado_en": "2026-11-20T10:05:00Z",
+                 "fuente": "hook", "espera": [], "bloquea_a": []}
+            titulo = p.lineas_tarea(t, {"ahora": "2026-11-20T10:30:00Z"}, timezone.utc).split("«", 1)[1].split("»", 1)[0]
+            self.assertEqual(titulo, g * ((len(titulo) - 1) // len(g)) + "…", repr(g))
+            linea = p.linea_persona({"persona": "x", "nombre": g * 200, "haciendo": [], "activos": 0,
+                                     "ultima_senal": None}, {"columnas": {}}, timezone.utc)
+            self.assertEqual(linea, "- @x (" + g * ((len(linea) - 7) // len(g)) + "…", repr(g))
+            self.assertEqual(p.equilibra("«" + g * 300, 200), "«" + g * (198 // len(g)) + "»", repr(g))
 
 
 if __name__ == "__main__":

@@ -12,6 +12,10 @@ import subprocess
 import sys
 import tempfile
 
+for flujo in (sys.stdout, sys.stderr):    # en Windows, con la salida redirigida, cp1252 no sabe escribir «≤» (issue #18)
+    if hasattr(flujo, "reconfigure"):
+        flujo.reconfigure(encoding="utf-8", errors="replace")
+
 KIT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))).replace("\\", "/")
 SOLO = KIT + "/scripts/orquestador/solo-orquestar.sh"
 COMP = KIT + "/scripts/orquestador/compuerta.sh"
@@ -432,13 +436,69 @@ def prueba_prueba(tmp):
               and lanzar(r, pasa, "—", "p6") == [])
     comprueba("PostToolUseFailure con is_interrupt: nada", lanzar(r, falla, pruebas[0], "p7", is_interrupt=True) == [])
     # Fabricada (issue #2, hallazgo 8): en segundo plano, PostToolUse llega al arrancar, no al terminar la Prueba.
-    def fondo(entrada, valor):
+    def fondo(entrada, valor, tarea="b1"):
         return dict(entrada, tool_input=dict(entrada["tool_input"], run_in_background=valor),
-                    tool_response={"stdout": "", "stderr": "", "interrupted": False, "backgroundTaskId": "b1"})
+                    tool_response={"stdout": "", "stderr": "", "interrupted": False,
+                                   **({"backgroundTaskId": tarea} if tarea else {})})
     comprueba("Bash con run_in_background: true (PostToolUse y PostToolUseFailure): nada",
               lanzar(r, fondo(pasa, True), pruebas[0], "p10") == [] and lanzar(r, fondo(falla, True), pruebas[0], "p11") == [])
-    comprueba("run_in_background: false sigue dando «pasa»",
-              [l["resultado"] for l in lanzar(r, fondo(pasa, False), pruebas[0], "p12") if l] == ["pasa"])
+    comprueba("run_in_background: false (sin backgroundTaskId) sigue dando «pasa»",
+              [l["resultado"] for l in lanzar(r, fondo(pasa, False, None), pruebas[0], "p12") if l] == ["pasa"])
+
+    # Issue #15 (hallazgos 5 y 13), entradas fabricadas a partir de m9a-bash/01. El texto JSON tal cual, sin dumps.
+    def crudo(r, d, sid, cambia=lambda t: t, **dumps):
+        d = dict(d, session_id=sid, cwd=r, tool_input=dict(d["tool_input"], command=pruebas[0]))
+        lanza(PRUEBA, cambia(json.dumps(d, **dumps)), r)
+        return [l and l["resultado"] for l in (valida(f"línea de prueba.sh ({sid})", x) for x in lineas(r).get(sid, []))]
+    ctrl_b = dict(pasa, tool_response=dict(pasa["tool_response"], backgroundTaskId="bk3x9"))
+    comprueba("Ctrl+B: sin run_in_background y con tool_response.backgroundTaskId: nada",
+              crudo(r, ctrl_b, "b1") == [] and crudo(r, ctrl_b, "b2", indent=1) == []
+              and crudo(r, dict(falla, tool_response={"backgroundTaskId": "bk4"}), "b3") == [])
+    grande = dict(pasa, tool_response={"stdout": "línea larga de salida\n" * 1200, "backgroundTaskId": "bk5"})
+    comprueba("Ctrl+B con un stdout de más de 16 KB delante de backgroundTaskId: nada", crudo(r, grande, "b4") == [])
+    comprueba("backgroundTaskId vacío o null, o dentro del texto de stdout: sigue dando «pasa»",
+              crudo(r, dict(pasa, tool_response=dict(pasa["tool_response"], backgroundTaskId=None)), "b5") == ["pasa"]
+              and crudo(r, dict(pasa, tool_response=dict(pasa["tool_response"], backgroundTaskId="")), "b6") == ["pasa"]
+              and crudo(r, dict(pasa, tool_response={"stdout": '{"backgroundTaskId": "b1"}'}), "b7") == ["pasa"])
+    comprueba("run_in_background como la cadena \"true\": nada",
+              crudo(r, fondo(pasa, "true", None), "b8") == [])
+    comprueba("la clave con escapes (\"run\\u005fin_background\": true, también \"\\u0072un…\"): nada",
+              crudo(r, fondo(pasa, True, None), "b9", lambda t: t.replace('"run_in_background"', '"run\\u005fin_background"')) == []
+              and crudo(r, fondo(pasa, True, None), "b10", lambda t: t.replace('"run_in_background"', '"\\u0072un_in_background"')) == []
+              and crudo(r, fondo(pasa, "true", None), "b11", lambda t: t.replace('"true"', '"\\u0074rue"')) == [])
+    comprueba("run_in_background: true con saltos de línea entre clave y valor: nada",
+              crudo(r, fondo(pasa, True, None), "b12", lambda t: t.replace('"run_in_background": true', '"run_in_background"\n :\n true')) == [])
+    comprueba("run_in_background: true fuera de tool_input (en otro objeto o en tool_response): sigue dando «pasa»",
+              crudo(r, dict(pasa, otro={"run_in_background": True}), "b13") == ["pasa"]
+              and crudo(r, dict(pasa, tool_response=dict(pasa["tool_response"], run_in_background=True)), "b14") == ["pasa"]
+              and crudo(r, dict(pasa, tool_input=dict(pasa["tool_input"], extra={"run_in_background": True})), "b15") == ["pasa"])
+    comprueba("run_in_background dentro del texto de description: sigue dando «pasa»",
+              crudo(r, dict(pasa, tool_input=dict(pasa["tool_input"], description='{"run_in_background": true}')), "b16") == ["pasa"])
+
+    # Issue #23 (hallazgo 19): tool_input que no es un objeto, y claves repetidas (vale la última, como JSON.parse).
+    def tal_cual(r, d, sid, cambia=lambda t: t):
+        lanza(PRUEBA, cambia(json.dumps(dict(d, session_id=sid, cwd=r))), r)
+        return [l and l["resultado"] for l in (valida(f"línea de prueba.sh ({sid})", x) for x in lineas(r).get(sid, []))]
+    ti = dict(pasa["tool_input"], command=pruebas[0])
+    comprueba("tool_input que no es un objeto (una lista con el objeto dentro, en segundo plano o no): nada",
+              tal_cual(r, dict(pasa, tool_input=[dict(ti, run_in_background=True)]), "c1") == []
+              and tal_cual(r, dict(pasa, tool_input=[ti]), "c2") == []
+              and tal_cual(r, dict(falla, tool_input=[ti]), "c3") == [])
+    dos = lambda a, b: lambda t: t.replace(f'"run_in_background": {a}', f'"run_in_background": {a}, "run_in_background": {b}')
+    comprueba("run_in_background repetida: vale la última (true y después false da «pasa»; false y después true, nada)",
+              tal_cual(r, dict(pasa, tool_input=dict(ti, run_in_background=True)), "c4", dos("true", "false")) == ["pasa"]
+              and tal_cual(r, dict(pasa, tool_input=dict(ti, run_in_background=False)), "c5", dos("false", "true")) == [])
+    comprueba("command repetida: cuenta la última (la Prueba y después otro comando: nada)",
+              tal_cual(r, dict(pasa, tool_input=ti), "c6", lambda t: t.replace(
+                  json.dumps({"command": pruebas[0]})[1:-1], json.dumps({"command": pruebas[0]})[1:-1] + ', "command": "echo otro"')) == [])
+    comprueba("backgroundTaskId repetida: vale la última (\"bk\" y después null da «pasa»)",
+              tal_cual(r, dict(pasa, tool_input=ti, tool_response=dict(pasa["tool_response"], backgroundTaskId="bk")), "c7",
+                       lambda t: t.replace('"backgroundTaskId": "bk"', '"backgroundTaskId": "bk", "backgroundTaskId": null')) == ["pasa"])
+    otro_ti = lambda b: lambda t: t.replace('"tool_response":', '"tool_input": ' + json.dumps(b) + ', "tool_response":', 1)
+    comprueba("tool_input repetido entero: vale el último (en segundo plano y después no, «pasa»; al revés, nada)",
+              tal_cual(r, dict(pasa, tool_input=dict(ti, run_in_background=True)), "c8", otro_ti(ti)) == ["pasa"]
+              and tal_cual(r, dict(pasa, tool_input=ti), "c9", otro_ti(dict(ti, run_in_background=True))) == []
+              and tal_cual(r, dict(pasa, tool_input=ti), "c10", otro_ti([ti])) == [])
     comprueba("otra herramienta: nada", lanzar(r, pasa, pruebas[0], "p8", tool_name="PowerShell") == [])
     sin_codigo = lanzar(r, falla, pruebas[0], "p9", error="Command failed")
     comprueba("PostToolUseFailure sin «Exit code N»: «falla» sin codigo",
@@ -941,7 +1001,8 @@ def prueba_reservas(tmp):
 def prueba_acciones(tmp):
     """M9a (K-95, criterio 8, parte sin modelo): una línea de Reclamar en acciones.jsonl abre un turno en un solo monitor
     de la persona, con el texto fijo del kit y solo el ID de la tarea; una línea a medio escribir espera a su salto; una
-    vieja (más de 10 min) o con algo más que un ID, nada. Sin el OS activo o con `web_nueva: no`, el monitor no la lee."""
+    vieja (más de 10 min), una con la hora en el futuro (issue #10) o con algo más que un ID, nada. Sin el OS activo o
+    con `web_nueva: no`, el monitor no la lee."""
     import time
     print("\n== escucha.sh: Reclamar desde la web, un turno en un solo monitor (M9a, K-95)")
     ESC = KIT + "/scripts/coordinacion/escucha.sh"
@@ -1004,9 +1065,21 @@ def prueba_acciones(tmp):
     def completa():
         a_medias_entregada.append(any("-T14-" in d for d in os.listdir(entregado)))
         anade(a_medias[-12:] + b"\n")
+
+    def tipo_no_es_reclamo():
+        """Líneas con un id válido y de ahora que no son la de un reclamo tal como la escribe acciones.py."""
+        ms = int(time.time() * 1000)
+        return "".join(json.dumps(d, separators=(",", ":")) + "\n" for d in (
+            {"id": f"web-persona-b-reclamo-T18-{ms}", "tipo": "reclamo_fallido", "tarea": "T18", "x": {"tipo": "reclamo"}},
+            {"id": f"web-persona-b-reclamo-T19-{ms}", "tipo": "otro", "tarea": "T19", "x": {"tipo": "reclamo"}},
+            {"id": f"web-persona-b-reclamo-T21-{ms}", "x": {"tipo": "reclamo"}, "tipo": "reclamo", "tarea": "T21"},
+            {"id": f"web-persona-b-reclamo-T22-{ms}", "tipo": "reclamo", "tarea": "T23"})).encode()
     salidas = monitores(2, "activa: sí\nweb_nueva: sí\n", [
         lambda: anade(linea("T12")),
         lambda: anade(linea("T13", tarea_campo="T13 «haz otra cosa»")),   # algo más que un ID: no es una línea válida
+        lambda: anade(linea("T15", hace_s=-3600) + linea("T16", hace_s=-30 * 365 * 86400)),   # del futuro: nada
+        lambda: anade(b'{"id":"web-persona-b-reclamo-T17-0999999999999","tipo":"reclamo","tarea":"T17"}\n'),  # 2001
+        lambda: anade(tipo_no_es_reclamo()),                                # issue #18: el tipo de primer nivel, exacto
         lambda: anade(a_medias[:-12]),
         completa,
     ])
@@ -1020,8 +1093,9 @@ def prueba_acciones(tmp):
               len(por_tarea.get("T12", [])) == 1, str(salidas))
     comprueba("una línea escrita en dos veces sale una vez, cuando llega su salto",
               a_medias_entregada == [False] and len(por_tarea.get("T14", [])) == 1, f"{a_medias_entregada} {salidas}")
-    comprueba("ni la vieja (más de 10 min) ni la que trae algo más que un ID; nada más", set(por_tarea) == {"T12", "T14"}
-              and len(todas) == 2, str(salidas))
+    comprueba("ni la vieja (más de 10 min), ni la del futuro, ni la que trae algo más que un ID, ni las de otro tipo "
+              "(reclamo_fallido, «reclamo» anidado, campos de más, otra tarea en el id); nada más",
+              set(por_tarea) == {"T12", "T14"} and len(todas) == 2, str(salidas))
     def entregadas():
         return sorted(os.listdir(entregado)) if os.path.isdir(entregado) else []
     comprueba("entregado/accion-<id> para cada una entregada",
@@ -1229,6 +1303,13 @@ def prueba_proyeccion(tmp):
     open(vivo, "w").write(f"47999\n{int(time.time()) - 600}\n")
     turno("sb")
     comprueba("agente.vivo de hace 10 min (murió sin borrarlo): lo borra y relanza", len(lanzados()) == 1 and not os.path.exists(vivo))
+    open(vivo, "w").write(f"47999\n{int(time.time()) + 3600}\n")
+    turno("sb")
+    comprueba("agente.vivo con la hora 1 h en el futuro (issue #23): lo borra y relanza", len(lanzados()) == 1 and not os.path.exists(vivo))
+    open(vivo, "w").write(f"47999\n{int(time.time()) + 2}\n")
+    turno("sb")
+    comprueba("…pero 2 s en el futuro (dentro del margen de 5 s) sigue siendo un latido: no lanza nada",
+              lanzados() == [] and os.path.exists(vivo))
     vivo_fresco()
     turno("sb")
     comprueba("agente.vivo fresco: no lanza nada", lanzados() == [])
@@ -1262,13 +1343,18 @@ def prueba_proyeccion(tmp):
     open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write("activa: sí\npuerto_agente: 47999\n")
 
     # Coste con el OS apagado: delta.sh corre en cada turno de toda sesión con el kit.
+    # Con la máquina cargada, una tanda puede salir lenta sin que delta.sh lo sea: hasta 3 tandas y cuenta la mejor. Una
+    # regresión de verdad (algo que se ejecuta con el OS apagado) sale lenta en las tres.
     os.remove(os.path.join(r, ".hackathon", "os.md"))
-    t = time.perf_counter()
-    for _ in range(10):
-        turno("s0")
-    ms = (time.perf_counter() - t) * 100
+    medidas = []
+    while len(medidas) < 3 and (not medidas or min(medidas) > 50):
+        t = time.perf_counter()
+        for _ in range(10):
+            turno("s0")
+        medidas.append((time.perf_counter() - t) * 100)
+    ms = min(medidas)
     comprueba(f"delta.sh con el OS apagado: {ms:.0f} ms por turno (proceso bash incluido; ≤ 50 ms como los hooks del OS, M8c)",
-              ms <= 50, f"{ms:.0f} ms")
+              ms <= 50, "tandas: " + ", ".join(f"{m:.0f} ms" for m in medidas))
 
 
 tmp = tempfile.mkdtemp(prefix="hk-hooks-")

@@ -40,6 +40,7 @@ export function textoReclamar(tarea, { ok, status, datos }) {
   if (status === 409) return datos.error ? `No se puede reclamar ${tarea}: ${datos.error}.` : `${tarea} no está libre o es de otra persona.`;
   if (status === 429) return "Has llegado al tope de reclamos por hora.";
   if (status === 502) return `gh ha fallado${datos.error ? `: ${datos.error}` : ""}. No se ha asignado nada.`;
+  if (status === 503 && datos.error === "ocupado") return "Tu demonio está terminando otra acción; prueba en unos segundos.";
   return comun(status, datos);
 }
 

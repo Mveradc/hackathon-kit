@@ -50,12 +50,15 @@ SONDEO_GITHUB_S = 30            # api.md §8
 NOVEDADES_S = 60                # git fetch y lectura de decisiones y criterios (M8f)
 SERVICIOS = ".hackathon/servicios.md"   # M9a (api.md §10)
 SERVICIOS_COMMITS = 200         # historia de servicios.md que se mira (api.md §3)
+REINTENTO_TOPE = 16             # vueltas, como mucho, entre dos intentos de leer una versión que falla
 RUTAS_MAX = 5000                # ficheros de origin/main para «código fuera de cualquier servicio»
 RECIENTES_MAX = 1000            # eventos guardados para el SSE `eventos` (M9a)
 EVENTOS_SSE_MAX = 200           # por mensaje (api.md §3)
+RESUMEN_MAX, AUTOR_MAX = 200, 60        # caracteres del resumen y del autor de una novedad (estado.schema.json)
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "index.html")
 TAILNET = ipaddress.ip_network("100.64.0.0/10")
 PRIVADAS = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
+FALLO = object()                # una lectura de git que falló (Novedades._en)
 
 
 class Invalido(Exception):
@@ -91,9 +94,11 @@ def iso_us(t):
 
 
 def _git(repo, *args, timeout=30):
+    """Sin objetos de reemplazo (`git replace`): un commit «sin padres» por un reemplazo parecería crear servicios.md
+    y añadir todas sus filas (issue #18, ADR-0011). Lo mismo en Novedades._texto."""
     try:
-        r = subprocess.run(["git", "-C", repo, *args], capture_output=True, text=True, encoding="utf-8",
-                           errors="replace", timeout=timeout)
+        r = subprocess.run(["git", "--no-replace-objects", "-C", repo, *args], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=timeout)
     except (OSError, subprocess.SubprocessError):
         return None
     return r.stdout if r.returncode == 0 else None
@@ -104,16 +109,35 @@ DECISION = re.compile(r"^- (\d{4}-\d\d-\d\d \d\d:\d\d) ([+-]\d{4}) · \[#(\d+)\]
 CRITERIO = re.compile(r"^## (\d{4}-\d\d-\d\d \d\d:\d\d) · (.+)$")
 
 
+def _con_lo_dicho(resumen, dijo, n=RESUMEN_MAX):
+    """«<resumen>: <lo que dijo>» en n caracteres como mucho. Unas palabras literales («…») se cortan por dentro, para
+    no perder la » de fuera (nota del PR #17); si no cabe ni una letra entre las comillas, solo el resumen. Lo demás lo
+    recorta proyeccion.equilibra, sin partir grafemas."""
+    entero = f"{resumen}: {dijo}"
+    if len(entero) <= n or len(dijo) < 2 or dijo[0] != "«" or dijo[-1] != "»":
+        return entero
+    cabe = n - len(resumen) - 4
+    return f"{resumen}: «{proyeccion.corta(dijo[1:-1], cabe, '')}»" if cabe > 0 else resumen
+
+
+def orden_unir(url, token):
+    """La orden que cada persona copia. Un token nuevo nunca empieza por «-» (Relay._token); uno viejo que sí, va
+    detrás de «--», para que argparse no lo tome por una opción (PR #24)."""
+    return f"hk-os unir {url} {'-- ' if token.startswith('-') else ''}{token}"
+
+
 def novedades_de(decisiones, criterios, tz=None):
     """Las entradas de decisiones.md (las escribe `buzon.sh acordar`) y de criterios.md (`/hack-note`) como
-    `novedades` de estado.json. Su texto es dato: el resumen va recortado y las vistas lo entrecomillan con su autor."""
+    `novedades` de estado.json. Su texto es dato: el resumen va recortado y las vistas lo entrecomillan con su autor.
+    Las comillas del resumen se equilibran aquí, en origen (proyeccion.equilibra, issue #23): la web lo pinta tal cual,
+    y el md, igual."""
     tz = tz or datetime.now().astimezone().tzinfo
     salida = []
     for linea in decisiones.splitlines():
         m = DECISION.match(linea.strip())
         if m:
             cuando = datetime.strptime(f"{m.group(1)} {m.group(2)}", "%Y-%m-%d %H:%M %z")
-            salida.append({"tipo": "decision", "resumen": f"#{m.group(3)}: {m.group(6).strip()}"[:200],
+            salida.append({"tipo": "decision", "resumen": f"#{m.group(3)}: {m.group(6).strip()}",
                            "autor": f"@{m.group(4)} ↔ @{m.group(5)}", "observado_en": iso(cuando)})
     nota = None
     for linea in criterios.splitlines() + ["## fin"]:
@@ -125,13 +149,17 @@ def novedades_de(decisiones, criterios, tz=None):
             nota = None
             if m:
                 cuando = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M").replace(tzinfo=tz)
-                nota = {"tipo": "criterio", "resumen": m.group(2)[:200], "observado_en": iso(cuando)}
+                nota = {"tipo": "criterio", "resumen": proyeccion.equilibra(m.group(2), RESUMEN_MAX),
+                        "observado_en": iso(cuando)}
         elif nota and linea.startswith("- Qué dijo:"):
-            nota["resumen"] = f"{nota['resumen']}: {linea[len('- Qué dijo:'):].strip()}"[:200]
+            dijo = proyeccion.equilibra(linea[len("- Qué dijo:"):], RESUMEN_MAX)
+            nota["resumen"] = _con_lo_dicho(nota["resumen"], dijo)
         elif nota and linea.startswith("- Anotado por:"):
             autor = linea[len("- Anotado por:"):].strip()
             if autor and autor != "—":
-                nota["autor"] = autor[:60]
+                nota["autor"] = proyeccion.corta(autor, AUTOR_MAX, "")
+    for n in salida:
+        n["resumen"] = proyeccion.equilibra(n["resumen"], RESUMEN_MAX)
     return salida
 
 
@@ -142,13 +170,15 @@ class Novedades:
     Desde M8g, también los contratos de docs/contratos.md con su dueño de .hackathon/autoridad.md (nivel 3): un bloque
     sin dueño, o con más de una candidata, se dice una vez por `aviso`.
     Desde M9a, con `web_nueva`, lo que necesita servicios.calcular de origin/main (api.md §3): servicios.md, su historia
-    (cada versión con la de sus padres; un sha ya leído no se vuelve a leer), autoridad.md, contratos.md y los ficheros."""
+    (cada versión con la de sus padres; un sha ya leído no se vuelve a leer), autoridad.md, contratos.md y los ficheros.
+    Si no se puede leer, se queda lo último bueno; una versión que falla se reintenta tras 1, 2, 4… vueltas (issue #18)."""
 
     def __init__(self, repo, umbral_s=300, reloj=time.time, git=_git, aviso=None, web_nueva=False):
         self.repo, self.umbral_s, self.reloj, self.git = repo, umbral_s, reloj, git
         self.lista, self.ultimo_ok, self.fallando = [], None, False
         self.contratos, self.aviso, self._avisados = [], aviso, set()
         self.web_nueva, self.servicios, self._versiones, self._crea = web_nueva, None, {}, (None, None)
+        self._vuelta, self._fallos = 0, {}       # sha → (fallos seguidos, vuelta del próximo intento)
 
     def _leer(self, ruta):
         for ref in ("refs/remotes/origin/main", "HEAD"):
@@ -159,10 +189,53 @@ class Novedades:
     def _texto(self, ref, ruta):
         """El fichero en `ref`, tolerando BOM y UTF-16 (servicios.decodificar); None si no existe."""
         try:
-            r = subprocess.run(["git", "-C", self.repo, "show", f"{ref}:{ruta}"], capture_output=True, timeout=30)
+            r = subprocess.run(["git", "--no-replace-objects", "-C", self.repo, "show", f"{ref}:{ruta}"],
+                               capture_output=True, timeout=30)
         except (OSError, subprocess.SubprocessError):
             return None
         return servicios_mod.decodificar(r.stdout) if r.returncode == 0 else None
+
+    def _en(self, ref):
+        """servicios.md en `ref`: su texto, None si no está, o FALLO si no se ha podido leer (un fallo no es «no
+        estaba»: así contaría todas las filas como añadidas en el commit siguiente, ADR-0011)."""
+        esta = self.git(self.repo, "ls-tree", "--name-only", ref, SERVICIOS)
+        if esta is None:
+            return FALLO
+        if not esta.strip():
+            return None
+        texto = self._texto(ref, SERVICIOS)
+        return FALLO if texto is None else texto
+
+    def _version(self, sha):
+        """La versión de `sha` con la de sus padres reales, o None si falló alguna lectura: no se guarda en la caché y
+        se vuelve a leer más adelante (_leer_servicios: tras 1, 2, 4… vueltas, hasta REINTENTO_TOPE). Mientras, la
+        versión no está en la lista y no confirma nada."""
+        padres = self.git(self.repo, "log", "-1", "--format=%P", sha)
+        if padres is None:
+            return None
+        textos, texto = [self._en(p) for p in padres.split()], self._en(sha)
+        if texto is FALLO or any(t is FALLO for t in textos):
+            return None
+        return {"sha": sha, "textos_padres": textos, "texto": texto or ""}
+
+    def _bordes(self):
+        """Los commits del borde de un clon superficial (git no tiene sus padres: `%P` sale vacío y parecerían crear
+        el fichero con todas sus filas). set() si el clon es completo; None si no se sabe. Con `info/grafts`, también
+        None: un commit injertado sin padres sería un borde que no está en `shallow` (issue #18)."""
+        grafts = (self.git(self.repo, "rev-parse", "--git-path", "info/grafts") or "").strip()
+        if not grafts or os.path.exists(os.path.join(self.repo, grafts)):
+            return None
+        superficial = (self.git(self.repo, "rev-parse", "--is-shallow-repository") or "").strip()
+        if superficial == "false":
+            return set()
+        ruta = (self.git(self.repo, "rev-parse", "--git-path", "shallow") or "").strip()
+        if superficial != "true" or not ruta:
+            return None
+        try:
+            with open(os.path.join(self.repo, ruta), encoding="utf-8") as f:
+                return set(f.read().split())
+        except OSError:
+            return None
 
     def _creacion(self, ref):
         """El sha del commit que creó servicios.md, solo si se sabe con certeza; si no, None (y ninguna fila es de
@@ -199,26 +272,43 @@ class Novedades:
         return sha
 
     def _leer_servicios(self, autoridad, contratos):
-        """Lo de origin/main que necesita servicios.calcular, o None sin servicios.md."""
+        """Lo de origin/main que necesita servicios.calcular, None sin servicios.md, o FALLO si no se ha podido leer
+        (quien llama se queda con lo último bueno: un fallo no es «ya no está»)."""
+        self._vuelta += 1
         ref = next((r for r in ("refs/remotes/origin/main", "HEAD")
                     if self.git(self.repo, "rev-parse", "--verify", "-q", r) is not None), None)
-        texto = self._texto(ref, SERVICIOS) if ref else None
-        if texto is None:
-            return None
+        texto = self._en(ref) if ref else FALLO
+        if texto is None or texto is FALLO:
+            return texto
         log = self.git(self.repo, "log", "--full-history", "--reverse", "-n", str(SERVICIOS_COMMITS), "--format=%H %ct",
-                       ref, "--", SERVICIOS) or ""
-        crea = self._creacion(ref)
+                       ref, "--", SERVICIOS)
+        if log is None:
+            return FALLO
+        # En un clon superficial (o si no se sabe si lo es) no hay creación conocida, y las versiones del borde no se
+        # leen: sin sus padres, todas sus filas saldrían añadidas por la persona de ese commit (ADR-0011).
+        bordes = self._bordes()
+        crea = self._creacion(ref) if bordes == set() else None
         versiones, cuando = [], None
         for linea in log.splitlines():
             partes = linea.split()
             if len(partes) != 2:
                 continue
             sha, cuando = partes
+            if bordes is None or sha in bordes:
+                continue
             if sha not in self._versiones:
-                padres = (self.git(self.repo, "log", "-1", "--format=%P", sha) or "").split()   # los padres reales
-                self._versiones[sha] = {"sha": sha, "textos_padres": [self._texto(p, SERVICIOS) for p in padres],
-                                        "texto": self._texto(sha, SERVICIOS) or ""}
+                veces, proxima = self._fallos.get(sha, (0, 0))
+                if self._vuelta < proxima:
+                    continue
+                version = self._version(sha)
+                if version is None:
+                    self._fallos[sha] = (veces + 1, self._vuelta + min(2 ** veces, REINTENTO_TOPE))
+                    continue
+                self._fallos.pop(sha, None)
+                self._versiones[sha] = version
             versiones.append(dict(self._versiones[sha], crea=sha == crea))
+        en_log = {linea.split()[0] for linea in log.splitlines() if linea.strip()}
+        self._fallos = {s: f for s, f in self._fallos.items() if s in en_log}
         rutas = (self.git(self.repo, "ls-tree", "-r", "--name-only", ref) or "").splitlines()[:RUTAS_MAX]
         return {"texto": texto, "versiones": versiones, "rutas": rutas, "autoridad": autoridad, "contratos": contratos,
                 "observado_en": iso_us(float(cuando)) if cuando else iso_us(self.reloj())}
@@ -240,7 +330,9 @@ class Novedades:
                 self._avisados.add(a)
                 self.aviso(f"Nivel 3: {a}.")
         if self.web_nueva:
-            self.servicios = self._leer_servicios(texto_autoridad, texto_contratos)
+            leido = self._leer_servicios(texto_autoridad, texto_contratos)
+            if leido is not FALLO:
+                self.servicios = leido
         return (self.lista, self.fallando, self.contratos, self.servicios) != antes
 
     def fuente(self):
@@ -296,6 +388,8 @@ class Relay:
         except OSError:
             pass
         t = secrets.token_urlsafe(24)
+        while t.startswith("-"):           # 1 de cada 64: `hk-os unir <url> -…` lo tomaría por una opción (PR #24)
+            t = secrets.token_urlsafe(24)
         with open(ruta, "w", encoding="utf-8") as f:
             f.write(t + "\n")
         return t
@@ -851,7 +945,7 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
     aviso(f"Relay del Hackathon OS en {url} ({len(personas)} personas en coordinacion.md, "
           f"{len(relay.eventos)} eventos guardados).")
     aviso(f"Token: {relay.token}")
-    aviso(f"Cada persona, en su clon: hk-os unir {url} {relay.token}")
+    aviso(f"Cada persona, en su clon: {orden_unir(url, relay.token)}")
     aviso(f"Web (solo lectura, desde un navegador de la misma red): {url}/#t={relay.token}")
     try:
         servidor.serve_forever(poll_interval=0.5)

@@ -148,6 +148,56 @@ class Token(Base):
         self.assertEqual(os.stat(os.path.join(self.dir, "web.token")).st_mode & 0o777, 0o600)
         self.assertNotEqual(otro.web_token, self.a.web_token)
 
+    def test_token_y_relay_url_de_antes_quedan_privados(self):
+        """PR #22: un `token` o un `relay.url` de antes (0644, o en Windows con el ACL heredado de la carpeta) seguían
+        así hasta el siguiente `hk-os unir`. Ahora el demonio los reescribe al arrancar solo para su usuario, con el
+        mismo contenido byte a byte."""
+        contenidos = {"token": b"abc123\r\n", "relay.url": b"http://127.0.0.1:47999\n"}
+        for nombre, datos in contenidos.items():
+            ruta = os.path.join(self.dir, nombre)
+            with open(ruta, "wb") as f:
+                f.write(datos)
+            if os.name != "nt":
+                os.chmod(ruta, 0o644)
+            if agente_mod.permisos.es_privado(ruta):
+                self.skipTest("aquí un fichero nuevo ya nace privado")
+        agente_mod.Agente(self.repo, PERSONA, reloj=self.reloj, ahora=lambda: self.ahora)
+        for nombre, datos in contenidos.items():
+            ruta = os.path.join(self.dir, nombre)
+            self.assertTrue(agente_mod.permisos.es_privado(ruta), nombre)
+            with open(ruta, "rb") as f:
+                self.assertEqual(f.read(), datos)
+        self.assertEqual([n for n in os.listdir(self.dir) if n.endswith(".tmp")], [])
+
+    def test_web_token_de_antes_que_no_se_puede_reescribir(self):
+        """Issue #27: un web.token de antes, que no es privado, y su reescritura falla (en Windows, el PermissionError
+        [WinError 5] de os.replace con un lector abierto). Antes se generaba uno nuevo y las pestañas abiertas daban
+        401. Ahora sigue el mismo, queda en el log y se vuelve a intentar en el próximo arranque."""
+        ruta = os.path.join(self.dir, "web.token")
+        viejo = "d" * 64
+        with open(ruta, "w", encoding="utf-8") as f:
+            f.write(viejo + "\n")
+        escribe = agente_mod.permisos.escribe_privado
+
+        def falla(destino, *a, **k):
+            if os.path.basename(destino) == "web.token":
+                raise PermissionError(13, "Acceso denegado (simulado: WinError 5)", destino)
+            return escribe(destino, *a, **k)
+        with mock.patch.object(agente_mod.permisos, "es_privado", return_value=False), \
+                mock.patch.object(agente_mod.permisos, "escribe_privado", side_effect=falla) as espia:
+            otro = agente_mod.Agente(self.repo, PERSONA, reloj=self.reloj, ahora=lambda: self.ahora)
+        self.assertEqual(otro.web_token, viejo)
+        self.assertIn("web.token", [os.path.basename(c.args[0]) for c in espia.call_args_list])   # sí se intentó
+        with open(ruta, encoding="utf-8") as f:
+            self.assertEqual(f.read(), viejo + "\n")
+        with open(os.path.join(self.dir, "agente.log"), encoding="utf-8") as f:
+            self.assertIn("web.token: no se ha podido dejar privado", f.read())
+        self.assertEqual([n for n in os.listdir(self.dir) if n.startswith("web.token.")], [])
+        with mock.patch.object(agente_mod.permisos, "es_privado", return_value=False):    # el siguiente arranque
+            tercero = agente_mod.Agente(self.repo, PERSONA, reloj=self.reloj, ahora=lambda: self.ahora)
+        self.assertEqual(tercero.web_token, viejo)
+        self.assertTrue(agente_mod.permisos.es_privado(ruta))
+
 
 class Seguridad(Base):
     """Criterio 6 de M9a (ADR-0010), en el proceso; evals/coordinacion/acciones_seguridad.py lo repite en vivo."""
@@ -422,6 +472,80 @@ class Suscripcion(Base):
         self.assertTrue(self.esperar(lambda: self.a.web_clientes == 1))
         self.stream_del_demonio()
 
+    def test_pestana_cerrada_libera_el_hueco_sin_esperar_al_ping(self):
+        """Issue #15, hallazgo 9 [reproducido]: el hueco de una pestaña cerrada solo se liberaba al escribir el
+        siguiente ping (PING_S, 20 s). Con el tope lleno, cerrar una y abrir otra daba 429 todo ese tiempo. Ahora se
+        ve el cierre del socket en CIERRE_S (1 s), con PING_S y STREAM_MAX sin tocar."""
+        self.assertEqual((agente_mod.PING_S, agente_mod.STREAM_MAX), (20, 8))
+        self.con_estado()
+        abiertas = []
+        for _ in range(agente_mod.STREAM_MAX):
+            c = http.client.HTTPConnection("127.0.0.1", self.puerto, timeout=10)
+            c.request("GET", "/v1/stream", headers=self.token())
+            r = c.getresponse()
+            self.assertEqual(r.status, 200)
+            self.assertEqual(lector_sse(r)()["event"], "vista")
+            abiertas.append((c, r))
+            self.addCleanup(c.close)
+            self.addCleanup(r.close)
+        self.assertEqual(pide(self.puerto, "GET", "/v1/stream", self.token())[0], 429)
+        c, r = abiertas.pop()
+        r.close()
+        c.close()
+        self.assertTrue(self.esperar(lambda: self.a.web_clientes == agente_mod.STREAM_MAX - 1, s=4))
+        self.stream_del_demonio()
+
+    def stream_crudo(self):
+        """Un /v1/stream por un socket a pelo, ya con las cabeceras de la respuesta leídas (sin estado, el demonio no
+        manda nada más hasta el ping)."""
+        s = socket.create_connection(("127.0.0.1", self.puerto), timeout=10)
+        self.addCleanup(s.close)
+        s.sendall(f"GET /v1/stream HTTP/1.1\r\nHost: 127.0.0.1:{self.puerto}\r\nX-HK-Token: {self.a.web_token}\r\n"
+                  "\r\n".encode())
+        datos = b""
+        while b"\r\n\r\n" not in datos:
+            trozo = s.recv(4096)
+            self.assertTrue(trozo)
+            datos += trozo
+        self.assertTrue(datos.startswith(b"HTTP/1.0 200 "), datos[:40])
+        self.assertTrue(datos.endswith(b"\r\n\r\n"), datos)               # nada detrás: el cierre será un FIN
+        self.assertTrue(self.esperar(lambda: self.a.web_clientes == 1))
+        return s
+
+    def test_byte_de_mas_y_cierre_libera_el_hueco(self):
+        """Issue #23 [reproducido]: si el cliente manda un byte de más y después cierra (FIN), MSG_PEEK devolvía
+        siempre ese byte y el EOF no se veía: el hueco seguía ocupado hasta el ping (20 s). Ahora se lee y se descarta,
+        y el EOF de detrás libera el hueco en CIERRE_S."""
+        self.assertEqual(agente_mod.PING_S, 20)
+        s = self.stream_crudo()
+        s.sendall(b"x")
+        time.sleep(0.3)
+        s.close()
+        self.assertTrue(self.esperar(lambda: self.a.web_clientes == 0, s=4), "el hueco sigue ocupado")
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "el límite de 1024 de select.select se ve en Linux")
+    def test_con_descriptores_altos_el_stream_sigue(self):
+        """Issue #23 [reproducido en WSL2]: con un descriptor ≥ 1024, select.select lanza ValueError y _cerrado lo
+        tomaba por un cierre: cada stream moría al segundo. Con selectors, sigue vivo."""
+        import resource
+        blando, duro = resource.getrlimit(resource.RLIMIT_NOFILE)
+        if blando < 1400:
+            nuevo = 1400 if duro == resource.RLIM_INFINITY else min(1400, duro)
+            if nuevo < 1400:
+                self.skipTest(f"RLIMIT_NOFILE duro = {duro}")
+            resource.setrlimit(resource.RLIMIT_NOFILE, (nuevo, duro))
+            self.addCleanup(resource.setrlimit, resource.RLIMIT_NOFILE, (blando, duro))
+        fd = -1
+        while fd < 1100:                                    # también los huecos de abajo: el socket del demonio, ≥ 1100
+            fd = os.open(os.devnull, os.O_RDONLY)
+            self.addCleanup(os.close, fd)
+        s = self.stream_crudo()
+        self.assertGreaterEqual(s.fileno(), 1024)
+        time.sleep(2.5)
+        self.assertEqual(self.a.web_clientes, 1, "el stream se ha cerrado solo")
+        s.close()
+        self.assertTrue(self.esperar(lambda: self.a.web_clientes == 0, s=4))
+
 
 class SaludServicios(Base):
     def setUp(self):
@@ -533,6 +657,7 @@ class HkOsWeb(Base):
         self.assertEqual(cli.web(self.repo, abiertas.append, salida.append), 1)   # sin agente.vivo: no abre nada
         self.assertEqual(abiertas, [])
         self.a.puerto = self.puerto
+        self.reloj.t = time.time()                    # hk-os web no se fía de un agente.vivo viejo (issue #15)
         self.a.latir_vivo()
         self.assertEqual(cli.web(self.repo, abiertas.append, salida.append), 0)   # sin estado todavía (503): abre
         self.assertEqual(abiertas, [f"http://127.0.0.1:{self.puerto}/#t={self.a.web_token}"])

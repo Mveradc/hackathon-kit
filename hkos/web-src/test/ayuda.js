@@ -74,12 +74,14 @@ const respuestaHttp = (status, datos, body) => ({
  *   - `fetchImpl` hace de fetch; guarda cada petición en `peticiones`;
  *   - GET /v1/stream devuelve un stream que el test llena con `vista(r)`, `eventos([…])`, `ping()` o `corta()`;
  *   - GET /v1/vista devuelve `vistaActual`;
- *   - POST /v1/anotar y /v1/reclamar contestan lo que diga `acciones[ruta]` ({status, datos}), por defecto 200.
+ *   - POST /v1/anotar y /v1/reclamar contestan lo que diga `acciones[ruta]` ({status, datos}), por defecto 200;
+ *   - con `streamLleno`, GET /v1/stream contesta 429, como el demonio con todos sus streams ocupados.
  */
-export function demonioFalso({ vistaActual = null, acciones = {} } = {}) {
-  const d = { peticiones: [], streams: [], vistaActual, acciones };
+export function demonioFalso({ vistaActual = null, acciones = {}, streamLleno = false } = {}) {
+  const d = { peticiones: [], streams: [], vistaActual, acciones, streamLleno };
   d.fetchImpl = vi.fn(async (url, init = {}) => {
     d.peticiones.push({ url, ...init, headers: { ...(init.headers || {}) } });
+    if (url === "/v1/stream" && d.streamLleno) return respuestaHttp(429, { error: "demasiados clientes" });
     if (url === "/v1/stream") {
       const s = streamFalso();
       d.streams.push(s);
@@ -95,6 +97,129 @@ export function demonioFalso({ vistaActual = null, acciones = {} } = {}) {
   d.ping = () => ultimo().manda("event: ping\ndata: \n\n");
   d.corta = () => ultimo().cierra();
   return d;
+}
+
+/**
+ * Un navegador falso con varias pestañas del mismo origen: navigator.locks (un cerrojo exclusivo por nombre, que se
+ * concede por orden de llegada y se suelta al resolverse la promesa de quien lo tiene; una petición en espera se
+ * cancela con su `signal`; con `steal`, se concede en el acto y la petición de quien lo tenía acaba en AbortError) y
+ * BroadcastChannel (entrega asíncrona, copiada con structuredClone, a los demás canales del mismo nombre, nunca a sí
+ * mismo). `pestanas` es lo que espera useDemonio, para pestañas siempre visibles; `duenos(nombre)`, cuántos lo tienen
+ * ahora.
+ *
+ * `pestana()` da una pestaña con su propio `pestanas` y lo que le puede pasar en un navegador:
+ *   - `oculta(si)`: visibilityState y visibilitychange;
+ *   - `congela()` y `despierta()`: como Page.setWebLifecycleState. Congelada, lo que manda no sale y lo que le llega
+ *     (mensajes del canal y el AbortError de un cerrojo que le quitan) espera a que despierte. Sus timers no se paran
+ *     (son los de vitest, de todas), pero sin canal no se oye nada de ella;
+ *   - `sale()` y `vuelve()`: pagehide y pageshow con `persisted` (la bfcache). Un mensaje del canal a una pestaña que
+ *     está en la caché la desaloja, como en Chrome: `desalojada` lo dice.
+ */
+export function navegadorFalso() {
+  const canales = new Set(), cerrojos = new Map();
+  const cola = (nombre) => cerrojos.get(nombre) || cerrojos.set(nombre, { actual: null, espera: [] }).get(nombre);
+  const concede = (nombre, p) => {
+    const q = cola(nombre);
+    q.actual = p;
+    queueMicrotask(async () => {
+      try {
+        p.resolve(await p.cb({ name: nombre, mode: "exclusive" }));
+      } catch (e) {
+        p.reject(e);
+      } finally {
+        if (q.actual === p) {
+          q.actual = null;
+          siguiente(nombre);
+        }
+      }
+    });
+  };
+  const siguiente = (nombre) => {
+    const q = cola(nombre);
+    if (!q.actual && q.espera.length) concede(nombre, q.espera.shift());
+  };
+
+  function pestana() {
+    const tab = { visible: true, congelada: false, enCache: false, desalojada: false, pendientes: [], oyentes: new Map() };
+    const entrega = (fn) => (tab.congelada ? tab.pendientes.push(fn) : queueMicrotask(fn));
+    const avisa = (tipo, ev = {}) => { for (const f of [...(tab.oyentes.get(tipo) || [])]) f(ev); };
+    tab.recibe = (c, copia) => {
+      if (tab.enCache) tab.desalojada = true;
+      else entrega(() => canales.has(c) && c.onmessage?.({ data: copia }));
+    };
+    class Canal {
+      constructor(nombre) {
+        this.nombre = nombre;
+        this.tab = tab;
+        this.onmessage = null;
+        canales.add(this);
+      }
+      postMessage(m) {
+        if (tab.congelada) return;
+        for (const c of canales) if (c !== this && c.nombre === this.nombre) c.tab.recibe(c, structuredClone(m));
+      }
+      close() {
+        canales.delete(this);
+      }
+    }
+    const locks = {
+      request: (nombre, opciones, cb) => new Promise((resolve, reject) => {
+        const p = { cb, resolve, reject, entrega }, q = cola(nombre);
+        if (opciones?.steal) {
+          const viejo = q.actual;
+          if (viejo) viejo.entrega(() => viejo.reject(new DOMException("robado", "AbortError")));
+          concede(nombre, p);
+          return;
+        }
+        opciones?.signal?.addEventListener("abort", () => {
+          const i = q.espera.indexOf(p);
+          if (i >= 0) {
+            q.espera.splice(i, 1);
+            reject(new DOMException("abortado", "AbortError"));
+          }
+        });
+        q.espera.push(p);
+        siguiente(nombre);
+      }),
+    };
+    const pestanas = {
+      locks, Canal, huella: async (t) => `h-${t}`,
+      visible: () => tab.visible,
+      escucha: (tipo, fn) => {
+        if (!tab.oyentes.has(tipo)) tab.oyentes.set(tipo, new Set());
+        tab.oyentes.get(tipo).add(fn);
+        return () => tab.oyentes.get(tipo).delete(fn);
+      },
+    };
+    return {
+      pestanas,
+      oculta: (si) => {
+        tab.visible = !si;
+        avisa("visibilitychange");
+      },
+      congela: () => { tab.congelada = true; },
+      despierta: () => {
+        tab.congelada = false;
+        for (const f of tab.pendientes.splice(0)) queueMicrotask(f);
+      },
+      sale: () => {
+        avisa("pagehide", { persisted: true });
+        tab.enCache = true;
+      },
+      vuelve: () => {
+        tab.enCache = false;
+        avisa("pageshow", { persisted: true });
+      },
+      get desalojada() { return tab.desalojada; },
+    };
+  }
+
+  return {
+    pestanas: pestana().pestanas,
+    pestana,
+    duenos: (nombre) => (cola(nombre).actual ? 1 : 0),
+    canales: () => canales.size,
+  };
 }
 
 /** El fin de la animación CSS de un paquete o destello. En jsdom, React decide por el estilo del <div> si escucha

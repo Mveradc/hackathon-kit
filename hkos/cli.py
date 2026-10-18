@@ -20,6 +20,8 @@ import json
 import os
 import pathlib
 import re
+import socket
+import struct
 import subprocess
 import sys
 import time
@@ -34,11 +36,22 @@ import agente  # noqa: E402
 import compilar  # noqa: E402
 import relay  # noqa: E402
 import remoto as remoto_mod  # noqa: E402
+from permisos import escribe_privado, escribe_privados  # noqa: E402
 from red import equipo, web_nueva  # noqa: E402
 
 USO = __doc__.split("\n\n", 1)[1]
 # Lo que `recoger` nunca mete en el zip: secretos, los índices temporales y el remoto (código).
-NO_RECOGER = {"token", "relay.url", "wip.index", "wip.pathspecs", "web.token", "nota.index", "web.html", "web.html.tmp"}
+NO_RECOGER = {"token", "relay.url", "wip.index", "wip.pathspecs", "web.token", "nota.index", "web.html", "web.html.tmp",
+              "token.tmp", "relay.url.tmp", "web.token.tmp"}
+TEMPORAL = re.compile(r"(\.\d+)?\.tmp$")    # el .tmp de permisos.escribe_privado y el .<pid>.tmp del demonio
+# agente.vivo se renueva cada 15 s: con más de 60, el demonio está muerto. El criterio de scripts/os/delta.sh (VIVO_S
+# y FUTURO_S, y la comprobación de vivo_t).
+VIVO_S = 60
+FUTURO_S = 5    # con la hora más de 5 s en el futuro, tampoco es un latido (issue #23, hallazgo 1)
+LINUX = sys.platform.startswith("linux")
+TCP_PROC = ("/proc/net/tcp", "/proc/net/tcp6")
+NO_ESTA = "el demonio de este clon no está en marcha. Se lanza al abrir una sesión de Claude Code aquí; después, " \
+          "vuelve a probar."
 
 
 def _principal(comun):
@@ -53,11 +66,11 @@ def _git(cwd, *args):
 
 def desfase(url, token):
     """Segundos que va adelantado este reloj respecto del relay (cabecera Date, resolución de 1 s); None si no responde."""
-    req = urllib.request.Request(url + "/v1/estado", headers={"Authorization": f"Bearer {token}"})
     try:
+        req = urllib.request.Request(url + "/v1/estado", headers={"Authorization": f"Bearer {token}"})
         with urllib.request.urlopen(req, timeout=5) as r:
             fecha = r.headers.get("Date")
-    except (OSError, ValueError):
+    except (OSError, ValueError):                  # ValueError: un relay.url que no es una URL (PR #22)
         return None
     try:
         return round(time.time() - parsedate_to_datetime(fecha).timestamp())
@@ -182,9 +195,13 @@ def unir(url, token, cwd=".", persona=None, remoto=None, salida=print):
             return 2
     carpeta = os.path.join(comun, "hackathon", "os")
     os.makedirs(carpeta, exist_ok=True)
-    for nombre, valor in (("relay.url", url), ("token", token)):
-        with open(os.path.join(carpeta, nombre), "w", encoding="utf-8") as f:
-            f.write(valor + "\n")
+    try:                                 # los dos o ninguno: nunca la URL de un relay con el token de otro (issue #27)
+        escribe_privados([(os.path.join(carpeta, n), v + "\n") for n, v in (("relay.url", url), ("token", token))])
+    except OSError as ex:
+        print(f"hk-os unir: no he podido guardar relay.url y token en {carpeta} ({ex}); se quedan como estaban. "
+              "Si otro programa los tiene abiertos (un sincronizador como OneDrive), espera un momento y repite.",
+              file=sys.stderr)
+        return 1
     if persona is not None:
         # Sin GitHub, la persona se declara (no se verifica): hk_yo la toma de aquí antes de preguntar a gh, y
         # sesion.sh avisa una vez si gh dice otra cosa cuando vuelve la red (ADR-0002, nota de M8h).
@@ -245,7 +262,7 @@ def recoger(cwd=".", destino=None, salida=print):
                 z.writestr(zipfile.ZipInfo.from_file(raiz, f"os/{rel}/"), b"")
                 vacias += 1
             for f in ficheros:
-                if f in NO_RECOGER:
+                if f in NO_RECOGER or TEMPORAL.sub("", f) in NO_RECOGER:
                     continue
                 z.write(os.path.join(raiz, f), "os/" + (f if rel == "." else f"{rel}/{f}"))
                 n += 1
@@ -263,7 +280,7 @@ def recoger(cwd=".", destino=None, salida=print):
             with open(os.path.join(base, "token"), encoding="utf-8") as f:
                 token = f.read().strip()
             d = desfase(url, token)
-        except OSError:
+        except (OSError, ValueError):
             d = None
         z.writestr("desfase.txt", f"{d if d is not None else 'sin relay'}\n")
     salida(f"Recogidos {n} ficheros" + (f" y {vacias} carpetas vacías" if vacias else "")
@@ -284,14 +301,82 @@ def abrir_navegador(url, carpeta):
     if os.name == "nt":
         return webbrowser.open(url)
     ruta = os.path.join(carpeta, "web.html")
-    try:
-        os.remove(ruta + ".tmp")
-    except OSError:
-        pass
-    with os.fdopen(os.open(ruta + ".tmp", os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), "w", encoding="utf-8") as f:
-        f.write(PAGINA_WEB.format(url=html.escape(url, quote=True)))
-    os.replace(ruta + ".tmp", ruta)
+    escribe_privado(ruta, PAGINA_WEB.format(url=html.escape(url, quote=True)))
     return webbrowser.open(pathlib.Path(ruta).as_uri())
+
+
+def _direccion(hexa):
+    """La dirección de /proc/net/tcp{,6}: palabras de 32 bits en el orden de bytes de la máquina, en hexadecimal."""
+    return b"".join(struct.pack("=I", int(hexa[i:i + 8], 16)) for i in range(0, len(hexa), 8))
+
+
+# Las direcciones en escucha que reciben una conexión a 127.0.0.1: la propia, 0.0.0.0 y, en tcp6, :: y las mapeadas.
+A_127 = {socket.inet_pton(socket.AF_INET, d) for d in ("127.0.0.1", "0.0.0.0")} | {
+    socket.inet_pton(socket.AF_INET6, d) for d in ("::", "::ffff:127.0.0.1", "::ffff:0.0.0.0")}
+
+
+def escucha_mia(puerto, tablas=None, uid=None):
+    """Linux: ¿es de este usuario quien escucha (estado 0A) en 127.0.0.1:<puerto>? Mira /proc/net/tcp y tcp6. False si
+    no hay nadie o si alguno es de otro uid; None si no se puede leer ninguna tabla (entonces vale solo la hora)."""
+    duenos = duenos_escucha(puerto, tablas)
+    if duenos is None:
+        return None
+    uid = os.getuid() if uid is None else uid
+    return bool(duenos) and all(d == uid for d in duenos)
+
+
+def duenos_escucha(puerto, tablas=None):
+    """Los uid de quien escucha en 127.0.0.1:<puerto> según /proc/net/tcp y tcp6 (escucha_mia); None si no se puede
+    leer ninguna tabla."""
+    tablas = TCP_PROC if tablas is None else tablas
+    duenos, leida = [], False
+    for tabla in tablas:
+        try:
+            with open(tabla, encoding="ascii", errors="replace") as f:
+                lineas = f.read().splitlines()[1:]
+        except OSError:
+            continue
+        leida = True
+        for linea in lineas:
+            c = linea.split()
+            try:
+                local, p = c[1].split(":")
+                if c[3] == "0A" and int(p, 16) == puerto and _direccion(local) in A_127:
+                    duenos.append(int(c[7]))
+            except (IndexError, ValueError, struct.error):
+                continue
+    return duenos if leida else None
+
+
+def _puerto_fiable(carpeta):
+    """Issue #15: quien conteste /salud en el puerto de un agente.vivo huérfano (reinicio, kill -9) recibiría el token.
+    Antes de nada, la hora de agente.vivo (ni vieja ni en el futuro) y, en Linux, que el puerto sea de este usuario.
+    (puerto, None) si se puede preguntar a /salud; si no, (None, motivo), con un motivo para cada caso (issue #23,
+    hallazgo 17). El reto en /salud, que lo cerraría del todo, cambia api.md §4 (pendiente)."""
+    try:
+        with open(os.path.join(carpeta, "agente.vivo"), encoding="utf-8") as f:
+            puerto = int(f.readline().strip())
+            hora = int(f.readline().strip())
+    except (OSError, ValueError):
+        return None, NO_ESTA
+    edad = int(time.time()) - hora                  # en segundos enteros, como EPOCHSECONDS en delta.sh
+    if edad > VIVO_S:
+        return None, (f"el demonio de este clon no ha latido en {edad} s; si acabas de despertar el portátil, espera "
+                      "15 s y vuelve a probar. Si no, se lanza al abrir una sesión de Claude Code aquí.")
+    if edad < -FUTURO_S:
+        return None, (f"la hora de agente.vivo está {-edad} s en el futuro: no me fío de que sea el demonio de este "
+                      "clon. Si acabas de cambiar la hora del portátil, espera 15 s a que el demonio vuelva a latir y "
+                      "prueba otra vez.")
+    duenos = duenos_escucha(puerto) if LINUX else None
+    if duenos == []:
+        return None, (f"no encuentro el puerto {puerto} en escucha en /proc/net/tcp (¿el demonio corre en otro "
+                      "espacio de nombres de red, como un contenedor?). Ábrela desde donde corre el demonio.")
+    otros = sorted({d for d in duenos or () if d != os.getuid()})
+    if otros:
+        return None, (f"el puerto {puerto} es de otro usuario (uid {', '.join(map(str, otros))}), no del demonio de "
+                      "este clon" + (" (65534 es «nobody»: puede ser otro espacio de nombres de usuario, como un "
+                                      "contenedor)" if 65534 in otros else "") + ".")
+    return puerto, None
 
 
 def web(cwd=".", abrir=None, salida=print):
@@ -305,19 +390,21 @@ def web(cwd=".", abrir=None, salida=print):
         salida("hk-os web: la web de trabajo está apagada en este clon: pon «web_nueva: sí» en .hackathon/os.md "
                "(y súbelo, es para todo el equipo).")
         return 1
-    try:
-        with open(os.path.join(carpeta, "agente.vivo"), encoding="utf-8") as f:
-            puerto = int(f.readline().strip())
-        with urllib.request.urlopen(f"http://127.0.0.1:{puerto}/salud", timeout=2) as r:
-            primera = r.read().decode("utf-8", errors="replace").split("\n", 1)[0]
-    except (OSError, ValueError):
-        primera, puerto = "", None
-    esperada = f"hk-os {comun}"
-    if os.name == "nt":                                  # en Windows, sin distinguir mayúsculas (como el arranque)
-        primera, esperada = primera.lower(), esperada.lower()
-    if primera != esperada:
-        salida("hk-os web: el demonio de este clon no está en marcha. Se lanza al abrir una sesión de Claude Code "
-               "aquí; después, vuelve a probar.")
+    puerto, motivo = _puerto_fiable(carpeta)
+    if puerto is not None:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{puerto}/salud", timeout=2) as r:
+                primera = r.read().decode("utf-8", errors="replace").split("\n", 1)[0]
+        except (OSError, ValueError):
+            primera, motivo = None, NO_ESTA
+        esperada = f"hk-os {comun}"
+        if os.name == "nt" and primera:                  # en Windows, sin distinguir mayúsculas (como el arranque)
+            primera, esperada = primera.lower(), esperada.lower()
+        if primera is not None and primera != esperada:
+            motivo = (f"en el puerto {puerto} contesta otro programa, no el demonio de este clon (como el «puerto "
+                      "ocupado» del arranque: pon puerto_agente: en .hackathon/os.md).")
+    if motivo:                                           # siempre sin mandar el token ni abrir el navegador
+        salida("hk-os web: " + motivo)
         return 1
     try:
         with open(os.path.join(carpeta, "web.token"), encoding="utf-8") as f:
@@ -339,6 +426,7 @@ def web(cwd=".", abrir=None, salida=print):
         salida("hk-os web: el demonio de este clon arrancó antes de «web_nueva: sí». Cierra las sesiones de Claude "
                "Code de este clon y termina el proceso de hkos/agente.py; la próxima sesión lo lanza con la web.")
         return 1
+    pagina = None
     if abrir:
         abrir(f"{url}#t={token}")
     else:
@@ -347,12 +435,39 @@ def web(cwd=".", abrir=None, salida=print):
         except OSError as ex:
             salida(f"hk-os web: no he podido preparar la página para el navegador ({ex}).")
             return 1
+        pagina = None if os.name == "nt" else pathlib.Path(carpeta, "web.html").as_uri()
         if not abierta:
-            salida("hk-os web: no he encontrado un navegador." + ("" if os.name == "nt" else
-                   f" Abre a mano {pathlib.Path(carpeta, 'web.html').as_uri()} (lleva el token: no la compartas)."))
+            salida("hk-os web: no he encontrado un navegador." + ("" if pagina is None else
+                   f" Abre a mano {pagina} (lleva el token: no la compartas)."))
             return 1
     salida(f"Web de trabajo: {url} (el token va aparte, en el fragmento; para volver a abrirla, hk-os web).")
+    if pagina:                   # un navegador snap no lee repos fuera de /home ni bajo carpetas ocultas (issue #15)
+        salida(f"Abre a mano {pagina} si el navegador no puede leerla (lleva el token: no la compartas).")
     return 0
+
+
+OPCIONES_UNIR = ("--persona", "--remoto")
+
+
+def _args_unir(resto):
+    """PR #24: el token del relay (token_urlsafe) empieza por «-» una vez de cada 64 y argparse lo tomaba por una
+    opción. Todo lo que no es --persona, --remoto (con su valor) ni -h/--help es posicional, empiece o no por «-»; un
+    «--» también vale, y detrás todo es posicional."""
+    opciones, posicionales, i = [], [], 0
+    while i < len(resto):
+        x = resto[i]
+        if x == "--":
+            posicionales += resto[i + 1:]
+            break
+        if x in OPCIONES_UNIR and i + 1 < len(resto):
+            opciones.append(f"{x}={resto[i + 1]}")
+            i += 1
+        elif x in ("-h", "--help") or x in OPCIONES_UNIR or x.startswith(tuple(o + "=" for o in OPCIONES_UNIR)):
+            opciones.append(x)
+        else:
+            posicionales.append(x)
+        i += 1
+    return opciones + ["--"] + posicionales
 
 
 def main(argv=None):
@@ -371,11 +486,14 @@ def main(argv=None):
         p.add_argument("token")
         p.add_argument("--persona")
         p.add_argument("--remoto")
-        a = p.parse_args(resto)
+        a = p.parse_args(_args_unir(resto))
         return unir(a.url, a.token, persona=a.persona, remoto=a.remoto)
     if orden == "relay":
         comun = agente.git_comun(".")
         principal = _principal(comun)
+        # PR #21: relay.py lee con --no-replace-objects; con esto, también los git de compilar.py y colisiones_merge.py
+        # que corren en el proceso del relay leen la historia real.
+        os.environ["GIT_NO_REPLACE_OBJECTS"] = "1"
         relay.main(["--dir", os.path.join(comun, "hackathon", "os", "relay"),
                     "--equipo", os.path.join(principal, ".hackathon", "coordinacion.md"),
                     "--os", os.path.join(principal, ".hackathon", "os.md"), *resto])
