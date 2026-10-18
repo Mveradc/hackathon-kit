@@ -43,7 +43,7 @@ ESPERAS_BASE, ESPERA_BASE_S = 3, 1   # push rechazado y origin/main sin moverse:
 # ya tiene el pack y sigue aunque el cliente muera) y cada cuánto (issue #27).
 SUBIO_S, SUBIO_ESPERA_S = 10, 1.5
 REPETIDA_S = 600                 # la misma nota de la misma persona en origin/main hace menos de esto: no se repite
-CERROJO_RECLAMAR_S = 5           # Reclamar no espera más que esto a otra acción en curso (un Anotar colgado): 503
+CERROJO_S = 5                    # ninguna acción espera más que esto a otra en curso (un Anotar colgado): 503
 GH = ["gh"]
 FALLIDO = "reclamo_fallido"      # línea de acciones.jsonl de un `gh issue edit` que falló: sin id, el monitor no la lee
 # Si es True, solo cuenta para el tope un `gh issue edit` que GitHub rechazó (`GraphQL: …` o `HTTP 4xx`); un plazo
@@ -325,13 +325,10 @@ class Acciones:
         self.plazo = PLAZO_GIT
 
     def __call__(self, ruta, cuerpo):
-        if ruta == "/v1/anotar":
-            with self.cerrojo:
-                return self.anotar(cuerpo)
-        if not self.cerrojo.acquire(timeout=CERROJO_RECLAMAR_S):   # un Anotar colgado: «ocupado», no esperar sin más
+        if not self.cerrojo.acquire(timeout=CERROJO_S):   # un Anotar colgado: «ocupado», no esperar sin más (13B)
             return 503, {"error": "ocupado"}
         try:
-            return self.reclamar(cuerpo)
+            return self.anotar(cuerpo) if ruta == "/v1/anotar" else self.reclamar(cuerpo)
         finally:
             self.cerrojo.release()
 

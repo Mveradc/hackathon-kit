@@ -14,6 +14,7 @@
 - Issue #18: surrogates sueltos, Cf y etiquetas fuera, `<` de HTML a ‹; el reintento espera al push que tiene main.lock;
   un push sin informe que entró da 200; el Job Object mata a los hijos de MSYS; la plantilla sube con LF; Reclamar da
   503 «ocupado» con el cerrojo cogido; reclamo_fallido solo con un rechazo de GitHub (detrás de FALLIDO_SOLO_RECHAZO).
+- Decisiones del PR #13: el ZWNJ se queda (16B); Anotar también da 503 «ocupado» a los 5 s (13B).
 
 Uso: uv run --no-project -m unittest discover -s hkos/pruebas -v
 """
@@ -205,6 +206,34 @@ class Anotar(Base):
         self.assertEqual(git(self.bare, "rev-parse", "main"), git(self.cb, "rev-parse", "HEAD"))
         self.assertEqual(huella(self.ca), antes)
         self.assertFalse(os.path.exists(os.path.join(self.ag.dir, "nota.index")))
+
+    def test_ocupado_503(self):
+        """Decisión 13B (PR #13): un primer Anotar se queda colgado antes del push con el cerrojo cogido. El segundo no
+        espera sin respuesta: 503 «ocupado» a los 5 s, como Reclamar, sin fetch, commit ni push. El primero acaba bien."""
+        base, dentro, suelta, primero = git(self.bare, "rev-parse", "main"), threading.Event(), threading.Event(), []
+        self.ag.acciones.antes_del_push = lambda: (dentro.set(), suelta.wait(60))
+        h = threading.Thread(target=lambda: primero.append(self.ag.accion("/v1/anotar", NOTA)), daemon=True)
+        h.start()
+        self.addCleanup(h.join, 60)
+        self.addCleanup(suelta.set)
+        self.assertTrue(dentro.wait(30), "el primer Anotar no llegó al push")
+        segundo = []
+        t0 = time.monotonic()
+        h2 = threading.Thread(target=lambda: segundo.append(self.ag.accion("/v1/anotar", dict(NOTA, quien="Luis"))),
+                              daemon=True)
+        h2.start()
+        h2.join(15)
+        dura, sigue = time.monotonic() - t0, h2.is_alive()
+        self.assertEqual(git(self.bare, "rev-parse", "main"), base)
+        suelta.set()
+        h.join(60)
+        h2.join(60)
+        self.assertFalse(sigue, "el segundo Anotar sigue esperando al cerrojo")
+        self.assertEqual(segundo, [(503, {"error": "ocupado"})])
+        self.assertTrue(4.5 <= dura < 10, dura)
+        self.assertEqual(primero, [(200, {"ok": True, "sha": git(self.bare, "rev-parse", "main")})])
+        criterios = self.main_remoto(".hackathon/criterios.md")
+        self.assertEqual((criterios.count("· Ana (jurado)"), criterios.count("· Luis (jurado)")), (1, 0))
 
     def test_git_falla_502(self):
         git(self.ca, "remote", "set-url", "origin", os.path.join(self.tmp, "no-existe.git"))
@@ -801,7 +830,7 @@ class Reclamar(Base):
         self.ag.acciones.cerrojo.acquire()
         salida = []
         try:
-            with unittest.mock.patch.object(acciones_mod, "CERROJO_RECLAMAR_S", 0.5):
+            with unittest.mock.patch.object(acciones_mod, "CERROJO_S", 0.5):
                 h = threading.Thread(target=lambda: salida.append(self.ag.accion("/v1/reclamar", {"tarea": "T01"})),
                                      daemon=True)
                 h.start()
