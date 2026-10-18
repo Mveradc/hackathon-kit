@@ -1097,3 +1097,9 @@ Clones `../prueba-m9a-sb-A` (@mveradc, con el relay de verdad: `hk-os relay`, so
 
 ## Gasto
 6,13 USD: `/hack-scaffold` 0,29 + 1,36, `/hack-plan` 0,73, `/hack-pitch` 0,40 y A6 de `comprobar.py` 3,35. En el sandbox: el commit de `os.md`, el de la nota, los issues #22 y #23 asignados a @hk-persona-b y las etiquetas.
+
+# M9a, cierre (2026-10-18)
+- **Criterio 5:** tras el PR #37 (el relay adelanta la lectura de `origin/main` a los 2 s de un push de un demonio), `servicios_vivo.py` da los nueve casos en ≤ 30 s en dos pasadas, sin otras pruebas en paralelo: máximo 18,8 s (caso 9). Antes, 40–61 s en los casos 4–9.
+- **Criterio 8, turno interactivo (el usuario):** en el clon de @hk-persona-b del sandbox, con Claude Code abierto y quieto, Reclamar desde la web abrió **un solo turno** con el texto fijo. **Sí.**
+- **Encontrado:** en Windows, con dos cuentas de GitHub en el Git Credential Manager, saltaba la ventana «Select an account» en cada fetch del relay. Causa: `relay._git`, `Novedades._texto` y `compilar._git` lanzaban git sin `GCM_INTERACTIVE=never`. Arreglado en el PR #38.
+- **M9a: cerrado.** Todos sus criterios se cumplen.
