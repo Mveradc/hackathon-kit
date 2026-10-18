@@ -16,6 +16,7 @@ Referencia de diseño para la web nueva. Es la fuente de verdad visual: el códi
   - `tablero.dc.html`: una columna por persona más «Sin dueño», con la banda de colisión y la actividad.
   - `cabina.dc.html`: la vista de una persona (vista por defecto). Incluye Reclamar y Anotar.
   - `servicios.dc.html`: los servicios de `servicios.md`, sus contratos, lo propuesto sin confirmar y lo que no cuadra.
+  - 0.5.0: `jurado.dc.html` (R-35) y `ruta-critica.dc.html` (R-36), cada una con la prop `estado` (`inicio`, `mitad`, `riesgo`); `ver.html` abre las seis fuera del lienzo (`python -m http.server 8000 -d docs/hackathon-os/diseno-web` y `/pantallas/ver.html?p=jurado&estado=riesgo`), y `capturas/` guarda sus capturas.
 
 ## Para la implementación
 

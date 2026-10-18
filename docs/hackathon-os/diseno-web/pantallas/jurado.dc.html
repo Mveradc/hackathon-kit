@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Hackathon OS · Jurado</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/hkos/tokens.css">
+<link rel="stylesheet" href="ds/hkos/components/bundle.css">
+<script src="ds/hkos/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Space+Grotesk:wght@500;600&amp;display=swap">
+<style>
+body{margin:0;background:#05070d}
+a{color:#22d3ee}a:hover{color:#67e8f9}
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="min-height: 1040px; background: var(--void); color: var(--ink); font-family: var(--font-sans); box-sizing: border-box; padding: 28px 32px 40px;">
+<div style="max-width: 1376px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
+<div style="display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;">
+<span style="font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Hackathon OS</span>
+<span style="font-family: var(--font-mono); font-size: 13px; color: var(--ink-muted);">@ana · reto 03 · X Ray · Embat</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="relay" age="hace 2 s"></x-import>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="github" age="hace 30 s"></x-import>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="git" age="{{gitEdad}}"></x-import>
+<nav aria-label="Vistas" style="display: flex; gap: 2px; padding: 4px; border-radius: 10px; background: var(--surface-100); box-shadow: var(--panel);">
+<a href="cabina.dc.html" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;">Cabina</a>
+<a href="red.dc.html" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;">Red</a>
+<a href="tablero.dc.html" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;">Tablero</a>
+<a href="servicios.dc.html" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;">Servicios</a>
+<a href="#" aria-current="page" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--relay); background: var(--relay-soft); text-decoration: none;">Jurado</a>
+<a href="ruta-critica.dc.html" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;">Ruta crítica</a>
+</nav>
+</div>
+</header>
+
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Jurado</span>
+<span style="font-size: 14px; color: var(--ink-muted);">Cada nota de criterios.md y lo que la cubre. Las notas y sus enlaces a tareas los escribe el equipo; el estado de cada tarea y las evidencias en main, el OS. Hora del relay: <span style="font-family: var(--font-mono); color: var(--ink);">{{ahora}}</span>.</span>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;">
+<div style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+<span class="hk-label">Notas</span>
+<span style="font-family: var(--font-mono); font-size: 32px; line-height: 36px; font-weight: 500;">{{c.notas}}</span>
+<span style="font-size: 12px; color: var(--ink-muted);">{{c.notasSub}}</span>
+</div>
+<div style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px; border: 1px solid {{c.sinBorde}};">
+<span class="hk-label">Sin cubrir</span>
+<span style="font-family: var(--font-mono); font-size: 32px; line-height: 36px; font-weight: 500; color: {{c.sinColor}};">{{c.sin}}</span>
+<x-import component-from-global-scope="HkOS.StatusPulse" state="{{c.sinPulso}}" label="{{c.sinSub}}"></x-import>
+</div>
+<div style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+<span class="hk-label">En marcha</span>
+<span style="font-family: var(--font-mono); font-size: 32px; line-height: 36px; font-weight: 500;">{{c.marcha}}</span>
+<span style="font-size: 12px; color: var(--ink-muted);">{{c.marchaSub}}</span>
+</div>
+<div style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+<span class="hk-label">Cubiertas</span>
+<span style="font-family: var(--font-mono); font-size: 32px; line-height: 36px; font-weight: 500; color: {{c.cubColor}};">{{c.cub}}</span>
+<span style="font-size: 12px; color: var(--ink-muted);">{{c.cubSub}}</span>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<div style="flex: 999 1 860px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+
+<x-import component-from-global-scope="HkOS.Panel" title="Sin cubrir" meta="{{sinMeta}}" tone="{{sinTono}}">
+<sc-for list="{{sin}}" as="n" hint-placeholder-count="2">
+<article style="display: grid; grid-template-columns: 172px minmax(0, 1.3fr) minmax(0, 1fr); gap: 12px 24px; padding: 14px 16px; border-radius: var(--radius-md); background: var(--surface-200); border: 1px solid var(--state-wait);">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-family: var(--font-mono); font-size: 13px; font-weight: 500;">{{n.hora}}</span>
+<span style="font-size: 13px; line-height: 18px; font-weight: 600;">{{n.quien}}</span>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">{{n.donde}}</span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 11px; line-height: 14px; color: var(--ink-faint);">fuerza <span style="font-family: var(--font-mono); padding: 2px 6px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); color: {{n.fuerzaColor}};">{{n.fuerza}}</span></span>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0;">
+<span style="font-size: 15px; line-height: 22px;">{{n.dijo}}</span>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">Afecta a: {{n.afecta}}</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="{{n.por}}" age="{{n.anotada}}"></x-import>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0;">
+<x-import component-from-global-scope="HkOS.StatusPulse" state="wait" label="Sin cubrir"></x-import>
+<span style="font-size: 13px; line-height: 18px;">Ninguna tarea ni evidencia la cita.</span>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-faint);">Para cubrirla, desde la terminal: <span style="font-family: var(--font-mono);">/hack-plan</span> y «cubre: {{n.cita}}» en la tarea de plan.md.</span>
+</div>
+</article>
+</sc-for>
+<sc-if value="{{ninguna}}" hint-placeholder-val="{{no}}">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<x-import component-from-global-scope="HkOS.StatusPulse" state="ok" label="Ninguna"></x-import>
+<span style="font-size: 13px; line-height: 18px; color: var(--ink-muted);">Cada nota de criterios.md tiene al menos una tarea o una evidencia que la cita.</span>
+</div>
+</sc-if>
+</x-import>
+
+<x-import component-from-global-scope="HkOS.Panel" title="Con algo que las cubre" meta="{{conMeta}}">
+<sc-for list="{{con}}" as="n" hint-placeholder-count="4">
+<article style="display: grid; grid-template-columns: 172px minmax(0, 1.3fr) minmax(0, 1fr); gap: 12px 24px; padding: 14px 16px; border-radius: var(--radius-md); background: var(--surface-200); border: 1px solid var(--line);">
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-family: var(--font-mono); font-size: 13px; font-weight: 500;">{{n.hora}}</span>
+<span style="font-size: 13px; line-height: 18px; font-weight: 600;">{{n.quien}}</span>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">{{n.donde}}</span>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 11px; line-height: 14px; color: var(--ink-faint);">fuerza <span style="font-family: var(--font-mono); padding: 2px 6px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); color: {{n.fuerzaColor}};">{{n.fuerza}}</span></span>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0;">
+<span style="font-size: 15px; line-height: 22px;">{{n.dijo}}</span>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">Afecta a: {{n.afecta}}</span>
+<sc-if value="{{n.corrige}}" hint-placeholder-val="{{no}}">
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">Corrige a la nota de <span style="font-family: var(--font-mono);">{{n.corrige}}</span>.</span>
+</sc-if>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="{{n.por}}" age="{{n.anotada}}"></x-import>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 0;">
+<x-import component-from-global-scope="HkOS.StatusPulse" state="{{n.pulso}}" label="{{n.cobertura}}"></x-import>
+<sc-for list="{{n.cubre}}" as="t" hint-placeholder-count="2">
+<div style="display: flex; flex-direction: column; gap: 3px; padding-left: 10px; border-left: 2px {{t.raya}};">
+<span style="display: flex; flex-wrap: wrap; gap: 2px 8px; align-items: baseline; font-size: 13px; line-height: 18px;"><span style="font-family: var(--font-mono); font-weight: 500; color: {{t.idColor}};">{{t.id}}</span><span style="color: {{t.tituloColor}};">{{t.titulo}}</span></span>
+<span style="display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12px; line-height: 16px; color: var(--ink-muted);">
+<x-import component-from-global-scope="HkOS.StatusPulse" state="{{t.pulso}}" label="{{t.estado}}"></x-import>
+<span>{{t.dueno}}</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="{{t.fuente}}" age="{{t.edad}}" stale="{{t.viejo}}"></x-import>
+</span>
+</div>
+</sc-for>
+<span style="display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 12px; line-height: 16px; color: var(--ink-faint);">enlace en plan.md <x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="{{n.enlacePor}}" age="{{n.enlace}}"></x-import></span>
+</div>
+</article>
+</sc-for>
+<sc-if value="{{sinCon}}" hint-placeholder-val="{{no}}">
+<span style="font-size: 13px; color: var(--ink-faint);">Aún ninguna.</span>
+</sc-if>
+</x-import>
+
+<sc-if value="{{hayCorregidas}}" hint-placeholder-val="{{no}}">
+<x-import component-from-global-scope="HkOS.Panel" title="Corregidas" meta="{{corrMeta}}">
+<sc-for list="{{corregidas}}" as="n" hint-placeholder-count="1">
+<article style="display: grid; grid-template-columns: 172px minmax(0, 1.3fr) minmax(0, 1fr); gap: 12px 24px; padding: 12px 16px; border-radius: var(--radius-md); background: var(--surface-200); border: 1px dashed var(--line-strong); color: var(--ink-muted);">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<span style="font-family: var(--font-mono); font-size: 13px;">{{n.hora}}</span>
+<span style="font-size: 13px; line-height: 18px;">{{n.quien}}</span>
+<span style="font-size: 12px; line-height: 16px;">{{n.donde}}</span>
+</div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0;">
+<span style="font-size: 14px; line-height: 20px; text-decoration: line-through; text-decoration-color: var(--line-strong);">{{n.dijo}}</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="{{n.por}}" age="{{n.anotada}}"></x-import>
+</div>
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<x-import component-from-global-scope="HkOS.StatusPulse" state="idle" label="{{n.cobertura}}"></x-import>
+<span style="font-size: 12px; line-height: 16px;">Ya no cuenta: lo que vale es la nota nueva. No se borra (criterios.md solo añade).</span>
+</div>
+</article>
+</sc-for>
+</x-import>
+</sc-if>
+
+</div>
+
+<aside style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+<x-import component-from-global-scope="HkOS.Panel" title="Cómo se lee">
+<div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 18px;">
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-wait);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-wait);"></span>Sin cubrir</span><span style="color: var(--ink-muted);">Ninguna tarea ni evidencia la cita.</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; border: 1.5px solid var(--ink-muted);"></span>Planificada</span><span style="color: var(--ink-muted);">La citan tareas, pero ninguna ha empezado.</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--relay);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--relay);"></span>En curso</span><span style="color: var(--ink-muted);">Alguna de sus tareas está en curso.</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-ok);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-ok);"></span>Cubierta</span><span style="color: var(--ink-muted);">Una tarea suya está integrada o hay una evidencia en main.</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; line-height: 18px; color: var(--ink-muted);">
+<span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="@marta"></x-import> la nota y el enlace a sus tareas: lo escribió alguien del equipo.</span>
+<span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="git"></x-import> el estado de la tarea y la evidencia en main: lo deriva el OS.</span>
+<span>La fuerza es la palabra que anotó el equipo («obligatorio», «se valora»…), no una nota del OS.</span>
+</div>
+</x-import>
+<x-import component-from-global-scope="HkOS.Panel" title="Desde la terminal" meta="no se hace aquí">
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 18px; color: var(--ink-muted);">
+<span>Anotar lo que dice el jurado: <span style="font-family: var(--font-mono); color: var(--ink);">/hack-note</span> o Anotar en la Cabina.</span>
+<span>Enlazar una tarea a una nota: <span style="font-family: var(--font-mono); color: var(--ink);">/hack-plan</span>, con «cubre: &lt;fecha y hora de la nota&gt;» en la tarea.</span>
+<span>Corregir una nota: una nota nueva que diga a cuál corrige.</span>
+</div>
+</x-import>
+</aside>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"estado":{"editor":"enum","options":["inicio","mitad","riesgo"],"default":"riesgo"},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var E = this.props.estado ?? "riesgo";
+    var EST = { pendiente: ["idle", "Pendiente"], en_curso: ["live", "En curso"], integrada: ["ok", "Integrada"], parada: ["wait", "Parada"] };
+    var COB = { planificada: ["idle", "Planificada"], en_curso: ["live", "En curso"], cubierta: ["ok", "Cubierta"] };
+    function t(id, titulo, dueno, estado, fuente, edad, viejo) {
+      var e = EST[estado];
+      return { id: id, titulo: "«" + titulo + "»", dueno: "@" + dueno, pulso: viejo ? "stale" : e[0], estado: e[1],
+        fuente: fuente, edad: edad, viejo: !!viejo,
+        raya: viejo ? "dashed var(--state-stale)" : "solid var(--line-strong)",
+        idColor: viejo ? "var(--ink-muted)" : "var(--git)", tituloColor: viejo ? "var(--ink-muted)" : "var(--ink)" };
+    }
+    function ev(ruta, sha, edad) {
+      return { id: ruta, titulo: "en main · commit " + sha, dueno: "evidencia", pulso: "ok", estado: "En main", fuente: "git",
+        edad: edad, viejo: false, raya: "solid var(--line-strong)", idColor: "var(--ink)", tituloColor: "var(--ink-muted)" };
+    }
+    function n(o) {
+      var fuerte = o.fuerte;
+      o.fuerzaColor = fuerte ? "var(--ink)" : "var(--ink-muted)";
+      if (o.cob) { o.pulso = COB[o.cob][0]; o.cobertura = COB[o.cob][1]; }
+      o.corrige = o.corrige || "";
+      return o;
+    }
+
+    var entrega = n({ hora: "vie 18 · 19:20", cita: "2026-09-18 19:20", quien: "Organización", donde: "charla de apertura", fuerza: "dato · dom 10:00", fuerte: true,
+      dijo: "«La entrega es el domingo a las 10:00: el repositorio y una URL que se pueda abrir»", afecta: "entrega", por: "@marta", cob: "planificada",
+      cubre: [t("T09", "Publicar motor y web en una URL pública", "ana", "pendiente", "github", "hace 40 min"), t("T26", "README.md con la URL de la demo y el arranque local", "marta", "pendiente", "github", "hace 40 min")] });
+    var porque = n({ hora: "vie 18 · 19:40", cita: "2026-09-18 19:40", quien: "Jurado (Embat)", donde: "charla de apertura", fuerza: "«queremos ver»", fuerte: true,
+      dijo: "«Queremos ver por qué sale ese número y qué lo movió»", afecta: "plan, pitch", por: "@luis" });
+    var comprador = n({ hora: "vie 18 · 20:05", cita: "2026-09-18 20:05", quien: "Mentor de Embat", donde: "mesa del equipo", fuerza: "comentario suelto", fuerte: false,
+      dijo: "(paráfrasis) Que en el primer minuto del pitch se vea a quién se le vende", afecta: "pitch", por: "@marta" });
+    var grupo = n({ hora: "vie 18 · 21:10", quien: "Mentor de Embat", donde: "mesa del equipo",
+      dijo: "(paráfrasis) Puntuar por grupo en vez de por empresa también vale", por: "@ana", anotada: "criterios.md · vie 21:12", cobertura: "Corregida por la de sáb 09:30" });
+    var empresa = n({ hora: "sáb 19 · 09:30", quien: "Jurado (Embat)", donde: "sesión formativa", fuerza: "dato", fuerte: true,
+      dijo: "«El score va por empresa, no por grupo»", afecta: "contratos", corrige: "vie 18 · 21:10", por: "@ana", anotada: "criterios.md · hace 1 h 30", cob: "cubierta",
+      cubre: [ev("docs/contratos.md", "4be21c0", "hace 1 h 10"), t("T05", "Calcular caja, cobros y deuda mensuales por company_id", "ana", "integrada", "git", "hace 8 h 50")],
+      enlacePor: "@ana", enlace: "hace 1 h 20" });
+    var validacion = n({ hora: "sáb 19 · 10:40", cita: "2026-09-19 10:40", quien: "Jurado (Embat)", donde: "ronda por las mesas", fuerza: "«imprescindible»", fuerte: true,
+      dijo: "«Sin test oculto, traed vuestra propia validación: ¿cómo sabéis que acierta?»", afecta: "plan, pitch", por: "@luis", anotada: "criterios.md · hace 20 min" });
+    var monitor = n({ hora: "sáb 19 · 10:50", cita: "2026-09-19 10:50", quien: "Jurado (Embat)", donde: "ronda por las mesas", fuerza: "«nos gustaría ver»", fuerte: true,
+      dijo: "«Nos gustaría ver algo que avise cuando una empresa se mueve de verdad»", afecta: "plan, pitch", por: "@luis", anotada: "criterios.md · hace 10 min" });
+    var pitch = n({ hora: "sáb 19 · 10:55", cita: "2026-09-19 10:55", quien: "Organización", donde: "Discord del evento", fuerza: "dato · 5 min", fuerte: true,
+      dijo: "(paráfrasis) El pitch dura 5 minutos y después hay 3 de preguntas", afecta: "pitch", por: "@marta", anotada: "criterios.md · hace 5 min", cob: "cubierta",
+      cubre: [t("T21", "pitch/guion.md: CFO, comprador Embat y por qué lo compra", "marta", "integrada", "git", "hace 12 h"), t("T27", "Diapositivas en pitch/ con capturas de las dos fichas", "marta", "pendiente", "github", "hace 12 h")],
+      enlacePor: "@marta", enlace: "hace 3 min" });
+
+    var d;
+    if (E === "inicio") {
+      d = {
+        ahora: "vie 18 · 20:10", gitEdad: "hace 40 s",
+        sin: [Object.assign({}, comprador, { anotada: "criterios.md · hace 5 min" })],
+        con: [
+          Object.assign({}, porque, { anotada: "criterios.md · hace 30 min", cob: "planificada", pulso: "idle", cobertura: "Planificada",
+            cubre: [t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "pendiente", "github", "hace 25 min"), t("T12", "Desglose «qué lo movió» con signo", "luis", "pendiente", "github", "hace 25 min")],
+            enlacePor: "@ana", enlace: "hace 25 min" }),
+          Object.assign({}, entrega, { anotada: "criterios.md · hace 50 min", enlacePor: "@ana", enlace: "hace 25 min",
+            cubre: [t("T09", "Publicar motor y web en una URL pública", "ana", "pendiente", "github", "hace 25 min"), t("T26", "README.md con la URL de la demo y el arranque local", "marta", "pendiente", "github", "hace 25 min")] })
+        ],
+        corregidas: [],
+        c: { notas: "3", notasSub: "la última, hace 5 min", sin: "1", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait", sinSub: "1 comentario suelto",
+          marcha: "2", marchaSub: "planificadas, sin empezar", cub: "0", cubColor: "var(--ink)", cubSub: "aún nada integrado ni en main" }
+      };
+    } else {
+      var porqueMitad = Object.assign({}, porque, { anotada: "criterios.md · hace 15 h", enlacePor: "@ana", enlace: "hace 14 h",
+        pulso: E === "riesgo" ? "stale" : "live", cobertura: E === "riesgo" ? "En curso, según un dato viejo (T12)" : "En curso",
+        cubre: E === "riesgo"
+          ? [t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "parada", "git", "hace 40 min"), t("T12", "Desglose «qué lo movió» con signo", "luis", "en_curso", "relay", "hace 25 min", true)]
+          : [t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "pendiente", "github", "hace 14 h"), t("T12", "Desglose «qué lo movió» con signo", "luis", "en_curso", "relay", "hace 30 s")] });
+      var compradorMitad = Object.assign({}, comprador, { anotada: "criterios.md · hace 15 h", pulso: "ok", cobertura: "Cubierta", enlacePor: "@marta", enlace: "hace 14 h",
+        cubre: [t("T21", "pitch/guion.md: CFO, comprador Embat y por qué lo compra", "marta", "integrada", "git", "hace 12 h")] });
+      var entregaMitad = Object.assign({}, entrega, { anotada: "criterios.md · hace 15 h 40", enlacePor: "@ana", enlace: "hace 14 h",
+        cubre: [t("T09", "Publicar motor y web en una URL pública", "ana", "pendiente", "github", "hace 14 h"), t("T26", "README.md con la URL de la demo y el arranque local", "marta", "pendiente", "github", "hace 14 h")] });
+      var grupoC = Object.assign({}, grupo);
+      if (E === "mitad") {
+        var validacionBien = Object.assign({}, validacion, { pulso: "live", cobertura: "En curso", enlacePor: "@ana", enlace: "hace 15 min",
+          cubre: [t("T10", "Apartar empresas y medir la estabilidad del score", "ana", "en_curso", "relay", "hace 1 min"), t("T28", "Respuesta a «¿cómo sabéis que acierta?» con la cifra de T10", "marta", "pendiente", "github", "hace 15 min")] });
+        d = {
+          ahora: "sáb 19 · 11:00", gitEdad: "hace 40 s",
+          sin: [],
+          con: [pitch, validacionBien, empresa, porqueMitad, compradorMitad, entregaMitad],
+          corregidas: [grupoC],
+          c: { notas: "7", notasSub: "1 corregida · la última, hace 5 min", sin: "0", sinColor: "var(--ink)", sinBorde: "transparent", sinPulso: "ok", sinSub: "Todas tienen algo",
+            marcha: "3", marchaSub: "2 en curso · 1 planificada", cub: "3", cubColor: "var(--state-ok)", cubSub: "1 con evidencia en main" }
+        };
+      } else {
+        d = {
+          ahora: "sáb 19 · 11:00", gitEdad: "hace 40 s",
+          sin: [validacion, monitor],
+          con: [pitch, empresa, porqueMitad, compradorMitad, entregaMitad],
+          corregidas: [grupoC],
+          c: { notas: "8", notasSub: "1 corregida · la última, hace 5 min", sin: "2", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait", sinSub: "1 «imprescindible» · 1 «nos gustaría ver»",
+            marcha: "2", marchaSub: "1 en curso · 1 planificada", cub: "3", cubColor: "var(--state-ok)", cubSub: "1 con evidencia en main" }
+        };
+      }
+    }
+    d.theme = this.props.theme ?? "dark";
+    d.no = false;
+    d.ninguna = d.sin.length === 0;
+    d.sinMeta = String(d.sin.length);
+    d.sinTono = d.sin.length ? "wait" : "normal";
+    d.conMeta = String(d.con.length);
+    d.sinCon = d.con.length === 0;
+    d.hayCorregidas = d.corregidas.length > 0;
+    d.corrMeta = String(d.corregidas.length);
+    return d;
+  }
+}
+</script>
+</body>
+</html>

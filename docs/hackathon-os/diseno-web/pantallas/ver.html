@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Hackathon OS · Ver pantallas</title>
+<!--
+  Visor de las pantallas .dc.html fuera del lienzo de diseño. Interpreta lo que usan: <x-dc>, <helmet>, {{…}},
+  <sc-for>, <sc-if>, <x-import component-from-global-scope="HkOS.…"> y la clase DCLogic del script.
+  Hay que servirlo por http (fetch), desde docs/hackathon-os/diseno-web:
+    python -m http.server 8000 -d docs/hackathon-os/diseno-web
+    http://localhost:8000/pantallas/ver.html?p=jurado&estado=riesgo&theme=dark
+  React 18 viene de unpkg y las fuentes de Google Fonts, como en los preview.html del sistema.
+  ?limpio quita la barra de arriba (para capturas).
+-->
+<link rel="stylesheet" href="../sistema/tokens.css">
+<link rel="stylesheet" href="../sistema/components/bundle.css">
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+<script src="../sistema/components/bundle.js"></script>
+<style>
+.ver-barra{display:flex;flex-wrap:wrap;gap:6px 18px;align-items:center;padding:10px 32px;background:#0a0f1c;border-bottom:1px solid #1f2b45;font:12px/16px "JetBrains Mono",Consolas,monospace;color:#93a0ba}
+.ver-barra a{color:#93a0ba;text-decoration:none;padding:2px 6px;border-radius:4px}
+.ver-barra a[aria-current]{color:#22d3ee;background:#22d3ee1f}
+.ver-grupo{display:inline-flex;gap:2px;align-items:center}
+</style>
+</head>
+<body>
+<nav class="ver-barra" id="barra" aria-label="Visor"></nav>
+<div id="root"></div>
+<script>
+(function () {
+  var q = new URLSearchParams(location.search);
+  var PANTALLAS = [["red", "Red"], ["tablero", "Tablero"], ["cabina", "Cabina"], ["servicios", "Servicios"], ["jurado", "Jurado"], ["ruta-critica", "Ruta crítica"]];
+  var p = q.get("p") || "jurado";
+  var h = React.createElement;
+  var ONE = /^\s*\{\{([^}]+)\}\}\s*$/, ANY = /\{\{([^}]+)\}\}/g;
+  var RENAME = { "class": "className", "for": "htmlFor", "tabindex": "tabIndex", "readonly": "readOnly", "viewbox": "viewBox" };
+  var plantilla = null;
+
+  function get(scope, path) {
+    return path.trim().split(".").reduce(function (o, k) { return o == null ? undefined : o[k]; }, scope);
+  }
+  function texto(s, scope) {
+    return s.replace(ANY, function (_, e) { var v = get(scope, e); return v == null ? "" : String(v); });
+  }
+  function val(s, scope) {
+    var m = ONE.exec(s);
+    return m ? get(scope, m[1]) : texto(s, scope);
+  }
+  function camel(s) { return s.replace(/-([a-z])/g, function (_, c) { return c.toUpperCase(); }); }
+  function estilo(s) {
+    var o = {}, depth = 0, cur = "", partes = [];
+    for (var i = 0; i < s.length; i++) {
+      var c = s[i];
+      if (c === "(") depth++;
+      if (c === ")") depth--;
+      if (c === ";" && !depth) { partes.push(cur); cur = ""; } else cur += c;
+    }
+    partes.push(cur);
+    partes.forEach(function (d) {
+      var k = d.indexOf(":");
+      if (k < 0) return;
+      var n = d.slice(0, k).trim();
+      if (n) o[n.indexOf("--") === 0 ? n : camel(n)] = d.slice(k + 1).trim();
+    });
+    return o;
+  }
+  function props(el, scope, componente) {
+    var o = {};
+    Array.prototype.forEach.call(el.attributes, function (a) {
+      var n = a.name;
+      if (n === "component-from-global-scope" || n.indexOf("hint-") === 0) return;
+      var v = val(a.value, scope);
+      if (n === "style" && typeof v === "string") { o.style = estilo(v); return; }
+      if (RENAME[n]) n = RENAME[n];
+      else if (!componente && /^on[a-z]/.test(n)) n = "on" + n[2].toUpperCase() + n.slice(3);
+      else if (n.indexOf("data-") !== 0 && n.indexOf("aria-") !== 0 && n.indexOf("-") > 0) n = camel(n);
+      o[n] = v;
+    });
+    return o;
+  }
+  function nodos(lista, scope) {
+    var out = [];
+    Array.prototype.forEach.call(lista, function (n, i) { var r = nodo(n, scope, i); if (r != null) out.push(r); });
+    return out;
+  }
+  function nodo(n, scope, key) {
+    if (n.nodeType === 3) {
+      var t = n.nodeValue;
+      return !t.trim() && /\n/.test(t) ? null : texto(t, scope);
+    }
+    if (n.nodeType !== 1) return null;
+    var tag = n.localName;
+    if (tag === "helmet" || tag === "script") return null;
+    if (tag === "sc-for") {
+      var lista = val(n.getAttribute("list"), scope) || [], as = n.getAttribute("as");
+      return h(React.Fragment, { key: key }, lista.map(function (it, i) {
+        var s = Object.create(scope); s[as] = it;
+        return h(React.Fragment, { key: i }, nodos(n.childNodes, s));
+      }));
+    }
+    if (tag === "sc-if") return val(n.getAttribute("value"), scope) ? h(React.Fragment, { key: key }, nodos(n.childNodes, scope)) : null;
+    var C = tag;
+    if (tag === "x-import") C = n.getAttribute("component-from-global-scope").split(".").reduce(function (o, k) { return o && o[k]; }, window);
+    var pr = props(n, scope, tag === "x-import");
+    pr.key = key;
+    if (tag === "textarea") return h(C, pr);
+    return h.apply(null, [C, pr].concat(nodos(n.childNodes, scope)));
+  }
+
+  class DCLogic extends React.Component {
+    render() { return h(React.Fragment, null, nodos(plantilla.childNodes, this.renderVals())); }
+  }
+
+  function enlace(over, etiqueta, actual) {
+    var n = new URLSearchParams(q);
+    Object.keys(over).forEach(function (k) { if (over[k] == null) n.delete(k); else n.set(k, over[k]); });
+    var a = document.createElement("a");
+    a.href = "?" + n.toString();
+    a.textContent = etiqueta;
+    if (actual) a.setAttribute("aria-current", "page");
+    return a;
+  }
+  function grupo(nombre, hijos) {
+    var g = document.createElement("span");
+    g.className = "ver-grupo";
+    g.appendChild(document.createTextNode(nombre + ": "));
+    hijos.forEach(function (x) { g.appendChild(x); });
+    return g;
+  }
+
+  fetch(p + ".dc.html").then(function (r) { return r.text(); }).then(function (txt) {
+    var doc = new DOMParser().parseFromString(txt, "text/html");
+    plantilla = doc.querySelector("x-dc");
+    var helmet = plantilla.querySelector("helmet");
+    if (helmet) Array.prototype.forEach.call(helmet.children, function (c) { document.head.appendChild(document.importNode(c, true)); });
+    var sc = doc.querySelector("script[data-dc-script]");
+    var defs = JSON.parse(sc.getAttribute("data-props") || "{}");
+    var Component = new Function("DCLogic", "React", sc.textContent + "\nreturn Component;")(DCLogic, React);
+    var pr = {};
+    Object.keys(defs).forEach(function (k) { if (k[0] !== "$" && "default" in defs[k]) pr[k] = defs[k].default; });
+    q.forEach(function (v, k) { if (k !== "p" && k !== "limpio") pr[k] = v; });
+
+    var barra = document.getElementById("barra");
+    if (q.has("limpio")) barra.remove();
+    else {
+      barra.appendChild(grupo("pantalla", PANTALLAS.map(function (x) { return enlace({ p: x[0], estado: null }, x[1], x[0] === p); })));
+      Object.keys(defs).forEach(function (k) {
+        if (k[0] === "$" || defs[k].editor !== "enum") return;
+        barra.appendChild(grupo(k, defs[k].options.map(function (o) { return enlace({ [k]: o }, o, String(pr[k]) === o); })));
+      });
+    }
+    document.title = doc.title;
+    ReactDOM.createRoot(document.getElementById("root")).render(h(Component, pr));
+  });
+})();
+</script>
+</body>
+</html>
