@@ -14,7 +14,8 @@
 - Issue #18: surrogates sueltos, Cf y etiquetas fuera, `<` de HTML a ‹; el reintento espera al push que tiene main.lock;
   un push sin informe que entró da 200; el Job Object mata a los hijos de MSYS; la plantilla sube con LF; Reclamar da
   503 «ocupado» con el cerrojo cogido; reclamo_fallido solo con un rechazo de GitHub (detrás de FALLIDO_SOLO_RECHAZO).
-- Decisiones del PR #13: el ZWNJ se queda (16B); Anotar también da 503 «ocupado» a los 5 s (13B).
+- Decisiones del PR #13: el ZWNJ se queda (16B); Anotar también da 503 «ocupado» a los 5 s (13B); 30 notas por hora,
+  contadas en acciones.jsonl, también tras reiniciar y con el margen de reloj de Reclamar (12A).
 
 Uso: uv run --no-project -m unittest discover -s hkos/pruebas -v
 """
@@ -234,6 +235,58 @@ class Anotar(Base):
         self.assertEqual(primero, [(200, {"ok": True, "sha": git(self.bare, "rev-parse", "main")})])
         criterios = self.main_remoto(".hackathon/criterios.md")
         self.assertEqual((criterios.count("· Ana (jurado)"), criterios.count("· Luis (jurado)")), (1, 0))
+
+    def notas_en_registro(self):
+        ruta = os.path.join(self.ag.dir, "acciones.jsonl")
+        if not os.path.exists(ruta):
+            return []
+        with open(ruta, encoding="utf-8") as f:
+            return [d for d in map(json.loads, f) if d["tipo"] == "nota"]
+
+    def test_tope_de_notas_por_hora(self):
+        """Decisión 12A (PR #13): 30 notas por persona y hora, contadas en acciones.jsonl con una línea «nota» (sin id:
+        el monitor no la lee). En una hora, 31 notas dan 30 × 200 y 1 × 429 sin tocar main; también con el demonio
+        reiniciado. Pasada una hora de la primera, otra vez 200. Repetir una nota que ya está (no sube nada) no cuenta."""
+        codigos = []
+        for i in range(31):                                              # una por minuto, de 10:05 a 10:35
+            self.ag.ahora = lambda i=i: f"2026-11-20T10:{5 + i:02d}:00.000000Z"
+            codigos.append(self.ag.accion("/v1/anotar", dict(NOTA, que_dijo=f"nota {i}")))
+        self.assertEqual([c for c, _ in codigos], [200] * 30 + [429], codigos)
+        self.assertEqual(codigos[-1][1], {"error": "30 notas por hora"})
+        main = git(self.bare, "rev-parse", "main")
+        self.assertEqual(self.main_remoto(".hackathon/criterios.md").count("- Anotado por: @persona-a"), 30)
+        self.assertEqual(self.notas_en_registro(), [{"tipo": "nota", "sha": r["sha"],
+                                                     "ts": f"2026-11-20T10:{5 + i:02d}:00.000000Z"}
+                                                    for i, (_, r) in enumerate(codigos[:30])])
+        otro = agente_mod.Agente(self.ca, A, reloj=lambda: 1_800_000_000.0,                     # reiniciado
+                                 ahora=lambda: "2026-11-20T11:04:59.000000Z")
+        otro.tz = timezone.utc
+        self.assertEqual(otro.accion("/v1/anotar", dict(NOTA, que_dijo="nota 31")), (429, {"error": "30 notas por hora"}))
+        self.assertEqual(otro.accion("/v1/anotar", dict(NOTA, que_dijo="nota 29")), (429, {"error": "30 notas por hora"}))
+        self.assertEqual(git(self.bare, "rev-parse", "main"), main)
+        otro.ahora = lambda: "2026-11-20T11:05:00.000000Z"               # la de las 10:05 ya tiene una hora
+        self.assertEqual(otro.accion("/v1/anotar", dict(NOTA, que_dijo="nota 31"))[0], 200)
+        self.assertEqual(len(self.notas_en_registro()), 31)
+        otro.ahora = lambda: "2026-11-20T11:06:00.000000Z"               # en la hora: 10:07–10:34 y 11:05, 29
+        self.assertEqual(otro.accion("/v1/anotar", dict(NOTA, que_dijo="nota 31"))[0], 200)   # ya está: no sube nada
+        self.assertEqual(len(self.notas_en_registro()), 31)
+        self.assertEqual([otro.accion("/v1/anotar", dict(NOTA, que_dijo=f"nota {i}"))[0] for i in (32, 33)], [200, 429])
+
+    def test_tope_de_notas_y_el_reloj(self):
+        """Decisión 12A con el margen de reloj de Reclamar: 30 notas con la hora 3 h en el futuro (el reloj iba adelantado
+        y NTP lo corrigió) no cuentan; con 2 min en el futuro, sí. Los reclamos no cuentan para el tope de notas."""
+        def registro(minutos, tipo="nota"):                              # AHORA es las 10:05
+            ts = f"2026-11-20T{10 + (5 + minutos) // 60:02d}:{(5 + minutos) % 60:02d}:00.000000Z"
+            with open(os.path.join(self.ag.dir, "acciones.jsonl"), "w", encoding="utf-8") as f:
+                for i in range(30):
+                    f.write(json.dumps({"id": f"web-{A}-reclamo-T{20 + i}-1", "tipo": tipo, "tarea": f"T{20 + i}",
+                                        "ts": ts} if tipo == "reclamo" else {"tipo": tipo, "sha": "a" * 40, "ts": ts}) + "\n")
+        registro(180)
+        self.assertEqual(self.ag.accion("/v1/anotar", dict(NOTA, que_dijo="una"))[0], 200)
+        registro(2)
+        self.assertEqual(self.ag.accion("/v1/anotar", dict(NOTA, que_dijo="dos"))[0], 429)
+        registro(-2, "reclamo")
+        self.assertEqual(self.ag.accion("/v1/anotar", dict(NOTA, que_dijo="tres"))[0], 200)
 
     def test_git_falla_502(self):
         git(self.ca, "remote", "set-url", "origin", os.path.join(self.tmp, "no-existe.git"))
