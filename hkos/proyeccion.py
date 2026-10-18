@@ -104,7 +104,18 @@ def vista(estado, ahora=None, umbral_viejo_s=FUENTE_VIEJA_S):
               "personas": personas, "nombres": nombres, "novedades": novedades[:NOVEDADES_MAX],
               "reservas": sorted(estado.get("reservas", []), key=lambda r: (r["hasta"], r.get("id", "")))}
     if estado.get("servicios"):                # M9a (ADR-0011): tal cual; la persona lo filtra servicios_de()
-        salida["servicios"] = json.loads(json.dumps(estado["servicios"]))
+        salida["servicios"] = s = json.loads(json.dumps(estado["servicios"]))
+        # Decisión 1 del PR #13. Lo de git lleva la hora del commit de servicios.md: su antigüedad la dice fuentes.git.
+        def viejo(d):
+            return _edad(d["observado_en"], ahora) > umbral_viejo_s
+        for x in s["lista"]:
+            if x.get("comprobado"):
+                x["comprobado"]["viejo"] = viejo(x["comprobado"])
+        for x in s["conexiones"]:
+            if x.get("resultado"):
+                x["resultado"]["viejo"] = viejo(x["resultado"])
+        for d in s["desajustes"]:
+            d["viejo"] = d["fuente"] != "git" and viejo(d)
     return salida
 
 
@@ -129,13 +140,14 @@ def servicios_de(v, persona):
     """Lo de servicios que afecta a la persona (api.md §6, M9a), en el orden de la sección: lo que no cuadra (sus
     servicios y las conexiones de las que es un extremo; lo del fichero entero, a todos), lo que espera su confirmación
     (filas sin confirmar y propuestas) y una línea, para todos, con el código fuera de cualquier servicio.
-    [{grupo, texto, clave, observado_en, fuente}]: `texto` sin hora; `clave` es lo que firma (sin horas)."""
+    [{grupo, texto, clave, observado_en, fuente, viejo}]: `texto` sin hora; `clave` es lo que firma (sin horas ni
+    `viejo`: el paso del tiempo no es un cambio)."""
     s = v.get("servicios")
     if not s:
         return []
     no_cuadra, sin_confirmar, fuera = [], [], []
     for d in s["desajustes"]:
-        x = {"observado_en": d["observado_en"], "fuente": d["fuente"]}
+        x = {"observado_en": d["observado_en"], "fuente": d["fuente"], "viejo": bool(d.get("viejo"))}
         if d["tipo"] == "codigo_fuera":
             rutas = d.get("rutas", [])
             mas = f" y {len(rutas) - 2} más" if len(rutas) > 2 else ""
@@ -150,7 +162,8 @@ def servicios_de(v, persona):
         if c["valor"] == "sin_confirmar" and persona in c["faltan"]:
             por = ", ".join("@" + p for p in c["por"]) or "nadie del equipo conocido"
             sin_confirmar.append({"grupo": "sin confirmar", "texto": f"{tipo} {nombre} · cambio de {por}",
-                                  "clave": ["fila", x["clave"]], "observado_en": c["observado_en"], "fuente": c["fuente"]})
+                                  "clave": ["fila", x["clave"]], "observado_en": c["observado_en"], "fuente": c["fuente"],
+                                  "viejo": False})
     for p in s["propuestas"]:
         if persona in p.get("duenos", []) and p.get("autor_git") != persona:
             c = p["campos"]
@@ -158,7 +171,8 @@ def servicios_de(v, persona):
                 f"conexión «{c.get('de') or ''} → {c.get('a') or ''}»"
             autor = f"@{p['autor_git']}" if p.get("autor_git") else (p.get("autor_declarado") or "sin autor")
             sin_confirmar.append({"grupo": "sin confirmar", "texto": f"propuesta de {nombre} · de {autor}",
-                                  "clave": ["propuesta", p["clave"]], "observado_en": p["observado_en"], "fuente": "git"})
+                                  "clave": ["propuesta", p["clave"]], "observado_en": p["observado_en"], "fuente": "git",
+                                  "viejo": False})
     return no_cuadra + sin_confirmar + fuera
 
 
@@ -321,8 +335,10 @@ def reservas_tsv(v, persona, tz):
 
 
 def linea_servicio(x, tz):
-    """«- no cuadra · «datos» :8001 declarado, no responde (18:40 · demonio)» (api.md §6, M9a)."""
-    return "- " + _linea(f"{x['grupo']} · {x['texto']} ({_hora(x['observado_en'], tz)} · {x['fuente']})")
+    """«- no cuadra · «datos» :8001 declarado, no responde (18:40 · demonio)» (api.md §6, M9a), con «· viejo» detrás
+    de la fuente si lo es (decisión 1 del PR #13)."""
+    viejo = " · viejo" if x.get("viejo") else ""
+    return "- " + _linea(f"{x['grupo']} · {x['texto']} ({_hora(x['observado_en'], tz)} · {x['fuente']}{viejo})")
 
 
 def linea_novedad(n, tz):

@@ -148,7 +148,8 @@
          "salud": null
         },
         "fuente": "demonio",
-        "observado_en": "2026-11-25T18:12:00.000000Z"
+        "observado_en": "2026-11-25T18:12:00.000000Z",
+        "viejo": true
        }
       },
       {
@@ -234,7 +235,8 @@
        "resultado": {
         "valor": "falla",
         "fuente": "hook",
-        "observado_en": "2026-11-25T18:14:00.000000Z"
+        "observado_en": "2026-11-25T18:14:00.000000Z",
+        "viejo": true
        }
       },
       {
@@ -313,7 +315,8 @@
        "personas": [
         "persona-a"
        ],
-       "clave": "6b62f452dfc2"
+       "clave": "6b62f452dfc2",
+       "viejo": true
       },
       {
        "tipo": "prueba_falla",
@@ -323,7 +326,8 @@
        "personas": [
         "persona-a"
        ],
-       "clave": "e6629752e3d3"
+       "clave": "e6629752e3d3",
+       "viejo": true
       },
       {
        "tipo": "contrato_inexistente",
@@ -334,7 +338,8 @@
         "persona-b",
         "persona-c"
        ],
-       "clave": "fd537389d533"
+       "clave": "fd537389d533",
+       "viejo": false
       },
       {
        "tipo": "codigo_fuera",
@@ -345,7 +350,8 @@
        "rutas": [
         "notas.txt",
         "scripts/descarga.py"
-       ]
+       ],
+       "viejo": false
       }
      ]
     }
@@ -583,7 +589,8 @@
          "salud": null
         },
         "fuente": "demonio",
-        "observado_en": "2026-11-25T18:12:00.000000Z"
+        "observado_en": "2026-11-25T18:12:00.000000Z",
+        "viejo": true
        }
       },
       {
@@ -669,7 +676,8 @@
        "resultado": {
         "valor": "falla",
         "fuente": "hook",
-        "observado_en": "2026-11-25T18:14:00.000000Z"
+        "observado_en": "2026-11-25T18:14:00.000000Z",
+        "viejo": true
        }
       },
       {
@@ -748,7 +756,8 @@
        "personas": [
         "persona-a"
        ],
-       "clave": "6b62f452dfc2"
+       "clave": "6b62f452dfc2",
+       "viejo": true
       },
       {
        "tipo": "prueba_falla",
@@ -758,7 +767,8 @@
        "personas": [
         "persona-a"
        ],
-       "clave": "e6629752e3d3"
+       "clave": "e6629752e3d3",
+       "viejo": true
       },
       {
        "tipo": "contrato_inexistente",
@@ -769,7 +779,8 @@
         "persona-b",
         "persona-c"
        ],
-       "clave": "fd537389d533"
+       "clave": "fd537389d533",
+       "viejo": false
       },
       {
        "tipo": "codigo_fuera",
@@ -780,7 +791,8 @@
        "rutas": [
         "notas.txt",
         "scripts/descarga.py"
-       ]
+       ],
+       "viejo": false
       }
      ]
     }
@@ -1018,7 +1030,8 @@
          "salud": null
         },
         "fuente": "demonio",
-        "observado_en": "2026-11-25T18:12:00.000000Z"
+        "observado_en": "2026-11-25T18:12:00.000000Z",
+        "viejo": true
        }
       },
       {
@@ -1104,7 +1117,8 @@
        "resultado": {
         "valor": "falla",
         "fuente": "hook",
-        "observado_en": "2026-11-25T18:14:00.000000Z"
+        "observado_en": "2026-11-25T18:14:00.000000Z",
+        "viejo": true
        }
       },
       {
@@ -1183,7 +1197,8 @@
        "personas": [
         "persona-a"
        ],
-       "clave": "6b62f452dfc2"
+       "clave": "6b62f452dfc2",
+       "viejo": true
       },
       {
        "tipo": "prueba_falla",
@@ -1193,7 +1208,8 @@
        "personas": [
         "persona-a"
        ],
-       "clave": "e6629752e3d3"
+       "clave": "e6629752e3d3",
+       "viejo": true
       },
       {
        "tipo": "contrato_inexistente",
@@ -1204,7 +1220,8 @@
         "persona-b",
         "persona-c"
        ],
-       "clave": "fd537389d533"
+       "clave": "fd537389d533",
+       "viejo": false
       },
       {
        "tipo": "codigo_fuera",
@@ -1215,7 +1232,8 @@
        "rutas": [
         "notas.txt",
         "scripts/descarga.py"
-       ]
+       ],
+       "viejo": false
       }
      ]
     }

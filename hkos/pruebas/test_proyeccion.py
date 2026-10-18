@@ -236,6 +236,76 @@ class Markdown(unittest.TestCase):
         self.assertIsNone(p.tarea(e, v, "T99"))
 
 
+def conf(valor="confirmada", faltan=()):
+    return {"valor": valor, "por": ["persona-b"], "faltan": list(faltan), "de_scaffold": False, "fuente": "git",
+            "observado_en": "2026-11-20T09:00:00Z"}
+
+
+def con_servicios():
+    """persona-b es dueña de «datos» (:8001, no responde desde las 10:20) y un extremo de «motor → datos», cuya Prueba
+    falló a las 10:22; servicios.md es de las 09:00 (git) y trae tres propuestas para persona-b."""
+    e = estado_base()
+    comprobado = {"valor": {"escucha": False, "salud": None}, "fuente": "demonio", "observado_en": "2026-11-20T10:20:00Z"}
+    e["servicios"] = {
+        "fichero": dato("ok", "git", "2026-11-20T09:00:00Z"),
+        "lista": [{"clave": "a" * 12, "nombre": "datos", "carpeta": "datos/", "puerto": 8001, "arranque": None,
+                   "salud": None, "dueno": "@persona-b", "dueno_autoridad": "persona-b", "confirmacion": conf(),
+                   "comprobado": comprobado}],
+        "conexiones": [{"clave": "b" * 12, "de": "motor", "a": "datos", "contrato": "motor → datos", "prueba": "pytest",
+                        "duenos": ["persona-a", "persona-b"], "confirmacion": conf(),
+                        "resultado": dato("falla", "hook", "2026-11-20T10:22:00Z")}],
+        "propuestas": [
+            {"tipo": "servicio", "clave": "c" * 12, "campos": {"nombre": "cache", "carpeta": "datos/cache/"},
+             "duenos": ["persona-b"], "autor_declarado": "@luis", "hora_declarada": None, "autor_git": None,
+             "observado_en": "2026-11-20T09:00:00Z"},
+            {"tipo": "servicio", "clave": "d" * 12, "campos": {"nombre": "cola", "carpeta": "datos/cola/"},
+             "duenos": ["persona-b"], "autor_declarado": "@luis", "hora_declarada": None, "autor_git": "persona-a",
+             "observado_en": "2026-11-20T09:00:00Z"},
+            {"tipo": "servicio", "clave": "e" * 12, "campos": {"nombre": "lote", "carpeta": "datos/lote/"},
+             "duenos": ["persona-b"], "autor_declarado": None, "hora_declarada": None, "autor_git": None,
+             "observado_en": "2026-11-20T09:00:00Z"}],
+        "fuera": [".hackathon/"],
+        "desajustes": [
+            {"tipo": "puerto_sin_respuesta", "detalle": "«datos» :8001 declarado, no responde", "clave": "a" * 12,
+             "observado_en": "2026-11-20T10:20:00Z", "fuente": "demonio", "personas": ["persona-b"]},
+            {"tipo": "prueba_falla", "detalle": "contrato «motor → datos»: la prueba falla", "clave": "b" * 12,
+             "observado_en": "2026-11-20T10:22:00Z", "fuente": "hook", "personas": ["persona-a", "persona-b"]},
+            {"tipo": "dueno_distinto", "detalle": "«datos»: Dueño «@x»", "clave": "a" * 12,
+             "observado_en": "2026-11-20T09:00:00Z", "fuente": "git", "personas": ["persona-b"]}]}
+    return e
+
+
+class ServiciosViejos(unittest.TestCase):
+    """Decisión 1 del PR #13 (hallazgo 7 del issue #2): `viejo` de comprobado, resultado y desajustes con
+    umbral_viejo_s, en proyeccion.py (constitución III, ADR-0009); el md lo dice con «· viejo»."""
+
+    def seccion(self, v):
+        md = p.markdown(v, "persona-b", "x", tz=timezone.utc)
+        return md.split("## Servicios\n", 1)[1].split("## ", 1)[0].strip().splitlines()
+
+    def test_viejo_con_el_umbral(self):
+        e = con_servicios()
+        antes = copy.deepcopy(e)
+        reciente, viejo = p.vista(e, ahora="2026-11-20T10:24:00Z"), p.vista(e, ahora="2026-11-20T10:40:00Z")
+        self.assertEqual(e, antes)                                    # la vista no toca estado.json
+        for v, esperado in ((reciente, False), (viejo, True)):
+            s = v["servicios"]
+            self.assertIs(s["lista"][0]["comprobado"]["viejo"], esperado)
+            self.assertIs(s["conexiones"][0]["resultado"]["viejo"], esperado)
+            self.assertEqual([d["viejo"] for d in s["desajustes"]], [esperado, esperado, False])
+        # Lo que sale de git lleva la hora del commit de servicios.md (las 09:00), que se relee cada vuelta: su
+        # antigüedad la dice fuentes.git, no el desajuste.
+        self.assertFalse(p.vista(e, ahora="2026-11-20T12:00:00Z")["servicios"]["desajustes"][2]["viejo"])
+        corto = p.vista(e, ahora="2026-11-20T10:24:00Z", umbral_viejo_s=60)["servicios"]
+        self.assertTrue(corto["lista"][0]["comprobado"]["viejo"])
+        self.assertEqual(self.seccion(viejo)[:3], [
+            "- no cuadra · «datos» :8001 declarado, no responde (10:20 · demonio · viejo)",
+            "- no cuadra · contrato «motor → datos»: la prueba falla (10:22 · hook · viejo)",
+            "- no cuadra · «datos»: Dueño «@x» (09:00 · git)"])
+        self.assertEqual(self.seccion(reciente)[0], "- no cuadra · «datos» :8001 declarado, no responde (10:20 · demonio)")
+        self.assertEqual(p.firmas(reciente, "persona-b"), p.firmas(viejo, "persona-b"))   # el paso del tiempo no firma
+
+
 class RuidoSinTarea(unittest.TestCase):
     """Pendiente de M8e: `arbol` de la copia principal ve los worktrees y el estado del orquestador como cambios."""
     PERSONAS = [{"persona": "persona-b", "nombre": "B"}]
