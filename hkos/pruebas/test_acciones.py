@@ -38,6 +38,7 @@ import acciones as acciones_mod  # noqa: E402
 import agente as agente_mod  # noqa: E402
 import proyeccion as proyeccion_mod  # noqa: E402
 import relay as relay_mod  # noqa: E402
+import remoto as remoto_mod  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from estados import derivar  # noqa: E402
 from red import Servidor  # noqa: E402
@@ -355,6 +356,83 @@ class Anotar(Base):
         criterios = self.main_remoto(".hackathon/criterios.md")
         self.assertEqual((criterios.count("- Anotado por: @persona-a"), criterios.count("· Ana (jurado)")), (2, 1))
 
+    def remoto_http(self):
+        """El bare servido como `hk-os remoto` (git http-backend), en otro hilo: el receive-pack del servidor no es
+        hijo del push, así que sigue aunque el plazo mate al cliente (con un bare local, moriría con él)."""
+        srv = Servidor(("127.0.0.1", 0), remoto_mod.manejador(self.tmp, "t"))
+        srv.handle_error = lambda *a: None             # el informe del push que ya nadie espera: conexión cortada
+        threading.Thread(target=srv.serve_forever, kwargs={"poll_interval": 0.1}, daemon=True).start()
+        self.addCleanup(srv.server_close)
+        self.addCleanup(srv.shutdown)
+        url = f"http://127.0.0.1:{srv.server_address[1]}/{remoto_mod.REPO}"
+        git(self.ca, "remote", "set-url", "origin", url)
+        git(self.ca, "config", f"http.{url}.extraHeader", "Authorization: Bearer t")
+        git(self.ca, "fetch", "-q", "origin")
+
+    def test_pre_receive_lento_una_sola_nota(self):
+        """Issue #27, el caso exacto: hk-os remoto con un pre-receive de 6 s y plazo de 3 s. El servidor ya tiene el
+        pack y actualiza main después de que el cliente muera. Antes, el único fetch de _subio llegaba antes que eso:
+        502 con la nota ya en main, y al repetirla, dos notas. Ahora _subio sigue mirando (200) y repetir no duplica."""
+        self.remoto_http()
+        self.gancho("pre-receive", "cat >/dev/null\nsleep 6\n")
+        self.ag.acciones.plazo = 3
+        base = git(self.bare, "rev-parse", "main")
+        primero = self.ag.accion("/v1/anotar", NOTA)
+        fin = time.monotonic() + 30                     # lo que haga el servidor por su cuenta, acabado
+        while git(self.bare, "rev-parse", "main") == base and time.monotonic() < fin:
+            time.sleep(0.2)
+        repetido = self.ag.accion("/v1/anotar", NOTA)   # la persona repite (la web no vacía el formulario con un 502)
+        main = git(self.bare, "rev-parse", "main")
+        self.assertEqual((primero, repetido), ((200, {"ok": True, "sha": main}),) * 2)
+        self.assertEqual(self.main_remoto(".hackathon/criterios.md").count("- Anotado por: @persona-a"), 1)
+
+    def test_push_sin_informe_y_la_red_cortada_al_mirar(self):
+        """Issue #27: el push entra pero su informe no llega, y el fetch de _subio falla (la red cortada un momento).
+        Antes, un solo intento: 502 con la nota en main. Ahora vuelve a mirar y da 200."""
+        acc, original, visto = self.ag.acciones, self.ag.acciones._git, {"push": False, "fallos": 0}
+
+        def git_falso(*args, **kw):
+            if args[0] == "push":
+                original(*args, **kw)
+                visto["push"] = True
+                raise acciones_mod.FalloGit("git push: sin respuesta en 3 s")
+            if args[0] == "fetch" and visto["push"] and visto["fallos"] < 2:
+                visto["fallos"] += 1
+                raise acciones_mod.FalloGit("git fetch: Could not resolve host")
+            return original(*args, **kw)
+        with unittest.mock.patch.object(acc, "_git", git_falso), \
+                unittest.mock.patch.object(acciones_mod, "SUBIO_ESPERA_S", 0.2, create=True):
+            codigo, r = self.ag.accion("/v1/anotar", NOTA)
+        self.assertEqual((codigo, r, visto["fallos"]), (200, {"ok": True, "sha": git(self.bare, "rev-parse", "main")}, 2))
+        self.assertEqual(self.main_remoto(".hackathon/criterios.md").count("- Anotado por: @persona-a"), 1)
+
+    def test_repetir_la_misma_nota_no_la_duplica(self):
+        """Issue #27: si un 502 llega con la nota ya en main (la red cortada todo el rato), la persona la repite. La
+        misma nota de la misma persona en origin/main de hace un momento: 200 con ese origin/main, sin otra copia.
+        Otro texto, otra persona o pasados REPETIDA_S, sí es otra nota."""
+        codigo, r = self.ag.accion("/v1/anotar", NOTA)
+        self.assertEqual(codigo, 200, r)
+        self.assertEqual(self.ag.accion("/v1/anotar", NOTA), (200, {"ok": True, "sha": r["sha"]}))
+        self.assertEqual(git(self.bare, "rev-parse", "main"), r["sha"])
+        self.ag.ahora = lambda: "2026-11-20T10:09:59.000000Z"          # 4 min después: aún es la misma
+        self.assertEqual(self.ag.accion("/v1/anotar", NOTA), (200, {"ok": True, "sha": r["sha"]}))
+        self.assertEqual(self.ag.accion("/v1/anotar", dict(NOTA, donde="pasillo"))[0], 200)
+        ag_b = agente_mod.Agente(self.cb, B, reloj=lambda: 1_800_000_000.0, ahora=lambda: AHORA)
+        ag_b.tz = timezone.utc
+        self.assertEqual(ag_b.accion("/v1/anotar", NOTA)[0], 200)
+        self.ag.ahora = lambda: "2026-11-20T10:15:00.000000Z"          # 10 min después: otra vez lo mismo
+        self.assertEqual(self.ag.accion("/v1/anotar", NOTA)[0], 200)
+        criterios = self.main_remoto(".hackathon/criterios.md")
+        self.assertEqual([criterios.count(s) for s in ("- Anotado por: @persona-a", "- Anotado por: @persona-b",
+                                                       "· Ana (jurado)\n- Dónde: apertura", "10:15 · Ana")], [3, 1, 3, 1])
+        self.assertEqual(int(git(self.bare, "rev-list", "--count", f"{r['sha']}..main")), 3)
+        # Con otra codificación y finales de línea, también se reconoce.
+        cuando = acciones_mod.fecha(AHORA).astimezone(timezone.utc)
+        nota = acciones_mod.texto_nota(acciones_mod.validar_nota(NOTA)[0], A, cuando)
+        for original in ("\ufeff# C\r\n".encode("utf-16-le"), "# C\r\n".encode("utf-8")):
+            self.assertTrue(acciones_mod.ya_anotada(acciones_mod.anadir(original, nota), nota, cuando))
+            self.assertFalse(acciones_mod.ya_anotada(original, nota, cuando))
+
     def test_utf16_conserva_codificacion_y_bom(self):
         for cod in ("utf-16-le", "utf-16-be"):
             bom = "\ufeff".encode(cod)
@@ -520,9 +598,9 @@ class Colgado(Base):
         t0, salida = time.monotonic(), []
         h = threading.Thread(target=lambda: salida.append(self.ag.accion("/v1/anotar", NOTA)), daemon=True)
         h.start()
-        h.join(self.PLAZO + 15)
+        h.join(self.PLAZO + acciones_mod.SUBIO_S + 15)
         self.assertFalse(h.is_alive(), "anotar sigue sin volver")
-        self.assertLess(time.monotonic() - t0, self.PLAZO + 10)
+        self.assertLess(time.monotonic() - t0, self.PLAZO + acciones_mod.SUBIO_S + 10)   # issue #27: _subio mira un rato
         self.assertTrue(self.ag.acciones.cerrojo.acquire(timeout=0.1), "el cerrojo sigue cogido")
         self.ag.acciones.cerrojo.release()
         return t0, salida[0]
