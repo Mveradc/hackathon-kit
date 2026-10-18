@@ -21,8 +21,27 @@ import { lectorSSE } from "./sse.js";
 // «sin conexión» y «último dato» se miden igual en todas. El cerrojo y el canal llevan la huella SHA-256 del token: el
 // token no sale de la memoria de la pestaña, y solo comparten stream las que tienen el mismo. Sin esas APIs, cada
 // pestaña lee su propio stream, como antes.
+//
+// Relevo sin que la líder se cierre (issue #23):
+//   - la líder manda un `latido` por el canal cada LATIDO_MS, con si está visible y cuánto lleva oculta. Una seguidora
+//     visible que no oye a la líder en RELEVO_MS (más un azar de hasta RELEVO_AZAR_MS, para que no salten todas a la
+//     vez) le quita el cerrojo con navigator.locks.request(…, {steal: true}) y abre el stream: así se releva a una
+//     líder congelada o colgada, que no suelta el cerrojo;
+//   - si la líder lleva oculta CEDE_MS y hay una seguidora visible, esa seguidora le quita el cerrojo igual: una
+//     pestaña oculta más de 5 min tiene los timers frenados por Chrome (reconexión y sondeo de hasta 1 min);
+//   - una líder a la que le quitan el cerrojo (su petición acaba en AbortError, también al despertar) deja de leer su
+//     stream y vuelve a la cola. Cada líder firma lo que manda con su `era` (la hora a la que cogió el cerrojo, y
+//     siempre más que la última que oyó): lo que llegue de una era anterior es de una líder que ya no lo es y no se
+//     pinta, y una líder que oye una era más nueva deja de serlo aunque el navegador no le haya avisado;
+//   - sin bucles: solo releva una pestaña visible y la que releva pasa a ser una líder visible, a la que nadie releva.
+//     Con todas ocultas no releva ninguna (los timers de las ocultas van frenados y se relevarían cada minuto); la
+//     primera que vuelve a estar visible lo mira en el acto.
+// bfcache: en pagehide, la pestaña cierra el canal y suelta el cerrojo o sale de la cola (un mensaje del canal la saca
+// de la caché, y una pestaña en la caché no puede ser líder); en pageshow con `persisted`, vuelve a abrirlos. El token
+// sigue en la memoria de la pestaña, que la caché conserva: no se guarda en ningún almacenamiento.
 export const PING_DOBLE_S = 40;
 export const SIN_VISTA_MS = 5000;
+export const LATIDO_MS = 2000, RELEVO_MS = 8000, RELEVO_AZAR_MS = 1500, CEDE_MS = 20000;
 const ESPERA_MIN = 1000, ESPERA_MAX = 30000, SONDEO_MS = 3000, COMPRUEBA_MS = 1000, EVENTOS_MAX = 200;
 const FOTO = ["vista", "modo", "fallo"];          // lo que la líder vuelve a mandar a una pestaña que llega (no eventos)
 
@@ -39,6 +58,13 @@ export function pestanasDelNavegador(w = globalThis) {
     locks, Canal,
     huella: async (token) => [...new Uint8Array(await subtle.digest("SHA-256", new TextEncoder().encode(token)))]
       .map((b) => b.toString(16).padStart(2, "0")).join(""),
+    visible: () => w.document?.visibilityState !== "hidden",
+    /** visibilitychange (del documento), pagehide y pageshow (de la ventana). Devuelve la función que deja de escuchar. */
+    escucha: (tipo, fn) => {
+      const t = tipo === "visibilitychange" ? w.document : w;
+      t?.addEventListener?.(tipo, fn);
+      return () => t?.removeEventListener?.(tipo, fn);
+    },
   };
 }
 
@@ -169,14 +195,21 @@ export function useDemonio({ token, fetchImpl, pestanas = null }) {
   const [modo, setModo] = useState("conectando");       // conectando | stream | sondeo
   const [motivo, setMotivo] = useState(null);           // null | lleno (el demonio dio 429 al stream)
   const [fallo, setFallo] = useState(null);             // null | token | sin estado
+  const [liderEs, setLider] = useState(false);          // si esta pestaña es la que habla con el demonio
   const umbralRef = useRef(PING_DOBLE_S * 1000);
 
   useEffect(() => {
     if (!token) return undefined;
-    let vivo = true, parar = null, soltar = null, canal = null, lider = false;
+    let vivo = true, parar = null;
     let desde = Date.now(), dato = 0;                   // desde cuándo se cuenta para «sin conexión»; último dato
     const foto = {};
-    const peticion = new AbortController();
+    // Con pestañas: el nombre del cerrojo y del canal, si esta pestaña está en marcha (no en la bfcache), si es la
+    // líder y con qué era, la mayor era oída, lo último oído a la líder y cuándo, y la petición del cerrojo en curso.
+    let nombre = null, enMarcha = false, canal = null, lider = false, era = 0, eraMax = 0;
+    let oido = 0, latido = null, oidoLatido = 0, latidoT = null, cola = null, turno = 0, soltar = null;
+    let ocultaDesde = null;
+    const yo = Math.random().toString(36).slice(2), azar = Math.random() * RELEVO_AZAR_MS;
+    const quita = [];
 
     const marca = (en) => {
       dato = Math.max(dato, en || 0);
@@ -200,53 +233,154 @@ export function useDemonio({ token, fetchImpl, pestanas = null }) {
         setMotivo(m.motivo || null);
       } else if (m.t === "fallo") setFallo(m.fallo);
     };
+    const guarda = (m) => {
+      if (FOTO.includes(m.t)) foto[m.t] = m;
+      if (m.t === "vista") delete foto.fallo;           // como setFallo(null) al llegar una vista
+    };
+
+    const visible = () => (pestanas?.visible ? pestanas.visible() : true);
+    const manda = (m) => canal?.postMessage({ ...m, era, de: yo });
+    const late = () => manda({ t: "latido", visible: visible(), oculta_ms: ocultaDesde == null ? 0 : Date.now() - ocultaDesde });
+
+    const dejaDeSerLider = () => {
+      lider = false;
+      setLider(false);
+      clearInterval(latidoT);
+      latidoT = null;
+      parar?.();
+      parar = null;
+      const s = soltar;
+      soltar = null;
+      s?.();
+    };
+    /** Pide el cerrojo y espera en la cola, o se lo quita a quien lo tenga (`robar`). */
+    const pide = (robar = false) => {
+      cola?.abort();
+      cola = robar ? null : new AbortController();
+      const mio = ++turno;
+      pestanas.locks.request(nombre, robar ? { steal: true } : { signal: cola.signal }, () => {
+        if (!vivo || !enMarcha || mio !== turno) return undefined;
+        cola = null;
+        lider = true;
+        setLider(true);
+        era = eraMax = Math.max(Date.now(), eraMax + 1);
+        late();
+        latidoT = setInterval(late, LATIDO_MS);
+        parar = fuente({
+          token, fetchImpl, emite: (m) => {
+            if (!lider) return;
+            guarda(m);
+            aplica(m);
+            manda(m);
+          },
+        });
+        return new Promise((res) => { soltar = res; });
+      }).catch(() => {
+        // AbortError: otra pestaña le ha quitado el cerrojo (también si se entera al despertar) o lo ha cancelado ella.
+        if (vivo && enMarcha && mio === turno && lider) {
+          dejaDeSerLider();
+          pide();
+        }
+      });
+    };
+    const alMensaje = ({ data: m }) => {
+      if (!m) return;
+      if (m.t === "hola") {
+        if (lider) for (const k of FOTO) if (foto[k]) manda(foto[k]);
+        return;
+      }
+      const e = Number(m.era) || 0;
+      if (e < eraMax) return;                           // de una líder que ya no lo es
+      eraMax = e;
+      if (lider) {
+        if (e <= era) return;
+        dejaDeSerLider();                               // otra cogió el cerrojo después: ya no es suyo
+        pide();
+      }
+      oido = Date.now();
+      if (m.t === "latido") {
+        latido = m;
+        oidoLatido = oido;
+        return;
+      }
+      guarda(m);
+      aplica(m);
+    };
+    /** Una seguidora visible releva a una líder callada (congelada o colgada) o a una que lleva oculta CEDE_MS. */
+    const vigila = () => {
+      if (!enMarcha || lider || !visible()) return;
+      const ahora = Date.now();
+      const callada = ahora - oido > RELEVO_MS + azar;
+      const oculta = latido && !latido.visible && latido.oculta_ms + (ahora - oidoLatido) >= CEDE_MS + azar;
+      if (!callada && !oculta) return;
+      oido = ahora;                                     // no vuelve a intentarlo hasta otro RELEVO_MS
+      latido = null;
+      pide(true);
+    };
+    const alVerse = () => {
+      if (visible()) ocultaDesde = null;
+      else ocultaDesde ??= Date.now();
+      if (lider) late();
+      else vigila();
+    };
+
+    const arranca = () => {
+      if (!vivo || enMarcha) return;
+      enMarcha = true;
+      desde = Math.max(desde, Date.now());
+      oido = Date.now();
+      latido = null;
+      if (!nombre) {
+        setLider(true);
+        parar = fuente({ token, fetchImpl, emite: aplica });
+        return;
+      }
+      canal = new pestanas.Canal(nombre);
+      canal.onmessage = alMensaje;
+      canal.postMessage({ t: "hola" });
+      pide();
+    };
+    const para = () => {
+      if (!enMarcha) return;
+      enMarcha = false;
+      turno++;
+      cola?.abort();
+      cola = null;
+      if (lider) dejaDeSerLider();
+      parar?.();
+      parar = null;
+      canal?.close();
+      canal = null;
+    };
 
     (async () => {
-      let nombre = null;
       try {
         if (pestanas) nombre = `hk-os-stream-${await pestanas.huella(token)}`;
       } catch {
         nombre = null;
       }
       if (!vivo) return;
-      if (!nombre) {
-        parar = fuente({ token, fetchImpl, emite: aplica });
-        return;
+      if (nombre) {
+        if (!visible()) ocultaDesde = Date.now();
+        quita.push(pestanas.escucha?.("visibilitychange", alVerse));
+        quita.push(pestanas.escucha?.("pagehide", para));
+        quita.push(pestanas.escucha?.("pageshow", (ev) => { if (ev?.persisted) arranca(); }));
       }
-      canal = new pestanas.Canal(nombre);
-      canal.onmessage = ({ data: m }) => {
-        if (m?.t !== "hola") return aplica(m);
-        if (lider) for (const k of FOTO) if (foto[k]) canal.postMessage(foto[k]);
-      };
-      canal.postMessage({ t: "hola" });
-      pestanas.locks.request(nombre, { signal: peticion.signal }, () => {
-        if (!vivo) return undefined;
-        lider = true;
-        parar = fuente({
-          token, fetchImpl, emite: (m) => {
-            if (FOTO.includes(m.t)) foto[m.t] = m;
-            if (m.t === "vista") delete foto.fallo;     // como setFallo(null) al llegar una vista
-            aplica(m);
-            canal?.postMessage(m);
-          },
-        });
-        return new Promise((res) => { soltar = res; });
-      }).catch(() => {});
+      arranca();
     })();
 
     const comprueba = setInterval(() => {
       if (Date.now() - desde > umbralRef.current) setSinConexion(true);
+      if (nombre) vigila();
     }, COMPRUEBA_MS);
 
     return () => {
+      para();
       vivo = false;
-      peticion.abort();
-      parar?.();
-      soltar?.();
-      canal?.close();
+      for (const f of quita) f?.();
       clearInterval(comprueba);
     };
   }, [token, fetchImpl, pestanas]);
 
-  return { respuesta, eventos, ultimo, sinConexion, modo, motivo, fallo };
+  return { respuesta, eventos, ultimo, sinConexion, modo, motivo, fallo, lider: liderEs };
 }

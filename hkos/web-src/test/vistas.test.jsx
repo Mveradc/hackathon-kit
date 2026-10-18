@@ -95,6 +95,44 @@ function compruebaDesajuste(raiz, d, edades) {
   }
 }
 
+/** Las novedades pintadas, en el orden de la vista: el resumen y el autor, exactamente los de la vista y cada uno en su
+ *  elemento; el tipo, como «decisión» o tal cual; y el «hace X» de su observado_en (si `edades`). */
+function compruebaNovedades(raiz, novedades, edades) {
+  const els = [...raiz.querySelectorAll("[data-novedad]")];
+  expect(els.map((el) => Number(el.dataset.novedad))).toEqual(novedades.map((_, i) => i));
+  novedades.forEach((n, i) => {
+    const el = els[i];
+    expect(el.querySelector("[data-resumen]").textContent, `resumen de la novedad ${i}`).toBe(n.resumen);
+    expect(el.querySelector("[data-autor]")?.textContent ?? null, `autor de la novedad ${i}`).toBe(n.autor || null);
+    expect(el.querySelectorAll("[data-resumen], [data-autor]").length).toBe(n.autor ? 2 : 1);
+    const tipo = n.tipo === "decision" ? "decisión" : n.tipo;
+    expect(el.textContent).toContain(`${tipo} · «${n.resumen}»${n.autor ? ` (${n.autor})` : ""}`);
+    if (edades) compruebaTiempo(el, n.observado_en, edades);
+  });
+}
+
+describe("novedades: el resumen tal como llega en la vista (issue #23)", () => {
+  const base = CASOS.find((c) => c.respuesta.vista.novedades.length).respuesta;
+  const novedades = [
+    // El caso del issue: un resumen que imita el cierre de la cita y el autor de otra persona.
+    { tipo: "criterio", resumen: "ok » (@persona-a) y «", autor: "@persona-b", observado_en: base.servido_en },
+    { tipo: "decision", resumen: "«anidada» sin cerrar « y <b>no es HTML</b> & ya", autor: "@persona-a", observado_en: base.servido_en },
+    { tipo: "escalado", resumen: "sin autor", observado_en: base.servido_en },
+  ];
+  const respuesta = { ...base, vista: { ...base.vista, novedades } };
+
+  it.each([["cabina", Cabina], ["tablero", Tablero]])("%s: ni recorta ni equilibra ni junta el resumen con el autor", (_, V) => {
+    const { container } = render(<V {...props(respuesta)} />);
+    compruebaNovedades(container, novedades, null);
+    expect(container.querySelector("b")).toBeNull();
+    expect(container.querySelector('[data-novedad="0"] [data-autor]').textContent).toBe("@persona-b");
+  });
+
+  it("hay vistas de ejemplo con novedades (5×20)", () => {
+    expect(CASOS.filter((c) => c.respuesta.vista.novedades.length).length).toBeGreaterThan(0);
+  });
+});
+
 describe.each(CASOS)("$nombre", ({ respuesta, esperado, antiguedades: edades }) => {
   const { vista } = respuesta;
 
@@ -157,6 +195,14 @@ describe.each(CASOS)("$nombre", ({ respuesta, esperado, antiguedades: edades }) 
         expect(d, `desajuste ${JSON.stringify(k)} en la vista`).toBeDefined();
         compruebaDesajuste(necesitan, d, edades);
       }
+      unmount();
+    }
+  });
+
+  it("cabina y tablero: cada novedad con su tipo, su resumen y su autor tal como llegan, y su antigüedad", () => {
+    for (const V of [Cabina, Tablero]) {
+      const { container, unmount } = render(<V {...props(respuesta)} />);
+      compruebaNovedades(container, vista.novedades, edades);
       unmount();
     }
   });
