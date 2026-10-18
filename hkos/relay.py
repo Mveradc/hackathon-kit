@@ -48,6 +48,7 @@ RECALCULO_RELOJ_S = 5           # y uno cada 5 s, para que la presencia caduque 
 PING_S = 20
 SONDEO_GITHUB_S = 30            # api.md §8
 NOVEDADES_S = 60                # git fetch y lectura de decisiones y criterios (M8f)
+ANTIRREBOTE_PUSH_S = 2          # con web_nueva, esa lectura se adelanta a los 2 s de un `push` de un demonio (K-99)
 SERVICIOS = ".hackathon/servicios.md"   # M9a (api.md §10)
 SERVICIOS_COMMITS = 200         # historia de servicios.md que se mira (api.md §3)
 REINTENTO_TOPE = 16             # vueltas, como mucho, entre dos intentos de leer una versión que falla
@@ -373,6 +374,7 @@ class Relay:
         self.lock = threading.Lock()
         self.cambio = threading.Condition(self.lock)
         self.sucio = threading.Event()
+        self.push_visto = threading.Event()   # K-99: un `push` de un demonio adelanta la lectura de origin/main
         self.version, self.estado, self.texto, self._huella = 0, None, b"", None
         self.vista = None
         self._cargar()
@@ -458,6 +460,9 @@ class Relay:
                     self.cambio.notify_all()
         if nuevos:
             self.sucio.set()
+            if self.web_nueva and self.novedades and any(e["tipo"] == "push" and e["actor"]["papel"] == "demonio"
+                                                         for e in nuevos):
+                self.push_visto.set()
         return nuevos
 
     def _reciente(self, meta):
@@ -695,14 +700,18 @@ class Relay:
             parar.wait(SONDEO_GITHUB_S)
 
     def bucle_novedades(self, parar):
-        """Decisiones y criterios de origin/main cada NOVEDADES_S (M8f)."""
+        """Decisiones y criterios de origin/main cada NOVEDADES_S (M8f) y, con web_nueva, a los ANTIRREBOTE_PUSH_S de
+        recibir un `push` de un demonio (K-99). Una lectura a la vez: los push de la espera entran en esa lectura, y los
+        que llegan durante una lectura, en la siguiente."""
         while not parar.is_set():
+            self.push_visto.clear()
             try:
                 if self.novedades.sondear():
                     self.sucio.set()
             except Exception as ex:  # las novedades no tumban el relay
                 print(f"relay: error al leer las novedades: {ex!r}", file=sys.stderr, flush=True)
-            parar.wait(NOVEDADES_S)
+            if self.push_visto.wait(NOVEDADES_S):
+                parar.wait(ANTIRREBOTE_PUSH_S)
 
     def bucle_wip(self, parar):
         """Nivel 2 (M8g): refs de trabajo en curso y merge-tree por pares cada colisiones_merge.Calculo.CADA_S."""
@@ -960,6 +969,7 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
         pass
     finally:
         parar.set()
+        relay.push_visto.set()
         servidor.server_close()
 
 

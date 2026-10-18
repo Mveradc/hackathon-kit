@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import urllib.request
 
@@ -607,6 +608,85 @@ class EsperaCreciente(LecturaFallida):
         self.assertEqual(intentos, [1, 2, 4, 8, 12, 16, 20, 24])
         self.assertIn(self.sha_ana, n._versiones)
         self.assertEqual(n._fallos, {})
+
+
+class LecturaTrasPush(RepoGit):
+    """K-99 (criterio 5 de M9a): el relay solo leía origin/main cada NOVEDADES_S (60 s) y lo que llegaba por un push
+    tardaba 40–61 s. Con web_nueva, un `push` de un demonio adelanta la lectura a los ANTIRREBOTE_PUSH_S (varios, una
+    sola lectura); la de cada 60 s se queda de respaldo, y nunca hay dos lecturas a la vez."""
+
+    def push_de(self, persona, sha):
+        return {"v": 1, "id": f"git-{persona}-push-{sha[:12]}", "ts": relay_mod.ahora_iso(),
+                "actor": {"persona": persona, "papel": "demonio"}, "tipo": "push", "fuente": "git",
+                "datos": {"sha": sha, "incluye": []}}
+
+    def espera(self, cond, s=10):
+        fin = time.monotonic() + s
+        while not cond():
+            self.assertLess(time.monotonic(), fin, "no ha llegado a tiempo")
+            time.sleep(0.05)
+
+    def test_un_push_de_un_demonio_adelanta_la_lectura(self):
+        self.scaffold()
+        bare = os.path.join(self.dir, "equipo.git")
+        subprocess.run(["git", "clone", "-q", "--bare", self.repo, bare], check=True, capture_output=True)
+        git(self.repo, "remote", "add", "origin", bare)
+        clon = os.path.join(self.dir, "clon")
+        subprocess.run(["git", "clone", "-q", bare, clon], check=True, capture_output=True)
+        n = relay_mod.Novedades(clon, 300, web_nueva=True)
+        fetches, dentro, a_la_vez, git_real, sondear_real = [], [0], [0], n.git, n.sondear
+
+        def git_(repo, *a, **kw):
+            if a[:1] == ("fetch",):
+                fetches.append(time.monotonic())
+            return git_real(repo, *a, **kw)
+
+        def sondear():
+            dentro[0] += 1
+            a_la_vez[0] = max(a_la_vez[0], dentro[0])
+            try:
+                return sondear_real()
+            finally:
+                dentro[0] -= 1
+        n.git, n.sondear = git_, sondear
+        r = relay_mod.Relay(os.path.join(self.dir, "relay"), PERSONAS, novedades=n, web_nueva=True)
+        parar = threading.Event()
+        hilo = threading.Thread(target=r.bucle_novedades, args=(parar,), daemon=True)
+        self.addCleanup(hilo.join, 30)
+        self.addCleanup(lambda: getattr(r, "push_visto", parar).set())
+        self.addCleanup(parar.set)
+        hilo.start()
+        self.espera(lambda: n.servicios is not None and len(fetches) == 1)
+        self.assertNotIn("| datos |", n.servicios["texto"])
+        r.recibir({"eventos": [evento(1, tipo="edicion", rutas=["api/a.py"])]})   # otro evento no adelanta nada
+        time.sleep(1)
+        self.assertEqual(len(fetches), 1)
+        self.escribe(".hackathon/servicios.md", CABECERA + DATOS + CONEXIONES)
+        sha = self.commit("datos", "2026-11-25T18:10:00Z")
+        git(self.repo, "push", "-q", "origin", "main")
+        t0 = time.monotonic()
+        r.recibir({"eventos": [self.push_de("ana", sha)]})
+        r.recibir({"eventos": [self.push_de("luis", sha)]})                 # dos demonios ven el mismo push
+        self.espera(lambda: "| datos |" in n.servicios["texto"], 5)         # antes: hasta 60 s
+        self.assertEqual(len(fetches), 2)                                   # los dos, en una sola lectura
+        self.assertGreaterEqual(fetches[1] - t0, 1.9)                       # tras el antirrebote (2 s)
+        self.assertLess(fetches[1] - t0, 3)
+        time.sleep(2.5)
+        self.assertEqual((len(fetches), a_la_vez[0]), (2, 1))
+
+    def test_sin_web_nueva_o_sin_push_no_se_adelanta(self):
+        sha = self.scaffold()
+        for web_nueva, e in ((False, self.push_de("ana", sha)), (True, dict(self.push_de("ana", sha), tipo="commit",
+                             datos={"sha": sha, "rama": "main", "alcanzable": True}))):
+            with self.subTest(web_nueva=web_nueva, tipo=e["tipo"]):
+                n = relay_mod.Novedades(self.repo, 300, web_nueva=web_nueva)
+                r = relay_mod.Relay(os.path.join(self.dir, f"relay-{web_nueva}"), PERSONAS, novedades=n,
+                                    web_nueva=web_nueva)
+                r.recibir({"eventos": [e]})
+                self.assertFalse(r.push_visto.is_set())
+        r = relay_mod.Relay(os.path.join(self.dir, "relay-push"), PERSONAS, novedades=n, web_nueva=True)
+        r.recibir({"eventos": [self.push_de("ana", sha)]})
+        self.assertTrue(r.push_visto.is_set())
 
 
 class ResumenDeNota(unittest.TestCase):
