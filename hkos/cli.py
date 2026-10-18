@@ -15,11 +15,14 @@
   hk-os web                               abre la web de trabajo de este clon (M9a, con web_nueva: sí en os.md)
   hk-os agente …                          el demonio (lo lanza sesion.sh; ver agente.py)
 """
+import hashlib
+import hmac
 import html
 import json
 import os
 import pathlib
 import re
+import secrets
 import socket
 import struct
 import subprocess
@@ -52,6 +55,9 @@ LINUX = sys.platform.startswith("linux")
 TCP_PROC = ("/proc/net/tcp", "/proc/net/tcp6")
 NO_ESTA = "el demonio de este clon no está en marcha. Se lanza al abrir una sesión de Claude Code aquí; después, " \
           "vuelve a probar."
+# Decisión 7B (PR #13): un demonio antiguo (sin X-HK-Prueba) o quien no tiene web.token (una prueba mala).
+NO_DEMOSTRADO = "el demonio no ha demostrado que es el tuyo; reinícialo con la versión nueva (cierra las sesiones de " \
+                "Claude Code de este clon y termina el proceso de hkos/agente.py; la próxima sesión lo lanza)."
 
 
 def _principal(comun):
@@ -352,7 +358,7 @@ def _puerto_fiable(carpeta):
     """Issue #15: quien conteste /salud en el puerto de un agente.vivo huérfano (reinicio, kill -9) recibiría el token.
     Antes de nada, la hora de agente.vivo (ni vieja ni en el futuro) y, en Linux, que el puerto sea de este usuario.
     (puerto, None) si se puede preguntar a /salud; si no, (None, motivo), con un motivo para cada caso (issue #23,
-    hallazgo 17). El reto en /salud, que lo cerraría del todo, cambia api.md §4 (pendiente)."""
+    hallazgo 17). Es la primera barrera; la que lo cierra del todo es el reto de /salud (web, decisión 7B del PR #13)."""
     try:
         with open(os.path.join(carpeta, "agente.vivo"), encoding="utf-8") as f:
             puerto = int(f.readline().strip())
@@ -382,7 +388,10 @@ def _puerto_fiable(carpeta):
 def web(cwd=".", abrir=None, salida=print):
     """M9a (api.md §4): abre http://127.0.0.1:<puerto>/#t=<token> si el demonio de este clon responde por /salud con
     su git común y sirve la web. El token va en el fragmento, que el navegador no envía; no se imprime ni va en los
-    argumentos del navegador fuera de Windows (abrir_navegador). `abrir` (pruebas) recibe la URL con el token."""
+    argumentos del navegador fuera de Windows (abrir_navegador). `abrir` (pruebas) recibe la URL con el token.
+    Decisión 7B (PR #13): tras la hora y /proc (_puerto_fiable), /salud lleva un reto (X-HK-Reto, 32 bytes aleatorios
+    en hex) y el demonio tiene que contestar X-HK-Prueba = HMAC-SHA256(web.token, reto) en hex. Sin ella o con otra,
+    ni el token ni el navegador: solo quien tiene web.token la sabe dar."""
     comun = agente.git_comun(cwd)
     principal = _principal(comun)
     carpeta = os.path.join(comun, "hackathon", "os")
@@ -390,11 +399,19 @@ def web(cwd=".", abrir=None, salida=print):
         salida("hk-os web: la web de trabajo está apagada en este clon: pon «web_nueva: sí» en .hackathon/os.md "
                "(y súbelo, es para todo el equipo).")
         return 1
+    try:
+        with open(os.path.join(carpeta, "web.token"), encoding="utf-8") as f:
+            token = f.read().strip()
+    except OSError:
+        token = ""
     puerto, motivo = _puerto_fiable(carpeta)
+    reto, prueba = secrets.token_hex(32), None
     if puerto is not None:
         try:
-            with urllib.request.urlopen(f"http://127.0.0.1:{puerto}/salud", timeout=2) as r:
+            req = urllib.request.Request(f"http://127.0.0.1:{puerto}/salud", headers={"X-HK-Reto": reto})
+            with urllib.request.urlopen(req, timeout=2) as r:
                 primera = r.read().decode("utf-8", errors="replace").split("\n", 1)[0]
+                prueba = r.headers.get("X-HK-Prueba")
         except (OSError, ValueError):
             primera, motivo = None, NO_ESTA
         esperada = f"hk-os {comun}"
@@ -403,14 +420,13 @@ def web(cwd=".", abrir=None, salida=print):
         if primera is not None and primera != esperada:
             motivo = (f"en el puerto {puerto} contesta otro programa, no el demonio de este clon (como el «puerto "
                       "ocupado» del arranque: pon puerto_agente: en .hackathon/os.md).")
+    if token and not motivo and not hmac.compare_digest(
+            (prueba or "").encode("utf-8"),
+            hmac.new(token.encode("utf-8"), reto.encode("ascii"), hashlib.sha256).hexdigest().encode("ascii")):
+        motivo = NO_DEMOSTRADO
     if motivo:                                           # siempre sin mandar el token ni abrir el navegador
         salida("hk-os web: " + motivo)
         return 1
-    try:
-        with open(os.path.join(carpeta, "web.token"), encoding="utf-8") as f:
-            token = f.read().strip()
-    except OSError:
-        token = ""
     url = f"http://127.0.0.1:{puerto}/"
     servida = False
     if token:

@@ -546,6 +546,39 @@ class UltimoBueno(RepoGit):
         n.sondear()
         self.assertIsNone(n.servicios)
 
+    def test_lectura_fallida_es_fuente_vieja(self):
+        """Decisión 15B del PR #13: con el último servicios bueno, fuentes.git dice que es viejo, como «sin fetch»: pasado
+        umbral_s sin poder leer servicios.md de la punta, «sin leer servicios» con la hora de la última lectura buena."""
+        import proyeccion
+        self.scaffold()
+        t, falla = [1_800_000_000.0], [False]
+        n = relay_mod.Novedades(self.repo, 300, reloj=lambda: t[0], web_nueva=True)
+        git_real, texto_real = n.git, n._texto
+        n.git = lambda repo, *a, **kw: "" if a[:1] == ("fetch",) else git_real(repo, *a, **kw)   # el fetch va bien
+        n._texto = lambda ref, ruta: None if falla[0] and ruta == relay_mod.SERVICIOS else texto_real(ref, ruta)
+        r = relay_mod.Relay(os.path.join(self.dir, "relay"), PERSONAS, ahora=lambda: relay_mod.iso_us(t[0]),
+                            novedades=n, web_nueva=True)
+
+        def ronda(segundos):
+            t[0] += segundos
+            n.sondear()
+            r.recalcular()
+            self.assertIsNone(Esquema("estado.schema.json").error(r.estado))
+            return r.estado["fuentes"].get("git")
+
+        self.assertIsNone(ronda(0))
+        bueno, leido_en = n.servicios, relay_mod.iso_us(t[0])
+        falla[0] = True
+        self.assertIsNone(ronda(60))                                   # un fallo corto aún no es viejo
+        self.assertIs(n.servicios, bueno)
+        self.assertEqual(ronda(300), {"valor": "sin leer servicios", "fuente": "git", "observado_en": leido_en})
+        self.assertIs(n.servicios, bueno)
+        self.assertIn("servicios", r.estado)                           # se queda el último bueno
+        self.assertTrue(proyeccion.vista(r.estado)["fuentes"]["git"]["viejo"])
+        self.assertTrue(r.vista["fuentes"]["git"]["viejo"])
+        falla[0] = False
+        self.assertIsNone(ronda(60))                                   # se vuelve a leer: ya no es viejo
+
 
 class EsperaCreciente(LecturaFallida):
     """Issue #18, hallazgo 7 (baja): una versión que falla no se vuelve a leer en cada vuelta (con un promisor colgado,

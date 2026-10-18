@@ -5,7 +5,9 @@ token, JSON, tamaño). Cada una devuelve (código HTTP, cuerpo JSON). Sin modelo
 - Anotar añade la nota a `.hackathon/criterios.md` de origin/main con un índice temporal (`nota.index`), commit-tree y
   push, sin tocar la copia ni el índice de la persona. Si el push se rechaza, repite una vez sobre el origin/main nuevo
   (si aún no se ha movido, espera un poco a que el otro push acabe). Un push sin informe que sí entró da 200, y
-  repetir una nota que ya está en origin/main (misma persona, mismo texto, hace un momento) no la duplica.
+  repetir una nota que ya está en origin/main (misma persona, mismo texto, hace un momento) no la duplica. Cada nota
+  que entra deja una línea `nota` en `acciones.jsonl`: con 30 en la última hora, 429 (decisión 12A del PR #13).
+- Las dos esperan a otra acción en curso 5 s como mucho; después, 503 «ocupado» (decisión 13B del PR #13).
 - Reclamar asigna el issue con el gh de la persona (si hay GitHub), emite `reclamo` (fuente web) y deja una línea en
   `acciones.jsonl` para el monitor (escucha.sh), que abre un turno con un texto fijo del kit.
 """
@@ -34,16 +36,19 @@ CAMPOS = {"papel", "quien", "que_dijo", "literal", "fuerza", "donde"}
 TAREA = re.compile(r"^T[0-9]{2,3}$")
 LIBRES = ("lista", "pendiente")
 TOPE_HORA = 10                   # reclamos por persona y hora (api.md §4)
+TOPE_NOTAS_HORA = 30             # notas de Anotar por persona y hora (decisión 12A del PR #13)
+NOTA_SUBIDA = "nota"             # línea de acciones.jsonl de cada nota que entra en main: sin id, el monitor no la lee
 VENTANA_S = 600                  # lo que el monitor entrega (10 min): un reclamo repetido dentro, 409
 ETIQUETA = {"en_curso": "en curso", "en_revision": "en revisión", "no_cerrada": "no cerrada"}
-MARGEN_RELOJ_S = 300             # un reclamo con la hora en el futuro más allá de esto (reloj atrasado después) no cuenta
+MARGEN_RELOJ_S = 300             # un reclamo o una nota con la hora en el futuro más allá de esto (reloj atrasado
+                                 # después) no cuenta
 PLAZO_GIT, PLAZO_GH = 60, 30     # segundos; pasado el plazo se mata el árbol de procesos entero
 ESPERAS_BASE, ESPERA_BASE_S = 3, 1   # push rechazado y origin/main sin moverse: otro push puede tener main.lock aún
 # Un push sin informe: cuánto se sigue mirando si entró (el remoto puede actualizar main después: un pre-receive lento
 # ya tiene el pack y sigue aunque el cliente muera) y cada cuánto (issue #27).
 SUBIO_S, SUBIO_ESPERA_S = 10, 1.5
 REPETIDA_S = 600                 # la misma nota de la misma persona en origin/main hace menos de esto: no se repite
-CERROJO_RECLAMAR_S = 5           # Reclamar no espera más que esto a otra acción en curso (un Anotar colgado): 503
+CERROJO_S = 5                    # ninguna acción espera más que esto a otra en curso (un Anotar colgado): 503
 GH = ["gh"]
 FALLIDO = "reclamo_fallido"      # línea de acciones.jsonl de un `gh issue edit` que falló: sin id, el monitor no la lee
 # Si es True, solo cuenta para el tope un `gh issue edit` que GitHub rechazó (`GraphQL: …` o `HTTP 4xx`); un plazo
@@ -53,10 +58,12 @@ FALLIDO = "reclamo_fallido"      # línea de acciones.jsonl de un `gh issue edit
 FALLIDO_SOLO_RECHAZO = False
 RECHAZO_GH = re.compile(r"(?:^|: )(?:GraphQL: |HTTP 4[0-9]{2}\b)", re.M)
 REPO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$")
-# Además de Cc, Cf (formato: dirección, BOM, anchura cero, etiquetas U+E00xx…) salvo el ZWJ de los emojis, y Cs (un
-# surrogate suelto de `json.loads` se codificaría como bytes crudos: `\udcc2\udcbb` llegaría a main como «»»). Más los
-# invisibles que no son Cf: el CGJ, los rellenos de hangul y las etiquetas sin asignar.
+# Además de Cc, Cf (formato: dirección, BOM, anchura cero, etiquetas U+E00xx…) salvo el ZWJ de los emojis y el ZWNJ
+# (en persa o hindi cambia cómo se escribe la palabra; decisión 16B del PR #13), y Cs (un surrogate suelto de
+# `json.loads` se codificaría como bytes crudos: `\udcc2\udcbb` llegaría a main como «»»). Más los invisibles que no
+# son Cf: el CGJ, los rellenos de hangul y las etiquetas sin asignar.
 QUITAR = {"Cc", "Cf", "Cs"}
+QUEDAN = "\u200c\u200d"          # ZWNJ y ZWJ
 INVISIBLES = re.compile("[\u034f\u115f\u1160\u3164\U000e0000-\U000e007f]")
 # Las comillas de las vistas (constitución V: una nota no puede cerrar las suyas en estado-equipo.md), también escritas
 # como entidad HTML.
@@ -72,12 +79,18 @@ def sanear(texto):
     """Una sola línea (api.md §4): saltos y tabuladores a un espacio, espacios repetidos a uno, sin caracteres de
     control ni invisibles, sin «», sin HTML y sin `#` ni `>` al principio (no abre un título ni una cita)."""
     t = "".join(" " if c in "\r\n\t\v\f\x85\u2028\u2029" else c for c in texto)
-    t = INVISIBLES.sub("", "".join(c for c in t if c == "\u200d" or unicodedata.category(c) not in QUITAR))
+    t = INVISIBLES.sub("", "".join(c for c in t if c in QUEDAN or unicodedata.category(c) not in QUITAR))
     previo = None
     while previo != t:                     # hasta que no quede nada: quitar «» de «<«!--» deja otro «<!--»
         previo, t = t, HTML.sub(lambda m: m.group(1) or "\u2039", COMILLAS.sub("", t))
     t = re.sub(r"\s+", " ", t).strip()
     return re.sub(r"^[#>\s]+", "", t)
+
+
+def reciente(ahora, ts, segundos):
+    """`ts` es de hace menos de `segundos`. Uno con la hora en el futuro (el reloj iba adelantado y lo corrigió NTP)
+    cuenta solo hasta MARGEN_RELOJ_S: si no, contaría siempre, porque `ahora - ts` negativo es menor que todo."""
+    return -MARGEN_RELOJ_S <= (ahora - ts).total_seconds() < segundos
 
 
 def validar_nota(cuerpo):
@@ -323,13 +336,10 @@ class Acciones:
         self.plazo = PLAZO_GIT
 
     def __call__(self, ruta, cuerpo):
-        if ruta == "/v1/anotar":
-            with self.cerrojo:
-                return self.anotar(cuerpo)
-        if not self.cerrojo.acquire(timeout=CERROJO_RECLAMAR_S):   # un Anotar colgado: «ocupado», no esperar sin más
+        if not self.cerrojo.acquire(timeout=CERROJO_S):   # un Anotar colgado: «ocupado», no esperar sin más (13B)
             return 503, {"error": "ocupado"}
         try:
-            return self.reclamar(cuerpo)
+            return self.anotar(cuerpo) if ruta == "/v1/anotar" else self.reclamar(cuerpo)
         finally:
             self.cerrojo.release()
 
@@ -400,8 +410,9 @@ class Acciones:
             time.sleep(SUBIO_ESPERA_S)
 
     def _intento(self, nota, cuando, mensaje, antes=None):
-        """Un intento entero (pasos 1–6 de api.md §4). El sha subido; Rechazado si el push no es un avance rápido. Si la
-        misma nota ya está en origin/main (un intento anterior que dio 502 pero entró), el origin/main, sin repetirla."""
+        """Un intento entero (pasos 1–6 de api.md §4). (sha subido, True); Rechazado si el push no es un avance rápido.
+        Si la misma nota ya está en origin/main (un intento anterior que dio 502 pero entró), (origin/main, False), sin
+        repetirla."""
         base = self._base(antes)
         try:
             os.remove(self.indice)
@@ -414,7 +425,7 @@ class Acciones:
                 original = f.read().replace(b"\r\n", b"\n")
         elif ya_anotada(original, nota, cuando):
             self.ag.log(f"anotar: la misma nota ya está en origin/main ({base[:12]}); no se repite")
-            return base
+            return base, False
         self._escribir(CRITERIOS, anadir(original, nota))
         atributos = self._fichero(".gitattributes") or b""
         lineas = atributos.decode("utf-8", "replace").splitlines()
@@ -428,32 +439,35 @@ class Acciones:
             c, out, err = self._git("push", "--no-verify", "--porcelain", "origin", f"{sha}:refs/heads/main")
         except FalloGit:
             if self._subio(sha, base):
-                return sha
+                return sha, True
             raise
         if c != 0:
             motivo = rechazo(out.decode("utf-8", "replace"))
             if motivo and CARRERA.search(motivo):
                 raise Rechazado(motivo, base, primera_linea(err, motivo))
             if self._subio(sha, base, insistir=not motivo):    # con informe del remoto (un hook), basta con mirar una vez
-                return sha
+                return sha, True
             raise FalloGit("git push: " + primera_linea(err, motivo or f"sale con {c}"))
-        return sha
+        return sha, True
 
     def anotar(self, cuerpo):
         n, error = validar_nota(cuerpo)
         if error:
             return 400, {"error": error[1], "campo": error[0]}
+        ahora = fecha(self.ag.ahora())
+        if sum(1 for ts, _, _ in self._registro(NOTA_SUBIDA) if reciente(ahora, ts, 3600)) >= TOPE_NOTAS_HORA:
+            return 429, {"error": f"{TOPE_NOTAS_HORA} notas por hora"}
         tz = self.ag.tz or datetime.now().astimezone().tzinfo
-        cuando = fecha(self.ag.ahora()).astimezone(tz)
+        cuando = ahora.astimezone(tz)
         nota = texto_nota(n, self.ag.persona, cuando)
         mensaje = f"Criterio: {PAPELES[n['papel']]} · {n['que_dijo'][:50]}"
         self.limite = time.monotonic() + self.plazo      # las esperas del reintento no pasan de aquí
         try:
             try:
-                sha = self._intento(nota, cuando, mensaje)
+                sha, subida = self._intento(nota, cuando, mensaje)
             except Rechazado as primero:
                 try:
-                    sha = self._intento(nota, cuando, mensaje, primero)   # una vez, sobre el origin/main nuevo
+                    sha, subida = self._intento(nota, cuando, mensaje, primero)   # una vez, sobre el origin/main nuevo
                 except Rechazado as ex:
                     self.ag.log(f"anotar: push rechazado dos veces ({ex})")
                     return 409, {"error": "otra nota se subió a la vez, también al reintentar"}
@@ -465,20 +479,25 @@ class Acciones:
                 os.remove(self.indice)
             except OSError:
                 pass
+        if subida:                                       # una nota que ya estaba no sube nada: no cuenta para el tope
+            try:
+                self._registrar({"tipo": NOTA_SUBIDA, "sha": sha, "ts": self.ag.ahora()})
+            except OSError as ex:                        # la nota ya está en main: un 502 invitaría a repetirla
+                self.ag.log(f"anotar: no se ha podido apuntar en acciones.jsonl: {ex}")
         self.ag.log(f"anotar: {sha[:12]} en origin/main")
         return 200, {"ok": True, "sha": sha}
 
-    # --- Reclamar ---
-    def _reclamos(self):
-        """[(ts, tarea, tipo)] de acciones.jsonl: los reclamos y los `gh issue edit` que fallaron (cuentan para el
-        tope, R-30, pero no para la ventana: volver a probar no es repetir un reclamo)."""
+    def _registro(self, *tipos):
+        """[(ts, tarea, tipo)] de las líneas de acciones.jsonl con esos tipos: para Reclamar, los reclamos y los `gh
+        issue edit` que fallaron (cuentan para el tope, R-30, pero no para la ventana: volver a probar no es repetir un
+        reclamo); para Anotar, las notas que entraron en main."""
         salida = []
         try:
             with open(self.registro, encoding="utf-8", errors="replace") as f:
                 for l in f:
                     try:
                         d = json.loads(l)
-                        if d.get("tipo") in ("reclamo", FALLIDO):
+                        if d.get("tipo") in tipos:
                             salida.append((fecha(d["ts"]), d.get("tarea"), d["tipo"]))
                     except (ValueError, KeyError, TypeError, AttributeError):
                         continue
@@ -486,6 +505,7 @@ class Acciones:
             pass
         return salida
 
+    # --- Reclamar ---
     def _repo(self):
         return conf(self.os_md, "repo_tareas") or conf(os.path.join(self.ag.principal, ".hackathon", "coordinacion.md"),
                                                       "repo")
@@ -511,15 +531,10 @@ class Acciones:
             return 409, {"error": f"está {ETIQUETA.get(valor, valor or 'sin estado')}" if valor not in LIBRES
                          else "ya está declarada"}
         ahora = fecha(self.ag.ahora())
-        reclamos = self._reclamos()
-
-        def dentro(ts, segundos):
-            """Hace menos de `segundos`. Uno con la hora en el futuro (el reloj iba adelantado y lo corrigió NTP) cuenta
-            solo hasta MARGEN_RELOJ_S: si no, contaría siempre, porque `ahora - ts` negativo es menor que todo."""
-            return -MARGEN_RELOJ_S <= (ahora - ts).total_seconds() < segundos
-        if any(tarea == tid and tipo == "reclamo" and dentro(ts, VENTANA_S) for ts, tarea, tipo in reclamos):
+        reclamos = self._registro("reclamo", FALLIDO)
+        if any(tarea == tid and tipo == "reclamo" and reciente(ahora, ts, VENTANA_S) for ts, tarea, tipo in reclamos):
             return 409, {"error": "ya la has reclamado hace un momento"}
-        if sum(1 for ts, _, _ in reclamos if dentro(ts, 3600)) >= TOPE_HORA:
+        if sum(1 for ts, _, _ in reclamos if reciente(ahora, ts, 3600)) >= TOPE_HORA:
             return 429, {"error": f"{TOPE_HORA} reclamos por hora"}
         issue = None
         if conf(self.os_md, "github").lower() != "no" and isinstance(t.get("issue"), int):

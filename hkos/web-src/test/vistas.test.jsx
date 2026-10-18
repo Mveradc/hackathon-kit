@@ -92,7 +92,17 @@ function compruebaDesajuste(raiz, d, edades) {
     compruebaTiempo(el, d.observado_en, edades);
     expect(texto(el)).toContain(d.fuente);
     for (const r of d.rutas || []) expect(texto(el)).toContain(r);
+    compruebaViejo(el, d.viejo, `desajuste «${d.detalle}»`);
   }
+}
+
+/** Un dato `viejo` de la vista sale como lo viejo de siempre (gris y quieto): su procedencia `is-stale` con «viejo» y,
+ *  si lleva latido, el de `stale`; uno que no lo es, sin nada de eso (decisión 1 del PR #13). */
+function compruebaViejo(el, viejo, que) {
+  expect(el.querySelector(".hk-prov").classList.contains("is-stale"), `${que}: viejo`).toBe(!!viejo);
+  expect(!!el.querySelector(".hk-prov__stale"), `${que}: la palabra «viejo»`).toBe(!!viejo);
+  const pulso = el.querySelector(".hk-pulse");
+  if (pulso) expect(pulso.classList.contains("hk-pulse--stale"), `${que}: latido gris`).toBe(!!viejo);
 }
 
 /** Las novedades pintadas, en el orden de la vista: el resumen y el autor, exactamente los de la vista y cada uno en su
@@ -130,6 +140,72 @@ describe("novedades: el resumen tal como llega en la vista (issue #23)", () => {
 
   it("hay vistas de ejemplo con novedades (5×20)", () => {
     expect(CASOS.filter((c) => c.respuesta.vista.novedades.length).length).toBeGreaterThan(0);
+  });
+});
+
+describe("servicios viejos: la web pinta el `viejo` de la vista tal cual (decisión 1 del PR #13)", () => {
+  const caso = CASOS.find((c) => c.respuesta.vista.servicios?.desajustes.some((d) => d.fuente !== "git"));
+  /** La vista de G12 con `viejo` = v en todo lo que lo lleva: es lo que la web recibe, no lo calcula. */
+  const con = (v) => {
+    const s = structuredClone(caso.respuesta.vista.servicios);
+    for (const x of s.lista) if (x.comprobado) x.comprobado.viejo = v;
+    for (const x of s.conexiones) if (x.resultado) x.resultado.viejo = v;
+    for (const d of s.desajustes) d.viejo = v;
+    return { ...caso.respuesta, vista: { ...caso.respuesta.vista, servicios: s } };
+  };
+
+  it.each([[true], [false]])("viejo = %s en servicios, conexiones y desajustes", (v) => {
+    const respuesta = con(v);
+    const s = respuesta.vista.servicios;
+    const { container } = render(<Servicios {...props(respuesta)} />);
+    const comprobados = [...container.querySelectorAll("[data-comprobado]")];
+    expect(comprobados.length).toBe(s.lista.filter((x) => x.comprobado).length);
+    expect(comprobados.length).toBeGreaterThan(0);
+    for (const el of comprobados) {
+      compruebaViejo(el, v, "comprobado");
+      expect(el.classList.contains("hk-viejo")).toBe(v);
+    }
+    for (const el of container.querySelectorAll("[data-resultado]")) compruebaViejo(el, v, "resultado");
+    for (const d of s.desajustes) compruebaDesajuste(container, d, caso.antiguedades);
+    // Con todos sus desajustes viejos, ninguna caja late en rojo ni en ámbar: gris.
+    for (const x of s.lista.filter((x) => s.desajustes.some((d) => d.clave === x.clave))) {
+      const caja = container.querySelector(`[data-servicio="${x.nombre}"]`);
+      expect(caja.classList.contains("hk-servicio--stale"), `caja de ${x.nombre}`).toBe(v);
+    }
+  });
+
+  it("cabina: lo que no cuadra y es viejo, gris y sin el panel en rojo", () => {
+    for (const p of caso.respuesta.vista.personas) {
+      const r = { ...con(true), persona: p.persona };
+      const { container, unmount } = render(<Cabina {...props(r)} />);
+      const necesitan = container.querySelector('[aria-label="Te necesitan"]');
+      for (const el of necesitan.querySelectorAll("[data-desajuste]")) compruebaViejo(el, true, `desajuste de @${p.persona}`);
+      if (!caso.respuesta.vista.colisiones.some((c) => c.gravedad === "rojo" && c.personas.includes(p.persona))) {
+        expect(necesitan.classList.contains("hk-panel--fail"), `panel de @${p.persona}`).toBe(false);
+      }
+      unmount();
+    }
+  });
+});
+
+describe("propuestas: el autor sin commit conocido sale como declarado (decisión 3A del PR #13)", () => {
+  const caso = CASOS.find((c) => c.respuesta.vista.servicios?.propuestas.length);
+  const base = caso.respuesta.vista.servicios.propuestas[0];
+  const variantes = [
+    [{ autor_git: "persona-c", autor_declarado: "@luis" }, "de @persona-c"],
+    [{ autor_git: null, autor_declarado: "@luis" }, "de @luis (declarado)"],
+    [{ autor_git: null, autor_declarado: null }, "de sin autor"],
+  ];
+  it.each(variantes)("%o → «%s», en Servicios y en la cabina de quien la confirma", (cambio, dice) => {
+    const p = { ...base, ...cambio };
+    const vista = { ...caso.respuesta.vista, servicios: { ...caso.respuesta.vista.servicios, propuestas: [p] } };
+    const respuesta = { ...caso.respuesta, vista, persona: p.duenos[0] };
+    for (const V of [Servicios, Cabina]) {
+      const { container, unmount } = render(<V {...props(respuesta)} />);
+      const el = container.querySelector(`[data-propuesta="${p.clave}"] .hk-texto`);
+      expect(texto(el)).toMatch(new RegExp(` · ${dice.replace(/[()]/g, "\\$&")}$`));
+      unmount();
+    }
   });
 });
 
@@ -226,14 +302,21 @@ describe.each(CASOS)("$nombre", ({ respuesta, esperado, antiguedades: edades }) 
       if (x.comprobado) {
         expect(t).toContain(x.comprobado.valor.escucha ? "responde" : "no responde");
         compruebaTiempo(el, x.comprobado.observado_en, edades);
+        expect(typeof x.comprobado.viejo, `viejo de ${x.nombre} en la vista`).toBe("boolean");
+        compruebaViejo(el.querySelector("[data-comprobado]"), x.comprobado.viejo, `comprobado de ${x.nombre}`);
       }
     }
     for (const x of s.conexiones) {
       const el = container.querySelector(`[data-conexion="${x.de} → ${x.a}"]`);
       expect(el, `conexión ${x.de} → ${x.a}`).not.toBeNull();
       if (x.contrato) expect(texto(el)).toContain(`contrato «${x.contrato}»`);
-      if (x.resultado) expect(texto(el)).toContain(`la prueba ${x.resultado.valor}`);
+      if (x.resultado) {
+        expect(texto(el)).toContain(`la prueba ${x.resultado.valor}`);
+        expect(typeof x.resultado.viejo, `viejo del resultado en la vista`).toBe("boolean");
+        compruebaViejo(el.querySelector("[data-resultado]"), x.resultado.viejo, `resultado de ${x.de} → ${x.a}`);
+      }
     }
+    for (const d of s.desajustes) expect(typeof d.viejo, `viejo de «${d.detalle}» en la vista`).toBe("boolean");
     for (const p of s.propuestas) expect(container.querySelector(`[data-propuesta="${p.clave}"]`)).not.toBeNull();
     for (const d of s.desajustes) compruebaDesajuste(container, d, edades);
   });

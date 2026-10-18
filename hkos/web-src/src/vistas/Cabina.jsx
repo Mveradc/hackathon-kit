@@ -92,7 +92,7 @@ export function Cabina({ respuesta, eventos, sinConexion, reclamo, anotar }) {
   const colisiones = (vista.colisiones || []).filter((c) => c.personas.includes(persona));
   const s = serviciosDe(vista, persona);
   const necesitan = colisiones.length + s.noCuadra.length + s.sinConfirmar.length + s.propuestas.length;
-  const rojo = colisiones.some((c) => c.gravedad === "rojo") || s.noCuadra.some((d) => d.tipo.endsWith("falla"));
+  const rojo = colisiones.some((c) => c.gravedad === "rojo") || s.noCuadra.some((d) => !d.viejo && d.tipo.endsWith("falla"));
 
   let pulso = <StatusPulse state="idle" label="Sin sesión" />;
   if (yo) {

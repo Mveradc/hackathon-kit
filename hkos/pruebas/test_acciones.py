@@ -14,6 +14,8 @@
 - Issue #18: surrogates sueltos, Cf y etiquetas fuera, `<` de HTML a ‹; el reintento espera al push que tiene main.lock;
   un push sin informe que entró da 200; el Job Object mata a los hijos de MSYS; la plantilla sube con LF; Reclamar da
   503 «ocupado» con el cerrojo cogido; reclamo_fallido solo con un rechazo de GitHub (detrás de FALLIDO_SOLO_RECHAZO).
+- Decisiones del PR #13: el ZWNJ se queda (16B); Anotar también da 503 «ocupado» a los 5 s (13B); 30 notas por hora,
+  contadas en acciones.jsonl, también tras reiniciar y con el margen de reloj de Reclamar (12A).
 
 Uso: uv run --no-project -m unittest discover -s hkos/pruebas -v
 """
@@ -206,6 +208,86 @@ class Anotar(Base):
         self.assertEqual(huella(self.ca), antes)
         self.assertFalse(os.path.exists(os.path.join(self.ag.dir, "nota.index")))
 
+    def test_ocupado_503(self):
+        """Decisión 13B (PR #13): un primer Anotar se queda colgado antes del push con el cerrojo cogido. El segundo no
+        espera sin respuesta: 503 «ocupado» a los 5 s, como Reclamar, sin fetch, commit ni push. El primero acaba bien."""
+        base, dentro, suelta, primero = git(self.bare, "rev-parse", "main"), threading.Event(), threading.Event(), []
+        self.ag.acciones.antes_del_push = lambda: (dentro.set(), suelta.wait(60))
+        h = threading.Thread(target=lambda: primero.append(self.ag.accion("/v1/anotar", NOTA)), daemon=True)
+        h.start()
+        self.addCleanup(h.join, 60)
+        self.addCleanup(suelta.set)
+        self.assertTrue(dentro.wait(30), "el primer Anotar no llegó al push")
+        segundo = []
+        t0 = time.monotonic()
+        h2 = threading.Thread(target=lambda: segundo.append(self.ag.accion("/v1/anotar", dict(NOTA, quien="Luis"))),
+                              daemon=True)
+        h2.start()
+        h2.join(15)
+        dura, sigue = time.monotonic() - t0, h2.is_alive()
+        self.assertEqual(git(self.bare, "rev-parse", "main"), base)
+        suelta.set()
+        h.join(60)
+        h2.join(60)
+        self.assertFalse(sigue, "el segundo Anotar sigue esperando al cerrojo")
+        self.assertEqual(segundo, [(503, {"error": "ocupado"})])
+        self.assertTrue(4.5 <= dura < 10, dura)
+        self.assertEqual(primero, [(200, {"ok": True, "sha": git(self.bare, "rev-parse", "main")})])
+        criterios = self.main_remoto(".hackathon/criterios.md")
+        self.assertEqual((criterios.count("· Ana (jurado)"), criterios.count("· Luis (jurado)")), (1, 0))
+
+    def notas_en_registro(self):
+        ruta = os.path.join(self.ag.dir, "acciones.jsonl")
+        if not os.path.exists(ruta):
+            return []
+        with open(ruta, encoding="utf-8") as f:
+            return [d for d in map(json.loads, f) if d["tipo"] == "nota"]
+
+    def test_tope_de_notas_por_hora(self):
+        """Decisión 12A (PR #13): 30 notas por persona y hora, contadas en acciones.jsonl con una línea «nota» (sin id:
+        el monitor no la lee). En una hora, 31 notas dan 30 × 200 y 1 × 429 sin tocar main; también con el demonio
+        reiniciado. Pasada una hora de la primera, otra vez 200. Repetir una nota que ya está (no sube nada) no cuenta."""
+        codigos = []
+        for i in range(31):                                              # una por minuto, de 10:05 a 10:35
+            self.ag.ahora = lambda i=i: f"2026-11-20T10:{5 + i:02d}:00.000000Z"
+            codigos.append(self.ag.accion("/v1/anotar", dict(NOTA, que_dijo=f"nota {i}")))
+        self.assertEqual([c for c, _ in codigos], [200] * 30 + [429], codigos)
+        self.assertEqual(codigos[-1][1], {"error": "30 notas por hora"})
+        main = git(self.bare, "rev-parse", "main")
+        self.assertEqual(self.main_remoto(".hackathon/criterios.md").count("- Anotado por: @persona-a"), 30)
+        self.assertEqual(self.notas_en_registro(), [{"tipo": "nota", "sha": r["sha"],
+                                                     "ts": f"2026-11-20T10:{5 + i:02d}:00.000000Z"}
+                                                    for i, (_, r) in enumerate(codigos[:30])])
+        otro = agente_mod.Agente(self.ca, A, reloj=lambda: 1_800_000_000.0,                     # reiniciado
+                                 ahora=lambda: "2026-11-20T11:04:59.000000Z")
+        otro.tz = timezone.utc
+        self.assertEqual(otro.accion("/v1/anotar", dict(NOTA, que_dijo="nota 31")), (429, {"error": "30 notas por hora"}))
+        self.assertEqual(otro.accion("/v1/anotar", dict(NOTA, que_dijo="nota 29")), (429, {"error": "30 notas por hora"}))
+        self.assertEqual(git(self.bare, "rev-parse", "main"), main)
+        otro.ahora = lambda: "2026-11-20T11:05:00.000000Z"               # la de las 10:05 ya tiene una hora
+        self.assertEqual(otro.accion("/v1/anotar", dict(NOTA, que_dijo="nota 31"))[0], 200)
+        self.assertEqual(len(self.notas_en_registro()), 31)
+        otro.ahora = lambda: "2026-11-20T11:06:00.000000Z"               # en la hora: 10:07–10:34 y 11:05, 29
+        self.assertEqual(otro.accion("/v1/anotar", dict(NOTA, que_dijo="nota 31"))[0], 200)   # ya está: no sube nada
+        self.assertEqual(len(self.notas_en_registro()), 31)
+        self.assertEqual([otro.accion("/v1/anotar", dict(NOTA, que_dijo=f"nota {i}"))[0] for i in (32, 33)], [200, 429])
+
+    def test_tope_de_notas_y_el_reloj(self):
+        """Decisión 12A con el margen de reloj de Reclamar: 30 notas con la hora 3 h en el futuro (el reloj iba adelantado
+        y NTP lo corrigió) no cuentan; con 2 min en el futuro, sí. Los reclamos no cuentan para el tope de notas."""
+        def registro(minutos, tipo="nota"):                              # AHORA es las 10:05
+            ts = f"2026-11-20T{10 + (5 + minutos) // 60:02d}:{(5 + minutos) % 60:02d}:00.000000Z"
+            with open(os.path.join(self.ag.dir, "acciones.jsonl"), "w", encoding="utf-8") as f:
+                for i in range(30):
+                    f.write(json.dumps({"id": f"web-{A}-reclamo-T{20 + i}-1", "tipo": tipo, "tarea": f"T{20 + i}",
+                                        "ts": ts} if tipo == "reclamo" else {"tipo": tipo, "sha": "a" * 40, "ts": ts}) + "\n")
+        registro(180)
+        self.assertEqual(self.ag.accion("/v1/anotar", dict(NOTA, que_dijo="una"))[0], 200)
+        registro(2)
+        self.assertEqual(self.ag.accion("/v1/anotar", dict(NOTA, que_dijo="dos"))[0], 429)
+        registro(-2, "reclamo")
+        self.assertEqual(self.ag.accion("/v1/anotar", dict(NOTA, que_dijo="tres"))[0], 200)
+
     def test_git_falla_502(self):
         git(self.ca, "remote", "set-url", "origin", os.path.join(self.tmp, "no-existe.git"))
         antes = huella(self.ca)
@@ -252,9 +334,9 @@ class Anotar(Base):
 
     def test_saneado_issue_18(self):
         s = acciones_mod.sanear
-        # 5: toda la categoría Cf salvo el ZWJ, las etiquetas U+E0000–E007F, el CGJ y los rellenos de hangul.
+        # 5: toda la categoría Cf salvo el ZWJ y el ZWNJ, las etiquetas U+E0000–E007F, el CGJ y los rellenos de hangul.
         self.assertEqual(s("hola\U000E0049\U000E0047\U000E004E\U000E0001\U000E007F"), "hola")
-        self.assertEqual(s("a\u00adb\u180ec\u034fd\u3164e\u115ff\u1160g\u200ch\U0001D173i\u2061j"), "abcdefghij")
+        self.assertEqual(s("a\u00adb\u180ec\u034fd\u3164e\u115ff\u1160gh\U0001D173i\u2061j"), "abcdefghij")
         self.assertEqual(s("👩‍💻 👨‍👩‍👧 ❤️"), "👩‍💻 👨‍👩‍👧 ❤️")                 # el ZWJ y el VS16 se quedan
         # 6: lo que no es HTML para GitHub no se rompe, y el HTML no vuelve.
         self.assertEqual(s("si a<b y c>d entonces"), "si a‹b y c>d entonces")
@@ -264,6 +346,17 @@ class Anotar(Base):
             r = s(t)
             sin_enlaces = re.sub(r"<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\s<>]*>", "", r)
             self.assertIsNone(re.search(r"<[A-Za-z/!?]", sin_enlaces), (t, r))
+
+    def test_zwnj_se_queda(self):
+        """Decisión 16B (PR #13): el ZWNJ (U+200C) se queda, como el ZWJ. En persa («می‌خواهم») y en hindi («क्‌ष»)
+        cambia cómo se escribe la palabra. Lo demás del saneado sigue igual, y la nota llega así a main."""
+        s = acciones_mod.sanear
+        persa, hindi = "\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645", "\u0915\u094d\u200c\u0937"
+        for t in (persa, hindi):
+            self.assertEqual(s(t), t)
+            self.assertEqual(s(f"# «{t}»\u200b\u200e <!--"), f"{t} ‹!--")
+        self.assertEqual(self.ag.accion("/v1/anotar", dict(NOTA, que_dijo=f"{persa} y {hindi}"))[0], 200)
+        self.assertIn(f"- Qué dijo: «{persa} y {hindi}»\n", self.main_remoto(".hackathon/criterios.md"))
 
     def test_surrogates_sueltos(self):
         """El caso del issue #18: `json.loads` acepta surrogates sueltos y `anadir` los codificaba como bytes crudos
@@ -790,7 +883,7 @@ class Reclamar(Base):
         self.ag.acciones.cerrojo.acquire()
         salida = []
         try:
-            with unittest.mock.patch.object(acciones_mod, "CERROJO_RECLAMAR_S", 0.5):
+            with unittest.mock.patch.object(acciones_mod, "CERROJO_S", 0.5):
                 h = threading.Thread(target=lambda: salida.append(self.ag.accion("/v1/reclamar", {"tarea": "T01"})),
                                      daemon=True)
                 h.start()
