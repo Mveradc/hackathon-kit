@@ -3,7 +3,7 @@ El sistema visual de la web de trabajo del Hackathon OS: un tablero oscuro donde
 ## Principios
 
 1. **El color dice de dónde viene un dato, no lo bonito que es.** Cada dato lleva su procedencia (principio III de la constitución). Usa `relay` para lo que llega en tiempo real, `git` para lo derivado y verificable, `github` para lo duradero y `declared` para lo que alguien puso a mano (principio II). No uses estos colores para adornar.
-2. **Rojo, ámbar y verde son solo estado.** `state-fail`, `state-wait` y `state-ok` no se usan para marca, gráficos ni decoración. Así un rojo siempre significa que algo ha fallado.
+2. **Rojo, ámbar y verde son solo estado.** `state-fail`, `state-wait` y `state-ok` no se usan para marca, gráficos ni decoración. Así un rojo siempre significa que algo ha fallado. El rojo es solo para hechos (un plazo que ya ha pasado); una estimación, aunque diga «No llega», va en ámbar.
 3. **La animación dice la verdad.** Algo se mueve solo si de verdad está pasando: un paquete recorre una arista cuando llega un evento real; una sesión respira en `relay` mientras tiene actividad reciente. Si el relay se cae o un dato envejece, todo eso se para y pasa a `state-stale`. Nunca animes para dar sensación de actividad.
 4. **El latido pide atención.** Late en `state-wait` (lento, `--hk-pulse-wait`, 1,8 s) lo que necesita una acción o está en espera: una colisión amarilla, una tarea parada, una confirmación pendiente. Late en `state-fail` (rápido, `--hk-pulse-fail`, 0,9 s) lo que ha fallado: la compuerta rechazó, el demonio se cayó, hay un conflicto de nivel 3. Lo que está bien no late nunca.
 5. **El estado nunca va solo en el color.** Todo `StatusPulse` lleva su palabra («Fallo», «Necesita acción», «Viejo»). El verde y el rojo de este sistema no se distinguen bien por claridad: los separan la palabra y el ritmo del latido.
@@ -42,7 +42,7 @@ El brillo es señal. `panel` va en todo panel. `glow-relay` solo en lo que está
 
 ## Componentes
 
-`Panel` contiene; `StatusPulse` dice el estado; `ProvenanceTag` dice de dónde y de cuándo; `TaskCard` es una tarea; `CollisionAlert` es una colisión; `TeamGraph` es el equipo como red; `Button` dispara una acción del demonio local. Nada más: si hace falta otra pieza, se añade aquí antes de usarla.
+`Panel` contiene; `StatusPulse` dice el estado; `ProvenanceTag` dice de dónde y de cuándo; `TaskCard` es una tarea; `CollisionAlert` es una colisión; `TeamGraph` es el equipo como red; `Button` dispara una acción del demonio local; `CriterioRow` es una nota de `criterios.md` con lo que la cubre; `Cadena` es la ruta crítica en una línea de tiempo. Nada más: si hace falta otra pieza, se añade aquí antes de usarla.
 
 ## Textos
 

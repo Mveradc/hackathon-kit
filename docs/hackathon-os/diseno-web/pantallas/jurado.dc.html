@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Hackathon OS · Jurado</title>
+<script src="./support.js"></script>
+<link rel="stylesheet" href="ds/hkos/tokens.css">
+<link rel="stylesheet" href="ds/hkos/components/bundle.css">
+<script src="ds/hkos/components/bundle.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&amp;family=JetBrains+Mono:wght@400;500&amp;family=Space+Grotesk:wght@500;600&amp;display=swap">
+<style>
+body{margin:0;background:#05070d}
+a{color:#22d3ee}a:hover{color:#67e8f9}
+</style>
+</helmet>
+<div data-theme="{{theme}}" style="min-height: 1040px; background: var(--void); color: var(--ink); font-family: var(--font-sans); box-sizing: border-box; padding: 28px 32px 40px;">
+<div style="max-width: 1376px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px;">
+
+<header style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px;">
+<div style="display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;">
+<span style="font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Hackathon OS</span>
+<span style="font-family: var(--font-mono); font-size: 13px; color: var(--ink-muted);">@ana · reto 03 · X Ray · Embat</span>
+</div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px;">
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="relay" age="hace 2 s"></x-import>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="github" age="hace 30 s"></x-import>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="git" age="{{gitEdad}}"></x-import>
+<nav aria-label="Vistas" style="display: flex; gap: 2px; padding: 4px; border-radius: 10px; background: var(--surface-100); box-shadow: var(--panel);">
+<a href="cabina.dc.html" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;">Cabina</a>
+<a href="red.dc.html" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;">Red</a>
+<a href="tablero.dc.html" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;">Tablero</a>
+<a href="servicios.dc.html" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;">Servicios</a>
+<a href="#" aria-current="page" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--relay); background: var(--relay-soft); text-decoration: none;">Jurado</a>
+<a href="ruta-critica.dc.html" style="padding: 6px 10px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--ink-muted); text-decoration: none;">Ruta crítica</a>
+</nav>
+</div>
+</header>
+
+<div style="display: flex; flex-direction: column; gap: 6px;">
+<span style="font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Jurado</span>
+<span style="font-size: 14px; color: var(--ink-muted);">Cada nota de criterios.md y lo que la cubre. Las notas y sus enlaces a tareas (la etiqueta «(criterios: …)» en la fila de plan.md) los escribe el equipo; el estado de cada tarea y las evidencias en main, el OS. Hora del relay: <span style="font-family: var(--font-mono); color: var(--ink);">{{ahora}}</span>.</span>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;">
+<div style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+<span class="hk-label">Notas</span>
+<span style="font-family: var(--font-mono); font-size: 32px; line-height: 36px; font-weight: 500;">{{c.notas}}</span>
+<span style="font-size: 12px; color: var(--ink-muted);">{{c.notasSub}}</span>
+</div>
+<div style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px; border: 1px solid {{c.sinBorde}};">
+<span class="hk-label">Sin cubrir</span>
+<span style="font-family: var(--font-mono); font-size: 32px; line-height: 36px; font-weight: 500; color: {{c.sinColor}};">{{c.sin}}</span>
+<x-import component-from-global-scope="HkOS.StatusPulse" state="{{c.sinPulso}}" label="{{c.sinSub}}"></x-import>
+</div>
+<div style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+<span class="hk-label">En marcha</span>
+<span style="font-family: var(--font-mono); font-size: 32px; line-height: 36px; font-weight: 500;">{{c.marcha}}</span>
+<span style="font-size: 12px; color: var(--ink-muted);">{{c.marchaSub}}</span>
+</div>
+<div style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px;">
+<span class="hk-label">Cubiertas</span>
+<span style="font-family: var(--font-mono); font-size: 32px; line-height: 36px; font-weight: 500; color: {{c.cubColor}};">{{c.cub}}</span>
+<span style="font-size: 12px; color: var(--ink-muted);">{{c.cubSub}}</span>
+</div>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start;">
+<div style="flex: 999 1 860px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+
+<x-import component-from-global-scope="HkOS.Panel" title="Sin cubrir" meta="{{sinMeta}}" tone="{{sinTono}}">
+<sc-for list="{{sin}}" as="n" hint-placeholder-count="2">
+<x-import component-from-global-scope="HkOS.CriterioRow" time="{{n.time}}" who="{{n.who}}" where="{{n.where}}" strength="{{n.strength}}" strength-kind="{{n.strengthKind}}" said="{{n.said}}" affects="{{n.affects}}" corrects="{{n.corrects}}" by="{{n.by}}" age="{{n.age}}" coverage="{{n.coverage}}" coverage-label="{{n.coverageLabel}}" coverage-stale="{{n.coverageStale}}" items="{{n.items}}" pitch="{{n.pitch}}" hint="{{n.hint}}"></x-import>
+</sc-for>
+<sc-if value="{{ninguna}}" hint-placeholder-val="{{no}}">
+<div style="display: flex; flex-direction: column; gap: 4px;">
+<x-import component-from-global-scope="HkOS.StatusPulse" state="ok" label="Ninguna"></x-import>
+<span style="font-size: 13px; line-height: 18px; color: var(--ink-muted);">Cada nota de criterios.md tiene al menos una tarea o una evidencia que la cita, o el equipo la da por recogida en el pitch.</span>
+</div>
+</sc-if>
+</x-import>
+
+<x-import component-from-global-scope="HkOS.Panel" title="Con algo que las cubre" meta="{{conMeta}}">
+<sc-for list="{{con}}" as="n" hint-placeholder-count="4">
+<x-import component-from-global-scope="HkOS.CriterioRow" time="{{n.time}}" who="{{n.who}}" where="{{n.where}}" strength="{{n.strength}}" strength-kind="{{n.strengthKind}}" said="{{n.said}}" affects="{{n.affects}}" corrects="{{n.corrects}}" by="{{n.by}}" age="{{n.age}}" coverage="{{n.coverage}}" coverage-label="{{n.coverageLabel}}" coverage-stale="{{n.coverageStale}}" items="{{n.items}}" pitch="{{n.pitch}}" hint="{{n.hint}}"></x-import>
+</sc-for>
+<sc-if value="{{sinCon}}" hint-placeholder-val="{{no}}">
+<span style="font-size: 13px; color: var(--ink-faint);">Aún ninguna.</span>
+</sc-if>
+</x-import>
+
+<sc-if value="{{hayCorregidas}}" hint-placeholder-val="{{no}}">
+<x-import component-from-global-scope="HkOS.Panel" title="Corregidas" meta="{{corrMeta}}">
+<sc-for list="{{corregidas}}" as="n" hint-placeholder-count="1">
+<x-import component-from-global-scope="HkOS.CriterioRow" time="{{n.time}}" who="{{n.who}}" where="{{n.where}}" said="{{n.said}}" by="{{n.by}}" age="{{n.age}}" coverage="corregida" coverage-label="{{n.coverageLabel}}" hint="{{n.hint}}"></x-import>
+</sc-for>
+</x-import>
+</sc-if>
+
+</div>
+
+<aside style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
+<x-import component-from-global-scope="HkOS.Panel" title="Cómo se lee">
+<div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 18px;">
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-wait);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-wait);"></span>Sin cubrir</span><span style="color: var(--ink-muted);">Ninguna tarea ni evidencia la cita. Van primero, por fuerza (dato, palabra, comentario, sin precisar) y luego por hora.</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; border: 1.5px solid var(--ink-muted);"></span>Planificada</span><span style="color: var(--ink-muted);">La citan tareas, pero ninguna ha empezado.</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--relay);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--relay);"></span>En curso</span><span style="color: var(--ink-muted);">Alguna de sus tareas está en curso.</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-ok);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-ok);"></span>Cubierta</span><span style="color: var(--ink-muted);">Una tarea suya está integrada o publicada, o hay una evidencia en main. Si la tarea vuelve a en curso, la nota sigue cubierta y dice «trabajo nuevo desde…».</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; border: 1.5px solid var(--ink-muted);"></span>Recogida en el pitch (declarado)</span><span style="color: var(--ink-muted);">El equipo dice que la recoge el pitch. Es declarado: no cuenta como cubierta.</span></div>
+</div>
+<div style="display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; line-height: 18px; color: var(--ink-muted);">
+<span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="@marta"></x-import> la nota, la etiqueta «(criterios: …)» de plan.md y lo recogido en el pitch: lo escribió alguien del equipo.</span>
+<span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="git"></x-import> el estado de la tarea y la evidencia en main: lo deriva el OS.</span>
+<span>La fuerza es la palabra que anotó el equipo («obligatorio», «se valora»…), no una nota del OS.</span>
+<span>Si una persona no deja señales, sus tareas salen grises con «sin señales de @… desde HH:MM». No quiere decir nada de su trabajo.</span>
+</div>
+</x-import>
+<x-import component-from-global-scope="HkOS.Panel" title="Desde la terminal" meta="no se hace aquí">
+<div style="display: flex; flex-direction: column; gap: 8px; font-size: 13px; line-height: 18px; color: var(--ink-muted);">
+<span>Anotar lo que dice el jurado: <span style="font-family: var(--font-mono); color: var(--ink);">/hack-note</span> o Anotar en la Cabina.</span>
+<span>Enlazar una tarea a una nota: <span style="font-family: var(--font-mono); color: var(--ink);">/hack-plan</span>, con la etiqueta <span style="font-family: var(--font-mono); color: var(--ink);">(criterios: &lt;fecha hora de la nota&gt;)</span> en la fila de la tarea.</span>
+<span>Recogerla en el pitch: <span style="font-family: var(--font-mono); color: var(--ink);">/hack-pitch</span>, con la misma etiqueta.</span>
+<span>Corregir una nota: una nota nueva que diga a cuál corrige.</span>
+</div>
+</x-import>
+</aside>
+</div>
+
+</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"theme":{"editor":"enum","options":["dark","light"],"default":"dark"},"estado":{"editor":"enum","options":["inicio","mitad","riesgo"],"default":"riesgo"},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var E = this.props.estado ?? "riesgo";
+    function t(id, titulo, dueno, estado, fuente, edad, extra) {
+      return Object.assign({ id: id, title: "«" + titulo + "»", owner: dueno, state: estado, source: fuente, age: edad }, extra || {});
+    }
+    function ev(ruta, sha, edad) { return { kind: "evidencia", path: ruta, sha: sha, age: edad }; }
+    function cita(c, por, edad) { return { cita: c, by: por, age: edad }; }
+    function n(o) { return Object.assign({ coverage: "sin_cubrir", items: [] }, o); }
+    function sinCubrir(o, c) {
+      return Object.assign({}, o, { coverage: "sin_cubrir", items: [],
+        hint: "Para cubrirla, desde la terminal: /hack-plan y «(criterios: " + c + ")» en la fila de la tarea en plan.md." });
+    }
+
+    var C_ENTREGA = "2026-09-18 19:20", C_PORQUE = "2026-09-18 19:40", C_EMPRESA = "2026-09-19 09:30", C_VALIDA = "2026-09-19 10:40", C_PITCH = "2026-09-19 10:55";
+    var entrega = n({ time: "vie 18 · 19:20", who: "Organización", where: "charla de apertura", strength: "dato · dom 10:00", strengthKind: "dato",
+      said: "«La entrega es el domingo a las 10:00: el repositorio y una URL que se pueda abrir»", affects: "entrega", by: "@marta", coverage: "planificada" });
+    var porque = n({ time: "vie 18 · 19:40", who: "Jurado (Embat)", where: "charla de apertura", strength: "«queremos ver»", strengthKind: "palabra",
+      said: "«Queremos ver por qué sale ese número y qué lo movió»", affects: "plan, pitch", by: "@luis" });
+    var comprador = n({ time: "vie 18 · 20:05", who: "Mentor de Embat", where: "mesa del equipo", strength: "comentario suelto", strengthKind: "comentario",
+      said: "(paráfrasis) Que en el primer minuto del pitch se vea a quién se le vende", affects: "pitch", by: "@marta" });
+    var grupo = n({ time: "vie 18 · 21:10", who: "Mentor de Embat", where: "mesa del equipo",
+      said: "(paráfrasis) Puntuar por grupo en vez de por empresa también vale", by: "@ana", age: "criterios.md · vie 21:12",
+      coverageLabel: "Corregida por la de sáb 09:30", hint: "Ya no cuenta: lo que vale es la nota nueva. No se borra (criterios.md solo añade)." });
+    var empresa = n({ time: "sáb 19 · 09:30", who: "Jurado (Embat)", where: "sesión formativa", strength: "dato", strengthKind: "dato",
+      said: "«El score va por empresa, no por grupo»", affects: "contratos", corrects: "vie 18 · 21:10", by: "@ana", age: "criterios.md · hace 1 h 30", coverage: "cubierta",
+      items: [ev("docs/contratos.md", "4be21c0", "hace 1 h 10"),
+        t("T04", "Copiar las columnas reales de data_dictionary.md a docs/contratos.md", "ana", "integrada", "git", "hace 1 h 10", { link: cita(C_EMPRESA, "@ana", "hace 1 h 20") })] });
+    var demo = n({ time: "sáb 19 · 09:50", who: "Mentor de Embat", where: "mesa del equipo", strength: "comentario suelto", strengthKind: "comentario",
+      said: "(paráfrasis) Mejor la demo en vivo que capturas", affects: "pitch", by: "@marta", age: "criterios.md · hace 1 h 05" });
+    var validacion = n({ time: "sáb 19 · 10:40", who: "Jurado (Embat)", where: "ronda por las mesas", strength: "«imprescindible»", strengthKind: "palabra",
+      said: "«Sin test oculto, traed vuestra propia validación: ¿cómo sabéis que acierta?»", affects: "plan, pitch", by: "@luis", age: "criterios.md · hace 20 min" });
+    var monitor = n({ time: "sáb 19 · 10:50", who: "Jurado (Embat)", where: "ronda por las mesas", strength: "«nos gustaría ver»", strengthKind: "palabra",
+      said: "«Nos gustaría ver algo que avise cuando una empresa se mueve de verdad»", affects: "plan, pitch", by: "@luis", age: "criterios.md · hace 10 min" });
+    var pitch = n({ time: "sáb 19 · 10:55", who: "Organización", where: "Discord del evento", strength: "dato · 5 min", strengthKind: "dato",
+      said: "(paráfrasis) El pitch dura 5 minutos y después hay 3 de preguntas", affects: "pitch", by: "@marta", age: "criterios.md · hace 5 min", coverage: "cubierta" });
+    function pitchCon(t21) {
+      return Object.assign({}, pitch, { items: [t21, t("T27", "Diapositivas en pitch/ con capturas de las dos fichas", "marta", "pendiente", "github", "hace 12 h", { link: cita(C_PITCH, "@marta", "hace 3 min") })] });
+    }
+    function entregaCon(edad, enlace) {
+      return Object.assign({}, entrega, { items: [
+        t("T09", "Publicar motor y web en una URL pública", "ana", "pendiente", "github", edad, { link: cita(C_ENTREGA, "@ana", enlace) }),
+        t("T26", "README.md con la URL de la demo y el arranque local", "marta", "pendiente", "github", edad, { link: cita(C_ENTREGA, "@ana", enlace) })] });
+    }
+
+    var d;
+    if (E === "inicio") {
+      d = {
+        ahora: "vie 18 · 20:10", gitEdad: "hace 40 s",
+        sin: [sinCubrir(Object.assign({}, comprador, { age: "criterios.md · hace 5 min" }), "2026-09-18 20:05")],
+        con: [
+          Object.assign({}, porque, { age: "criterios.md · hace 30 min", coverage: "planificada",
+            items: [t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "pendiente", "github", "hace 25 min", { link: cita(C_PORQUE, "@ana", "hace 25 min") }),
+              t("T12", "Desglose «qué lo movió» con signo", "luis", "pendiente", "github", "hace 25 min", { link: cita(C_PORQUE, "@ana", "hace 25 min") })] }),
+          Object.assign(entregaCon("hace 25 min", "hace 25 min"), { age: "criterios.md · hace 50 min" })
+        ],
+        corregidas: [],
+        c: { notas: "3", notasSub: "la última, hace 5 min", sin: "1", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait", sinSub: "1 comentario suelto",
+          marcha: "2", marchaSub: "planificadas, sin empezar", cub: "0", cubColor: "var(--ink)", cubSub: "aún nada integrado ni en main" }
+      };
+    } else {
+      var t12 = E === "riesgo"
+        ? t("T12", "Desglose «qué lo movió» con signo", "luis", "en_curso", "relay", "hace 25 min", { stale: true, note: "sin señales de @luis desde 10:35", link: cita(C_PORQUE, "@ana", "hace 14 h") })
+        : t("T12", "Desglose «qué lo movió» con signo", "luis", "en_curso", "relay", "hace 30 s", { link: cita(C_PORQUE, "@ana", "hace 14 h") });
+      var porqueMitad = Object.assign({}, porque, { age: "criterios.md · hace 15 h", coverage: E === "riesgo" ? "en_curso" : "cubierta",
+        coverageStale: E === "riesgo", coverageLabel: E === "riesgo" ? "En curso, según un dato viejo (T12)" : "",
+        items: [E === "riesgo"
+          ? t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "pendiente", "github", "hace 14 h", { link: cita(C_PORQUE, "@ana", "hace 14 h") })
+          : t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "integrada", "git", "hace 30 min", { link: cita(C_PORQUE, "@ana", "hace 14 h") }), t12] });
+      var compradorPitch = Object.assign({}, comprador, { age: "criterios.md · hace 15 h", coverage: "pitch", pitch: { by: "@marta", age: "hace 14 h", where: "el guion del pitch" } });
+      var entregaMitad = Object.assign(entregaCon("hace 14 h", "hace 14 h"), { age: "criterios.md · hace 15 h 40" });
+      if (E === "mitad") {
+        var validacionBien = Object.assign({}, validacion, { coverage: "planificada",
+          items: [t("T10", "Apartar empresas y medir la estabilidad del score", "ana", "pendiente", "github", "hace 15 min", { link: cita(C_VALIDA, "@ana", "hace 15 min") }),
+            t("T28", "Respuesta a «¿cómo sabéis que acierta?» con la cifra de T10", "marta", "pendiente", "github", "hace 15 min", { link: cita(C_VALIDA, "@ana", "hace 15 min") })] });
+        d = {
+          ahora: "sáb 19 · 11:00", gitEdad: "hace 40 s",
+          sin: [],
+          con: [pitchCon(t("T21", "pitch/guion.md: CFO, comprador Embat y por qué lo compra", "marta", "publicada", "git", "hace 12 h", { link: cita(C_PITCH, "@marta", "hace 3 min") })),
+            validacionBien, empresa, porqueMitad, compradorPitch, entregaMitad],
+          corregidas: [grupo],
+          c: { notas: "7", notasSub: "1 corregida · la última, hace 5 min", sin: "0", sinColor: "var(--ink)", sinBorde: "transparent", sinPulso: "ok", sinSub: "Todas tienen algo",
+            marcha: "2", marchaSub: "planificadas, sin empezar", cub: "3", cubColor: "var(--state-ok)", cubSub: "1 con evidencia en main · aparte, 1 recogida en el pitch (declarado)" }
+        };
+      } else {
+        d = {
+          ahora: "sáb 19 · 11:00", gitEdad: "hace 40 s",
+          sin: [sinCubrir(validacion, C_VALIDA), sinCubrir(monitor, "2026-09-19 10:50"), sinCubrir(demo, "2026-09-19 09:50")],
+          con: [pitchCon(t("T21", "pitch/guion.md: CFO, comprador Embat y por qué lo compra", "marta", "en_curso", "relay", "hace 1 min", { since: "sáb 10:50", link: cita(C_PITCH, "@marta", "hace 3 min") })),
+            empresa, porqueMitad, compradorPitch, entregaMitad],
+          corregidas: [grupo],
+          c: { notas: "9", notasSub: "1 corregida · la última, hace 5 min", sin: "3", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait", sinSub: "1 «imprescindible» · 1 «nos gustaría ver» · 1 comentario suelto",
+            marcha: "2", marchaSub: "1 en curso · 1 planificada", cub: "2", cubColor: "var(--state-ok)", cubSub: "1 con evidencia en main · aparte, 1 recogida en el pitch (declarado)" }
+        };
+      }
+    }
+    d.theme = this.props.theme ?? "dark";
+    d.no = false;
+    d.ninguna = d.sin.length === 0;
+    d.sinMeta = d.sin.length ? d.sin.length + " · por fuerza y luego por hora" : "0";
+    d.sinTono = d.sin.length ? "wait" : "normal";
+    d.conMeta = String(d.con.length);
+    d.sinCon = d.con.length === 0;
+    d.hayCorregidas = d.corregidas.length > 0;
+    d.corrMeta = String(d.corregidas.length);
+    return d;
+  }
+}
+</script>
+</body>
+</html>
