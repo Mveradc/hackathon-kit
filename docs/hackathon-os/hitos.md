@@ -176,7 +176,13 @@ Abierto el 2026-10-17 por decisión del usuario: se construye **antes** de la fa
 
   **No se recortan:** el respaldo de la web clásica, la seguridad de ADR-0010 y las dos acciones.
 
-*Estado (2026-10-18):*
+*Estado: **cerrado el 2026-10-18.***
+- Criterios 1, 5, 7, 8 y 9 validados en K-99 (PR #36, `evals/coordinacion/prueba.md`, «M9a, K-99» y «M9a, cierre»); 2, 3, 4 y 6, con las pruebas sin modelo y el CI (K-94, K-98, `acciones_seguridad.py`, `web_vivo.py`).
+- El criterio 5 cumplió el tiempo tras el PR #37 (el relay lee `origin/main` a los 2 s de un push; máximo 18,8 s en dos pasadas). El turno de Reclamar en una sesión interactiva lo comprobó el usuario: uno solo, con el texto fijo.
+- Contratos y ADR al día con el código (PR #13, con las 21 decisiones del usuario, y PR #35).
+- Siguiente: M8h, fase 3 (K-84 y la 0.4.0). El ensayo (fase 2) sigue aplazado; si la 0.4.0 sale sin él lo decide el usuario.
+
+*Estado (2026-10-18, antes del cierre):*
 - **Revisiones independientes y arreglos.** Siete revisiones de solo lectura (issues #2, #6, #10, #15, #18, #23 y #27) y sus arreglos, en los PR #7 a #29. Ninguna alta abierta. De la última (#27) quedan medias: un Anotar cuyo push entra después del plazo puede duplicar la nota, `web.token` se regenera si falla la reescritura de uno no privado, `os.replace` falla en Windows con el fichero abierto por otro proceso, y el último `servicios` bueno no sale marcado como viejo (esto último, decisión de contratos).
 - **Contratos y ADR al día con el código:** borrador en el PR #13, con su tabla de decisiones pendientes. Lo decide el usuario antes de cerrar M9a.
 - **Siguiente:** decidir el PR #13 → K-99 → anotar el cierre de M9a en `evals/coordinacion/prueba.md` y `docs/historial.md`.

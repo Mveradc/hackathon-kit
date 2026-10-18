@@ -299,6 +299,15 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
   - lo interactivo lo hace el usuario antes del ensayo.
 - **Resultados** en `evals/coordinacion/prueba.md` («M8h, fase 1»).
 
+## M9a — Web de trabajo, nivel A (2026-10-17 y 2026-10-18)
+- **Qué hay:** la web React + Vite detrás de `web_nueva:`, servida por el demonio de cada persona en `127.0.0.1` (cabina, red, tablero y servicios); `.hackathon/servicios.md` con confirmación por commits (ADR-0011); Anotar y Reclamar (ADR-0010).
+- **Cómo se hizo:** K-90–K-98 y, después, rondas de Devin en worktrees separados (una terminal por carpeta) con una revisión independiente de solo lectura en cada ronda: siete revisiones (issues #2, #6, #10, #15, #18, #23 y #27) y sus arreglos (PR #7–#35). Las altas se acabaron a la quinta ronda; desde entonces, solo altas y medias.
+- **Contratos:** el PR #13 dejó api.md y los ADR al día con el código y recogió 21 decisiones del usuario (entre otras, el reto con HMAC en `/salud`, el latido de los servicios y los riesgos aceptados en ADR-0010 y ADR-0011).
+- **Validación (K-99):** criterios 1, 5, 7, 8 y 9 con modelo y en `Mveradc/hk-sandbox`. El criterio 5 falló por tiempo (el relay leía `origin/main` cada 60 s) y lo arregló el PR #37.
+- **Encontrado al cerrar:** con varias cuentas de GitHub en el Git Credential Manager de Windows, cada fetch del relay abría «Select an account»: el relay y `compilar.py` no usaban el entorno sin diálogos del demonio (PR #38).
+- **Decisión del usuario:** el ensayo (M8h, fase 2) queda aplazado sin fecha.
+- **Resultados** en `evals/coordinacion/prueba.md` («M9a, K-99» y «M9a, cierre»).
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.
