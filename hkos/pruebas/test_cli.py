@@ -7,6 +7,8 @@ dónde está web.html aunque haya navegador; `hk-os unir` deja token y relay.url
 Uso: uv run --no-project -m unittest discover -s hkos/pruebas -v
 """
 import contextlib
+import hashlib
+import hmac
 import html
 import http.server
 import io
@@ -194,8 +196,9 @@ class HkOsWebImpostor(unittest.TestCase):
         self.comun = cli.agente.git_comun(self.repo)
         self.os = os.path.join(self.comun, "hackathon", "os")
         Recoger.escribe(os.path.join(self.os, "web.token"), "secreto-web\n")
-        self.recibidos = recibidos = []
+        self.recibidos, self.retos = recibidos, retos = [], []
         self.primera = f"hk-os {self.comun}\n".encode("utf-8")
+        self.clave = "secreto-web"          # con la que firma el reto: la de web.token es el demonio de verdad
         prueba = self
 
         class Impostor(http.server.BaseHTTPRequestHandler):
@@ -203,6 +206,12 @@ class HkOsWebImpostor(unittest.TestCase):
                 recibidos.append((self.path, self.headers.get("X-HK-Token")))
                 cuerpo = prueba.primera if self.path == "/salud" else b"{}"
                 self.send_response(200)
+                reto = self.headers.get("X-HK-Reto")
+                if self.path == "/salud" and reto is not None:
+                    retos.append(reto)
+                    if prueba.clave is not None:
+                        self.send_header("X-HK-Prueba", hmac.new(prueba.clave.encode(), reto.encode(),
+                                                                 hashlib.sha256).hexdigest())
                 self.send_header("Content-Length", str(len(cuerpo)))
                 self.end_headers()
                 self.wfile.write(cuerpo)
@@ -316,6 +325,24 @@ class HkOsWebImpostor(unittest.TestCase):
         self.assertEqual((rc, abiertas), (0, [f"http://127.0.0.1:{self.puerto}/#t=secreto-web"]))
         self.assertIn(("/v1/vista", "secreto-web"), self.recibidos)
         self.assertFalse(any("secreto-web" in s for s in salida))
+
+    def test_impostor_con_la_hora_reciente_no_recibe_nada(self):
+        """Decisión 7B (PR #13): en Windows y macOS (o en Linux sin /proc, o con el puerto propio), un impostor en el
+        puerto en los 60 s tras morir el demonio pasaba la hora y contestaba /salud con la primera línea buena: recibía
+        el token. Ahora tiene que firmar el reto con web.token, que no tiene. Sin X-HK-Prueba (o un demonio antiguo)
+        o con una mala, nada: ni el token ni el navegador."""
+        Recoger.escribe(self.tcp, tabla_tcp([("127.0.0.1", self.puerto, "0A", self.UID)]))
+        for clave, linux in ((None, False), ("otra-clave", False), ("", False), (None, True), ("otra-clave", True)):
+            self.clave = clave
+            self.recibidos.clear()
+            self.vivo(hace_s=VIVO_S - 15)
+            self.sin_token(*self.web(linux=linux), "el demonio no ha demostrado que es el tuyo; reinícialo con la "
+                                                   "versión nueva")
+            self.assertEqual(self.recibidos, [("/salud", None)], (clave, linux))    # solo /salud, sin token
+        self.assertEqual(len(self.retos), 5)
+        self.assertEqual(len(set(self.retos)), 5)                                     # uno nuevo cada vez
+        for reto in self.retos:
+            self.assertRegex(reto, r"^[0-9a-f]{64}$")                                 # 32 bytes en hex
 
     @unittest.skipUnless(sys.platform.startswith("linux"), "el /proc/net/tcp de verdad")
     def test_linux_con_el_proc_de_verdad(self):

@@ -3,6 +3,8 @@ al SSE del relay, la salud de los servicios propios y `hk-os web`. Sin `web_nuev
 
 Uso: uv run --no-project -m unittest discover -s hkos/pruebas -v
 """
+import hashlib
+import hmac
 import http.client
 import io
 import json
@@ -116,9 +118,10 @@ class SinWebNueva(Base):
             self.assertEqual(pide(self.puerto, metodo, ruta)[0], 404, ruta)
         cuerpo = b'{"tarea":"T01"}'
         self.assertEqual(pide(self.puerto, "POST", "/v1/reclamar", {"Content-Type": "application/json"}, cuerpo)[0], 404)
-        codigo, _, datos = pide(self.puerto, "GET", "/salud")
+        codigo, resp, datos = pide(self.puerto, "GET", "/salud", {"X-HK-Reto": "ab" * 32})
         self.assertEqual(codigo, 200)
         self.assertTrue(datos.decode().startswith("hk-os "))
+        self.assertNotIn("x-hk-prueba", resp)                          # sin web.token no hay con qué firmar
         self.assertEqual(self.a.salud_servicios.ciclo(), [])          # sin servicios en el estado, nada que mirar
 
 
@@ -255,6 +258,29 @@ class Seguridad(Base):
         t = self.a.web_token
         self.assertEqual(pide(self.puerto, "POST", f"/v1/anotar?t={t}", json_, bien)[0], 401)
         self.assertEqual(pide(self.puerto, "POST", "/v1/otra", dict(self.token(), **json_), bien)[0], 404)
+
+    def test_reto_en_salud(self):
+        """Decisión 7B (PR #13): con X-HK-Reto (32 bytes en hex), /salud añade X-HK-Prueba = HMAC-SHA256(web.token,
+        reto) en hex. Sin reto, igual que antes. Un reto con otra forma, o con un Host o un Origin que no son los
+        locales (una página con DNS rebinding no saca firmas), no lleva prueba; el cuerpo es el de siempre."""
+        _, sin_reto, cuerpo = pide(self.puerto, "GET", "/salud")
+        self.assertNotIn("x-hk-prueba", sin_reto)
+        self.assertTrue(cuerpo.startswith(f"hk-os {self.a.comun}\n".encode()))
+        reto = "ab" * 32
+        for host in (None, f"localhost:{self.puerto}"):
+            codigo, resp, datos = pide(self.puerto, "GET", "/salud", {"X-HK-Reto": reto}, host=host)
+            self.assertEqual((codigo, datos), (200, cuerpo))
+            self.assertEqual(resp["x-hk-prueba"], hmac.new(self.a.web_token.encode(), reto.encode(),
+                                                           hashlib.sha256).hexdigest())
+        for cabeceras, host in (({"X-HK-Reto": "AB" * 32}, None), ({"X-HK-Reto": "ab" * 31}, None),
+                                ({"X-HK-Reto": "ab" * 33}, None), ({"X-HK-Reto": ""}, None),
+                                ({"X-HK-Reto": reto}, f"evil.example:{self.puerto}"),
+                                ({"X-HK-Reto": reto}, "127.0.0.1"),
+                                ({"X-HK-Reto": reto, "Origin": "http://evil.example"}, None)):
+            codigo, resp, datos = pide(self.puerto, "GET", "/salud", cabeceras, host=host)
+            self.assertEqual((codigo, datos), (200, cuerpo), (cabeceras, host))
+            self.assertNotIn("x-hk-prueba", resp, (cabeceras, host))
+            self.sin_cors(resp)
 
     def test_options_sin_cors(self):
         for ruta in ("/v1/anotar", "/v1/vista", "/"):
