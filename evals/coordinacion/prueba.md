@@ -1030,3 +1030,70 @@ M9a (web de trabajo) se adelanta al ensayo de M8h por decisión del usuario. Ant
 Además, revisado en el código para ADR-0011: los commits de los workers (ramas `worktree-agent-*`) los emite el sondeo de git del demonio con la persona del demonio y el actor `worker` (`hkos/pruebas/test_sondeo_git.py`). El orquestador integra con `merge --no-ff` + `--ff-only`, así que sus shas llegan intactos a `main`.
 
 Gasto: 0,0044 USD.
+
+# M9a, K-99: validación con modelo y en el sandbox (2026-10-18)
+Contra los contratos y ADR ya decididos (PR #13). Rama `m9a-k99`, sin tocar código del kit: lo único nuevo es `evals/coordinacion/servicios_vivo.py` (criterio 5 y la parte en vivo del 1). Lo que falla queda apuntado con su caso exacto, sin arreglar.
+
+## Criterios
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | Con `web_nueva: no`, todo como hoy | **Sí.** `hkos/pruebas`: 413 OK (12 saltadas, las de esquema). `prueba_hooks.py`, simulador, `colisiones_vivo.py` y `acciones_seguridad.py`: 0 fallos. `robustez.py`: 46/46. `igualdad.py`: 347 OK y 0 fallos. En vivo (`servicios_vivo.py --apagada`, relay y demonio de verdad con `servicios.md` y la Prueba exacta): el demonio da 404 en `/`, el SSE del relay trae `estado` y `vista` pero ningún `eventos`, el estado no lleva `servicios` y `prueba.sh` no escribe. `comprobar.py --relanzar` sobre `../prueba-m6b-03` (cadena del 03 sin coordinación, 3,35 USD): A6 pasa (los seis comandos se paran sin sobrescribir), y A3, A4, A5 y A7 también. A1 falla por la carpeta, como antes: su plan es de M6b, sin columna `ID`. A2 falló una vez («tras pararlo siguen escuchando :8000») y pasó al repetirlo sin modelo: es el fallo puntual de Windows ya visto en M8h |
+| 5 | Servicios en vivo, cada caso en ≤ 30 s | **No, por el tiempo. El estado de cada caso es el correcto.** `servicios_vivo.py`: remoto `bare`, dos clones, relay en el de B y hooks reales. Ver «Criterio 5» abajo |
+| 7 | Anotar en el sandbox | **Sí** (la parte de sandbox; el resto lo cubre `test_acciones.py`). Ver «Sandbox» abajo |
+| 8 | Reclamar en el sandbox | **Sí, salvo la prueba interactiva del turno**, que hace el usuario. Ver «Sandbox» abajo |
+| 9 | Cadena con servicios | **Sí.** Ver «Criterio 9» abajo |
+
+## Criterio 5 (`servicios_vivo.py`, segunda pasada, sin otras pruebas en paralelo)
+| Caso | Qué sale | Tiempo |
+|---|---|---|
+| 1. Puerto declarado sin respuesta | `puerto_sin_respuesta` de api (de B), fuente `demonio`. De control, web (de A) responde 200 en `/salud`, sin desajuste y consultada solo por su dueño | 18,4 s desde el arranque de los demonios |
+| 2. Fichero fuera de todo servicio | `codigo_fuera` con `suelto/` (por el `arbol` de la sesión de A; una carpeta sin seguimiento sale entera en `git status --porcelain`). `docs/`, `README.md` y `.hackathon/` no salen | 1,6 s |
+| 3. Prueba corrida y fallando | `prueba_falla` de web → api, con el comando, `resultado: falla`, fuente `hook` y `observado_en` | 1,3 s |
+| 4. Fila cambiada por otra persona | A cambia el puerto de api: `sin_confirmar`, `por: [persona-a]`, `faltan: [persona-b]` | **40,2 s** |
+| 5a. Propuesta de A para B | En `propuestas`, con `autor_git: persona-a` y `duenos: [persona-b]`, sin entrar en la lista | **60,8 s** |
+| 5b. B la pasa a Servicios | «datos» `confirmada` (`por: [persona-a, persona-b]`) y Propuestas vacía | **60,3 s** |
+| 6. Comando de Prueba cambiado (por B, uno de los dos dueños) | `sin_confirmar`, `faltan: [persona-a]` | **60,7 s** |
+| 7. Sha reescrito (dos commits de A, emitidos, juntados con `rebase -i` squash) | web `sin_confirmar`, y 75 s después sigue sin confirmar | **39,9 s** |
+| 8. Fila de un worker de B (`worktree-agent-w1`, `merge --no-ff`, push) | motor `confirmada`, `por: [persona-b]`, no de `/hack-scaffold`; el demonio de B consulta su `/salud` | **46,6 s** |
+| 9. Salud `http://127.0.0.1:<p>/salud` y `/../salud` | `formato_invalido` con la clave de la fila, `sin_confirmar`, `salud: null`; el demonio deja de consultar el puerto (0 peticiones en 35 s) | **46,2 s y 60,7 s** |
+
+**Por qué no cabe en 30 s:** los casos que llegan por un push (4–9) dependen de que el relay lea `servicios.md` de `origin/main`, y eso solo pasa en `Novedades.sondear`, una vez cada `NOVEDADES_S = 60` s (`hkos/relay.py:50`, `bucle_novedades`). Tardan, pues, entre 0 y 60 s más el recálculo: 15 s y 40 s en dos pasadas del mismo caso 4. Los que llegan por el demonio o por un hook (1–3) caben de sobra. **Sin arreglar** (decisión del usuario): o el criterio pasa a «≤ 30 s desde que el relay lee `origin/main`» (≤ 90 s desde el push), o el relay lee antes (p. ej., al recibir un `push` de un demonio).
+
+La primera pasada corrió en paralelo con la batería del criterio 1. Dio lo mismo, salvo el caso 2: falló porque la comprobación buscaba `suelto/nota.py` y el `arbol` trae `suelto/`. Era un error de la prueba, ya corregido.
+
+## Criterio 9 (`../prueba-m9a-03`, reto 03, coordinación activa)
+- `/hack-scaffold coordinación` sin stack: se para antes de crear nada y propone tres stacks (correcto, 0,29 USD). Con «python con uv + fastapi para el motor y react con vite para la web, coordinación» y los usuarios (A @Mveradc, B @hk-persona-b, C sin usuario): 1,36 USD.
+  - `servicios.md` con motor (`motor/`, 8000, `/api/salud`) y web (`web/`, 5173, `/`). Dueño «—». La conexión web → motor con el contrato «motor → web», que existe en `docs/contratos.md`, y Prueba «—»: el kit no tiene un comando que pruebe el contrato, así que no lo inventa. «Fuera de servicios» con `docs/`, `datos/`, `.claude/`, `.github/` y los ficheros de la raíz.
+  - El modelo dice que los puertos y las rutas de salud son los que respondieron en su comprobación del arranque.
+  - `hkos/servicios.py` lo lee sin errores: `fichero: ok`, sin desajustes y las dos filas confirmadas, de `/hack-scaffold`.
+- `/hack-plan` (0,73 USD): `autoridad.md` lleva la sección «Servicios (`.hackathon/servicios.md`)» con la regla de la plantilla. Con su reparto, motor queda de @mveradc y web de @hk-persona-b, las dos confirmadas; la conexión tiene los dos dueños y sale sin desajustes.
+- `/hack-pitch` (0,40 USD), solo para que `comprobar.py` vea la cadena entera. `comprobar.py`: A1 (24 IDs, T01–T24), A3, A4 y A5 pasan, y A6 y A7 no aplican.
+  - A2 falla por un **falso negativo de `comprobar.py`**: uvicorn imprime `http://127.0.0.1:8000` y `arranca.py` anuncia `http://localhost:8000/api/hola`. `urls_anunciadas` solo descarta la raíz si hay una URL más concreta con el mismo texto de origen, y `localhost` no es `127.0.0.1`, así que pide la raíz y recibe un 404. Los dos servicios responden. Sin arreglar: es de `evals/`, no del kit.
+
+## Sandbox (`Mveradc/hk-sandbox`, criterios 7 y 8)
+Clones `../prueba-m9a-sb-A` (@mveradc, con el relay de verdad: `hk-os relay`, sondeo de GitHub cada 30 s) y `../prueba-m9a-sb-B` (@hk-persona-b, con `GH_CONFIG_DIR` de su cuenta y `gh auth git-credential` como credencial de git del clon), unidos con `hk-os unir` y con los demonios lanzados por `scripts/os/arranque.sh`. En `main` del sandbox, `os.md` con `activa: sí` y `web_nueva: sí` (`37b8979`). Las acciones se llamaron como la web (`X-HK-Token`, JSON y Host local).
+- **Reclamar T11 (de @mveradc) desde B:** 409 «es de @mveradc según el plan»; el issue #31 sigue sin asignar.
+- **Reclamar T02 y T03 desde B:** 200. Los issues #22 y #23 quedan asignados a @hk-persona-b por su `gh` (el evento `assigned` de GitHub tiene a hk-persona-b como actor), y hay una línea en `acciones.jsonl`.
+  - Secuencia de T03, mirando cada 0,4 s: `lista` → a los ~3 s, «reclamada · web · declarado» en el relay y en `/v1/vista` del demonio (`estado_declarado: true`) → a los ~33 s, el sondeo de GitHub ve la asignación y pasa a «reclamada · github», sin declarado.
+  - Con T02, el sondeo llegó antes de la primera mirada (5 s).
+- **Sin GitHub** (`github: no` solo en el `os.md` de B, sin commit, y su demonio relanzado): Reclamar T04 da 200 con `issue: null`, deja el evento y la línea, y el #24 sigue sin asignar 45 s después. T04 sigue «reclamada · web · declarado».
+- **Anotar desde B:** una nota con salto de línea y una línea que empieza por `#`. 200 en 3,5 s, con el commit `dfeceac` en `main` del sandbox:
+  - la nota está en `.hackathon/criterios.md` de `origin/main` con hora, «Jurado de K-99 (jurado)», «Dónde» y «Anotado por: @hk-persona-b», en una línea y con el `#` dentro del texto;
+  - también añade la línea `merge=union` a `.gitattributes`, como está previsto;
+  - autor y committer: hk-persona-b, sin `Co-Authored-By`;
+  - índice, `git status` y HEAD de B, sin cambios;
+  - llega a las novedades del relay y al `estado-equipo.md` de A a los **55,4 s** del 200 (criterio: ≤ 60 s). El margen es poco: el relay solo hace fetch cada 60 s, como en el criterio 5, así que otra pasada puede pasarse por unos segundos.
+- **Pendiente: la prueba interactiva del turno** (criterio 8, el usuario).
+
+## Encontrado durante la prueba
+- **Criterio 5, tiempo:** arriba. Afecta también al margen de Anotar (≤ 60 s).
+- **`comprobar.py`, A2:** falso negativo con `localhost` frente a `127.0.0.1` (arriba).
+- **Windows, pruebas en paralelo:** dos procesos lanzados con `uv run` salieron con 127 a la vez: el relay del sandbox, en segundo plano, e `igualdad.py`, que ya había impreso «0 fallos». El Python hijo del relay siguió vivo (el puerto seguía ocupado). Sola, `igualdad.py` da 0. Parece el `uv` envoltorio muerto por fuera, quizá por un `taskkill /T` de otra prueba con un PID reutilizado. No se repitió sin pruebas en paralelo.
+- **Efectos de usar el sandbox como remoto de `../prueba-m9a-03`:**
+  - `/hack-scaffold` lanzó `buzon.sh preparar`, que creó o repasó las etiquetas en `Mveradc/hk-sandbox`;
+  - `/hack-plan` leyó el buzón del sandbox y citó la propuesta #7, escalada desde M6a.
+
+  Es lo esperado con la coordinación activa y ese remoto.
+
+## Gasto
+6,13 USD: `/hack-scaffold` 0,29 + 1,36, `/hack-plan` 0,73, `/hack-pitch` 0,40 y A6 de `comprobar.py` 3,35. En el sandbox: el commit de `os.md`, el de la nota, los issues #22 y #23 asignados a @hk-persona-b y las etiquetas.
