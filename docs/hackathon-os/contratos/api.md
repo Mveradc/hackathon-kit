@@ -226,6 +226,8 @@ TTL: actor sin latido en 90 s → `activo: false` (R-18). Reserva vencida → se
 
   Las reglas de confirmación y de desajustes son las de ADR-0011; el esquema, [estado.schema.json](estado.schema.json). Sin `servicios.md` en `origin/main`, `servicios` no aparece.
 
+  **Último bueno** (tras congelar, 2026-10-17, PR #21, issue #18, hallazgo 7): si `servicios.md` no se puede leer (falla la ref, `git ls-tree`, `git show` o `git log`), `Novedades._leer_servicios` devuelve `FALLO` y `Novedades.sondear` conserva el último `servicios` bueno; antes, el bloque desaparecía. Solo desaparece si el fichero ya no está (`ls-tree` sin salida). El último bueno **no** se marca como viejo: `fichero.observado_en` sigue siendo la hora del commit de `servicios.md` de esa lectura, no la de la lectura, `fuentes.git` solo cambia cuando falla el fetch, y no queda aviso ni línea en el log.
+
 Colisiones (M8g): las calcula `modelo.calcular` con `hkos/colisiones.py` y `hkos/contratos.py` (niveles 1 y 3, a partir de los eventos y de `docs/contratos.md` y `.hackathon/autoridad.md` de `origin/main` del clon del relay, leídos en el mismo bucle que las novedades). Con `publicar_wip: sí` en el `os.md` del relay y Git ≥ 2.38, un hilo trae `refs/hackathon/wip/*` a `refs/hackathon/relay-wip/*` de su clon cada 30 s y calcula el nivel 2 con `git merge-tree --write-tree --name-only` por pares de personas (`hkos/colisiones_merge.py`). Con un git más viejo, lo dice una vez al arrancar y sigue con los niveles 1 y 3. Un contrato sin dueño (o con más de una candidata) también se dice una vez. Definiciones en `diseno.md` §7.
 
 ## 4. Demonio local (`hk-os agente`)
