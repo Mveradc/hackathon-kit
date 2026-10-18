@@ -65,6 +65,7 @@ SOCKET_S = 10                    # issue #6: una petición a medias (cabeceras o
 STREAM_MAX = 8                   # clientes de /v1/stream a la vez (pestañas de la persona); el siguiente, 429
 CIERRE_S = 1                     # issue #15: cada cuánto mira /v1/stream si la pestaña ha cerrado, entre ping y ping
 DESCARTE_MAX = 64 * 1024         # issue #23: lo que un cliente de /v1/stream puede mandar de más antes de que se le cierre
+RETO = re.compile(r"[0-9a-f]{64}")   # decisión 7B (PR #13): X-HK-Reto de /salud, 32 bytes aleatorios en hex
 
 
 def git_comun(repo):
@@ -411,13 +412,20 @@ class Suscripcion:
 
 class SaludServicios:
     """M9a (api.md §4, ADR-0011): cada 15 s, puerto y salud de los servicios confirmados de esta persona, solo en
-    127.0.0.1. Emite `servicio.estado` una vez al arrancar y después solo cuando cambia (escucha, salud). Nunca ejecuta
-    Arranque ni Prueba, y no consulta filas sin confirmar, de otra persona o con un formato que no vale."""
+    127.0.0.1. Emite `servicio.estado` una vez al arrancar, cuando cambia (escucha, salud) y, sin cambios, cada
+    umbral_viejo_s / 2 (decisión 1B del PR #13): así «viejo» en la proyección quiere decir «sin comprobar», y un portátil
+    cerrado se nota. Nunca ejecuta Arranque ni Prueba, y no consulta filas sin confirmar, de otra persona o con un
+    formato que no vale."""
     CADA_S, CONEXION_S, HTTP_S, LEER_MAX = 15, 0.5, 2, 4096
 
     def __init__(self, ag):
         self.ag = ag
         self.ultimo, self.emitidos, self.cuando = {}, set(), -1e18   # lo último emitido por clave (servicios.json)
+        self.emitido_en = {}                                         # clave → reloj de su último servicio.estado
+
+    def latido_s(self):
+        """Cada cuánto sale `servicio.estado` aunque no cambie: la mitad del umbral_viejo_s de os.md."""
+        return self.ag.umbral_viejo_s / 2
 
     def candidatos(self, estado):
         s = (estado or {}).get("servicios") or {}
@@ -466,7 +474,7 @@ class SaludServicios:
     def ciclo(self):
         if self.ag.reloj() - self.cuando < self.CADA_S:
             return []
-        self.cuando = self.ag.reloj()
+        self.cuando = ahora = self.ag.reloj()
         with self.ag.lock:
             estado = self.ag.estado
         eventos = []
@@ -474,10 +482,11 @@ class SaludServicios:
             escucha, salud = self.comprobar(x["puerto"], x.get("salud"))
             k = x["clave"]
             valor = {"escucha": escucha, "salud": salud}
-            if k in self.emitidos and self.ultimo.get(k) == valor:
+            if (k in self.emitidos and self.ultimo.get(k) == valor
+                    and ahora - self.emitido_en.get(k, -1e18) < self.latido_s()):
                 continue
             self.emitidos.add(k)
-            self.ultimo[k] = valor
+            self.ultimo[k], self.emitido_en[k] = valor, ahora
             eventos.append({"v": 1, "id": f"demonio-{self.ag.persona}-servicio-{k}-{int(self.ag.reloj() * 1000)}",
                             "ts": self.ag.ahora(), "actor": {"persona": self.ag.persona, "papel": "demonio"},
                             "tipo": "servicio.estado", "fuente": "demonio",
@@ -583,6 +592,13 @@ class Agente:
 
     def token_valido(self, dado):
         return bool(self.web_token) and hmac.compare_digest((dado or "").encode("utf-8"), self.web_token.encode("utf-8"))
+
+    def prueba(self, reto):
+        """Decisión 7B (PR #13): X-HK-Prueba = HMAC-SHA256(web.token, reto) en hex. Solo quien tiene web.token la da:
+        `hk-os web` no manda el token a un impostor que escuche en el puerto. None sin web.token o con otro reto."""
+        if not self.web_token or not RETO.fullmatch(reto or ""):
+            return None
+        return hmac.new(self.web_token.encode("utf-8"), reto.encode("ascii"), hashlib.sha256).hexdigest()
 
     def a_la_web(self, evento, datos=None):
         """Un mensaje para los clientes de /v1/stream: `vista` (se calcula al enviarlo) o `eventos` (tal cual)."""
@@ -982,14 +998,24 @@ def manejador(agente):
             if not agente.web_nueva:
                 self._responde(404)
                 return False
-            puerto = self.server.server_address[1]
-            locales = {f"127.0.0.1:{puerto}", f"localhost:{puerto}"}
-            origen = self.headers.get("Origin")
-            if (self.headers.get("Host") or "").lower() not in locales or (
-                    origen is not None and origen.lower() not in {"http://" + h for h in locales}):
+            if not self._host_local():
                 self._json(403, {"error": "origen"})
                 return False
             return True
+
+        def _host_local(self):
+            puerto = self.server.server_address[1]
+            locales = {f"127.0.0.1:{puerto}", f"localhost:{puerto}"}
+            origen = self.headers.get("Origin")
+            return (self.headers.get("Host") or "").lower() in locales and (
+                origen is None or origen.lower() in {"http://" + h for h in locales})
+
+        def _salud(self):
+            """/salud, sin token, como siempre. Con X-HK-Reto, además X-HK-Prueba (Agente.prueba), solo con el Host y
+            el Origin locales de M9a: una página con DNS rebinding no saca firmas. El cuerpo no cambia."""
+            prueba = agente.prueba(self.headers.get("X-HK-Reto")) if self._host_local() else None
+            self._responde(200, agente.salud().encode("utf-8"), "text/plain; charset=utf-8",
+                           [("X-HK-Prueba", prueba)] if prueba else ())
 
         def _con_token(self, consulta):
             """El token, solo en X-HK-Token. Uno en la query (t=, token=) no vale nunca, ni con la cabecera buena."""
@@ -1101,7 +1127,7 @@ def manejador(agente):
 
         def do_GET(self):
             if self.path == "/salud":
-                self._responde(200, agente.salud().encode("utf-8"), "text/plain; charset=utf-8")
+                self._salud()
                 return
             if not self._local():
                 return
