@@ -54,6 +54,7 @@ REINTENTO_TOPE = 16             # vueltas, como mucho, entre dos intentos de lee
 RUTAS_MAX = 5000                # ficheros de origin/main para «código fuera de cualquier servicio»
 RECIENTES_MAX = 1000            # eventos guardados para el SSE `eventos` (M9a)
 EVENTOS_SSE_MAX = 200           # por mensaje (api.md §3)
+RESUMEN_MAX, AUTOR_MAX = 200, 60        # caracteres del resumen y del autor de una novedad (estado.schema.json)
 WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "index.html")
 TAILNET = ipaddress.ip_network("100.64.0.0/10")
 PRIVADAS = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
@@ -108,26 +109,35 @@ DECISION = re.compile(r"^- (\d{4}-\d\d-\d\d \d\d:\d\d) ([+-]\d{4}) · \[#(\d+)\]
 CRITERIO = re.compile(r"^## (\d{4}-\d\d-\d\d \d\d:\d\d) · (.+)$")
 
 
-def _con_lo_dicho(resumen, dijo, n=200):
+def _con_lo_dicho(resumen, dijo, n=RESUMEN_MAX):
     """«<resumen>: <lo que dijo>» en n caracteres como mucho. Unas palabras literales («…») se cortan por dentro, para
-    no perder la » de fuera (nota del PR #17); si no cabe ni una letra entre las comillas, solo el resumen."""
+    no perder la » de fuera (nota del PR #17); si no cabe ni una letra entre las comillas, solo el resumen. Lo demás lo
+    recorta proyeccion.equilibra, sin partir grafemas."""
     entero = f"{resumen}: {dijo}"
     if len(entero) <= n or len(dijo) < 2 or dijo[0] != "«" or dijo[-1] != "»":
-        return entero[:n]
+        return entero
     cabe = n - len(resumen) - 4
-    return f"{resumen}: «{dijo[1:-1][:cabe]}»" if cabe > 0 else resumen
+    return f"{resumen}: «{proyeccion.corta(dijo[1:-1], cabe, '')}»" if cabe > 0 else resumen
+
+
+def orden_unir(url, token):
+    """La orden que cada persona copia. Un token nuevo nunca empieza por «-» (Relay._token); uno viejo que sí, va
+    detrás de «--», para que argparse no lo tome por una opción (PR #24)."""
+    return f"hk-os unir {url} {'-- ' if token.startswith('-') else ''}{token}"
 
 
 def novedades_de(decisiones, criterios, tz=None):
     """Las entradas de decisiones.md (las escribe `buzon.sh acordar`) y de criterios.md (`/hack-note`) como
-    `novedades` de estado.json. Su texto es dato: el resumen va recortado y las vistas lo entrecomillan con su autor."""
+    `novedades` de estado.json. Su texto es dato: el resumen va recortado y las vistas lo entrecomillan con su autor.
+    Las comillas del resumen se equilibran aquí, en origen (proyeccion.equilibra, issue #23): la web lo pinta tal cual,
+    y el md, igual."""
     tz = tz or datetime.now().astimezone().tzinfo
     salida = []
     for linea in decisiones.splitlines():
         m = DECISION.match(linea.strip())
         if m:
             cuando = datetime.strptime(f"{m.group(1)} {m.group(2)}", "%Y-%m-%d %H:%M %z")
-            salida.append({"tipo": "decision", "resumen": f"#{m.group(3)}: {m.group(6).strip()}"[:200],
+            salida.append({"tipo": "decision", "resumen": f"#{m.group(3)}: {m.group(6).strip()}",
                            "autor": f"@{m.group(4)} ↔ @{m.group(5)}", "observado_en": iso(cuando)})
     nota = None
     for linea in criterios.splitlines() + ["## fin"]:
@@ -139,13 +149,17 @@ def novedades_de(decisiones, criterios, tz=None):
             nota = None
             if m:
                 cuando = datetime.strptime(m.group(1), "%Y-%m-%d %H:%M").replace(tzinfo=tz)
-                nota = {"tipo": "criterio", "resumen": m.group(2)[:200], "observado_en": iso(cuando)}
+                nota = {"tipo": "criterio", "resumen": proyeccion.equilibra(m.group(2), RESUMEN_MAX),
+                        "observado_en": iso(cuando)}
         elif nota and linea.startswith("- Qué dijo:"):
-            nota["resumen"] = _con_lo_dicho(nota["resumen"], linea[len("- Qué dijo:"):].strip())
+            dijo = proyeccion.equilibra(linea[len("- Qué dijo:"):], RESUMEN_MAX)
+            nota["resumen"] = _con_lo_dicho(nota["resumen"], dijo)
         elif nota and linea.startswith("- Anotado por:"):
             autor = linea[len("- Anotado por:"):].strip()
             if autor and autor != "—":
-                nota["autor"] = autor[:60]
+                nota["autor"] = proyeccion.corta(autor, AUTOR_MAX, "")
+    for n in salida:
+        n["resumen"] = proyeccion.equilibra(n["resumen"], RESUMEN_MAX)
     return salida
 
 
@@ -374,6 +388,8 @@ class Relay:
         except OSError:
             pass
         t = secrets.token_urlsafe(24)
+        while t.startswith("-"):           # 1 de cada 64: `hk-os unir <url> -…` lo tomaría por una opción (PR #24)
+            t = secrets.token_urlsafe(24)
         with open(ruta, "w", encoding="utf-8") as f:
             f.write(t + "\n")
         return t
@@ -929,7 +945,7 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
     aviso(f"Relay del Hackathon OS en {url} ({len(personas)} personas en coordinacion.md, "
           f"{len(relay.eventos)} eventos guardados).")
     aviso(f"Token: {relay.token}")
-    aviso(f"Cada persona, en su clon: hk-os unir {url} {relay.token}")
+    aviso(f"Cada persona, en su clon: {orden_unir(url, relay.token)}")
     aviso(f"Web (solo lectura, desde un navegador de la misma red): {url}/#t={relay.token}")
     try:
         servidor.serve_forever(poll_interval=0.5)

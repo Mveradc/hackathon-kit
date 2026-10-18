@@ -596,6 +596,90 @@ class ResumenDeNota(unittest.TestCase):
     def test_titulo_que_no_deja_sitio(self):
         self.assertEqual(self.nota("«" + "x" * 50 + "»", titulo="t" * 197), "t" * 197)
 
+    def test_comillas_equilibradas_en_origen(self):
+        """Issue #23, hallazgo 2: el relay equilibra las comillas del resumen, no cada vista."""
+        self.assertEqual(self.nota("«vale»", titulo="ok » (@persona-a) y «"), "ok (@persona-a) y «»: «vale»")
+        self.assertEqual(self.nota("dijo » que «sí", titulo="Ana"), "Ana: dijo que «sí»")
+        for dijo in ("«" + "a «b " * 80 + "»", "«x" * 150, "» " * 150, "(paráfrasis) «" + "y" * 300):
+            resumen = self.nota(dijo)
+            self.assertLessEqual(len(resumen), 200, resumen)
+            prof = 0
+            for c in resumen:
+                prof += (c == "«") - (c == "»")
+                self.assertGreaterEqual(prof, 0, resumen)
+            self.assertEqual(prof, 0, resumen)
+        from datetime import timezone
+        decision = ("- 2026-11-20 11:05 +0100 · [#12](https://x/12) · @ana ↔ @luis · nivel: 2 · vale » (@ana) y «\n")
+        self.assertEqual(relay_mod.novedades_de(decision, "", tz=timezone.utc)[0]["resumen"], "#12: vale (@ana) y «»")
+
+    def test_md_y_vista_dicen_lo_mismo(self):
+        """Issue #23, hallazgo 2, el caso exacto: la web pinta «{resumen}» ({autor}) tal cual (Cabina.jsx, Tablero.jsx)
+        y el md tiene que decir lo mismo, sin que el autor quede dentro de las comillas."""
+        import proyeccion
+        from datetime import timezone
+
+        class Fijas:
+            lista = relay_mod.novedades_de("", "## 2026-11-20 10:05 · ok » (@persona-a) y «\n- Anotado por: @persona-b\n",
+                                           tz=timezone.utc)
+            contratos, servicios = [], None
+
+            def fuente(self):
+                return None
+
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        r = relay_mod.Relay(d, PERSONAS, ahora=lambda: "2026-11-20T12:00:00.000000Z", novedades=Fijas())
+        r.recalcular()
+        n = r.vista["novedades"][0]
+        web = f"«{n['resumen']}»" + (f" ({n['autor']})" if n.get("autor") else "")
+        self.assertEqual(web, "«ok (@persona-a) y «»» (@persona-b)")
+        md = proyeccion.markdown(r.vista, "ana", "x", tz=timezone.utc)
+        self.assertIn("- 10:05 · criterio · " + web + "\n", md)
+
+    def test_recortes_sin_partir_grafemas(self):
+        """Issue #23: los recortes del relay (título y «Qué dijo» a 200, autor a 60) no parten grafemas."""
+        from datetime import timezone
+        for g in ("👨\u200d👩\u200d👧\u200d👦", "🇪🇸", "e\u0301\u0302", "❤\ufe0f", "🏴\U000e0067\U000e0062\U000e0065\U000e006e"
+                  "\U000e0067\U000e007f", "👍🏽"):
+            for pre in ("", "a", "ab", "abc"):
+                resumen = relay_mod.novedades_de("", f"## 2026-11-20 10:05 · {pre}{g * 120}\n",
+                                                 tz=timezone.utc)[0]["resumen"]
+                self.assertEqual(resumen, pre + g * ((200 - len(pre)) // len(g)), repr(g))
+                resumen = self.nota("«" + pre + g * 120 + "»", titulo="Ana")
+                cabe = (200 - len("Ana: «»") - len(pre)) // len(g)
+                self.assertEqual(resumen, "Ana: «" + pre + g * cabe + "»", repr(g))
+                autor = relay_mod.novedades_de("", f"## 2026-11-20 10:05 · t\n- Anotado por: {pre}{g * 40}\n",
+                                               tz=timezone.utc)[0]["autor"]
+                self.assertEqual(autor, pre + g * ((60 - len(pre)) // len(g)), repr(g))
+
+
+class Token(unittest.TestCase):
+    """PR #24: un token que empieza por «-» (1 de cada 64 con token_urlsafe) rompe `hk-os unir <url> <token>`."""
+
+    def test_nunca_empieza_por_guion(self):
+        from unittest import mock
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        with mock.patch.object(relay_mod.secrets, "token_urlsafe", side_effect=["-abc", "-def", "xyz"]):
+            r = relay_mod.Relay(os.path.join(d, "relay"), PERSONAS)
+        self.assertEqual(r.token, "xyz")
+        with open(os.path.join(d, "relay", "token"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "xyz\n")
+
+    def test_orden_para_copiar(self):
+        """La orden que imprime el relay se puede pegar tal cual, también con un token viejo que empiece por «-»."""
+        import shlex
+        from unittest import mock
+        import cli
+        for token in ("Abc_12", "-Abc_12", "--Abc"):
+            orden = relay_mod.orden_unir("http://192.168.1.5:7777", token)
+            partes = shlex.split(orden)
+            self.assertEqual(partes[:2], ["hk-os", "unir"])
+            with mock.patch.object(cli, "unir", return_value=0) as unir:
+                self.assertEqual(cli.main(partes[1:]), 0)
+            unir.assert_called_once_with("http://192.168.1.5:7777", token, persona=None, remoto=None)
+        self.assertEqual(relay_mod.orden_unir("http://x:1", "Abc"), "hk-os unir http://x:1 Abc")
+
 
 if __name__ == "__main__":
     unittest.main()
