@@ -474,6 +474,31 @@ def prueba_prueba(tmp):
               and crudo(r, dict(pasa, tool_input=dict(pasa["tool_input"], extra={"run_in_background": True})), "b15") == ["pasa"])
     comprueba("run_in_background dentro del texto de description: sigue dando «pasa»",
               crudo(r, dict(pasa, tool_input=dict(pasa["tool_input"], description='{"run_in_background": true}')), "b16") == ["pasa"])
+
+    # Issue #23 (hallazgo 19): tool_input que no es un objeto, y claves repetidas (vale la última, como JSON.parse).
+    def tal_cual(r, d, sid, cambia=lambda t: t):
+        lanza(PRUEBA, cambia(json.dumps(dict(d, session_id=sid, cwd=r))), r)
+        return [l and l["resultado"] for l in (valida(f"línea de prueba.sh ({sid})", x) for x in lineas(r).get(sid, []))]
+    ti = dict(pasa["tool_input"], command=pruebas[0])
+    comprueba("tool_input que no es un objeto (una lista con el objeto dentro, en segundo plano o no): nada",
+              tal_cual(r, dict(pasa, tool_input=[dict(ti, run_in_background=True)]), "c1") == []
+              and tal_cual(r, dict(pasa, tool_input=[ti]), "c2") == []
+              and tal_cual(r, dict(falla, tool_input=[ti]), "c3") == [])
+    dos = lambda a, b: lambda t: t.replace(f'"run_in_background": {a}', f'"run_in_background": {a}, "run_in_background": {b}')
+    comprueba("run_in_background repetida: vale la última (true y después false da «pasa»; false y después true, nada)",
+              tal_cual(r, dict(pasa, tool_input=dict(ti, run_in_background=True)), "c4", dos("true", "false")) == ["pasa"]
+              and tal_cual(r, dict(pasa, tool_input=dict(ti, run_in_background=False)), "c5", dos("false", "true")) == [])
+    comprueba("command repetida: cuenta la última (la Prueba y después otro comando: nada)",
+              tal_cual(r, dict(pasa, tool_input=ti), "c6", lambda t: t.replace(
+                  json.dumps({"command": pruebas[0]})[1:-1], json.dumps({"command": pruebas[0]})[1:-1] + ', "command": "echo otro"')) == [])
+    comprueba("backgroundTaskId repetida: vale la última (\"bk\" y después null da «pasa»)",
+              tal_cual(r, dict(pasa, tool_input=ti, tool_response=dict(pasa["tool_response"], backgroundTaskId="bk")), "c7",
+                       lambda t: t.replace('"backgroundTaskId": "bk"', '"backgroundTaskId": "bk", "backgroundTaskId": null')) == ["pasa"])
+    otro_ti = lambda b: lambda t: t.replace('"tool_response":', '"tool_input": ' + json.dumps(b) + ', "tool_response":', 1)
+    comprueba("tool_input repetido entero: vale el último (en segundo plano y después no, «pasa»; al revés, nada)",
+              tal_cual(r, dict(pasa, tool_input=dict(ti, run_in_background=True)), "c8", otro_ti(ti)) == ["pasa"]
+              and tal_cual(r, dict(pasa, tool_input=ti), "c9", otro_ti(dict(ti, run_in_background=True))) == []
+              and tal_cual(r, dict(pasa, tool_input=ti), "c10", otro_ti([ti])) == [])
     comprueba("otra herramienta: nada", lanzar(r, pasa, pruebas[0], "p8", tool_name="PowerShell") == [])
     sin_codigo = lanzar(r, falla, pruebas[0], "p9", error="Command failed")
     comprueba("PostToolUseFailure sin «Exit code N»: «falla» sin codigo",
@@ -1278,6 +1303,13 @@ def prueba_proyeccion(tmp):
     open(vivo, "w").write(f"47999\n{int(time.time()) - 600}\n")
     turno("sb")
     comprueba("agente.vivo de hace 10 min (murió sin borrarlo): lo borra y relanza", len(lanzados()) == 1 and not os.path.exists(vivo))
+    open(vivo, "w").write(f"47999\n{int(time.time()) + 3600}\n")
+    turno("sb")
+    comprueba("agente.vivo con la hora 1 h en el futuro (issue #23): lo borra y relanza", len(lanzados()) == 1 and not os.path.exists(vivo))
+    open(vivo, "w").write(f"47999\n{int(time.time()) + 2}\n")
+    turno("sb")
+    comprueba("…pero 2 s en el futuro (dentro del margen de 5 s) sigue siendo un latido: no lanza nada",
+              lanzados() == [] and os.path.exists(vivo))
     vivo_fresco()
     turno("sb")
     comprueba("agente.vivo fresco: no lanza nada", lanzados() == [])

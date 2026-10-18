@@ -20,6 +20,7 @@ PRESUPUESTO=2500   # R-24: el bloque del OS al empezar
 DELTA=600          # R-25: cada delta
 TOPE=6000          # R-25b: pasado esto, solo colisiones rojas nuevas
 VIVO_S=60          # agente.vivo se renueva cada 15 s: con más de 60, el demonio está muerto
+FUTURO_S=5         # y con la hora más de 5 s en el futuro, tampoco es un latido (issue #23, hallazgo 1)
 MD_VIEJO_S=120     # el md se reescribe cada 30 s: con más de 120, el demonio no lo actualiza
 VACIA=4f53cda18c2b # firma de una sección vacía (sha256 de «[]», como proyeccion.firmas)
 
@@ -180,14 +181,15 @@ os_entrada || exit 0
 entregado=$dir/entregado/$OS_SESION.firmas
 
 # Pendiente de M8d: una sesión quieta deja de estar activa a los 90 s y el demonio se apaga tras apagado_min. Si
-# agente.vivo falta o su hora tiene más de VIVO_S (murió sin borrarlo), se relanza. Solo si la persona del clon es
+# agente.vivo falta o su hora tiene más de VIVO_S (murió sin borrarlo) o está más de FUTURO_S en el futuro, se relanza
+# (arranque.sh no lanza otro si el demonio sigue vivo y contesta /salud). Solo si la persona del clon es
 # conocida (la caché de hk_yo que deja sesion.sh con la coordinación activa).
 vivo_t=
 if [[ -f $dir/agente.vivo ]]; then
   { IFS= read -r _; IFS= read -r vivo_t; } < "$dir/agente.vivo" 2>/dev/null
   vivo_t=${vivo_t%$'\r'}
 fi
-if ! [[ $vivo_t =~ ^[0-9]+$ ]] || (( EPOCHSECONDS - vivo_t > VIVO_S )); then
+if ! [[ $vivo_t =~ ^[0-9]{1,15}$ ]] || (( EPOCHSECONDS - 10#$vivo_t > VIVO_S || 10#$vivo_t - EPOCHSECONDS > FUTURO_S )); then
   os_persona
   if [[ -n $OS_PERSONA ]]; then
     [[ -f $dir/agente.vivo ]] && rm -f "$dir/agente.vivo"   # huérfano: arranque.sh no debe fiarse de él
