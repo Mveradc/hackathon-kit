@@ -44,11 +44,14 @@ USO = __doc__.split("\n\n", 1)[1]
 NO_RECOGER = {"token", "relay.url", "wip.index", "wip.pathspecs", "web.token", "nota.index", "web.html", "web.html.tmp",
               "token.tmp", "relay.url.tmp", "web.token.tmp"}
 TEMPORAL = re.compile(r"(\.\d+)?\.tmp$")    # el .tmp de permisos.escribe_privado y el .<pid>.tmp del demonio
-# agente.vivo se renueva cada 15 s: con más de 60, el demonio está muerto. El criterio de scripts/os/delta.sh (VIVO_S,
-# línea 22, y la comprobación de la línea 190).
+# agente.vivo se renueva cada 15 s: con más de 60, el demonio está muerto. El criterio de scripts/os/delta.sh (VIVO_S
+# y FUTURO_S, y la comprobación de vivo_t).
 VIVO_S = 60
+FUTURO_S = 5    # con la hora más de 5 s en el futuro, tampoco es un latido (issue #23, hallazgo 1)
 LINUX = sys.platform.startswith("linux")
 TCP_PROC = ("/proc/net/tcp", "/proc/net/tcp6")
+NO_ESTA = "el demonio de este clon no está en marcha. Se lanza al abrir una sesión de Claude Code aquí; después, " \
+          "vuelve a probar."
 
 
 def _principal(comun):
@@ -63,11 +66,11 @@ def _git(cwd, *args):
 
 def desfase(url, token):
     """Segundos que va adelantado este reloj respecto del relay (cabecera Date, resolución de 1 s); None si no responde."""
-    req = urllib.request.Request(url + "/v1/estado", headers={"Authorization": f"Bearer {token}"})
     try:
+        req = urllib.request.Request(url + "/v1/estado", headers={"Authorization": f"Bearer {token}"})
         with urllib.request.urlopen(req, timeout=5) as r:
             fecha = r.headers.get("Date")
-    except (OSError, ValueError):
+    except (OSError, ValueError):                  # ValueError: un relay.url que no es una URL (PR #22)
         return None
     try:
         return round(time.time() - parsedate_to_datetime(fecha).timestamp())
@@ -272,7 +275,7 @@ def recoger(cwd=".", destino=None, salida=print):
             with open(os.path.join(base, "token"), encoding="utf-8") as f:
                 token = f.read().strip()
             d = desfase(url, token)
-        except OSError:
+        except (OSError, ValueError):
             d = None
         z.writestr("desfase.txt", f"{d if d is not None else 'sin relay'}\n")
     salida(f"Recogidos {n} ficheros" + (f" y {vacias} carpetas vacías" if vacias else "")
@@ -310,8 +313,17 @@ A_127 = {socket.inet_pton(socket.AF_INET, d) for d in ("127.0.0.1", "0.0.0.0")} 
 def escucha_mia(puerto, tablas=None, uid=None):
     """Linux: ¿es de este usuario quien escucha (estado 0A) en 127.0.0.1:<puerto>? Mira /proc/net/tcp y tcp6. False si
     no hay nadie o si alguno es de otro uid; None si no se puede leer ninguna tabla (entonces vale solo la hora)."""
-    tablas = TCP_PROC if tablas is None else tablas
+    duenos = duenos_escucha(puerto, tablas)
+    if duenos is None:
+        return None
     uid = os.getuid() if uid is None else uid
+    return bool(duenos) and all(d == uid for d in duenos)
+
+
+def duenos_escucha(puerto, tablas=None):
+    """Los uid de quien escucha en 127.0.0.1:<puerto> según /proc/net/tcp y tcp6 (escucha_mia); None si no se puede
+    leer ninguna tabla."""
+    tablas = TCP_PROC if tablas is None else tablas
     duenos, leida = [], False
     for tabla in tablas:
         try:
@@ -328,9 +340,38 @@ def escucha_mia(puerto, tablas=None, uid=None):
                     duenos.append(int(c[7]))
             except (IndexError, ValueError, struct.error):
                 continue
-    if not leida:
-        return None
-    return bool(duenos) and all(d == uid for d in duenos)
+    return duenos if leida else None
+
+
+def _puerto_fiable(carpeta):
+    """Issue #15: quien conteste /salud en el puerto de un agente.vivo huérfano (reinicio, kill -9) recibiría el token.
+    Antes de nada, la hora de agente.vivo (ni vieja ni en el futuro) y, en Linux, que el puerto sea de este usuario.
+    (puerto, None) si se puede preguntar a /salud; si no, (None, motivo), con un motivo para cada caso (issue #23,
+    hallazgo 17). El reto en /salud, que lo cerraría del todo, cambia api.md §4 (pendiente)."""
+    try:
+        with open(os.path.join(carpeta, "agente.vivo"), encoding="utf-8") as f:
+            puerto = int(f.readline().strip())
+            hora = int(f.readline().strip())
+    except (OSError, ValueError):
+        return None, NO_ESTA
+    edad = int(time.time()) - hora                  # en segundos enteros, como EPOCHSECONDS en delta.sh
+    if edad > VIVO_S:
+        return None, (f"el demonio de este clon no ha latido en {edad} s; si acabas de despertar el portátil, espera "
+                      "15 s y vuelve a probar. Si no, se lanza al abrir una sesión de Claude Code aquí.")
+    if edad < -FUTURO_S:
+        return None, (f"la hora de agente.vivo está {-edad} s en el futuro: no me fío de que sea el demonio de este "
+                      "clon. Si acabas de cambiar la hora del portátil, espera 15 s a que el demonio vuelva a latir y "
+                      "prueba otra vez.")
+    duenos = duenos_escucha(puerto) if LINUX else None
+    if duenos == []:
+        return None, (f"no encuentro el puerto {puerto} en escucha en /proc/net/tcp (¿el demonio corre en otro "
+                      "espacio de nombres de red, como un contenedor?). Ábrela desde donde corre el demonio.")
+    otros = sorted({d for d in duenos or () if d != os.getuid()})
+    if otros:
+        return None, (f"el puerto {puerto} es de otro usuario (uid {', '.join(map(str, otros))}), no del demonio de "
+                      "este clon" + (" (65534 es «nobody»: puede ser otro espacio de nombres de usuario, como un "
+                                      "contenedor)" if 65534 in otros else "") + ".")
+    return puerto, None
 
 
 def web(cwd=".", abrir=None, salida=print):
@@ -344,25 +385,21 @@ def web(cwd=".", abrir=None, salida=print):
         salida("hk-os web: la web de trabajo está apagada en este clon: pon «web_nueva: sí» en .hackathon/os.md "
                "(y súbelo, es para todo el equipo).")
         return 1
-    # Issue #15: quien conteste /salud en el puerto de un agente.vivo huérfano (reinicio, kill -9) recibiría el token.
-    # Antes de nada, la hora de agente.vivo y, en Linux, que el puerto sea de este usuario. El reto en /salud, que lo
-    # cerraría del todo, cambia api.md §4 (pendiente).
-    try:
-        with open(os.path.join(carpeta, "agente.vivo"), encoding="utf-8") as f:
-            puerto = int(f.readline().strip())
-            hora = int(f.readline().strip())
-        if time.time() - hora > VIVO_S or (LINUX and escucha_mia(puerto) is False):
-            raise ValueError("agente.vivo viejo o puerto de otro usuario")
-        with urllib.request.urlopen(f"http://127.0.0.1:{puerto}/salud", timeout=2) as r:
-            primera = r.read().decode("utf-8", errors="replace").split("\n", 1)[0]
-    except (OSError, ValueError):
-        primera, puerto = "", None
-    esperada = f"hk-os {comun}"
-    if os.name == "nt":                                  # en Windows, sin distinguir mayúsculas (como el arranque)
-        primera, esperada = primera.lower(), esperada.lower()
-    if primera != esperada:
-        salida("hk-os web: el demonio de este clon no está en marcha. Se lanza al abrir una sesión de Claude Code "
-               "aquí; después, vuelve a probar.")
+    puerto, motivo = _puerto_fiable(carpeta)
+    if puerto is not None:
+        try:
+            with urllib.request.urlopen(f"http://127.0.0.1:{puerto}/salud", timeout=2) as r:
+                primera = r.read().decode("utf-8", errors="replace").split("\n", 1)[0]
+        except (OSError, ValueError):
+            primera, motivo = None, NO_ESTA
+        esperada = f"hk-os {comun}"
+        if os.name == "nt" and primera:                  # en Windows, sin distinguir mayúsculas (como el arranque)
+            primera, esperada = primera.lower(), esperada.lower()
+        if primera is not None and primera != esperada:
+            motivo = (f"en el puerto {puerto} contesta otro programa, no el demonio de este clon (como el «puerto "
+                      "ocupado» del arranque: pon puerto_agente: en .hackathon/os.md).")
+    if motivo:                                           # siempre sin mandar el token ni abrir el navegador
+        salida("hk-os web: " + motivo)
         return 1
     try:
         with open(os.path.join(carpeta, "web.token"), encoding="utf-8") as f:
@@ -404,6 +441,30 @@ def web(cwd=".", abrir=None, salida=print):
     return 0
 
 
+OPCIONES_UNIR = ("--persona", "--remoto")
+
+
+def _args_unir(resto):
+    """PR #24: el token del relay (token_urlsafe) empieza por «-» una vez de cada 64 y argparse lo tomaba por una
+    opción. Todo lo que no es --persona, --remoto (con su valor) ni -h/--help es posicional, empiece o no por «-»; un
+    «--» también vale, y detrás todo es posicional."""
+    opciones, posicionales, i = [], [], 0
+    while i < len(resto):
+        x = resto[i]
+        if x == "--":
+            posicionales += resto[i + 1:]
+            break
+        if x in OPCIONES_UNIR and i + 1 < len(resto):
+            opciones.append(f"{x}={resto[i + 1]}")
+            i += 1
+        elif x in ("-h", "--help") or x in OPCIONES_UNIR or x.startswith(tuple(o + "=" for o in OPCIONES_UNIR)):
+            opciones.append(x)
+        else:
+            posicionales.append(x)
+        i += 1
+    return opciones + ["--"] + posicionales
+
+
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else argv
     for flujo in (sys.stdout, sys.stderr):         # la consola de Windows (cp1252) no escribe «→» ni otros del plan
@@ -420,11 +481,14 @@ def main(argv=None):
         p.add_argument("token")
         p.add_argument("--persona")
         p.add_argument("--remoto")
-        a = p.parse_args(resto)
+        a = p.parse_args(_args_unir(resto))
         return unir(a.url, a.token, persona=a.persona, remoto=a.remoto)
     if orden == "relay":
         comun = agente.git_comun(".")
         principal = _principal(comun)
+        # PR #21: relay.py lee con --no-replace-objects; con esto, también los git de compilar.py y colisiones_merge.py
+        # que corren en el proceso del relay leen la historia real.
+        os.environ["GIT_NO_REPLACE_OBJECTS"] = "1"
         relay.main(["--dir", os.path.join(comun, "hackathon", "os", "relay"),
                     "--equipo", os.path.join(principal, ".hackathon", "coordinacion.md"),
                     "--os", os.path.join(principal, ".hackathon", "os.md"), *resto])

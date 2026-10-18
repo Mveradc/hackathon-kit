@@ -57,8 +57,11 @@ done < "$servicios" 2>/dev/null
 # 16 KB) como JSON, token a token, con las claves y las cadenas sin escapes (\u005f). Si tool_response no cabe en los
 # 16 KB, backgroundTaskId se busca también en OS_COLA. Sin procesos. Cada token se busca en una ventana del principio
 # (512 caracteres, ×4 si no cabe): la regex de MSYS recorre todo el texto aunque vaya anclada.
-en_fondo() {
-  local s=$entrada pila= k1= clave= valor= t v w n
+# Issue #23 (hallazgo 19): como JSON.parse, con una clave repetida vale la última (también tool_input o tool_response
+# enteros), y el comando que cuenta es tool_input.command. Si tool_input no es un objeto (una lista, por ejemplo) o su
+# command no es la Prueba encontrada, tampoco se escribe nada: ante la duda, ni «pasa» ni «falla».
+descartar() {
+  local s=$entrada pila= k1= clave= valor= t v w n fondo= tarea= tipo= orden= entera=
   local rp='^[[:space:]]*([][{}:,])' rs='^[[:space:]]*"([^"\\]*(\\.[^"\\]*)*)"' rl='^[[:space:]]*([A-Za-z0-9.+-]+)'
   while :; do
     n=512 t=
@@ -74,8 +77,13 @@ en_fondo() {
     [[ -n $t ]] || break
     s=${s:${#BASH_REMATCH[0]}}
     case $t in
-      '{'|'[') [[ $pila == '{' && -n $valor ]] && k1=$clave; pila+=$t valor= ;;
-      '}'|']') pila=${pila%?}; [[ -n $pila ]] || return 1; [[ $pila == '{' ]] && k1= ;;
+      '{'|'[')
+        if [[ $pila == '{' && -n $valor ]]; then
+          k1=$clave
+          case $k1 in tool_input) tipo=$t fondo= orden= ;; tool_response) tarea= ;; esac
+        fi
+        pila+=$t valor= ;;
+      '}'|']') pila=${pila%?}; [[ -n $pila ]] || { entera=1; break; }; [[ $pila == '{' ]] && k1= ;;
       :) valor=1 ;;
       ,) valor= ;;
       *)
@@ -83,16 +91,24 @@ en_fondo() {
         # solo si importan: un stdout de 16 KB no se toca.
         if [[ -z $valor ]]; then [[ $t == s && $pila == *'{' ]] && printf -v clave '%b' "${v//'\/'//}"; continue; fi
         valor=
+        if [[ $pila == '{' ]]; then   # un valor suelto en el primer nivel
+          case $clave in tool_input) tipo=$t fondo= orden= ;; tool_response) tarea= ;; esac
+          continue
+        fi
         [[ $pila == '{{' ]] || continue
         case $k1/$clave in
-          tool_input/run_in_background) [[ $t == s ]] && printf -v v '%b' "${v//'\/'//}"; [[ $v == true ]] && return 0 ;;
-          tool_response/backgroundTaskId) [[ -n $v && ! ( $t == l && ( $v == null || $v == false ) ) ]] && return 0 ;;
+          tool_input/run_in_background) [[ $t == s ]] && printf -v v '%b' "${v//'\/'//}"; fondo=; [[ $v == true ]] && fondo=1 ;;
+          tool_input/command)   # crudo y sin espacios a los lados, como $comando
+            orden=
+            if [[ $t == s ]]; then v=${v#"${v%%[![:space:]]*}"}; v=${v%"${v##*[![:space:]]}"}; [[ $v == "$comando" ]] && orden=1; fi ;;
+          tool_response/backgroundTaskId) tarea=; [[ -n $v && ! ( $t == l && ( $v == null || $v == false ) ) ]] && tarea=1 ;;
         esac ;;
     esac
   done
-  [[ $OS_COLA =~ \"backgroundTaskId\"[[:space:]]*:[[:space:]]*\"[^\"] ]]
+  [[ $tipo == '{' && -n $orden && -z $fondo && -z $tarea ]] || return 0
+  [[ -z $entera && $OS_COLA =~ \"backgroundTaskId\"[[:space:]]*:[[:space:]]*\"[^\"] ]]
 }
-en_fondo && exit 0
+descartar && exit 0
 
 if command -v sha256sum >/dev/null 2>&1; then
   huella=$(printf '%s' "$encontrada" | sha256sum)

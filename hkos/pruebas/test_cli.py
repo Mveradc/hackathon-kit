@@ -26,6 +26,7 @@ import zipfile
 from unittest import mock
 
 VIVO_S = 60   # el de delta.sh y cli.VIVO_S
+FUTURO_S = 5  # el de delta.sh y cli.FUTURO_S
 HKOS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HKOS)
 import cli  # noqa: E402
@@ -97,6 +98,13 @@ class Recoger(unittest.TestCase):
             self.assertFalse([n for n in nombres if b"secreto" in z.read(n)])
             self.assertIn("os/estado.json", nombres)
             self.assertIn("os/relay/eventos.jsonl", nombres)
+
+    def test_relay_url_que_no_es_una_url(self):
+        """PR #22: con un relay.url que no es una URL, urllib lanza ValueError (no OSError) y recoger se caía."""
+        for url in ("no-es-una-url", "ftp//x", ""):
+            self.escribe(os.path.join(self.os, "relay.url"), url + "\n")
+            with self.recoger() as z:
+                self.assertEqual(z.read("desfase.txt"), b"sin relay\n", url)
 
 
 class Navegador(unittest.TestCase):
@@ -186,12 +194,13 @@ class HkOsWebImpostor(unittest.TestCase):
         self.os = os.path.join(self.comun, "hackathon", "os")
         Recoger.escribe(os.path.join(self.os, "web.token"), "secreto-web\n")
         self.recibidos = recibidos = []
-        primera = f"hk-os {self.comun}\n".encode("utf-8")
+        self.primera = f"hk-os {self.comun}\n".encode("utf-8")
+        prueba = self
 
         class Impostor(http.server.BaseHTTPRequestHandler):
             def do_GET(self):
                 recibidos.append((self.path, self.headers.get("X-HK-Token")))
-                cuerpo = primera if self.path == "/salud" else b"{}"
+                cuerpo = prueba.primera if self.path == "/salud" else b"{}"
                 self.send_response(200)
                 self.send_header("Content-Length", str(len(cuerpo)))
                 self.end_headers()
@@ -218,38 +227,74 @@ class HkOsWebImpostor(unittest.TestCase):
             rc = cli.web(self.repo, abiertas.append, salida.append)
         return rc, abiertas, salida
 
-    def sin_token(self, rc, abiertas, salida):
+    def sin_token(self, rc, abiertas, salida, motivo="no está en marcha"):
         self.assertEqual(rc, 1)
         self.assertEqual(abiertas, [])
         self.assertFalse([r for r in self.recibidos if r[1]], "el token llegó al impostor")
-        self.assertIn("no está en marcha", salida[-1])
+        self.assertIn(motivo, salida[-1])
+        self.assertTrue(salida[-1].startswith("hk-os web: "), salida[-1])
+        self.assertFalse(any("secreto-web" in s for s in salida))
 
     def test_agente_vivo_viejo_no_manda_el_token(self):
         self.vivo(hace_s=VIVO_S + 30)                       # reinicio o kill -9: el fichero se quedó en disco
-        self.sin_token(*self.web())
+        rc, abiertas, salida = self.web()
+        self.sin_token(rc, abiertas, salida, "no ha latido en ")                     # issue #23, hallazgo 17
+        self.assertRegex(salida[-1], rf"no ha latido en ({VIVO_S + 30}|{VIVO_S + 31}) s")
+        self.assertIn("si acabas de despertar el portátil, espera 15 s", salida[-1])
         self.assertEqual(self.recibidos, [])                    # ni siquiera /salud
+
+    def test_agente_vivo_en_el_futuro_no_manda_el_token(self):
+        """Issue #23 (hallazgo 1): con la hora en el futuro, time.time() - hora salía negativo y pasaba el filtro."""
+        for hace_s in (-3600, -(FUTURO_S + 10)):
+            self.vivo(hace_s=hace_s)
+            rc, abiertas, salida = self.web()
+            self.sin_token(rc, abiertas, salida, " s en el futuro")
+            self.assertRegex(salida[-1], rf"\b({-hace_s}|{-hace_s - 1}) s en el futuro")
+            self.assertEqual(self.recibidos, [], hace_s)            # ni siquiera /salud
+
+    def test_agente_vivo_un_poco_en_el_futuro_abre(self):
+        """El margen: el reloj de quien escribe y el de quien lee pueden ir un segundo descompasados."""
+        self.vivo(hace_s=-(FUTURO_S - 3))
+        rc, abiertas, _ = self.web()
+        self.assertEqual((rc, abiertas), (0, [f"http://127.0.0.1:{self.puerto}/#t=secreto-web"]))
 
     def test_agente_vivo_sin_hora_no_manda_el_token(self):
         Recoger.escribe(os.path.join(self.os, "agente.vivo"), f"{self.puerto}\n")
         self.sin_token(*self.web())
 
+    def test_sin_agente_vivo_no_esta_en_marcha(self):
+        self.sin_token(*self.web())
+        self.assertEqual(self.recibidos, [])
+
+    def test_otro_programa_en_el_puerto_no_manda_el_token(self):
+        self.vivo()
+        self.primera = b"hk-os /otro/clon/.git\n"
+        self.sin_token(*self.web(), f"en el puerto {self.puerto} contesta otro programa")
+        self.assertEqual(self.recibidos, [("/salud", None)])
+
     def test_linux_puerto_de_otro_uid_no_manda_el_token(self):
         self.vivo()
         Recoger.escribe(self.tcp, tabla_tcp([("127.0.0.1", self.puerto, "0A", self.UID + 1)]))
-        self.sin_token(*self.web(linux=True))
+        self.sin_token(*self.web(linux=True), f"el puerto {self.puerto} es de otro usuario (uid {self.UID + 1})")
+        self.assertEqual(self.recibidos, [])
 
     def test_linux_puerto_de_otro_uid_en_tcp6_no_manda_el_token(self):
         self.vivo()
         Recoger.escribe(self.tcp, tabla_tcp([("127.0.0.1", self.puerto, "0A", self.UID)]))
         Recoger.escribe(self.tcp6, tabla_tcp([("::", self.puerto, "0A", self.UID + 1)], v6=True))
-        self.sin_token(*self.web(linux=True))
+        self.sin_token(*self.web(linux=True), "es de otro usuario")
+
+    def test_linux_uid_65534_dice_que_puede_ser_otro_espacio_de_nombres(self):
+        self.vivo()
+        Recoger.escribe(self.tcp, tabla_tcp([("127.0.0.1", self.puerto, "0A", 65534)]))
+        self.sin_token(*self.web(linux=True), "otro espacio de nombres de usuario")
 
     def test_linux_sin_nadie_en_escucha_no_manda_el_token(self):
         self.vivo()
         Recoger.escribe(self.tcp, tabla_tcp([("127.0.0.1", self.puerto, "01", self.UID + 1),     # conexión, no escucha
                                              ("127.0.0.1", self.puerto + 1, "0A", self.UID),
                                              ("10.0.0.5", self.puerto, "0A", self.UID)]))
-        self.sin_token(*self.web(linux=True))
+        self.sin_token(*self.web(linux=True), f"no encuentro el puerto {self.puerto} en escucha")
 
     def test_linux_puerto_propio_abre(self):
         self.vivo()
@@ -332,6 +377,87 @@ class UnirPermisos(unittest.TestCase):
         self.assertEqual(sorted(os.listdir(self.os)), ["relay.url", "token"])
         with open(os.path.join(self.os, "token"), encoding="utf-8") as f:
             self.assertEqual(f.read(), "otro\n")
+
+
+class UnirArgumentos(unittest.TestCase):
+    """PR #24: token_urlsafe da un token que empieza por «-» una vez de cada 64, y argparse lo tomaba por una opción
+    («the following arguments are required: token»). La forma documentada, hk-os unir <url> <token>, no cambia."""
+    URL = "http://127.0.0.1:7777"
+
+    def unir(self, *argv):
+        with mock.patch.object(cli, "unir", return_value=0) as u:
+            self.assertEqual(cli.main(["unir", *argv]), 0)
+        u.assert_called_once()
+        return u.call_args.args, u.call_args.kwargs
+
+    def test_token_con_guion_delante(self):
+        sin_mas = {"persona": None, "remoto": None}
+        for argv, args, kwargs in (
+                ((self.URL, "-Abc123_x"), (self.URL, "-Abc123_x"), sin_mas),
+                ((self.URL, "--", "-Abc123_x"), (self.URL, "-Abc123_x"), sin_mas),
+                (("--", self.URL, "-Abc123_x"), (self.URL, "-Abc123_x"), sin_mas),
+                ((self.URL, "--Abc123_x"), (self.URL, "--Abc123_x"), sin_mas),
+                ((self.URL, "-Abc123_x", "--persona", "@ana"), (self.URL, "-Abc123_x"), {"persona": "@ana", "remoto": None}),
+                (("--persona", "ana", self.URL, "--", "-Abc123_x"), (self.URL, "-Abc123_x"), {"persona": "ana", "remoto": None}),
+                ((self.URL, "--remoto=http://127.0.0.1:7778/equipo.git", "-Abc123_x"), (self.URL, "-Abc123_x"),
+                 {"persona": None, "remoto": "http://127.0.0.1:7778/equipo.git"}),
+                ((self.URL, "-Abc123_x", "--remoto", "http://127.0.0.1:7778/equipo.git", "--persona", "ana"),
+                 (self.URL, "-Abc123_x"), {"persona": "ana", "remoto": "http://127.0.0.1:7778/equipo.git"})):
+            self.assertEqual(self.unir(*argv), (args, kwargs), argv)
+
+    def test_lo_que_ya_valia_sigue_igual(self):
+        self.assertEqual(self.unir(self.URL, "Abc123_x"), ((self.URL, "Abc123_x"), {"persona": None, "remoto": None}))
+        for argv in ((self.URL,), (self.URL, "a", "b"), (self.URL, "a", "--persona")):
+            with self.subTest(argv=argv), contextlib.redirect_stderr(io.StringIO()), \
+                    mock.patch.object(cli, "unir") as u, self.assertRaises(SystemExit) as ex:
+                cli.main(["unir", *argv])
+            self.assertEqual(ex.exception.code, 2)
+            u.assert_not_called()
+
+    def test_el_token_con_guion_llega_al_fichero(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        git(d, "init", "-q", "-b", "main", "repo")
+        repo = os.path.join(d, "repo")
+        with socket.socket() as s:                              # un puerto cerrado: el relay no responde
+            s.bind(("127.0.0.1", 0))
+            puerto = s.getsockname()[1]
+        unir = cli.unir
+        with mock.patch.object(cli, "unir", side_effect=lambda *a, **k: unir(*a, cwd=repo, salida=lambda *_: None, **k)), \
+                contextlib.redirect_stderr(io.StringIO()):
+            self.assertEqual(cli.main(["unir", f"http://127.0.0.1:{puerto}", "-Abc123_x"]), 1)
+        with open(os.path.join(repo, ".git", "hackathon", "os", "token"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "-Abc123_x\n")
+
+
+class RelaySinReemplazos(unittest.TestCase):
+    """PR #21: relay.py lee con --no-replace-objects, pero compilar.py y colisiones_merge.py también leen git en el
+    proceso del relay. hk-os relay arranca con GIT_NO_REPLACE_OBJECTS=1, que heredan todos sus git."""
+
+    def test_relay_arranca_con_git_no_replace_objects(self):
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        git(d, "init", "-q", "-b", "main", "repo")
+        repo = os.path.join(d, "repo")
+        for k, v in (("user.name", "x"), ("user.email", "x@example.com")):
+            git(repo, "config", k, v)
+        git(repo, "commit", "-q", "--allow-empty", "-m", "real")
+        real = git(repo, "rev-parse", "HEAD")
+        git(repo, "commit", "-q", "--allow-empty", "-m", "falso")
+        git(repo, "replace", real, git(repo, "rev-parse", "HEAD"))
+        self.assertEqual(git(repo, "log", "-1", "--format=%s", real), "falso")    # control: el reemplazo se ve
+        import colisiones_merge  # noqa: PLC0415
+        leido = {}
+
+        def relay_main(argv):
+            leido["entorno"] = os.environ.get("GIT_NO_REPLACE_OBJECTS")
+            leido["compilar"] = cli.compilar._git(repo, "log", "-1", "--format=%s", real)
+            leido["merge"] = colisiones_merge.ejecutar(repo, "log", "-1", "--format=%s", real)[1].strip()
+        with mock.patch.dict(os.environ), mock.patch.object(cli.relay, "main", side_effect=relay_main), \
+                mock.patch.object(cli.agente, "git_comun", return_value=os.path.join(repo, ".git").replace("\\", "/")):
+            os.environ.pop("GIT_NO_REPLACE_OBJECTS", None)
+            self.assertEqual(cli.main(["relay", "--puerto", "7777"]), 0)
+        self.assertEqual(leido, {"entorno": "1", "compilar": "real", "merge": "real"})
 
 
 if __name__ == "__main__":
