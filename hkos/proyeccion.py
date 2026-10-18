@@ -9,6 +9,7 @@ El texto que viene del plan o de los issues (títulos, novedades) es dato: va en
 """
 import hashlib
 import json
+import unicodedata
 from datetime import timezone
 
 from estados import fecha
@@ -29,6 +30,7 @@ FUENTE_VIEJA_S = 300                    # R-12: GitHub o relay con más de 5 (um
 NOVEDADES_MAX = 5
 LINEA_MAX = 160                         # api.md §6
 SEP, SALTO = chr(9), chr(10)            # reservas.tsv: tabulador entre campos, una ruta por línea
+ZWJ = "\u200d"
 
 
 def _edad(ts, ahora):
@@ -186,20 +188,64 @@ def _hora(ts, tz):
     return fecha(ts).astimezone(tz).strftime("%H:%M")
 
 
-def _corta(texto, n):
-    return texto if len(texto) <= n else texto[:n - 1] + "…"
+def _pega(antes, c):
+    """¿Va c en el mismo grafema que `antes` (el que se está formando)? UAX #29 simplificado, con unicodedata: detrás
+    de un ZWJ, una marca combinante (con los selectores de variante), un modificador de tono, una etiqueta (U+E0020–
+    E007F) o el segundo indicador regional de un par no hay corte."""
+    o = ord(c)
+    return (antes[-1] == ZWJ or c == ZWJ or unicodedata.category(c) in ("Mn", "Mc", "Me") or 0x1F3FB <= o <= 0x1F3FF
+            or 0xE0020 <= o <= 0xE007F or (len(antes) == 1 and _regional(antes) and _regional(c)))
 
 
-def _linea(texto):
-    return _corta(" ".join(texto.split()), LINEA_MAX)
+def _regional(c):
+    return 0x1F1E6 <= ord(c) <= 0x1F1FF
 
 
-def _entrecomilla(texto, n):
-    """«texto», recortado a n caracteres antes de entrecomillarlo y con sus comillas de dentro equilibradas: una » sin
-    su « se quita y cada « que el recorte deja abierta se cierra antes de la » de fuera. Así el texto nunca sale de sus
-    comillas ni se lleva dentro lo que va detrás, como el autor (constitución V, nota del PR #16)."""
+def grafemas(texto):
+    """Los grafemas de texto, uno a uno (issue #23: ningún recorte los parte)."""
+    actual = ""
+    for c in texto:
+        if actual and _pega(actual, c):
+            actual += c
+            continue
+        if actual:
+            yield actual
+        actual = c
+    if actual:
+        yield actual
+
+
+def corta(texto, n, marca="…"):
+    """texto en n caracteres como mucho (con la marca, si se corta), sin partir grafemas."""
+    if len(texto) <= n:
+        return texto
+    salida, largo = [], len(marca)
+    for g in grafemas(texto[:n + 1]):      # el grafema que pasa de n no cabe, aunque siga más allá
+        if largo + len(g) > n:
+            break
+        salida.append(g)
+        largo += len(g)
+    return "".join(salida) + marca
+
+
+def _abiertas(texto):
+    """Las « que quedan sin cerrar (una » de más no cuenta)."""
+    prof = 0
+    for c in texto:
+        if c == "«":
+            prof += 1
+        elif c == "»" and prof:
+            prof -= 1
+    return prof
+
+
+def equilibra(texto, n):
+    """El resumen de una novedad tal como lo enseñan todas las vistas (issue #23). Lo calcula el relay, en origen, y la
+    web y el md lo pintan igual entre «» y con su autor detrás (constitución IV y V, ADR-0009): espacios normalizados,
+    sin » sueltas (una » sin su « se quita), cada « abierta cerrada al final y en n caracteres como mucho, contando esos
+    cierres y sin partir grafemas."""
     salida, prof = [], 0
-    for c in _corta(" ".join(texto.split()), n):
+    for c in " ".join(texto.split()):
         if c == "»":
             if not prof:
                 continue
@@ -207,7 +253,24 @@ def _entrecomilla(texto, n):
         elif c == "«":
             prof += 1
         salida.append(c)
-    return "«" + "".join(salida) + "»" * prof + "»"
+    texto = " ".join("".join(salida).split())
+    corte, m = corta(texto, n, ""), n
+    while len(corte) + _abiertas(corte) > n:
+        m -= 1
+        corte = corta(texto, m, "")
+    return corte + "»" * _abiertas(corte)
+
+
+def _linea(texto):
+    return corta(" ".join(texto.split()), LINEA_MAX)
+
+
+def _entrecomilla(texto, n):
+    """«texto», recortado a n caracteres antes de entrecomillarlo, sin partir grafemas. El texto ya llega equilibrado
+    del relay (equilibra), así que solo se recorta: cada « que el recorte deja abierta se cierra antes de la » de fuera
+    y el texto no se lleva dentro lo que va detrás, como el autor (constitución V, nota del PR #16)."""
+    corte = corta(" ".join(texto.split()), n)
+    return "«" + corte + "»" * _abiertas(corte) + "»"
 
 
 def _cuando(x, ahora, tz, vieja_s=None):
@@ -218,7 +281,7 @@ def _cuando(x, ahora, tz, vieja_s=None):
 def lineas_tarea(t, v, tz):
     """Una línea de «Tu trabajo»: «T07 «…» · en curso (18:40 · hook) · bloquea a T09»."""
     declarado = " · declarado" if t.get("estado_declarado") else ""
-    texto = f"{t['id']} «{_corta(t['titulo'], 70)}» · {t['etiqueta']} ({_cuando(t, v['ahora'], tz)}{declarado})"
+    texto = f"{t['id']} «{corta(t['titulo'], 70)}» · {t['etiqueta']} ({_cuando(t, v['ahora'], tz)}{declarado})"
     if t.get("declarado"):
         texto += f" · ⚑ {ETIQUETAS.get(t['declarado'], t['declarado'])} a mano"
     for d in t.get("cumplidas_por_cierre", []):
@@ -233,7 +296,7 @@ def lineas_tarea(t, v, tz):
 
 
 def linea_colision(c, tz):
-    que = f" · contrato «{_corta(c['contrato'], 40)}»" if c.get("contrato") else ""
+    que = f" · contrato «{corta(c['contrato'], 40)}»" if c.get("contrato") else ""
     rutas = ", ".join(c["rutas"][:3]) + (f" (+{len(c['rutas']) - 3})" if len(c["rutas"]) > 3 else "")
     personas = ", ".join("@" + p for p in c["personas"])
     return "- " + _linea(f"{c['gravedad'].upper()} · nivel {c['nivel']}{que} · {rutas} · {personas} "
