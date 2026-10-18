@@ -16,6 +16,8 @@ import stat
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 import zipfile
 
@@ -157,6 +159,62 @@ class Comun:
         self.assertPrivado(ruta)
         self.assertEqual(sorted(n for n in os.listdir(os.path.dirname(ruta)) if n.startswith("web.token")),
                          ["web.token"])
+
+    @unittest.skipUnless(WINDOWS, "solo Windows: en POSIX un fichero abierto no impide os.replace")
+    def test_destino_abierto_un_momento(self):
+        """Issue #27: con el destino abierto en otro proceso (aquí, un open() vivo de Python, que no pide
+        FILE_SHARE_DELETE, como el demonio o el MCP al leer token y relay.url), os.replace daba WinError 5 a la primera.
+        Ahora espera: el lector suelta a los 0,3 s y el fichero queda escrito, privado y sin temporal."""
+        escribe_normal(self.ruta("secreto"), "viejo\n")
+        lector = open(self.ruta("secreto"), encoding="utf-8")
+        self.addCleanup(lector.close)
+        threading.Timer(0.3, lector.close).start()
+        permisos.escribe_privado(self.ruta("secreto"), "nuevo\n")
+        self.assertPrivado(self.ruta("secreto"))
+        with open(self.ruta("secreto"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "nuevo\n")
+        self.assertEqual(sorted(os.listdir(self.carpeta)), ["secreto"])
+
+    @unittest.skipUnless(WINDOWS, "solo Windows: en POSIX un fichero abierto no impide os.replace")
+    def test_destino_abierto_todo_el_rato(self):
+        """Issue #27: si el lector no suelta, se rinde pasado REEMPLAZO_S, con el fichero como estaba y sin .tmp."""
+        escribe_normal(self.ruta("secreto"), "viejo\n")
+        with open(self.ruta("secreto"), encoding="utf-8"):
+            t0 = time.monotonic()
+            with self.assertRaises(PermissionError):
+                permisos.escribe_privado(self.ruta("secreto"), "nuevo\n")
+            self.assertLess(time.monotonic() - t0, getattr(permisos, "REEMPLAZO_S", 0) + 5)
+        with open(self.ruta("secreto"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "viejo\n")
+        self.assertEqual(sorted(os.listdir(self.carpeta)), ["secreto"])
+
+    @unittest.skipUnless(WINDOWS, "solo Windows: en POSIX un fichero abierto no impide os.replace")
+    def test_unir_con_el_token_abierto(self):
+        """Issue #27, el caso del issue: `hk-os unir` con `token` abierto. Antes: traceback, relay.url nueva con el token
+        viejo (401 contra el relay nuevo) y token.tmp olvidado. Ahora, los dos como estaban, sin .tmp, y sale con 1.
+        Con el token abierto solo un momento, los dos nuevos."""
+        repo = self.ruta("repo")
+        git("init", "-q", repo)
+        os_dir = os.path.join(repo, ".git", "hackathon", "os")
+        escribe_normal(os.path.join(os_dir, "relay.url"), "http://10.0.0.1:7777\n")
+        escribe_normal(os.path.join(os_dir, "token"), "viejo\n")
+
+        def leidos():
+            salida = {}
+            for n in sorted(os.listdir(os_dir)):
+                with open(os.path.join(os_dir, n), encoding="utf-8") as f:
+                    salida[n] = f.read()
+            return salida
+        with open(os.path.join(os_dir, "token"), encoding="utf-8"):
+            self.assertEqual(unir(repo, "nuevo"), 1)
+        self.assertEqual(leidos(), {"relay.url": "http://10.0.0.1:7777\n", "token": "viejo\n"})
+        lector = open(os.path.join(os_dir, "token"), encoding="utf-8")
+        self.addCleanup(lector.close)
+        threading.Timer(0.3, lector.close).start()
+        self.assertEqual(unir(repo, "nuevo"), 1)                            # 1: el relay no responde
+        nuevos = leidos()
+        self.assertEqual((sorted(nuevos), nuevos["token"]), (["relay.url", "token"], "nuevo\n"))
+        self.assertTrue(nuevos["relay.url"].startswith("http://127.0.0.1:"))
 
     @unittest.skipIf(WINDOWS, "en Windows el navegador recibe la URL y no hay web.html")
     def test_web_html_privado(self):
