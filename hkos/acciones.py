@@ -53,10 +53,12 @@ FALLIDO = "reclamo_fallido"      # línea de acciones.jsonl de un `gh issue edit
 FALLIDO_SOLO_RECHAZO = False
 RECHAZO_GH = re.compile(r"(?:^|: )(?:GraphQL: |HTTP 4[0-9]{2}\b)", re.M)
 REPO = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$")
-# Además de Cc, Cf (formato: dirección, BOM, anchura cero, etiquetas U+E00xx…) salvo el ZWJ de los emojis, y Cs (un
-# surrogate suelto de `json.loads` se codificaría como bytes crudos: `\udcc2\udcbb` llegaría a main como «»»). Más los
-# invisibles que no son Cf: el CGJ, los rellenos de hangul y las etiquetas sin asignar.
+# Además de Cc, Cf (formato: dirección, BOM, anchura cero, etiquetas U+E00xx…) salvo el ZWJ de los emojis y el ZWNJ
+# (en persa o hindi cambia cómo se escribe la palabra; decisión 16B del PR #13), y Cs (un surrogate suelto de
+# `json.loads` se codificaría como bytes crudos: `\udcc2\udcbb` llegaría a main como «»»). Más los invisibles que no
+# son Cf: el CGJ, los rellenos de hangul y las etiquetas sin asignar.
 QUITAR = {"Cc", "Cf", "Cs"}
+QUEDAN = "\u200c\u200d"          # ZWNJ y ZWJ
 INVISIBLES = re.compile("[\u034f\u115f\u1160\u3164\U000e0000-\U000e007f]")
 # Las comillas de las vistas (constitución V: una nota no puede cerrar las suyas en estado-equipo.md), también escritas
 # como entidad HTML.
@@ -72,7 +74,7 @@ def sanear(texto):
     """Una sola línea (api.md §4): saltos y tabuladores a un espacio, espacios repetidos a uno, sin caracteres de
     control ni invisibles, sin «», sin HTML y sin `#` ni `>` al principio (no abre un título ni una cita)."""
     t = "".join(" " if c in "\r\n\t\v\f\x85\u2028\u2029" else c for c in texto)
-    t = INVISIBLES.sub("", "".join(c for c in t if c == "\u200d" or unicodedata.category(c) not in QUITAR))
+    t = INVISIBLES.sub("", "".join(c for c in t if c in QUEDAN or unicodedata.category(c) not in QUITAR))
     previo = None
     while previo != t:                     # hasta que no quede nada: quitar «» de «<«!--» deja otro «<!--»
         previo, t = t, HTML.sub(lambda m: m.group(1) or "\u2039", COMILLAS.sub("", t))

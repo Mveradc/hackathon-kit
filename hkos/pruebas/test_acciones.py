@@ -252,9 +252,9 @@ class Anotar(Base):
 
     def test_saneado_issue_18(self):
         s = acciones_mod.sanear
-        # 5: toda la categoría Cf salvo el ZWJ, las etiquetas U+E0000–E007F, el CGJ y los rellenos de hangul.
+        # 5: toda la categoría Cf salvo el ZWJ y el ZWNJ, las etiquetas U+E0000–E007F, el CGJ y los rellenos de hangul.
         self.assertEqual(s("hola\U000E0049\U000E0047\U000E004E\U000E0001\U000E007F"), "hola")
-        self.assertEqual(s("a\u00adb\u180ec\u034fd\u3164e\u115ff\u1160g\u200ch\U0001D173i\u2061j"), "abcdefghij")
+        self.assertEqual(s("a\u00adb\u180ec\u034fd\u3164e\u115ff\u1160gh\U0001D173i\u2061j"), "abcdefghij")
         self.assertEqual(s("👩‍💻 👨‍👩‍👧 ❤️"), "👩‍💻 👨‍👩‍👧 ❤️")                 # el ZWJ y el VS16 se quedan
         # 6: lo que no es HTML para GitHub no se rompe, y el HTML no vuelve.
         self.assertEqual(s("si a<b y c>d entonces"), "si a‹b y c>d entonces")
@@ -264,6 +264,17 @@ class Anotar(Base):
             r = s(t)
             sin_enlaces = re.sub(r"<[A-Za-z][A-Za-z0-9+.-]{1,31}:[^\s<>]*>", "", r)
             self.assertIsNone(re.search(r"<[A-Za-z/!?]", sin_enlaces), (t, r))
+
+    def test_zwnj_se_queda(self):
+        """Decisión 16B (PR #13): el ZWNJ (U+200C) se queda, como el ZWJ. En persa («می‌خواهم») y en hindi («क्‌ष»)
+        cambia cómo se escribe la palabra. Lo demás del saneado sigue igual, y la nota llega así a main."""
+        s = acciones_mod.sanear
+        persa, hindi = "\u0645\u06cc\u200c\u062e\u0648\u0627\u0647\u0645", "\u0915\u094d\u200c\u0937"
+        for t in (persa, hindi):
+            self.assertEqual(s(t), t)
+            self.assertEqual(s(f"# «{t}»\u200b\u200e <!--"), f"{t} ‹!--")
+        self.assertEqual(self.ag.accion("/v1/anotar", dict(NOTA, que_dijo=f"{persa} y {hindi}"))[0], 200)
+        self.assertIn(f"- Qué dijo: «{persa} y {hindi}»\n", self.main_remoto(".hackathon/criterios.md"))
 
     def test_surrogates_sueltos(self):
         """El caso del issue #18: `json.loads` acepta surrogates sueltos y `anadir` los codificaba como bytes crudos
