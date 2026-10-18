@@ -148,6 +148,27 @@ class Token(Base):
         self.assertEqual(os.stat(os.path.join(self.dir, "web.token")).st_mode & 0o777, 0o600)
         self.assertNotEqual(otro.web_token, self.a.web_token)
 
+    def test_token_y_relay_url_de_antes_quedan_privados(self):
+        """PR #22: un `token` o un `relay.url` de antes (0644, o en Windows con el ACL heredado de la carpeta) seguían
+        así hasta el siguiente `hk-os unir`. Ahora el demonio los reescribe al arrancar solo para su usuario, con el
+        mismo contenido byte a byte."""
+        contenidos = {"token": b"abc123\r\n", "relay.url": b"http://127.0.0.1:47999\n"}
+        for nombre, datos in contenidos.items():
+            ruta = os.path.join(self.dir, nombre)
+            with open(ruta, "wb") as f:
+                f.write(datos)
+            if os.name != "nt":
+                os.chmod(ruta, 0o644)
+            if agente_mod.permisos.es_privado(ruta):
+                self.skipTest("aquí un fichero nuevo ya nace privado")
+        agente_mod.Agente(self.repo, PERSONA, reloj=self.reloj, ahora=lambda: self.ahora)
+        for nombre, datos in contenidos.items():
+            ruta = os.path.join(self.dir, nombre)
+            self.assertTrue(agente_mod.permisos.es_privado(ruta), nombre)
+            with open(ruta, "rb") as f:
+                self.assertEqual(f.read(), datos)
+        self.assertEqual([n for n in os.listdir(self.dir) if n.endswith(".tmp")], [])
+
 
 class Seguridad(Base):
     """Criterio 6 de M9a (ADR-0010), en el proceso; evals/coordinacion/acciones_seguridad.py lo repite en vivo."""
@@ -444,6 +465,57 @@ class Suscripcion(Base):
         c.close()
         self.assertTrue(self.esperar(lambda: self.a.web_clientes == agente_mod.STREAM_MAX - 1, s=4))
         self.stream_del_demonio()
+
+    def stream_crudo(self):
+        """Un /v1/stream por un socket a pelo, ya con las cabeceras de la respuesta leídas (sin estado, el demonio no
+        manda nada más hasta el ping)."""
+        s = socket.create_connection(("127.0.0.1", self.puerto), timeout=10)
+        self.addCleanup(s.close)
+        s.sendall(f"GET /v1/stream HTTP/1.1\r\nHost: 127.0.0.1:{self.puerto}\r\nX-HK-Token: {self.a.web_token}\r\n"
+                  "\r\n".encode())
+        datos = b""
+        while b"\r\n\r\n" not in datos:
+            trozo = s.recv(4096)
+            self.assertTrue(trozo)
+            datos += trozo
+        self.assertTrue(datos.startswith(b"HTTP/1.0 200 "), datos[:40])
+        self.assertTrue(datos.endswith(b"\r\n\r\n"), datos)               # nada detrás: el cierre será un FIN
+        self.assertTrue(self.esperar(lambda: self.a.web_clientes == 1))
+        return s
+
+    def test_byte_de_mas_y_cierre_libera_el_hueco(self):
+        """Issue #23 [reproducido]: si el cliente manda un byte de más y después cierra (FIN), MSG_PEEK devolvía
+        siempre ese byte y el EOF no se veía: el hueco seguía ocupado hasta el ping (20 s). Ahora se lee y se descarta,
+        y el EOF de detrás libera el hueco en CIERRE_S."""
+        self.assertEqual(agente_mod.PING_S, 20)
+        s = self.stream_crudo()
+        s.sendall(b"x")
+        time.sleep(0.3)
+        s.close()
+        self.assertTrue(self.esperar(lambda: self.a.web_clientes == 0, s=4), "el hueco sigue ocupado")
+
+    @unittest.skipUnless(sys.platform.startswith("linux"), "el límite de 1024 de select.select se ve en Linux")
+    def test_con_descriptores_altos_el_stream_sigue(self):
+        """Issue #23 [reproducido en WSL2]: con un descriptor ≥ 1024, select.select lanza ValueError y _cerrado lo
+        tomaba por un cierre: cada stream moría al segundo. Con selectors, sigue vivo."""
+        import resource
+        blando, duro = resource.getrlimit(resource.RLIMIT_NOFILE)
+        if blando < 1400:
+            nuevo = 1400 if duro == resource.RLIM_INFINITY else min(1400, duro)
+            if nuevo < 1400:
+                self.skipTest(f"RLIMIT_NOFILE duro = {duro}")
+            resource.setrlimit(resource.RLIMIT_NOFILE, (nuevo, duro))
+            self.addCleanup(resource.setrlimit, resource.RLIMIT_NOFILE, (blando, duro))
+        fd = -1
+        while fd < 1100:                                    # también los huecos de abajo: el socket del demonio, ≥ 1100
+            fd = os.open(os.devnull, os.O_RDONLY)
+            self.addCleanup(os.close, fd)
+        s = self.stream_crudo()
+        self.assertGreaterEqual(s.fileno(), 1024)
+        time.sleep(2.5)
+        self.assertEqual(self.a.web_clientes, 1, "el stream se ha cerrado solo")
+        s.close()
+        self.assertTrue(self.esperar(lambda: self.a.web_clientes == 0, s=4))
 
 
 class SaludServicios(Base):
