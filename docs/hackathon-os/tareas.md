@@ -256,111 +256,120 @@ Hecho cuando: criterios 1, 5, 8 y 9 de M9a; `/hack-scaffold` y `/hack-plan` con 
 Va después de que el usuario decida el borrador de contratos y ADR del PR #13 (2026-10-18), para validar contra el contrato que quede.
 **Hecha (2026-10-18):** PR #36 y #37; el turno interactivo, el usuario. Resultados en `evals/coordinacion/prueba.md` («M9a, K-99» y «M9a, cierre»).
 
-## M10 · Vista de jurado y ruta crítica — BORRADOR
+## M10 · Vista de jurado y ruta crítica
 
-**BORRADOR (2026-10-19):** lo decide el usuario junto con ADR-0012 y ADR-0013. Todo lo de M10 corre solo con los interruptores de ADR-0012 (decisión 8) en `os.md`. Reparto en terminales: K-102, K-103 y K-104 en paralelo (no comparten ficheros) y, después, K-105, K-106 y K-107 en paralelo. Los ficheros de prueba son nuevos y uno por tarea, para que no se pisen. Los nombres de campos y secciones siguen a lo que fije K-101 en los contratos.
+Abierto el 2026-10-19 (decisiones del usuario en el PR #42 y el issue #41; ADR-0012 y ADR-0013 aceptados; contratos en `api.md` §11). Todo lo de M10 corre solo con `vista_jurado:` o `ruta_critica:` en `os.md`. Reparto en terminales: K-102, K-103 y K-104 en paralelo y, después, K-105, K-106 y K-107 en paralelo. En cada tanda, las rutas de las tres tareas no se pisan, y cada tarea tiene su propio fichero de prueba nuevo. Los nombres de campos, secciones y firmas son los de `api.md` §6 y §11 y `estado.schema.json`.
 
 ### K-100 · Paso 0 de M10
 Cubre: R-35, R-36 · Puedes tocar: scratchpad (fuera del repo del kit), `evals/coordinacion/prueba.md` (solo «M10, Paso 0»)
 Hecho cuando: el inventario del issue #41 está cerrado y anotado en `evals/coordinacion/prueba.md` («M10, Paso 0»), con:
-- las preguntas de #41 respondidas por el usuario, o pasadas a las tablas de ADR-0012 y ADR-0013;
-- cuántos `Hasta` de los planes de ejemplo (02, 03) y de `evals/coordinacion/partida-m8-03` se resuelven a una hora absoluta con `equipo.md`, y cuáles no;
-- el tamaño en caracteres de las secciones nuevas de `estado-equipo.md` con 5 personas, 20 tareas y 15 notas (para el criterio 6);
-- el tiempo de reconstruir la historia de transiciones desde un `relay/eventos.jsonl` sintético de 39 h (al arrancar el relay y por incrementos), en Windows;
-- una propuesta de N (tareas medidas mínimas) con el guion largo del reto 03.
+- las preguntas de #41 respondidas por el usuario (2026-10-19: en ADR-0012 y ADR-0013; N = 3, fijo en el contrato);
+- cuántos `Hasta` de los planes de ejemplo (02, 03) y de `evals/coordinacion/partida-m8-03` se resuelven a una hora absoluta con las reglas de `api.md` §11.2, y cuáles no y por qué motivo;
+- el tamaño en caracteres de la sección `## Jurado y ruta` y del bloque de inicio con 5 personas, 20 tareas y 15 notas (para el criterio 6);
+- el tiempo de reconstruir la historia de transiciones desde un `relay/eventos.jsonl` sintético de 39 h (al arrancar el relay y por incrementos), en Windows.
 
-### K-101 · ADR, requisitos y contratos
-Cubre: R-35, R-36 · Depende de: K-100 · Puedes tocar: `docs/hackathon-os/adr/0012-*.md`, `0013-*.md`, `docs/hackathon-os/requisitos.md` (R-35 y R-36), `docs/hackathon-os/simulador.md` (G13 y G14), `docs/hackathon-os/contratos/`
+### K-101 · ADR y contratos
+Cubre: R-35, R-36 · Depende de: K-100 (las preguntas) · Puedes tocar: `docs/hackathon-os/adr/0009-*.md` (la nota de J7), `0012-*.md`, `0013-*.md`, `docs/hackathon-os/contratos/api.md`, `docs/hackathon-os/contratos/estado.schema.json`
 Contratos que aplican: ADR-0006, ADR-0009
 Hecho cuando:
-- ADR-0012 y ADR-0013 aceptados con lo que decida el usuario, sin «Decisiones pendientes» abiertas;
-- R-35 y R-36 reescritos si alguna decisión los cambia (rúbrica, ritmo);
-- `api.md` sin `[POR DECIDIR]` en §0 (interruptores), §3 (lo que lee el relay), §5 (MCP), §6 (secciones del md y bloques `jurado` y `ruta` de la vista, con una vista de ejemplo) y §7;
-- `estado.schema.json` con los campos nuevos (plazo resuelto y `evidencia` de las tareas, notas, entrega e historia), que validan con el validador de M8b;
-- G13 y G14 descritos en `simulador.md`.
+- ADR-0012 y ADR-0013 aceptados, con cada decisión y su porqué, y la tabla en «Decididas (2026-10-19)»; ADR-0009 con la nota de J7;
+- `api.md` con la §11 nueva (interruptores, lo que lee el relay, bloques `jurado` y `ruta`, MCP y vista de ejemplo) y lo que cambia en §3, §4 y §6, todo marcado «tras congelar, 2026-10-19, M10»;
+- `estado.schema.json` con `jurado`, `ruta`, los campos nuevos de las tareas (`hasta` con su motivo, `franja`, `orden_plan`, `historia`, `criterios`, `conexiones`) y los `$defs` de la nota (con su clave) y de los bloques de la vista, todos opcionales hasta que exista el código;
+- el esquema valida con el validador de M8b y con jsonschema, y la vista de ejemplo de §11.6 valida contra `$defs/vista_jurado` y `$defs/vista_ruta`; `hkos/pruebas`, `igualdad.py` y `prueba_hooks.py` en verde;
+- R-35 y R-36 no cambian (ninguna decisión los toca); G13 y G14 se describen en `simulador.md` en K-105.
 
 Lo revisa el usuario antes de K-102.
+**En el PR #42 (2026-10-19):** listo para revisar.
 
 ### K-102 · Cobertura del jurado (función pura) [P]
 Cubre: R-35 · Depende de: K-101 · Puedes tocar: `hkos/jurado.py`, `hkos/pruebas/test_jurado.py`
-Contratos que aplican: ADR-0012, `api.md` §6
-Hecho cuando: `hkos/jurado.py` pasa su tabla de casos:
-- nota sin enlace;
-- nota declarada con su tarea en curso;
-- nota cubierta, con la evidencia y su hora;
-- dos notas en el mismo minuto, con un enlace ambiguo;
-- un enlace a una tarea que no existe;
-- una nota que corrige a otra;
-- una tarea `cerrada` a mano (⚑): declarada, no cubierta;
-- una publicada que vuelve a `en_curso` (decisión 6);
-- una evidencia vieja;
-- una nota con texto imperativo, que sale entrecomillada;
-- y lo de las decisiones 1, 4 y 5 que se elija (rúbrica, Prueba, pitch).
+Contratos que aplican: ADR-0012, `api.md` §11.3, `$defs/vista_jurado`
+Hecho cuando: `hkos/jurado.py` calcula el bloque `jurado` (con `resumen` y la `cuenta` de la firma) y pasa su tabla de casos, cada salida validada contra `$defs/vista_jurado`:
+- nota sin enlace (`sin_tarea`);
+- nota declarada con su tarea en curso (`declarada`);
+- nota cubierta: todas sus tareas publicadas o cerradas, con la evidencia y su hora; con una de dos sin hacer, `declarada`;
+- dos notas en el mismo minuto: la cita sin quién, `ambigua`; con «· quién», casa con una;
+- una cita que no casa con ninguna nota (`sin_nota`);
+- una nota solo en el pitch (`en_pitch`), y una con tarea y pitch (la cobertura, de la tarea);
+- una nota que corrige a otra (`corregida_por`), y una corrección ambigua (no marca ninguna);
+- una tarea `cerrada` a mano (⚑): `declarada`, no `cubierta`;
+- una publicada que vuelve a `en_curso`: sigue `cubierta`, con `trabajo_nuevo_desde`;
+- una Prueba que falla y una vieja: se enseñan y no cambian la cobertura;
+- una evidencia vieja: cobertura `viejo`;
+- el orden: sin cubrir por fuerza y luego por hora, cubiertas, corregidas;
+- una nota con texto imperativo, que sale como dato, entrecomillada.
 
 Sin red, sin git y sin reloj propio (`ahora` es un parámetro).
 
 ### K-103 · Ruta crítica (función pura) [P]
 Cubre: R-36 · Depende de: K-101 · Puedes tocar: `hkos/ruta.py`, `hkos/pruebas/test_ruta.py`
-Contratos que aplican: ADR-0013, `api.md` §6
-Hecho cuando: `hkos/ruta.py` pasa su tabla de casos:
-- sin entrega, y con dos entregas distintas;
-- un ciclo en las dependencias;
-- una tarea sin plazo, que no sale como «a tiempo»;
-- un plazo vencido y lo que arrastra;
-- menos de N tareas medidas: sin hora prevista y «n de N»;
-- N o más: rango, base y veredicto;
-- la cadena de cada persona, si se elige en la decisión 3;
-- descansos (decisión 9);
-- una persona sin señales: «sin señales», no riesgo;
-- un dato viejo;
-- la firma para los deltas, que no cambia si solo se mueve la hora estimada.
+Contratos que aplican: ADR-0013, `api.md` §11.4, `$defs/vista_ruta`
+Hecho cuando: `hkos/ruta.py` calcula el bloque `ruta` (con `resumen` y el veredicto de la firma) y pasa su tabla de casos, cada salida validada contra `$defs/vista_ruta`:
+- sin `Entrega:`, ilegible o sin resolver: `sin_entrega`; con dos horas en la línea: `entrega_doble`;
+- la fila de Hitos o una nota `dato` distinta de `equipo.md`: en `otras_entregas`, **con** estimación; con «(confirmar)», estimación con `confirmar: true`;
+- un ciclo en las dependencias (hecho y motivo);
+- una tarea abierta sin franja: `sin_plazo`, nunca «a tiempo»;
+- un plazo vencido (rojo) y lo que arrastra, por `depende_de` y por orden del plan;
+- una persona con tareas abiertas y menos de 3 medidas: `pocos_datos`, sin hora prevista, «n de 3»;
+- 3 o más por persona: rango, margen contra la entrega, base y cada uno de los veredictos `a_tiempo`, `justo` y `no_llega` (ámbar), en sus fronteras;
+- la cadena de cada persona (`orden_del_plan`) y la cadena más larga;
+- tareas «Si …» y `[SI DA TIEMPO]` fuera de la entrega;
+- descansos: no cuentan en el ritmo ni en el fin previsto, y no sacan «sin señales»;
+- una persona sin señales: hecho `sin_senales` (gris), nunca riesgo por lentitud;
+- una `cerrada` a mano: hecha para la ruta, no medida;
+- un dato viejo: el bloque `viejo`, con `dato_mas_viejo`;
+- el veredicto (la firma) no cambia si solo se mueven la hora estimada, el margen o los hechos.
 
 Sin red, sin git y con `ahora` como parámetro.
 
 ### K-104 · Datos de entrada en el relay [P]
-Cubre: R-35, R-36 · Depende de: K-101 · Puedes tocar: `hkos/relay.py`, `hkos/modelo.py`, `hkos/github.py`, `hkos/red.py` (lectura de los interruptores), `hkos/compilar.py` (solo si la decisión 2 de ADR-0013 o la 3 de ADR-0012 lo piden, para el modo sin GitHub), `hkos/pruebas/test_relay_m10.py`
-Contratos que aplican: `api.md` §0, §3 y §8, `estado.schema.json`
+Cubre: R-35, R-36 · Depende de: K-101 · Puedes tocar: `hkos/lecturas.py` (nuevo: los lectores puros de `criterios.md`, `equipo.md`, `plan.md` —etiquetas, `Hasta`, franjas, orden, Hitos y Descansos— y `pitch.md`), `hkos/relay.py`, `hkos/modelo.py` (historia de transiciones), `hkos/red.py` (lectura de `vista_jurado:` y `ruta_critica:`), `hkos/pruebas/test_relay_m10.py`
+Contratos que aplican: `api.md` §3 y §11.1–§11.2, `estado.schema.json`
 Hecho cuando:
-- con los interruptores encendidos, `estado.json` lleva:
-  - las notas de `criterios.md` de `origin/main`, con su clave y todos sus campos;
-  - los enlaces declarados (decisión 3 de ADR-0012);
-  - el plazo de cada tarea, resuelto o `null` con su motivo;
-  - `tareas[].evidencia`, rellena;
-  - la entrega, con sus discrepancias;
-  - la historia de transiciones por tarea, reconstruida desde `relay/eventos.jsonl` y los eventos de GitHub;
-- todo lo nuevo es `{valor, fuente, observado_en}` y valida contra el esquema;
+- con los interruptores encendidos, `estado.json` lleva, leído de `origin/main` del clon del relay:
+  - `jurado`: las notas de `criterios.md` con su clave y todos sus campos, el estado del fichero y las citas de `pitch.md`;
+  - en las tareas, `criterios` (la etiqueta de «Cómo se comprueba») y `conexiones`;
+  - `ruta`: `equipo`, `zona`, `inicio`, `entrega` (con `confirmar` y el motivo `dos_horas`), `otras_entregas`, `hitos` y `descansos`;
+  - en las tareas, `hasta` (resuelto o `null` con su motivo), `franja`, `orden_plan`, `historia` y `evidencia`;
+- los `Hasta` de los planes 02 y 03 se resuelven como dice K-100;
+- todo lo nuevo valida contra el esquema;
 - con los interruptores apagados, `estado.json` sale byte a byte como hoy (`test_relay.py`, `test_relay_m9a.py` y `carga.py` sin cambios);
 - el arranque con un registro grande, dentro de lo medido en K-100.
 
+`compilar.py` y `github.py` no se tocan: el plan se lee con `compilar.leer_plan` tal como está.
+
 ### K-105 · Proyección, MCP y guiones G13 y G14 [P]
-Cubre: R-24, R-25, R-28, R-35, R-36 · Depende de: K-102, K-103, K-104 · Puedes tocar: `hkos/proyeccion.py`, `hkos/mcp.py`, `scripts/os/delta.sh`, `scripts/coordinacion/sesion.sh`, `evals/coordinacion/simulador/` (G13 y G14, `simula.py`, `igualdad.py`, `fixture.py`, `tareas-03.json`), `hkos/pruebas/test_proyeccion_m10.py`
-Contratos que aplican: `api.md` §5 y §6, ADR-0009, ADR-0012, ADR-0013
+Cubre: R-24, R-25, R-28, R-35, R-36 · Depende de: K-102, K-103, K-104 · Puedes tocar: `hkos/proyeccion.py`, `hkos/mcp.py`, `scripts/os/delta.sh`, `scripts/coordinacion/sesion.sh`, `evals/coordinacion/simulador/` (G13 y G14, `simula.py`, `igualdad.py`, `fixture.py`, `tareas-03.json`), `docs/hackathon-os/simulador.md` (G13 y G14), `hkos/pruebas/test_proyeccion_m10.py`
+Contratos que aplican: `api.md` §6 y §11.3–§11.5, ADR-0009 (con su nota), ADR-0012, ADR-0013
 Hecho cuando:
-- la vista lleva los bloques `jurado` y `ruta`, calculados con `hkos/jurado.py` y `hkos/ruta.py`;
-- `estado-equipo.md` lleva sus secciones y sus firmas, dentro del presupuesto (criterio 6 de M10, con G10 ampliado);
-- el MCP responde las consultas que fije `api.md` §5;
-- criterios 2 y 3 de M10 (G13 y G14 en el simulador);
-- `igualdad.py` en G1–G6, G12, G13 y G14 (la parte de datos del criterio 4).
+- la vista lleva los bloques `jurado` y `ruta`, calculados con `hkos/jurado.py` y `hkos/ruta.py`, solo si `estado.json` trae `jurado` o `ruta`;
+- `estado-equipo.md` lleva la sección `## Jurado y ruta` (una línea por bloque, el `resumen`) y las firmas `jurado:` (la cuenta) y `ruta:` (solo el veredicto), dentro del presupuesto (criterio 6 de M10, con G10 ampliado); el delta recorre las secciones en el orden de §6;
+- el MCP responde `jurado` y `ruta` (§11.5);
+- criterios 2 y 3 de M10 (G13 y G14 en el simulador, descritos en `simulador.md`);
+- `igualdad.py` en G1–G6, G12, G13 y G14 (la parte de datos del criterio 4: bloques enteros vista–MCP y línea del md–`resumen`).
 
 ### K-106 · Web: jurado y ruta [P]
-Cubre: R-26, R-35, R-36 · Depende de: K-101 (para empezar, con la vista de ejemplo de `api.md` §6) y K-105 (para cerrar, con las vistas de G13 y G14) · Puedes tocar: `hkos/web-src/` (incluido `scripts/vistas_ejemplo.py`), `hkos/web/nueva/`, `.github/workflows/web-m9a.yml`
-Contratos que aplican: ADR-0009, ADR-0012, ADR-0013, `docs/hackathon-os/diseno-web/` (lo que haya cuando empiece: otra terminal lo está diseñando)
+Cubre: R-26, R-35, R-36 · Depende de: K-101 (para empezar, con la vista de ejemplo de `api.md` §11.6) y K-105 (para cerrar, con las vistas de G13 y G14) · Puedes tocar: `hkos/web-src/` (incluido `scripts/vistas_ejemplo.py`), `hkos/web/nueva/`, `.github/workflows/web-m9a.yml`
+Contratos que aplican: ADR-0009, ADR-0012, ADR-0013, `api.md` §4 y §11, `docs/hackathon-os/diseno-web/` (las pantallas del PR #43, con el margen contra la entrega y la franja en lugar de horas declaradas)
 Hecho cuando:
-- la parte de Vitest y CI del criterio 4 de M10: G13 y G14 pintados, y cada campo en el DOM con el mismo texto;
-- la web no calcula nada: ni estados, ni rangos, ni «viejo» (ADR-0009). Solo formatea «hace X»;
-- lo que es estimación se pinta distinto de lo que es hecho, y lo declarado con su marca;
+- la parte de Vitest y CI del criterio 4 de M10: G13, G14 y la vista de ejemplo pintados, y cada campo en el DOM con el mismo texto;
+- la web no calcula nada: ni cobertura, ni orden, ni rangos, ni veredicto, ni «viejo» (ADR-0009). Solo formatea «hace X» y coloca en la línea de tiempo las horas que trae la vista;
+- lo que es estimación se pinta distinto de los hechos; el rojo, solo para `plazo_pasado`; «no llega», ámbar; lo declarado, con su marca;
 - sigue el criterio 2 de M9a: sin URL externa y compilado igual al fuente;
-- con los interruptores apagados, la web es la de la 0.4.0.
+- sin los bloques en la vista, la web es la de la 0.4.0.
 
 ### K-107 · Cadena e interruptores [P]
-Cubre: R-01, R-35, R-36 · Depende de: K-101 · Puedes tocar: `skills/hack-scaffold/templates/os.md`, `skills/hack-plan/` (`SKILL.md`, `templates/`, `examples/`), `skills/hack-check/SKILL.md`, `skills/hack-scaffold/templates/CLAUDE.md` (cada uno solo si su decisión lo pide: enlaces en el plan, entrega, descansos, «Txx ·» en los commits)
-Contratos que aplican: ADR-0012 (decisiones 3 y 8), ADR-0013 (decisiones 1, 2, 9 y 11)
+Cubre: R-01, R-35, R-36 · Depende de: K-101 · Puedes tocar: `skills/hack-scaffold/templates/os.md`, `skills/hack-scaffold/templates/CLAUDE.md`, `skills/hack-scaffold/SKILL.md`, `skills/hack-scaffold/examples/`, `skills/hack-plan/` (`SKILL.md`, `templates/`, `examples/`), `skills/hack-check/SKILL.md`
+Contratos que aplican: ADR-0012 (decisiones 3A y 8A), ADR-0013 (decisiones 1A, 2A, 8B, 9A y 11C), `api.md` §11.1–§11.2
 Hecho cuando:
-- `os.md` de `/hack-scaffold` trae los interruptores, apagados;
-- `/hack-plan` con el reto 03 genera un plan que `compilar.leer_plan` lee sin errores, con las mismas 5 columnas, y del que las funciones de K-104 sacan los enlaces, los plazos y la entrega;
+- `os.md` de `/hack-scaffold` trae `vista_jurado: no` y `ruta_critica: no`;
+- el `CLAUDE.md` que genera `/hack-scaffold` recuerda, en Convenciones, que cada commit empieza por `Txx · …` (el ID de su tarea);
+- `/hack-plan` lee `criterios.md` y pone la etiqueta `(criterios: <fecha hora>[ · quién])` al final de «Cómo se comprueba» de las filas que recogen una nota; escribe `Hasta` con día y hora (`sáb 02:30`) o `H+N`, marca los repliegues con «Si …» o `[SI DA TIEMPO]` y escribe «## Descansos» como `- <@usuario | Todos>: <día> HH:MM–HH:MM`; con las mismas 5 columnas, y `compilar.leer_plan` lo lee sin errores;
+- `/hack-check aplicar` pone o corrige esa etiqueta en el plan (no en `criterios.md`, que solo escriben personas), con «· quién» cuando dos notas comparten minuto;
+- con el reto 03, `hkos/lecturas.py` (K-104) saca del plan generado los enlaces, los plazos, la entrega y los descansos (comprobado cuando K-104 esté; antes, contra las reglas de §11.2);
 - `comprobar.py` sin regresiones con los retos 02 y 03;
 - los ejemplos, regenerados y anonimizados.
 
 ### K-108 · Validación con modelo y en sandbox
-Depende de: todo lo anterior · Puedes tocar: `evals/coordinacion/` (incluido un `jurado_ruta_vivo.py` nuevo), carpetas de prueba en `../`
-Hecho cuando: criterios 1, 5 y 7 de M10, con los resultados en `evals/coordinacion/prueba.md` («M10»). El cierre se anota en `hitos.md` y en `docs/historial.md`, y la 0.5.0 la decide el usuario.
+Depende de: todo lo anterior · Puedes tocar: `evals/coordinacion/` (incluido un `jurado_ruta_vivo.py` nuevo), `docs/limitaciones.md` (validación sin datos reales), carpetas de prueba en `../`
+Hecho cuando: criterios 1, 5 y 7 de M10, con los resultados en `evals/coordinacion/prueba.md` («M10»). El cierre se anota en `hitos.md` y en `docs/historial.md`, y la 0.5.0 la decide el usuario. El ensayo con un equipo, después (revisa el 3 y los umbrales del veredicto).
