@@ -716,6 +716,39 @@ def prueba_arranque(tmp):
     finally:
         srv.shutdown(); srv.server_close()
 
+    # Decisión 5A (PR #13): el demonio de verdad (hkos/agente.py) da 403 a /salud sin el Host 127.0.0.1:<puerto>.
+    # El salud() de arranque.sh lo manda y ve «hk-os <git común>». Uno de antes, con «Host: 127.0.0.1», recibe el 403
+    # y lo toma por otro programa: es lo que pasaría con un arranque.sh viejo y un demonio nuevo durante una actualización.
+    sys.path.insert(0, KIT + "/hkos")
+    import agente as agente_mod
+    from red import Servidor
+    demonio = Servidor(("127.0.0.1", 0), agente_mod.manejador(agente_mod.Agente(r, "persona-a")))
+    threading.Thread(target=demonio.serve_forever, kwargs={"poll_interval": 0.1}, daemon=True).start()
+    p = demonio.server_address[1]
+    open(os.path.join(r, ".hackathon", "os.md"), "w", encoding="utf-8").write(f"activa: sí\npuerto_agente: {p}\n")
+    vivo = os.path.join(r, ".git", "hackathon", "os", "agente.vivo")
+    viejo_arr = os.path.join(base, "kit-arranque-viejo")
+    shutil.copytree(os.path.join(KIT, "scripts"), os.path.join(viejo_arr, "scripts"))
+    ruta_arr = os.path.join(viejo_arr, "scripts", "os", "arranque.sh")
+    texto = open(ruta_arr, encoding="utf-8").read()
+    open(ruta_arr, "w", encoding="utf-8", newline="\n").write(
+        texto.replace("Host: 127.0.0.1:%s\\r\\n\\r\\n' \"$puerto\"", "Host: 127.0.0.1\\r\\n\\r\\n'"))
+    try:
+        for con_vivo in (False, True):
+            if con_vivo:
+                open(vivo, "w").write(f"{p}\n")
+            s = sesion("s8" + "b" * con_vivo)
+            comprueba("el salud() de arranque.sh contra el demonio nuevo ve «hk-os <git común>»: no lanza otro ni avisa"
+                      + (" (con agente.vivo)" if con_vivo else ""), s.stdout == antes and not lanzados(), s.stdout[:200])
+        s = sesion("s9", script=(viejo_arr + "/scripts/coordinacion/sesion.sh").replace("\\", "/"))
+        comprueba("un arranque.sh de antes (Host sin puerto) contra el demonio nuevo: recibe el 403 y avisa de «puerto ocupado»",
+                  "Host: 127.0.0.1\\r" in open(ruta_arr, encoding="utf-8").read()
+                  and f"puerto {p} está ocupado" in s.stdout and not lanzados(), s.stdout[:200])
+    finally:
+        demonio.shutdown(); demonio.server_close()
+        if os.path.exists(vivo):
+            os.remove(vivo)
+
     # Sin uv en el PATH.
     uv = shutil.which("uv")
     if uv:

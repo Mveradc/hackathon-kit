@@ -54,7 +54,7 @@ vivo=$dir/agente.vivo   # lo escribe el demonio al conseguir el puerto y lo borr
 
 # Un demonio vivo responde /salud con su git común en la primera línea (api.md §4); otra cosa es otro programa.
 salud() {
-  printf 'GET /salud HTTP/1.0\r\nHost: 127.0.0.1\r\n\r\n' >&3
+  printf 'GET /salud HTTP/1.0\r\nHost: 127.0.0.1:%s\r\n\r\n' "$puerto" >&3
   local l propio=
   while IFS= read -r -t 2 l <&3; do
     l=${l%$'\r'}
