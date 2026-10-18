@@ -69,6 +69,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - En K-97, tras congelar (solo añade):
     - en [estado.schema.json](estado.schema.json), `duenos` (opcional) en cada propuesta: quién la confirma, para la sección `## Servicios` de cada persona;
     - en la vista, cada tarjeta lleva `estado_declarado: true` si su estado es declarado (`reclamada` desde la web o el MCP). El md lo dice («· declarado») y entra en la firma de «Tu trabajo» solo cuando es verdad, así que las firmas de antes no cambian.
+- 2026-10-18, PR #13 (decisión del usuario; issue #2, hallazgo 12), §2 y [eventos.schema.json](eventos.schema.json): patrón `^[A-Za-z0-9._:-]{1,200}$` para el `id`, que sale en el SSE `eventos`. Restringe, pero todo lo que producen hoy los hooks, el demonio, la web y el relay ya lo cumple (comprobado con `hkos/pruebas`, `prueba_hooks.py` e `igualdad.py`).
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -181,6 +182,8 @@ Esquema: [eventos.schema.json](eventos.schema.json). Lo produce `hkos/normaliza.
 | Reclamar desde la web (M9a, §4) | `reclamo` (fuente `web`, actor `humano`, `tarea`). ID `web-<persona>-reclamo-<tarea>-<época en ms>`. El motor (`hkos/estados.py`, regla 10) lo trata como el `reclamo` del MCP: estado `reclamada` con la fuente del evento (`web`) y `declarado: true`. Hoy pone `mcp` fijo y no marca `declarado`; se cambia en K-93. Si GitHub ya trae la asignación y es anterior, manda esa (fuente `github`, derivado) |
 
 Los eventos de un worker (`edicion`, `worker.fin`…) llevan la tarea de su encargo, la de su `worker.inicio` con el mismo `agent_id`. Salida esperada con las entradas reales: `evals/coordinacion/entradas/normalizadas.json`.
+
+**Forma del `id`** (tras congelar, 2026-10-18, decisión del usuario en el PR #13, issue #2, hallazgo 12): `^[A-Za-z0-9._:-]{1,200}$` en [eventos.schema.json](eventos.schema.json). Lo cumplen todos los productores: `<session_id>-<n>[.<k>]` de `normaliza.py` (el hook solo acepta un `session_id` `^[A-Za-z0-9_-]+$`; el de Claude Code es un UUID), los `git-<persona>-…` y `demonio-<persona>-servicio-…` del demonio, el `web-<persona>-reclamo-…` de Reclamar y los `reserva-…`, `liberacion-…` y `latido-…` del relay. Un evento con otro `id` no pasa el esquema: el demonio no lo envía (lo cuenta como inválido) y el relay responde `400`. Así el `id` que sale en el SSE `eventos` (§3) no puede llevar texto arbitrario (rutas, texto de un issue); la tarea y la clave de servicio sí siguen en él.
 
 Regla: si un evento de hook y uno de git dicen cosas distintas, gana git, y la discrepancia se registra en `discrepancias` de `estado.json`, agrupada por (tipo, tarea, persona) con contador y primera y última vez.
 

@@ -8,7 +8,7 @@
   "additionalProperties": false,
   "properties": {
     "v": { "const": 1 },
-    "id": { "type": "string", "description": "Único: <session_id|demonio>-<contador>. El relay descarta repetidos." },
+    "id": { "type": "string", "pattern": "^[A-Za-z0-9._:-]{1,200}$", "description": "Único: <session_id|demonio>-<contador>. El relay descarta repetidos. Solo letras ASCII, dígitos y . _ : -, de 1 a 200 (api.md §2)." },
     "ts": { "type": "string", "format": "date-time", "description": "Hora de observación (UTC)." },
     "actor": {
       "type": "object",
