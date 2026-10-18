@@ -475,6 +475,8 @@ Inyección (scripts/os/delta.sh):
 
 `<git común>` (`git rev-parse --git-common-dir`) es compartido entre la copia principal y todos los worktrees de esa persona, así que los hooks de los workers leen y escriben lo mismo que los de la sesión principal. El estado propio de los scripts del buzón sigue en `<git dir>/hackathon/` como en la 0.3.2.
 
+**`token` y `relay.url` de antes, al arrancar el demonio** (tras congelar, 2026-10-18, PR #29; lo dejó pendiente el PR #22): si existen y `permisos.es_privado` dice que no son privados (0644, o en Windows con el ACL heredado de la carpeta), el demonio los reescribe con `permisos.escribe_privado` (temporal `.<pid>.tmp`, que `hk-os recoger` deja fuera) **sin cambiar el contenido**: los lee con `newline=""`, así que un `\r\n` se queda. Si no es UTF-8 o falla algo, no los toca y deja una línea en `agente.log` (`Agente._secretos_privados`).
+
 ## 8. Issues `hk-tarea` (M8e; ADR-0001)
 Los escribe `hk-os compilar` (`hkos/compilar.py`) y los lee el relay (`hkos/github.py`). En el repo de `repo_tareas:` de `os.md`, o en el de `coordinacion.md`.
 
