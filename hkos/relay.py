@@ -179,6 +179,7 @@ class Novedades:
         self.contratos, self.aviso, self._avisados = [], aviso, set()
         self.web_nueva, self.servicios, self._versiones, self._crea = web_nueva, None, {}, (None, None)
         self._vuelta, self._fallos = 0, {}       # sha → (fallos seguidos, vuelta del próximo intento)
+        self.servicios_ok, self.servicios_fallando = None, False   # la última lectura buena de servicios.md
 
     def _leer(self, ruta):
         for ref in ("refs/remotes/origin/main", "HEAD"):
@@ -331,14 +332,20 @@ class Novedades:
                 self.aviso(f"Nivel 3: {a}.")
         if self.web_nueva:
             leido = self._leer_servicios(texto_autoridad, texto_contratos)
+            self.servicios_fallando = leido is FALLO
             if leido is not FALLO:
-                self.servicios = leido
+                self.servicios, self.servicios_ok = leido, self.reloj()
+            elif self.servicios_ok is None:
+                self.servicios_ok = self.reloj()  # sin una lectura buena aún, el plazo cuenta desde el arranque
         return (self.lista, self.fallando, self.contratos, self.servicios) != antes
 
     def fuente(self):
-        """El dato de fuentes.git si el fetch lleva fallando más de umbral_s; None si no."""
+        """El dato de fuentes.git si el fetch lleva fallando más de umbral_s, o si servicios.md de la punta lleva más de
+        umbral_s sin poderse leer (decisión 15B del PR #13: el bloque `servicios` es el último bueno); None si no."""
         if self.fallando and self.reloj() - self.ultimo_ok > self.umbral_s:
             return {"valor": "sin fetch", "fuente": "git", "observado_en": iso_us(self.ultimo_ok)}
+        if self.servicios_fallando and self.reloj() - self.servicios_ok > self.umbral_s:
+            return {"valor": "sin leer servicios", "fuente": "git", "observado_en": iso_us(self.servicios_ok)}
         return None
 
 
