@@ -98,8 +98,9 @@ def _git(repo, *args, timeout=30):
     """Sin objetos de reemplazo (`git replace`): un commit «sin padres» por un reemplazo parecería crear servicios.md
     y añadir todas sus filas (issue #18, ADR-0011). Lo mismo en Novedades._texto."""
     try:
-        r = subprocess.run(["git", "--no-replace-objects", "-C", repo, *args], capture_output=True, text=True,
-                           encoding="utf-8", errors="replace", timeout=timeout)
+        r = subprocess.run([*compilar.GIT_SIN_DIALOGOS, "--no-replace-objects", "-C", repo, *args], capture_output=True,
+                           text=True, encoding="utf-8", errors="replace", timeout=timeout,
+                           env=compilar.entorno_sin_dialogos())
     except (OSError, subprocess.SubprocessError):
         return None
     return r.stdout if r.returncode == 0 else None
@@ -191,8 +192,8 @@ class Novedades:
     def _texto(self, ref, ruta):
         """El fichero en `ref`, tolerando BOM y UTF-16 (servicios.decodificar); None si no existe."""
         try:
-            r = subprocess.run(["git", "--no-replace-objects", "-C", self.repo, "show", f"{ref}:{ruta}"],
-                               capture_output=True, timeout=30)
+            r = subprocess.run([*compilar.GIT_SIN_DIALOGOS, "--no-replace-objects", "-C", self.repo, "show",
+                                f"{ref}:{ruta}"], capture_output=True, timeout=30, env=compilar.entorno_sin_dialogos())
         except (OSError, subprocess.SubprocessError):
             return None
         return servicios_mod.decodificar(r.stdout) if r.returncode == 0 else None
