@@ -38,5 +38,6 @@ Hasta M8h la web era de solo lectura y la servía el relay con el token del equi
 
 ## Riesgos aceptados
 - Quien tenga acceso al portátil (y por tanto a `web.token`) puede usar las acciones: es la misma persona, como con su `gh`.
+- **SYSTEM y Administradores sin acceso a los secretos** (2026-10-18, decisión 20A del usuario en el PR #13; PR #22): en Windows, `token`, `relay.url`, `web.token` y `web.html` llevan un DACL de una sola entrada, el usuario (`permisos._crea_windows`, `api.md` §7), así que el riesgo de arriba («quien tenga acceso al portátil») vale tal cual también en Windows con el repo fuera del perfil: ningún otro usuario del equipo los lee. Las copias de seguridad y las herramientas de sistema sin el privilegio de backup no los ven; un administrador puede tomar la propiedad. Se acepta: son secretos que se vuelven a crear (`web.token`, al borrarlo) o a pedir (`hk-os unir`).
 - La URL con el token puede quedar en el historial del navegador de esa persona hasta que la página la limpia (la primera carga).
 - Si `main` está protegida en GitHub, Anotar no puede subir: lo dice en la web y la nota se hace con `/hack-note`.
