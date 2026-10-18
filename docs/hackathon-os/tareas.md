@@ -192,6 +192,7 @@ Hecho cuando: criterio 4 de M8h, con la hoja de observación rellena en `evals/c
 ### K-84 · Documentación y publicación
 Puedes tocar: `README.md`, `README.es.md`, `docs/limitaciones.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`
 Hecho cuando: criterios 5 y 6 de M8h.
+**Hecha (2026-10-18):** la 0.4.0 sale sin ensayo, por decisión del usuario; `docs/limitaciones.md` lo dice.
 
 ## M9a · Web de trabajo, nivel A
 
