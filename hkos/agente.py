@@ -18,7 +18,7 @@ import json
 import os
 import re
 import secrets
-import select
+import selectors
 import socket
 import subprocess
 import sys
@@ -64,6 +64,7 @@ WEB_COLA = 200
 SOCKET_S = 10                    # issue #6: una petición a medias (cabeceras o cuerpo) no retiene un hilo para siempre
 STREAM_MAX = 8                   # clientes de /v1/stream a la vez (pestañas de la persona); el siguiente, 429
 CIERRE_S = 1                     # issue #15: cada cuánto mira /v1/stream si la pestaña ha cerrado, entre ping y ping
+DESCARTE_MAX = 64 * 1024         # issue #23: lo que un cliente de /v1/stream puede mandar de más antes de que se le cierre
 
 
 def git_comun(repo):
@@ -89,6 +90,11 @@ ID_EN_MENSAJE = re.compile(r"^\s*\[?(T\d{2,3})\b")
 # Issue #2 (hallazgos 2 y 5, ADR-0011): un commit es de este clon solo si se creó aquí con `git commit` (o `git revert`,
 # issue #15) y el reflog lo dice. Ni el correo de git, ni traerlo con fetch, checkout, merge, pull, cherry-pick o rebase.
 CREADO_AQUI = re.compile(r"^(?:commit(?: \((?:initial|amend)\))?|revert): ")
+# Issue #23: `pull --rebase`, `rebase --continue` y `rebase -i` reescriben los commits («pull --rebase -q origin main
+# (pick): …», «rebase (continue): …», «rebase (fixup): …»). Un sha así solo cuenta si su `patch-id --stable` es el de un
+# commit que ya era propio (CREADO_AQUI): el mismo cambio, en otro sitio.
+REESCRITO_AQUI = re.compile(r"^(?:pull|rebase)\b[^\n]*? \((?:pick|continue|fixup|squash|reword|edit)\): ")
+NO_REFLOG = {"false", "no", "off", "0"}
 
 
 class SondeoGit:
@@ -100,7 +106,7 @@ class SondeoGit:
     de la copia principal: tras un push desde la terminal, el amarillo seguía hasta el siguiente `arbol` de una sesión
     (Pendiente de M8g). El `arbol` de git por worktree y la reconciliación de `fusion.*` por refs quedan para más
     adelante."""
-    CADA_S, FETCH_S, MAX_VISTOS, MAX_RUTAS = 15, 60, 5000, 200
+    CADA_S, FETCH_S, MAX_VISTOS, MAX_RUTAS, MAX_PARCHES = 15, 60, 5000, 200, 500
 
     def __init__(self, ag):
         self.ag = ag
@@ -116,11 +122,13 @@ class SondeoGit:
         self.pendientes = {}                     # id del evento → ("commit", sha) | ("push", punta)
         self.firma_arbol = None                  # el último `arbol` emitido por el demonio (no se repite igual)
         self.ultimo = self.ultimo_fetch = -1e18
+        self.parches = {}                        # sha → patch-id --stable (o None, sin diff): un sha no cambia
+        self.sin_reflog = None                   # por qué no hay reflog (issue #23), o None si lo hay
 
-    def _git(self, *args, crudo=False):
+    def _git(self, *args, crudo=False, entrada=None):
         try:
             # Sin diálogos de credenciales (M8h): con el remoto del equipo y un token malo, git esperaría al askpass.
-            r = subprocess.run(["git", "-C", self.ag.principal, *args], capture_output=True, text=True,
+            r = subprocess.run(["git", "-C", self.ag.principal, *args], capture_output=True, text=True, input=entrada,
                                encoding="utf-8", errors="replace", timeout=30,
                                env=dict(os.environ, GIT_TERMINAL_PROMPT="0", GCM_INTERACTIVE="never", GIT_ASKPASS="",
                                         SSH_ASKPASS=""))
@@ -152,16 +160,72 @@ class SondeoGit:
         - el de las ramas `worktree-agent-<id>` (está en el git común), para los workers.
         No el de las demás ramas: no dice desde qué worktree se hizo el commit, y uno que no es el principal ni de
         worker puede ser de otra persona (issue #15). Nunca el autor ni el committer de git, que cualquiera pone
-        (ADR-0011). Lo que llegó de fuera (fetch, checkout de una rama ajena, merge, pull, cherry-pick, rebase, reset)
-        no tiene esa entrada y no se emite: ante la duda, el commit se queda sin confirmar, que es el lado seguro. Sin
-        reflog (o si git no puede), nada."""
+        (ADR-0011). Lo que llegó de fuera (fetch, checkout de una rama ajena, merge, pull, cherry-pick, reset) no tiene
+        esa entrada y no se emite: ante la duda, el commit se queda sin confirmar, que es el lado seguro. Sin reflog (o
+        si git no puede), nada.
+        Devuelve (propios, recientes, reescritos): los shas con `commit:` o `revert:`; de ellos, los MAX_PARCHES más
+        nuevos de cada reflog, los únicos con los que se compara el patch-id (un `git log -p` de miles de commits no
+        cabe en una vuelta); y los de un rebase o `pull --rebase` (REESCRITO_AQUI), que solo cuentan si
+        `_mismo_parche` (issue #23). Cada reflog se lee por separado: si una rama de worker se borra entre `for-each-ref`
+        y `log -g`, se pierde solo la suya, no la vuelta entera (issue #23)."""
         workers = (self._git("for-each-ref", "--format=%(refname)", "refs/heads/worktree-agent-*") or "").split()
-        salida = set()
-        for l in (self._git("log", "-g", "--format=%H%x1f%gs", "HEAD", *workers, "--") or "").splitlines():
+        propios, recientes, reescritos = set(), set(), set()
+        for ref in ("HEAD", *workers):
+            n = 0
+            for l in (self._git("log", "-g", "--format=%H%x1f%gs", ref, "--") or "").splitlines():
+                sha, _, motivo = l.partition("\x1f")
+                if CREADO_AQUI.match(motivo):
+                    propios.add(sha)
+                    if n < self.MAX_PARCHES:     # del más nuevo al más viejo
+                        recientes.add(sha)
+                        n += 1
+                elif REESCRITO_AQUI.match(motivo):
+                    reescritos.add(sha)
+        return propios, recientes, reescritos - propios
+
+    def _parches(self, shas):
+        """sha → `git patch-id --stable` de los que faltan en la caché (None: un merge o un commit sin diff). Si git no
+        puede, no se guarda nada y esa vuelta no hay patch-id: el sha reescrito no sale (lado seguro)."""
+        faltan = sorted(s for s in shas if s not in self.parches)
+        if faltan:
+            diff = self._git("-c", "core.quotepath=false", "log", "--no-walk=unsorted", "--stdin", "-p", "--no-color",
+                             "--no-ext-diff", "--no-textconv", "--format=commit %H", crudo=True,
+                             entrada="\n".join(faltan) + "\n")
+            ids = None if diff is None else self._git("patch-id", "--stable", crudo=True, entrada=diff)
+            if ids is not None:
+                hallados = {s: p for p, s in (l.split(" ") for l in ids.splitlines() if l.count(" ") == 1)}
+                for s in faltan:
+                    self.parches[s] = hallados.get(s)
+        return {s: self.parches.get(s) for s in shas}
+
+    def _mismo_parche(self, sha, propios):
+        """Issue #23: el sha reescrito por un rebase tiene el mismo cambio (patch-id --stable) que un commit propio. Un
+        fixup o un squash juntan varios cambios: su patch-id es otro y no sale (sin confirmar), sea lo que sea lo
+        juntado."""
+        p = self._parches(propios | {sha})
+        return p[sha] is not None and p[sha] in {p[s] for s in propios}
+
+    def _partida(self, punta):
+        """Issue #23 y PR #24: la primera vez, el punto de partida de origin/main. Si este clon subió algo (la última
+        entrada «update by push» del reflog de refs/remotes/origin/main), la punta de antes de ese push: lo subido antes
+        de la primera vuelta del demonio (o con el demonio apagado) sale como push y sus commits propios como commits.
+        Si no (o sin reflog, o si esa punta ya no existe), la punta de ahora: lo que ya estaba subido no es nuevo."""
+        tras_push = False
+        for l in (self._git("log", "-g", "--format=%H%x1f%gs", "refs/remotes/origin/main", "--") or "").splitlines():
             sha, _, motivo = l.partition("\x1f")
-            if CREADO_AQUI.match(motivo):
-                salida.add(sha)
-        return salida
+            if tras_push:
+                return sha if self._git("rev-parse", "--verify", "-q", f"{sha}^{{commit}}") else punta
+            tras_push = motivo == "update by push"
+        return punta
+
+    def _reflog(self):
+        """Issue #23: por qué falta el reflog del que sale qué commits son propios, o None. No toca la configuración de
+        git de la persona: solo lo dice (agente.log y «reflog: no» en /salud)."""
+        if (self._git("config", "--get", "core.logAllRefUpdates") or "").lower() in NO_REFLOG:
+            return "core.logAllRefUpdates=false"
+        if not os.path.isfile(os.path.join(self.ag.comun, "logs", "HEAD")):
+            return "falta logs/HEAD"
+        return None
 
     def _guardar(self):
         self.vistos = self.vistos[-self.MAX_VISTOS:]
@@ -234,6 +298,11 @@ class SondeoGit:
         self.ultimo = ahora
         if self._git("rev-parse", "--verify", "-q", "refs/remotes/origin/main") is None:
             return []
+        motivo = self._reflog()
+        if motivo != self.sin_reflog:
+            self.sin_reflog = motivo
+            self.ag.log(f"reflog: no ({motivo}): los commits nuevos no se pueden dar por propios y no salen; la "
+                        "configuración de git no se toca" if motivo else "reflog: sí")
         if ahora - self.ultimo_fetch >= self.FETCH_S:
             self.ultimo_fetch = ahora
             self._git("fetch", "--quiet", "origin")
@@ -244,15 +313,16 @@ class SondeoGit:
             nonlocal creados
             if creados is None:                  # una vez por vuelta, y solo si hay algún commit nuevo que mirar
                 creados = self._creados()
-            return sha in creados
+            propios, recientes, reescritos = creados
+            return sha in propios or (sha in reescritos and self._mismo_parche(sha, recientes))
         for rama in (self._git("for-each-ref", "--format=%(refname:short)", "refs/heads") or "").split():
             for sha, ts, asunto in self._log(f"refs/remotes/origin/main..refs/heads/{rama}", "--no-merges") or []:
                 if sha not in self._vistos and not self._en_espera(sha) and de_aqui(sha):
                     eventos.append(self._commit(sha, ts, asunto, rama, False))
-        if self.punta is None:                   # primera vez: lo que ya estaba subido no es un push nuevo
-            self.punta = punta
+        if self.punta is None:                   # primera vez: lo ya subido no es un push nuevo, salvo lo de este clon
+            self.punta = self._partida(punta)
             self._guardar()
-        elif punta != self.punta and ("push", punta) not in self.pendientes.values():
+        if punta != self.punta and ("push", punta) not in self.pendientes.values():
             tramo = self._log(f"{self.punta}..{punta}")
             if tramo is None:                    # punta anterior desconocida (push forzado): los últimos commits
                 tramo = self._log(punta, "-n", "50") or []
@@ -426,6 +496,7 @@ class Agente:
         os.makedirs(self.dir, exist_ok=True)
         self.persona = persona.lower()
         self.reloj, self.ahora = reloj, ahora
+        self._secretos_privados()
         os_md = os.path.join(self.principal, ".hackathon", "os.md")
         try:
             self.apagado_s = 60 * float(apagado_min if apagado_min is not None else conf(os_md, "apagado_min") or 30)
@@ -472,6 +543,20 @@ class Agente:
         self.web_clientes = 0                                          # clientes de /v1/stream ahora (tope STREAM_MAX)
         self.suscripcion, self.salud_servicios = Suscripcion(self), SaludServicios(self)
         self.acciones = Acciones(self)
+
+    def _secretos_privados(self):
+        """PR #22: `token` y `relay.url` de antes (0644, o en Windows con el ACL heredado de la carpeta) se reescriben
+        solo para este usuario al arrancar, con el mismo contenido, como web.token. Si no existen, nada."""
+        for nombre in ("token", "relay.url"):
+            ruta = os.path.join(self.dir, nombre)
+            try:
+                if not os.path.isfile(ruta) or permisos.es_privado(ruta):
+                    continue
+                with open(ruta, encoding="utf-8", newline="") as f:
+                    texto = f.read()
+                permisos.escribe_privado(ruta, texto, tmp=f"{ruta}.{os.getpid()}.tmp")
+            except (OSError, ValueError) as ex:
+                self.log(f"{nombre}: no se ha podido dejar privado: {ex!r}")
 
     # --- web de trabajo (M9a) ---
     def _token_web(self):
@@ -764,7 +849,8 @@ class Agente:
 
     def salud(self):
         return (f"hk-os {self.comun}\npendientes: {len(self.cola)}\nlineas_corruptas: {self.corruptas}\n"
-                f"invalidos: {self.invalidos}\nrelay: {self.relay_estado}\nwip: {self.wip.salud}\n")
+                f"invalidos: {self.invalidos}\nrelay: {self.relay_estado}\nwip: {self.wip.salud}\n"
+                + ("reflog: no\n" if self.git.sin_reflog else ""))
 
     def log(self, texto):
         ruta = os.path.join(self.dir, "agente.log")
@@ -931,14 +1017,25 @@ def manejador(agente):
                 cabeceras.append(("Content-Security-Policy", CSP_WEB))
             self._responde(200, datos, tipo, cabeceras)
 
-        def _cerrado(self):
-            """Si el cliente de /v1/stream se ha ido: el socket se puede leer y da EOF (o un error). Lo que mande de
-            más no lo cierra."""
+        def _cerrado(self, sel):
+            """Si el cliente de /v1/stream se ha ido: el socket se puede leer y da EOF (o un error). Con `selectors`
+            (epoll, kqueue o poll), no `select.select`, que con un descriptor ≥ 1024 lanza ValueError y cerraba cada
+            stream al segundo (issue #23). Lo que mande de más se lee y se descarta, para ver el EOF que venga detrás
+            (con MSG_PEEK, un byte de más lo tapaba hasta el ping); más de DESCARTE_MAX bytes, y se cierra.
+            Un `shutdown(SHUT_WR)` da el mismo EOF que un cierre: no se distinguen sin escribir, y esperar a escribir
+            para saberlo es volver a retener el hueco hasta el ping. Se toma como cierre: ningún navegador lo hace, y
+            EventSource reconecta solo (issue #23)."""
             try:
-                return bool(select.select([self.connection], [], [], 0)[0]) and not self.connection.recv(
-                    1, socket.MSG_PEEK)
+                while sel.select(0):
+                    trozo = self.connection.recv(4096)
+                    if not trozo:
+                        return True
+                    self.descartados += len(trozo)
+                    if self.descartados > DESCARTE_MAX:
+                        return True
             except (OSError, ValueError):
                 return True
+            return False
 
         def _stream(self):
             """SSE para la web (api.md §4): `vista` al conectar y cada vez que cambia; `eventos` tal como llegan del
@@ -953,7 +1050,10 @@ def manejador(agente):
             if lleno:
                 self._json(429, {"error": "demasiados clientes"})
                 return
+            sel, self.descartados = None, 0
             try:
+                sel = selectors.DefaultSelector()
+                sel.register(self.connection, selectors.EVENT_READ)
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream; charset=utf-8")
                 self.send_header("Cache-Control", "no-store")
@@ -973,7 +1073,7 @@ def manejador(agente):
                         visto, nuevos = agente.web_esperar(visto, max(0, min(CIERRE_S, fin - time.monotonic())))
                         if nuevos or time.monotonic() >= fin:
                             break
-                        if self._cerrado():
+                        if self._cerrado(sel):
                             return
                     if not nuevos:
                         vista()
@@ -986,9 +1086,11 @@ def manejador(agente):
                         elif evento == "eventos":
                             self.wfile.write(b"event: eventos\ndata: " + datos + b"\n\n")
                     self.wfile.flush()
-            except OSError:
+            except (OSError, ValueError):
                 return
             finally:
+                if sel:
+                    sel.close()
                 with agente.web_cambio:
                     agente.web_clientes -= 1
 
