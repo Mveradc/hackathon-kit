@@ -188,6 +188,27 @@ describe("servicios viejos: la web pinta el `viejo` de la vista tal cual (decisi
   });
 });
 
+describe("propuestas: el autor sin commit conocido sale como declarado (decisión 3A del PR #13)", () => {
+  const caso = CASOS.find((c) => c.respuesta.vista.servicios?.propuestas.length);
+  const base = caso.respuesta.vista.servicios.propuestas[0];
+  const variantes = [
+    [{ autor_git: "persona-c", autor_declarado: "@luis" }, "de @persona-c"],
+    [{ autor_git: null, autor_declarado: "@luis" }, "de @luis (declarado)"],
+    [{ autor_git: null, autor_declarado: null }, "de sin autor"],
+  ];
+  it.each(variantes)("%o → «%s», en Servicios y en la cabina de quien la confirma", (cambio, dice) => {
+    const p = { ...base, ...cambio };
+    const vista = { ...caso.respuesta.vista, servicios: { ...caso.respuesta.vista.servicios, propuestas: [p] } };
+    const respuesta = { ...caso.respuesta, vista, persona: p.duenos[0] };
+    for (const V of [Servicios, Cabina]) {
+      const { container, unmount } = render(<V {...props(respuesta)} />);
+      const el = container.querySelector(`[data-propuesta="${p.clave}"] .hk-texto`);
+      expect(texto(el)).toMatch(new RegExp(` · ${dice.replace(/[()]/g, "\\$&")}$`));
+      unmount();
+    }
+  });
+});
+
 describe.each(CASOS)("$nombre", ({ respuesta, esperado, antiguedades: edades }) => {
   const { vista } = respuesta;
 

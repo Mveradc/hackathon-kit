@@ -169,11 +169,18 @@ def servicios_de(v, persona):
             c = p["campos"]
             nombre = f"servicio «{c.get('nombre') or ''}»" if p["tipo"] == "servicio" else \
                 f"conexión «{c.get('de') or ''} → {c.get('a') or ''}»"
-            autor = f"@{p['autor_git']}" if p.get("autor_git") else (p.get("autor_declarado") or "sin autor")
-            sin_confirmar.append({"grupo": "sin confirmar", "texto": f"propuesta de {nombre} · de {autor}",
+            sin_confirmar.append({"grupo": "sin confirmar", "texto": f"propuesta de {nombre} · de {autor_propuesta(p)}",
                                   "clave": ["propuesta", p["clave"]], "observado_en": p["observado_en"], "fuente": "git",
                                   "viejo": False})
     return no_cuadra + sin_confirmar + fuera
+
+
+def autor_propuesta(p):
+    """Quién propone (constitución II): la persona del commit; sin ella, el Autor de la fila, como declarado
+    (decisión 3A del PR #13)."""
+    if p.get("autor_git"):
+        return f"@{p['autor_git']}"
+    return f"{p['autor_declarado']} (declarado)" if p.get("autor_declarado") else "sin autor"
 
 
 def _huella(obj):

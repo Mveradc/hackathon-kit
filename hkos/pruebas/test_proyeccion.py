@@ -305,6 +305,13 @@ class ServiciosViejos(unittest.TestCase):
         self.assertEqual(self.seccion(reciente)[0], "- no cuadra · «datos» :8001 declarado, no responde (10:20 · demonio)")
         self.assertEqual(p.firmas(reciente, "persona-b"), p.firmas(viejo, "persona-b"))   # el paso del tiempo no firma
 
+    def test_propuesta_sin_autor_git_dice_declarado(self):
+        """Decisión 3A del PR #13 (hallazgo 11 del issue #2): sin autor_git, el Autor de la fila sale como declarado."""
+        sec = self.seccion(p.vista(con_servicios(), ahora="2026-11-20T10:24:00Z"))
+        self.assertEqual(sec[3:], ["- sin confirmar · propuesta de servicio «cache» · de @luis (declarado) (09:00 · git)",
+                                   "- sin confirmar · propuesta de servicio «cola» · de @persona-a (09:00 · git)",
+                                   "- sin confirmar · propuesta de servicio «lote» · de sin autor (09:00 · git)"])
+
 
 class RuidoSinTarea(unittest.TestCase):
     """Pendiente de M8e: `arbol` de la copia principal ve los worktrees y el estado del orquestador como cambios."""
