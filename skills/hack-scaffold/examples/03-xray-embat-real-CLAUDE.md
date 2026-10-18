@@ -46,7 +46,7 @@ Vista de cartera, alertas automáticas, backtest de anticipación y consolidaci�
 TODO: la demo tiene que abrirse por URL (enunciado), pero la plataforma no está elegida y la forma de entrega es la ambigüedad 5.
 
 ## Convenciones
-Código en inglés o español, pero de forma uniforme; documentación en español; commits cortos en imperativo; secretos solo en `.env`; el dataset nunca va en git. Más detalle en `.claude/rules/convenciones.md`.
+Código en inglés o español, pero de forma uniforme; documentación en español; commits cortos en imperativo, y cada uno empieza por el ID de su tarea en `.hackathon/plan.md`: `Txx · …` (por ejemplo, `T05 · …`); secretos solo en `.env`; el dataset nunca va en git. Más detalle en `.claude/rules/convenciones.md`.
 
 ## Fechas
 - Evento: 18–20 sep 2026, ETSIT UPM, Madrid (análisis).

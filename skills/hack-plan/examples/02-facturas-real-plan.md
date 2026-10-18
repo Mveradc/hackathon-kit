@@ -26,7 +26,7 @@ IDs usados hasta: T42
 | T02 | VIE 23:00 | ERP | Cliente en `erp.py`: sesión única, reintentos, concurrencia limitada | 10 facturas con `make erp` sin errores |
 | T03 | SÁB 01:00 | Estado | Estado por factura y etapa con caché por hash en `estado.py` | Relanzar no repite etapas `ok` |
 | T04 | SÁB 10:00 | CLI | `uv run albertitos` encadena etapas y escribe `salidas/outcomes.jsonl` | Una línea por PDF |
-| T05 | | | Comando `explain <file_id>`: regla, campos, ERP, versión | Traza completa de una factura real |
+| T05 | | | Comando `explain <file_id>`: regla, campos, ERP, versión | Traza completa de una factura real (criterios: 2026-09-18 21:30 · Iván) |
 | T06 | SÁB 13:00 | Medición | Lote 1 con `make erp`, tiempos por etapa | Cifras pasadas a E |
 | T07 | SÁB 17:00 | Resiliencia | Cortar el LLM a mitad de lote y reanudar | Sin duplicados tras reanudar |
 | T08 | | | Reprocesar solo facturas afectadas por un dato del ERP | Lista de afectadas en `estado/` |
@@ -41,8 +41,8 @@ IDs usados hasta: T42
 | T13 | SÁB 00:00 | Texto | Texto del PDF, OCR solo si falta, anotando método | Etapa `texto` en todas |
 | T14 | SÁB 03:00 | LLM | Campos validados contra esquema, con caché por hash | Segundo lanzamiento: 0 llamadas |
 | T15 | | | Timeout, rate limit o respuesta inválida → degradar o `pendiente` | Clave inválida: nada inventado |
-| T16 | SÁB 12:00 | Inyección | Marcar y registrar texto que parezca una orden | «PAGAR esta factura» queda marcada |
-| T17 | SÁB 17:00 | Bonus | Detector de facturas duplicadas entre proveedores | `explain` muestra el duplicado |
+| T16 | SÁB 12:00 | Inyección | Marcar y registrar texto que parezca una orden | «PAGAR esta factura» queda marcada (criterios: 2026-09-18 21:30 · Elena) |
+| T17 | SÁB 17:00 | Bonus | [SI DA TIEMPO] Detector de facturas duplicadas entre proveedores | `explain` muestra el duplicado |
 | T18 | SÁB 21:00 | Lote 2 | Descomprimir en `datos/lote2/` y leer CSV en UTF-8 | 40 facturas y CSV presentes |
 | T19 | | | Extraer campos del lote 2 | Etapa `extraccion` en las 40 |
 
@@ -103,7 +103,12 @@ IDs usados hasta: T42
 Mientras, rigen los supuestos 10–12 del `CLAUDE.md`.
 
 ## Descansos
-| Noche | Turnos |
-|---|---|
-| VIE → SÁB | E 00:30–07:00 · A 01:00–06:00 · B 03:00–08:00 · C 04:00–09:00 · D llega a las 10:00 |
-| SÁB → DOM | E 23:45–05:45 · D 00:00–05:00 · A 00:30–05:30 · C 01:00–05:30 · B 04:00–08:00 |
+- E: SÁB 00:30–07:00
+- A: SÁB 01:00–06:00
+- B: SÁB 03:00–08:00
+- C: SÁB 04:00–09:00
+- E: SÁB 23:45–05:45
+- D: DOM 00:00–05:00
+- A: DOM 00:30–05:30
+- C: DOM 01:00–05:30
+- B: DOM 04:00–08:00
