@@ -98,13 +98,23 @@ def mcp_estado(repo):
     return json.loads(r.stdout.decode().splitlines()[0])["result"]["content"][0]["text"]
 
 
+def sin_viejo(s):
+    """El bloque `servicios` de la vista sin el `viejo` que le añade proyeccion.vista (decisión 1 del PR #13): lo
+    demás va tal cual desde estado.json."""
+    s = json.loads(json.dumps(s))
+    for x in [x.get("comprobado") for x in s["lista"]] + [x.get("resultado") for x in s["conexiones"]] + s["desajustes"]:
+        if x:
+            x.pop("viejo", None)
+    return s
+
+
 def servicios_esperados(web, persona):
     """Lo que la sección «Servicios» del md de la persona tiene que decir, sacado de los campos de la web (api.md §6):
-    [(grupo, principio del texto, HH:MM, fuente)], en el orden de la sección."""
+    [(grupo, principio del texto, HH:MM, fuente, viejo)], en el orden de la sección."""
     s = web["servicios"]
     no_cuadra, sin, fuera = [], [], []
     for d in s["desajustes"]:
-        cuando = (hhmm(d["observado_en"]), d["fuente"])
+        cuando = (hhmm(d["observado_en"]), d["fuente"], d["viejo"])
         if d["tipo"] == "codigo_fuera":
             fuera.append(("fuera de servicios", d["rutas"][0]) + cuando)
         elif persona in d["personas"] or not d["personas"]:
@@ -113,20 +123,22 @@ def servicios_esperados(web, persona):
                            [("conexión", x, f"{x['de']} → {x['a']}") for x in s["conexiones"]]:
         c = x["confirmacion"]
         if c["valor"] == "sin_confirmar" and persona in c["faltan"]:
-            sin.append(("sin confirmar", f"{tipo} «{nombre}»", hhmm(c["observado_en"]), c["fuente"]))
+            sin.append(("sin confirmar", f"{tipo} «{nombre}»", hhmm(c["observado_en"]), c["fuente"], False))
     for p in s["propuestas"]:
         if persona in p.get("duenos", []) and p.get("autor_git") != persona:
             c = p["campos"]
             nombre = f"servicio «{c['nombre']}»" if p["tipo"] == "servicio" else f"conexión «{c['de']} → {c['a']}»"
-            sin.append(("sin confirmar", f"propuesta de {nombre}", hhmm(p["observado_en"]), "git"))
+            sin.append(("sin confirmar", f"propuesta de {nombre}", hhmm(p["observado_en"]), "git", False))
     return no_cuadra + sin + fuera
 
 
 def comparar(nombre, url, token, repo, personas, estado=None):
     web = de_la_web(url, token)
     if estado is not None and estado.get("servicios"):
-        comprueba(f"{nombre}: la web trae los servicios de estado.json, campo a campo",
-                  web.get("servicios") == estado["servicios"])
+        comprueba(f"{nombre}: la web trae los servicios de estado.json, campo a campo (más su «viejo»)",
+                  sin_viejo(web["servicios"]) == estado["servicios"])
+        viejos = [d["viejo"] for d in web["servicios"]["desajustes"]]
+        comprueba(f"{nombre}: hay desajustes viejos y otros que no ({viejos})", True in viejos and False in viejos)
         declaradas = {t["id"] for t in estado["tareas"] if t["estado"].get("declarado")}
         en_web = {t["id"] for c in web["columnas"].values() for t in c if t.get("estado_declarado")}
         comprueba(f"{nombre}: las tareas declaradas (reclamadas desde la web) lo son también en la web ({sorted(declaradas)})",
@@ -146,7 +158,7 @@ def comparar(nombre, url, token, repo, personas, estado=None):
     # Web frente al md de cada persona (lo escribe su demonio): «Tu trabajo», «Colisiones que te afectan» y la línea
     # de cada persona en «Equipo».
     for persona in personas:
-        a = agente_mod.Agente(repo, persona, 30)
+        a = agente_mod.Agente(repo, persona, 30, ahora=lambda: web["ahora"])   # el «viejo» con la hora de la web
         a.tz = timezone.utc
         a.recibir_estado()
         a.escribir_md(True)
@@ -185,9 +197,9 @@ def comparar(nombre, url, token, repo, personas, estado=None):
             esperado = servicios_esperados(web, persona)
             real = []
             for l in sec.get("Servicios", []):
-                m = re.match(r"^- (no cuadra|sin confirmar|fuera de servicios) · (.*) \((\d\d:\d\d) · ([a-z]+)\)$", l)
+                m = re.match(r"^- (no cuadra|sin confirmar|fuera de servicios) · (.*) \((\d\d:\d\d) · ([a-z]+)( · viejo)?\)$", l)
                 if m:
-                    real.append(m.groups())
+                    real.append(m.groups()[:4] + (bool(m.group(5)),))
             ok = len(real) == len(esperado) and all(r[0] == e[0] and r[1].startswith(e[1]) and r[2:] == e[2:]
                                                    for r, e in zip(real, esperado))
             comprueba(f"{nombre}, md de @{persona}: «Servicios» como en la web ({len(esperado)} líneas)", ok,

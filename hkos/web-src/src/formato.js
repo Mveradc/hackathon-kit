@@ -108,6 +108,9 @@ export function nombrePropuesta(p) {
   return p.tipo === "servicio" ? `servicio «${c.nombre || ""}»` : `conexión «${c.de || ""} → ${c.a || ""}»`;
 }
 
+/** Quién propone, como proyeccion.autor_propuesta: la persona del commit; sin ella, el Autor de la fila, declarado
+ *  (decisión 3A del PR #13). */
 export function autorPropuesta(p) {
-  return p.autor_git ? `@${p.autor_git}` : p.autor_declarado || "sin autor";
+  if (p.autor_git) return `@${p.autor_git}`;
+  return p.autor_declarado ? `${p.autor_declarado} (declarado)` : "sin autor";
 }

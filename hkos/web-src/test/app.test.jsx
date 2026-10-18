@@ -267,6 +267,22 @@ describe("acciones (api.md §4)", () => {
     expect(screen.getByLabelText("Qué dijo").value).toBe("  Que la demo use datos reales  ");
   });
 
+  // PR #24, decisión 13 del PR #13: Anotar también contesta 503 «ocupado» cuando el cerrojo no llega a tiempo, y la web
+  // lo dice con el mismo texto que el de Reclamar, sin vaciar el formulario.
+  it.each([
+    [503, { error: "ocupado" }, /^Tu demonio está terminando otra acción; prueba en unos segundos\.$/],
+    [503, { error: "otra cosa" }, /^Tu demonio ha contestado 503: otra cosa\.$/],
+  ])("Anotar con %i %o lo dice como Reclamar y no vacía el formulario", async (status, datos, texto) => {
+    const { d } = await monta({ acciones: { "/v1/anotar": { status, datos } } });
+    d.vista(caso("G12"));
+    await flush();
+    fireEvent.change(screen.getByLabelText("Qué dijo"), { target: { value: "Valoramos el impacto" } });
+    fireEvent.click(screen.getByRole("button", { name: "Anotar" }));
+    await flush();
+    expect(screen.getByText(texto)).toBeTruthy();
+    expect(screen.getByLabelText("Qué dijo").value).toBe("Valoramos el impacto");
+  });
+
   it("Anotar con 200 dice el sha y vacía el formulario", async () => {
     const { d } = await monta({ acciones: { "/v1/anotar": { status: 200, datos: { ok: true, sha: "a3f9c1e0b1" } } } });
     d.vista(caso("G12"));

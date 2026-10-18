@@ -209,6 +209,8 @@ def confirmaciones(versiones, sha_persona):
     `crea`: el commit que creó el fichero, solo si quien lee la historia lo sabe con certeza (relay.Novedades). Sus
     filas de Servicios y Conexiones (no las de Propuestas) cuentan como de /hack-scaffold si es el único de la lista
     sin el fichero en sus padres y tiene como mucho un padre; si no, ninguna.
+    Una clave que está en algún padre y en ninguna tabla de la versión se ha borrado: se olvida quién la añadió (y que
+    era de /hack-scaffold). Solo cuentan las adiciones posteriores a su último borrado (decisión 2B del PR #13).
     → (por: {clave: set de personas}, autor: {(tabla, clave): persona o None, el último que la añadió},
        inicial: set de claves de /hack-scaffold)."""
     por, autor = {}, {}
@@ -222,6 +224,9 @@ def confirmaciones(versiones, sha_persona):
         padres = v.get("textos_padres") or []
         antes = set().union(*(_conjunto(t) for t in padres if t is not None))
         persona = sha_persona.get(v["sha"])
+        for c in {c for _, c in antes} - {c for _, c in actual}:
+            por.pop(c, None)
+            inicial.discard(c)
         for tabla, c in actual - antes:
             autor[(tabla, c)] = persona
             if persona:

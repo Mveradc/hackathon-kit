@@ -43,15 +43,18 @@ export function Colision({ c, servido, actions }) {
   );
 }
 
+/** Un desajuste de servicios. Si la vista lo trae `viejo` (lo calcula proyeccion.py), sale como lo viejo de siempre:
+ *  gris y quieto, con su palabra. */
 export function Desajuste({ d, servido }) {
   const [pulso, palabra] = DESAJUSTE[d.tipo] || ["wait", d.tipo];
   return (
     <div className="hk-bloque" data-desajuste={d.tipo}>
-      <StatusPulse state={pulso} label={palabra} />
+      <StatusPulse state={d.viejo ? "stale" : pulso} label={palabra} />
       <span className="hk-texto-sec hk-dato">{d.detalle}</span>
       {d.rutas?.length ? <span className="hk-mono hk-dato">{d.rutas.join(", ")}</span> : null}
       {d.personas?.length ? <span className="hk-texto-sec">{d.personas.map(arroba).join(", ")}</span> : null}
-      <ProvenanceTag source={canal(d.fuente)} label={d.fuente} age={hace(d.observado_en, servido)} at={d.observado_en} />
+      <ProvenanceTag source={canal(d.fuente)} label={d.fuente} age={hace(d.observado_en, servido)} at={d.observado_en}
+        stale={!!d.viejo} />
     </div>
   );
 }

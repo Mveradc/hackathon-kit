@@ -23,9 +23,10 @@ function Comprobado({ x, servido }) {
   const { escucha, salud } = c.valor || {};
   const texto = escucha ? `responde${salud != null ? ` · salud ${salud}` : ""}` : "no responde";
   return (
-    <span className={escucha ? "hk-ok" : "hk-espera"}>
+    <span className={c.viejo ? "hk-viejo" : escucha ? "hk-ok" : "hk-espera"} data-comprobado="">
       ● {texto}{" "}
-      <ProvenanceTag source={canal(c.fuente)} label={c.fuente} age={hace(c.observado_en, servido)} at={c.observado_en} />
+      <ProvenanceTag source={canal(c.fuente)} label={c.fuente} age={hace(c.observado_en, servido)} at={c.observado_en}
+        stale={!!c.viejo} />
     </span>
   );
 }
@@ -46,10 +47,12 @@ export function Servicios({ respuesta }) {
   }
   const porClave = {};
   for (const d of s.desajustes) if (d.clave) (porClave[d.clave] ||= []).push(d);
+  // Un desajuste `viejo` (de la vista) no pinta la caja de fallo ni de espera: se ve gris en «No cuadra».
   const tono = (clave, confirmacion) => {
-    const ds = porClave[clave] || [];
+    const todos = porClave[clave] || [], ds = todos.filter((d) => !d.viejo);
     if (ds.some((d) => d.tipo.endsWith("falla") || d.tipo === "formato_invalido" || d.tipo === "contrato_inexistente")) return "fail";
     if (ds.length) return "wait";
+    if (todos.length) return "stale";
     return confirmacion.valor === "sin_confirmar" ? "declarado" : "";
   };
 
@@ -98,10 +101,12 @@ export function Servicios({ respuesta }) {
                     {x.contrato ? <> · contrato «{x.contrato}»</> : " · sin contrato"}</span>
                   {x.prueba ? <span className="hk-mono hk-dato">{x.prueba}</span> : <span className="hk-texto-sec">sin Prueba</span>}
                   {x.resultado ? (
-                    <span className={x.resultado.valor === "pasa" ? "hk-ok" : "hk-fallo"}>
+                    <span className={x.resultado.viejo ? "hk-viejo" : x.resultado.valor === "pasa" ? "hk-ok" : "hk-fallo"}
+                      data-resultado="">
                       ● la prueba {x.resultado.valor}{" "}
                       <ProvenanceTag source={canal(x.resultado.fuente)} label={x.resultado.fuente}
-                        age={hace(x.resultado.observado_en, servido)} at={x.resultado.observado_en} />
+                        age={hace(x.resultado.observado_en, servido)} at={x.resultado.observado_en}
+                        stale={!!x.resultado.viejo} />
                     </span>
                   ) : <span className="hk-texto-sec">nadie ha corrido la prueba</span>}
                   {x.duenos?.length ? <span className="hk-texto-sec">dueños: {x.duenos.map(arroba).join(", ")}</span> : null}
