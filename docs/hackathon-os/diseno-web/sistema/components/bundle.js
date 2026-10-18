@@ -1,4 +1,4 @@
-/* @ds-bundle: {"format":4,"namespace":"HkOS","components":[{"name":"Panel"},{"name":"StatusPulse"},{"name":"ProvenanceTag"},{"name":"Button"},{"name":"TaskCard"},{"name":"CollisionAlert"},{"name":"TeamGraph"}]} */
+/* @ds-bundle: {"format":4,"namespace":"HkOS","components":[{"name":"Panel"},{"name":"StatusPulse"},{"name":"ProvenanceTag"},{"name":"Button"},{"name":"TaskCard"},{"name":"CollisionAlert"},{"name":"TeamGraph"},{"name":"CriterioRow"},{"name":"Cadena"}]} */
 (function () {
   var React = window.React;
   var h = React.createElement;
@@ -158,6 +158,131 @@
       }));
   }
 
+  /* CriterioRow: una nota de criterios.md y lo que la cubre. La cobertura y el orden llegan hechos en la vista;
+     aquí solo se pintan. Nunca sale «cubierta» porque algo lo declare: lo declarado va en violeta, con su autor. */
+  var COVER = {
+    sin_cubrir: ["wait", "Sin cubrir"], planificada: ["idle", "Planificada"], en_curso: ["live", "En curso"],
+    cubierta: ["ok", "Cubierta"], pitch: ["idle", "Recogida en el pitch (declarado)"], corregida: ["idle", "Corregida"]
+  };
+  function CriterioItem(it) {
+    var foot;
+    if (it.kind === "evidencia") {
+      return h("div", { className: "hk-crit__item" },
+        h("span", { className: "hk-crit__line" }, h("span", { className: "hk-crit__path" }, it.path), h("span", { className: "hk-crit__muted" }, "en main · commit " + it.sha)),
+        h("span", { className: "hk-crit__foot" }, h(StatusPulse, { state: "ok", label: "En main" }), h(ProvenanceTag, { source: "git", age: it.age })));
+    }
+    var st = TASK_STATE[it.state] || TASK_STATE.pendiente;
+    foot = h("span", { className: "hk-crit__foot" },
+      h(StatusPulse, { state: it.stale ? "stale" : st[0], label: st[1] }),
+      it.owner ? h("span", null, "@" + it.owner) : h("span", null, "sin dueño"),
+      it.source ? h(ProvenanceTag, { source: it.source, age: it.age, stale: it.stale }) : null);
+    return h("div", { className: cx("hk-crit__item", it.stale && "is-stale") },
+      h("span", { className: "hk-crit__line" }, h("span", { className: "hk-crit__id" }, it.id), h("span", { className: "hk-crit__title" }, it.title)),
+      foot,
+      it.note ? h("span", { className: "hk-crit__note" }, it.note) : null,
+      it.since ? h("span", { className: "hk-crit__note" }, "trabajo nuevo desde " + it.since) : null,
+      it.link ? h("span", { className: "hk-crit__link" }, h("span", { className: "hk-crit__tag" }, "(criterios: " + it.link.cita + ")"),
+        h("span", null, "en " + (it.link.where || "plan.md")), h(ProvenanceTag, { source: "declarado", by: it.link.by, age: it.link.age })) : null);
+  }
+  function CriterioRow(p) {
+    var cov = COVER[p.coverage] ? p.coverage : "sin_cubrir", c = COVER[cov];
+    return h("article", { className: cx("hk-crit", "hk-crit--" + cov, p.coverageStale && "is-stale", p.className) },
+      h("div", { className: "hk-crit__when" },
+        h("span", { className: "hk-crit__time" }, p.time),
+        h("span", { className: "hk-crit__who" }, p.who),
+        p.where ? h("span", { className: "hk-crit__where" }, p.where) : null,
+        p.strength ? h("span", { className: "hk-crit__strength" }, "fuerza ",
+          h("span", { className: cx("hk-crit__force", "hk-crit__force--" + (p.strengthKind || "sin_precisar")) }, p.strength)) : null),
+      h("div", { className: "hk-crit__said" },
+        h("span", { className: "hk-crit__quote" }, p.said),
+        p.affects ? h("span", { className: "hk-crit__muted" }, "Afecta a: " + p.affects) : null,
+        p.corrects ? h("span", { className: "hk-crit__muted" }, "Corrige a la nota de ", h("span", { className: "hk-crit__tag" }, p.corrects), ".") : null,
+        h(ProvenanceTag, { source: "declarado", by: p.by, age: p.age })),
+      h("div", { className: "hk-crit__cover" },
+        h(StatusPulse, { state: p.coverageStale ? "stale" : c[0], label: p.coverageLabel || c[1] }),
+        (p.items || []).map(function (it, i) { return h(CriterioItem, Object.assign({ key: i }, it)); }),
+        p.pitch ? h("span", { className: "hk-crit__link" }, h("span", null, "recogida en " + (p.pitch.where || "el pitch")),
+          h(ProvenanceTag, { source: "declarado", by: p.pitch.by, age: p.pitch.age })) : null,
+        p.hint ? h("span", { className: "hk-crit__hint" }, p.hint) : null,
+        p.children));
+  }
+
+  /* Cadena: la ruta crítica en una línea de tiempo. Las posiciones llegan en la vista, en la escala que diga `min`–`max`
+     (por ejemplo, horas desde el inicio); el componente solo las coloca. Con layout="cajas" no hay barras: cada tarea
+     sale con su franja declarada, para que lo que dice el plan no parezca una previsión. */
+  var CHAIN = {
+    hecha: ["ok", "Hecha", "hecha"], curso: ["live", "En curso", "en curso"], prevista: ["idle", "Pendiente", "prevista (estimación)"],
+    plazo_pasado: ["fail", "Plazo pasado", "su plazo ya pasó (hecho)"], no_llega: ["wait", "No llega", "acaba después de la entrega (estimación)"],
+    vieja: ["stale", "Dato viejo", "espera a un dato viejo"]
+  };
+  var MARK = { ahora: "ahora", hito: "hito del plan", entrega: "entrega" };
+  function Cadena(p) {
+    var rows = p.rows || [], marks = p.marks || [], min = p.min || 0, max = p.max || 1;
+    function pct(x) { return Math.max(0, Math.min(100, (x - min) / (max - min) * 100)) + "%"; }
+    function span(a, b) { return { left: pct(a), width: "calc(" + pct(b) + " - " + pct(a) + ")" }; }
+    if (p.layout === "cajas") {
+      return h("div", { className: cx("hk-chain", "hk-chain--cajas", p.className) },
+        h("div", { className: "hk-chain__boxes" }, rows.map(function (r, i) {
+          return h("div", { key: r.id, className: "hk-chain__box" },
+            h("span", { className: "hk-chain__id" }, r.id, i < rows.length - 1 ? h("span", { className: "hk-chain__arrow" }, " →") : null),
+            h("span", { className: "hk-chain__title" }, r.title),
+            h("span", { className: "hk-chain__sub" }, (r.owner ? "@" + r.owner : "sin dueño") + (r.state ? " · " + r.state : "")),
+            r.franja ? h("span", { className: "hk-chain__franja" }, "franja " + r.franja) : null,
+            r.franja ? h(ProvenanceTag, { source: "declarado", age: "plan" }) : null);
+        })),
+        p.children);
+    }
+    function lane(extra, key) {
+      return h("div", { className: "hk-chain__lane", key: key },
+        marks.map(function (m, i) { return h("span", { key: "m" + i, className: "hk-chain__mark hk-chain__mark--" + (m.kind || "hito"), style: { left: pct(m.at) } }); }),
+        extra);
+    }
+    var used = {};
+    rows.forEach(function (r) { used[r.kind || "prevista"] = true; });
+    var ticks = p.ticks || [];
+    return h("div", { className: cx("hk-chain", p.className) },
+      h("div", { className: "hk-chain__grid" },
+        h("span", null),
+        h("div", { className: "hk-chain__ticks" }, ticks.map(function (k, i) {
+          return h("span", { key: i, className: "hk-chain__tick", style: { left: pct(k.at), transform: "translateX(" + (i === 0 ? "0" : i === ticks.length - 1 ? "-100%" : "-50%") + ")" } }, k.label);
+        })),
+        h("span", null),
+        rows.map(function (r) {
+          var k = CHAIN[r.kind] ? r.kind : "prevista", st = CHAIN[k];
+          return h(React.Fragment, { key: r.id },
+            h("div", { className: "hk-chain__who" },
+              h("span", { className: "hk-chain__line" }, h("span", { className: "hk-chain__id" }, r.id), " ", h("span", { className: "hk-chain__title" }, r.title)),
+              h("span", { className: "hk-chain__sub" }, (r.owner ? "@" + r.owner : "sin dueño") + (r.franja ? " · franja " + r.franja : ""))),
+            lane([
+              r.deadline != null ? h("span", { key: "d", className: cx("hk-chain__deadline", k === "plazo_pasado" && "is-past"), style: { left: pct(r.deadline) } }) : null,
+              r.from != null ? h("span", { key: "b", className: "hk-chain__bar hk-chain__bar--" + k, style: span(r.from, r.to) }) : null,
+              r.est ? h("span", { key: "e", className: "hk-chain__bar hk-chain__bar--prevista", style: span(r.est[0], r.est[1]) }) : null
+            ], "l"),
+            h("div", { className: "hk-chain__state" },
+              h(StatusPulse, { state: st[0], label: r.label || st[1] }),
+              r.note ? h("span", { className: "hk-chain__note hk-chain__note--" + k }, r.note) : null));
+        }),
+        p.end ? h(React.Fragment, null,
+          h("div", { className: "hk-chain__who" }, h("span", { className: "hk-chain__line" }, p.end.title || "Fin previsto"),
+            h("span", { className: "hk-chain__sub" }, p.end.sub || "estimación, con el ritmo real")),
+          lane([
+            h("span", { key: "r", className: "hk-chain__range", style: span(p.end.from, p.end.to) }),
+            h("span", { key: "c", className: "hk-chain__central hk-chain__central--" + (p.end.tone || "idle"), style: { left: pct(p.end.at) } })
+          ]),
+          h("div", { className: "hk-chain__state" },
+            h("span", { className: "hk-chain__end hk-chain__end--" + (p.end.tone || "idle") }, p.end.label),
+            p.end.range ? h("span", { className: "hk-chain__note" }, p.end.range) : null)) : null),
+      p.legend === false ? null : h("div", { className: "hk-chain__legend" },
+        Object.keys(CHAIN).filter(function (k) { return used[k]; }).map(function (k) {
+          return h("span", { key: k, className: "hk-chain__key" }, h("span", { className: "hk-chain__swatch hk-chain__bar--" + k }), CHAIN[k][2]);
+        }),
+        h("span", { className: "hk-chain__key" }, h("span", { className: "hk-chain__swatch hk-chain__swatch--deadline" }), "su «Hasta» (plan.md)"),
+        Object.keys(MARK).filter(function (k) { return marks.some(function (m) { return (m.kind || "hito") === k; }); }).map(function (k) {
+          return h("span", { key: k, className: "hk-chain__key" }, h("span", { className: "hk-chain__swatch hk-chain__mark--" + k }), MARK[k]);
+        })),
+      p.children);
+  }
+
   window.HkOS = { Panel: Panel, StatusPulse: StatusPulse, ProvenanceTag: ProvenanceTag, Button: Button,
-    TaskCard: TaskCard, CollisionAlert: CollisionAlert, TeamGraph: TeamGraph };
+    TaskCard: TaskCard, CollisionAlert: CollisionAlert, TeamGraph: TeamGraph, CriterioRow: CriterioRow, Cadena: Cadena };
 })();
