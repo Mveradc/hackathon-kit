@@ -1011,9 +1011,13 @@ def manejador(agente):
                 origen is None or origen.lower() in {"http://" + h for h in locales})
 
         def _salud(self):
-            """/salud, sin token, como siempre. Con X-HK-Reto, además X-HK-Prueba (Agente.prueba), solo con el Host y
-            el Origin locales de M9a: una página con DNS rebinding no saca firmas. El cuerpo no cambia."""
-            prueba = agente.prueba(self.headers.get("X-HK-Reto")) if self._host_local() else None
+            """/salud, sin token, como siempre, pero con el Host y el Origin locales de M9a (decisión 5A del PR #13),
+            también sin `web_nueva`: si no, 403 {"error":"origen"}, y una página con DNS rebinding no lee el git común
+            ni el estado del relay. Con X-HK-Reto, además X-HK-Prueba (Agente.prueba). El cuerpo no cambia."""
+            if not self._host_local():
+                self._json(403, {"error": "origen"})
+                return
+            prueba = agente.prueba(self.headers.get("X-HK-Reto"))
             self._responde(200, agente.salud().encode("utf-8"), "text/plain; charset=utf-8",
                            [("X-HK-Prueba", prueba)] if prueba else ())
 

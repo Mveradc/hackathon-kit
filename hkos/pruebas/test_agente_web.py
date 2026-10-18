@@ -122,6 +122,8 @@ class SinWebNueva(Base):
         self.assertEqual(codigo, 200)
         self.assertTrue(datos.decode().startswith("hk-os "))
         self.assertNotIn("x-hk-prueba", resp)                          # sin web.token no hay con qué firmar
+        codigo, _, datos = pide(self.puerto, "GET", "/salud", host=f"evil.example:{self.puerto}")
+        self.assertEqual((codigo, json.loads(datos)), (403, {"error": "origen"}))   # decisión 5A: también sin web_nueva
         self.assertEqual(self.a.salud_servicios.ciclo(), [])          # sin servicios en el estado, nada que mirar
 
 
@@ -272,15 +274,44 @@ class Seguridad(Base):
             self.assertEqual((codigo, datos), (200, cuerpo))
             self.assertEqual(resp["x-hk-prueba"], hmac.new(self.a.web_token.encode(), reto.encode(),
                                                            hashlib.sha256).hexdigest())
-        for cabeceras, host in (({"X-HK-Reto": "AB" * 32}, None), ({"X-HK-Reto": "ab" * 31}, None),
-                                ({"X-HK-Reto": "ab" * 33}, None), ({"X-HK-Reto": ""}, None),
-                                ({"X-HK-Reto": reto}, f"evil.example:{self.puerto}"),
+        for cabeceras in ({"X-HK-Reto": "AB" * 32}, {"X-HK-Reto": "ab" * 31}, {"X-HK-Reto": "ab" * 33},
+                          {"X-HK-Reto": ""}):
+            codigo, resp, datos = pide(self.puerto, "GET", "/salud", cabeceras)
+            self.assertEqual((codigo, datos), (200, cuerpo), cabeceras)
+            self.assertNotIn("x-hk-prueba", resp, cabeceras)
+            self.sin_cors(resp)
+        for cabeceras, host in (({"X-HK-Reto": reto}, f"evil.example:{self.puerto}"),
                                 ({"X-HK-Reto": reto}, "127.0.0.1"),
                                 ({"X-HK-Reto": reto, "Origin": "http://evil.example"}, None)):
             codigo, resp, datos = pide(self.puerto, "GET", "/salud", cabeceras, host=host)
-            self.assertEqual((codigo, datos), (200, cuerpo), (cabeceras, host))
+            self.assertEqual((codigo, json.loads(datos)), (403, {"error": "origen"}), (cabeceras, host))
             self.assertNotIn("x-hk-prueba", resp, (cabeceras, host))
             self.sin_cors(resp)
+
+    def test_salud_con_host_ajeno(self):
+        """Decisión 5A (PR #13): /salud, con la regla de Host y Origin de M9a. Con DNS rebinding, una página ajena leía
+        la ruta del git común (usuario del SO y proyecto) y el estado del relay; ahora, 403 {"error":"origen"}, sin
+        nada del cuerpo de /salud. Con 127.0.0.1:<p> o localhost:<p> (el arranque, hk-os web, las evals), lo de siempre."""
+        _, _, cuerpo = pide(self.puerto, "GET", "/salud")
+        self.assertTrue(cuerpo.startswith(f"hk-os {self.a.comun}\n".encode()))
+        self.assertEqual(pide(self.puerto, "GET", "/salud", host=f"LOCALHOST:{self.puerto}")[:3:2], (200, cuerpo))
+        for cabeceras, host in (({}, f"evil.example:{self.puerto}"), ({}, "evil.example"), ({}, "127.0.0.1"),
+                                ({}, "localhost"), ({}, "127.0.0.1:1"), ({}, f"localhost:{self.puerto + 1}"),
+                                ({"Origin": "http://evil.example"}, None),
+                                ({"Origin": f"http://evil.example:{self.puerto}"}, f"evil.example:{self.puerto}"),
+                                ({"Origin": f"http://localhost:{self.puerto + 1}"}, None)):
+            codigo, resp, datos = pide(self.puerto, "GET", "/salud", cabeceras, host=host)
+            self.assertEqual((codigo, json.loads(datos)), (403, {"error": "origen"}), (cabeceras, host))
+            self.assertNotIn(self.a.comun.encode(), datos)
+            self.assertEqual(resp["cache-control"], "no-store")
+            self.sin_cors(resp)
+        with socket.create_connection(("127.0.0.1", self.puerto), timeout=5) as s:     # HTTP/1.0 sin Host
+            s.sendall(b"GET /salud HTTP/1.0\r\n\r\n")
+            respuesta = b""
+            while trozo := s.recv(4096):
+                respuesta += trozo
+        self.assertTrue(respuesta.startswith(b"HTTP/1.0 403 "), respuesta[:40])
+        self.assertNotIn(self.a.comun.encode(), respuesta)
 
     def test_options_sin_cors(self):
         for ruta in ("/v1/anotar", "/v1/vista", "/"):
