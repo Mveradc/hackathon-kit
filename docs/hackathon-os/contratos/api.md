@@ -474,6 +474,7 @@ M9a (solo con `web_nueva: sí` y `servicios` en `estado.json`; si no, ni la secc
 
   Orden: `no cuadra`, `sin confirmar`, `fuera de servicios`. Sección vacía: «- todo cuadra». Los nombres de servicio, contrato y conexión son dato: van entre «».
 - **Firma `servicios:`** en la cabecera, detrás de `reservas:`, sin horas: tipo y clave de cada línea de la sección.
+- **Viejo:** una línea de «no cuadra» cuyo desajuste es `viejo` en la vista lleva `· viejo` detrás de la fuente: `- no cuadra · «datos» :8001 declarado, no responde (18:40 · demonio · viejo)`. La firma no lo lleva. (Tras congelar, 2026-10-18, decisión 1 del usuario en el PR #13; PR #34: `proyeccion.linea_servicio`, `servicios_de`.)
 - **El delta** recorre las secciones en este orden: colisiones, reservas, servicios, trabajo, novedades.
 - **La web** pinta lo mismo para esa persona en la cabina, y todo el equipo en la vista de servicios (ADR-0009: mismos campos; el md es el subconjunto de la persona, como «Tu trabajo»).
 
@@ -636,6 +637,8 @@ Fuera de servicios: docs/, README.md, CLAUDE.md
 - **Una fila que no vale** (tras congelar, 2026-10-17, PR #7, issue #2, hallazgo 6): con algún campo que no vale, la fila (servicio o conexión) queda `sin_confirmar`, y en `servicios.lista` un Puerto o una Salud que no valen van como `null`. El motivo sigue en el desajuste `formato_invalido`, con la `clave` de la fila. `lista` no tiene otra marca de «fila que no vale» (el esquema no la admite). Quien necesite saber si una fila vale (el demonio, la web) lo lee de los desajustes `formato_invalido` con su `clave`; ni `valida` ni `invalidos` en `lista` (2026-10-18, decisión 6C del usuario en el PR #13).
 
 **Clon superficial del relay** (tras congelar, 2026-10-17, PR #14, issue #10): si el clon del relay es superficial (`git rev-parse --is-shallow-repository` da `true`), ninguna fila es de `/hack-scaffold`, y las versiones de los commits del borde (los de `shallow`) no cuentan: git no tiene sus padres, así que todas sus filas parecerían añadidas por la persona de ese commit. Si no se sabe si es superficial (la orden falla o da otra cosa, o no se puede leer `shallow`), tampoco hay nada de `/hack-scaffold` y no cuenta ninguna versión, así que ninguna fila sale confirmada.
+
+**Viejo** (en la vista, no en `estado.json`; tras congelar, 2026-10-18, decisión 1 del usuario en el PR #13; PR #34: `proyeccion.vista`): `comprobado`, `resultado` y cada desajuste llevan `viejo` = su `observado_en` tiene más de `umbral_viejo_s`; un desajuste con `fuente: git` nunca es viejo (su hora es la del commit de `servicios.md`; su antigüedad la dice `fuentes.git`).
 
 **Clave de una fila:** los 12 primeros hex del sha256 del JSON de sus campos normalizados, en el orden de su tabla: Servicios = nombre, carpeta, puerto, arranque, salud, dueño; Conexiones = de, a, contrato, prueba. Normalizar es recortar, quitar las comillas invertidas de alrededor y pasar `—` a `null`. Una fila de Propuestas tiene la clave de la fila que propone: la de sus columnas sin Autor ni Hora. La confirmación (quién añadió cada clave, qué dueños hacen falta) es la de ADR-0011.
 
