@@ -25,6 +25,17 @@ export function Tarea({ t, servido, action }) {
   );
 }
 
+/** Una novedad: su tipo, el resumen tal como llega en la vista, entre «», y su autor. El resumen y el autor van cada uno
+ *  en su elemento: lo que traiga el resumen («», paréntesis, una @) se queda dentro del suyo. */
+export function TextoNovedad({ n }) {
+  return (
+    <>
+      {n.tipo === "decision" ? "decisión" : n.tipo} · «<span data-resumen="">{n.resumen}</span>»
+      {n.autor ? <> (<span data-autor="">{n.autor}</span>)</> : null}
+    </>
+  );
+}
+
 export function Colision({ c, servido, actions }) {
   return (
     <CollisionAlert data-colision={c.id} severity={c.gravedad} level={c.nivel} path={c.rutas.join(", ")}

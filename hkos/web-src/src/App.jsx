@@ -85,7 +85,8 @@ export function App({ token, fetchImpl, pestanas = null }) {
   const Vista = { cabina: Cabina, red: Red, tablero: Tablero, servicios: Servicios }[vista];
 
   return (
-    <main className={`hk-app${d.sinConexion ? " is-offline" : ""}`} data-sin-conexion={d.sinConexion ? "si" : "no"}>
+    <main className={`hk-app${d.sinConexion ? " is-offline" : ""}`} data-sin-conexion={d.sinConexion ? "si" : "no"}
+      data-lider={d.lider ? "si" : "no"}>
       <div className="hk-app__marco">
         <header className="hk-cabecera">
           <div className="hk-cabecera__izq">

@@ -1,7 +1,7 @@
 import { Panel, ProvenanceTag, StatusPulse } from "../componentes/componentes.jsx";
 import { hace, hora, tarjetas } from "../formato.js";
 import { BotonReclamar, AvisoReclamo } from "./Cabina.jsx";
-import { Colision, Tarea, Vacio } from "./comun.jsx";
+import { Colision, Tarea, TextoNovedad, Vacio } from "./comun.jsx";
 
 // Tablero por persona (pantallas/tablero.dc.html): una columna por persona más «Sin dueño», agrupando las tarjetas de
 // la vista por su campo `dueno`; la banda de colisiones y la actividad (novedades y lo que va sin tarea).
@@ -42,7 +42,7 @@ export function Tablero({ respuesta, reclamo }) {
   const de = (d) => todas.filter((t) => (t.dueno || "") === d);
   const colisiones = vista.colisiones || [];
   const actividad = [
-    ...(vista.novedades || []).map((n) => ({ texto: `${n.tipo === "decision" ? "decisión" : n.tipo} · «${n.resumen}»${n.autor ? ` (${n.autor})` : ""}`, fuente: "git", obs: n.observado_en })),
+    ...(vista.novedades || []).map((n, i) => ({ texto: <TextoNovedad n={n} />, novedad: i, fuente: "git", obs: n.observado_en })),
     ...(vista.sin_tarea || []).map((x) => ({ texto: `@${x.persona} sin tarea: «${x.que}»`, fuente: "relay", label: "sin tarea", obs: x.observado_en })),
     ...(vista.reservas || []).map((r) => ({ texto: `@${r.persona} reserva ${r.rutas.map((x) => `«${x}»`).join(", ")} hasta ${hora(r.hasta)} · ${r.modo}`, fuente: "relay", label: "reserva", obs: null })),
   ];
@@ -73,7 +73,7 @@ export function Tablero({ respuesta, reclamo }) {
         <aside style={{ flex: "1 1 300px", minWidth: 0 }}>
           <Panel title="Actividad" meta={String(actividad.length)}>
             {actividad.length ? actividad.map((a, i) => (
-              <div key={i} className="hk-bloque">
+              <div key={i} className="hk-bloque" data-novedad={a.novedad}>
                 <span className="hk-texto-sec hk-dato">{a.texto}</span>
                 {a.obs ? <ProvenanceTag source={a.fuente} label={a.label} age={hace(a.obs, servido)} at={a.obs} /> : null}
               </div>

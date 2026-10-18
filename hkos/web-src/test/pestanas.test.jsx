@@ -1,7 +1,7 @@
 import { act, render, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.jsx";
-import { pestanasDelNavegador } from "../src/datos/demonio.js";
+import { CEDE_MS, LATIDO_MS, pestanasDelNavegador, RELEVO_AZAR_MS, RELEVO_MS } from "../src/datos/demonio.js";
 import { caso, demonioFalso, movimientoReducido, navegadorFalso } from "./ayuda.js";
 
 // Issue #15: Chrome abre como mucho 6 conexiones por host y cada pestaña tenía su /v1/stream, así que desde la 7.ª la
@@ -15,6 +15,30 @@ const vistas = (d) => d.peticiones.filter((p) => p.url === "/v1/vista").length;
 const pinta = (p) => !!within(p.container).queryByRole("heading", { name: /Hola, @persona-a/ });
 const sub = (p) => p.container.querySelector(".hk-sub")?.textContent || "";
 const sinConexion = (p) => p.container.querySelector("main").dataset.sinConexion;
+const lideres = (ps) => ps.map((p) => p.container.querySelector("main")?.dataset.lider);
+const avanza = (ms) => act(async () => { await vi.advanceTimersByTimeAsync(ms); });
+const NOMBRE = `hk-os-stream-h-${TOKEN}`;
+/** `ms` en pasos de 20 s con un ping del demonio en cada uno (sin ellos, la líder cortaría el stream a los 40 s). */
+async function conPing(d, ms) {
+  for (let t = 0; t < ms; t += 20_000) {
+    await avanza(20_000);
+    d.ping();
+    await flush();
+  }
+}
+// Lo más que tarda una seguidora en relevar a una líder que calla: RELEVO_MS desde el último latido oído, más su azar
+// y el segundo de su comprobación.
+const RELEVO_MAX = RELEVO_MS + RELEVO_AZAR_MS + 1000;
+
+/** Una pestaña por cada una de `tabs` (navegadorFalso().pestana()), cada una con su visibilidad y su ciclo de vida. */
+async function abreEn(d, tabs) {
+  const lista = [];
+  for (const t of tabs) {
+    lista.push(render(<App token={TOKEN} fetchImpl={d.fetchImpl} pestanas={t.pestanas} />));
+    await flush();
+  }
+  return lista;
+}
 
 async function abre(d, pestanas, n, token = TOKEN) {
   const lista = [];
@@ -146,11 +170,170 @@ describe("un solo /v1/stream por navegador (issue #15)", () => {
     expect(pestanasDelNavegador({ ...completo, navigator: {} })).toBeNull();
     expect(pestanasDelNavegador({ ...completo, BroadcastChannel: undefined })).toBeNull();
     expect(pestanasDelNavegador({ ...completo, crypto: {} })).toBeNull();
+    // Visibilidad y eventos: visibilitychange del documento, pagehide y pageshow de la ventana.
+    expect(p.visible()).toBe(true);
+    const doc = Object.assign(new EventTarget(), { visibilityState: "hidden" }), ventana = new EventTarget();
+    const otra = pestanasDelNavegador({ ...completo, document: doc,
+      addEventListener: ventana.addEventListener.bind(ventana), removeEventListener: ventana.removeEventListener.bind(ventana) });
+    expect(otra.visible()).toBe(false);
+    const vistos = [];
+    const quitar = [otra.escucha("visibilitychange", () => vistos.push("v")), otra.escucha("pagehide", () => vistos.push("h"))];
+    doc.dispatchEvent(new Event("visibilitychange"));
+    ventana.dispatchEvent(new Event("pagehide"));
+    doc.dispatchEvent(new Event("pagehide"));
+    for (const f of quitar) f();
+    doc.dispatchEvent(new Event("visibilitychange"));
+    expect(vistos).toEqual(["v", "h"]);
     // Con el crypto de verdad (el de Node): 64 caracteres hex y nunca el token.
     const real = pestanasDelNavegador({ ...completo, crypto: globalThis.crypto });
     const h = await real.huella(TOKEN);
     expect(h).toMatch(/^[0-9a-f]{64}$/);
     expect(h).not.toContain(TOKEN);
+  });
+});
+
+describe("relevo sin que la líder se cierre (issue #23)", () => {
+  it("una líder congelada: una seguidora visible la releva en RELEVO_MS y, al despertar, la vieja deja su stream", async () => {
+    const d = demonioFalso(), nav = navegadorFalso();
+    const tabs = [nav.pestana(), nav.pestana(), nav.pestana()];
+    const ps = await abreEn(d, tabs);
+    const r = caso("G12");
+    d.vista(r);
+    await flush();
+    expect(lideres(ps)).toEqual(["si", "no", "no"]);
+    await avanza(LATIDO_MS * 3);                          // con latidos, nadie la releva
+    expect(streams(d)).toBe(1);
+    tabs[0].congela();
+    await avanza(RELEVO_MS - LATIDO_MS - 100);
+    expect(streams(d)).toBe(1);
+    await avanza(RELEVO_MAX - (RELEVO_MS - LATIDO_MS - 100));
+    expect(streams(d)).toBe(2);
+    expect(lideres(ps)[0]).toBe("si");                    // la congelada aún no se ha enterado
+    expect(lideres(ps.slice(1)).filter((x) => x === "si").length).toBe(1);
+    expect(nav.duenos(NOMBRE)).toBe(1);
+    expect(d.peticiones[0].signal.aborted).toBe(false);
+    // Lo que trae el stream de la nueva líder llega a la otra seguidora; a la congelada, no.
+    const otra = structuredClone(r);
+    otra.persona = "persona-b";
+    d.vista(otra);
+    await flush();
+    for (const p of ps.slice(1)) expect(sub(p)).toContain("@persona-b");
+    expect(sub(ps[0])).toContain("@persona-a");
+    // Al despertar: deja de ser líder, corta su stream y pinta lo de la nueva líder. No abre otro.
+    tabs[0].despierta();
+    await flush();
+    expect(lideres(ps)[0]).toBe("no");
+    expect(d.peticiones[0].signal.aborted).toBe(true);
+    expect(sub(ps[0])).toContain("@persona-b");
+    // Sin bucles: con latidos, nadie más la releva.
+    await conPing(d, 200_000);
+    expect(streams(d)).toBe(2);
+    expect(lideres(ps).filter((x) => x === "si").length).toBe(1);
+    expect(ps.map(sinConexion)).toEqual(["no", "no", "no"]);
+  });
+
+  it("lo que manda una líder de una era anterior no se pinta; lo de una era nueva, sí", async () => {
+    const d = demonioFalso(), nav = navegadorFalso();
+    const ps = await abreEn(d, [nav.pestana(), nav.pestana()]);
+    const r = caso("G12");
+    d.vista(r);
+    await flush();
+    const intruso = new (nav.pestana().pestanas.Canal)(NOMBRE);
+    const otra = structuredClone(r);
+    otra.persona = "persona-b";
+    intruso.postMessage({ t: "vista", r: otra, en: Date.now(), era: 1, de: "vieja" });
+    await flush();
+    expect(sub(ps[1])).toContain("@persona-a");
+    intruso.postMessage({ t: "vista", r: otra, en: Date.now(), era: Date.now() + 1, de: "nueva" });
+    await flush();
+    expect(sub(ps[1])).toContain("@persona-b");
+    // La líder que oye una era más nueva deja de serlo aunque nadie le haya quitado el cerrojo, y corta su stream.
+    expect(lideres(ps)[0]).toBe("no");
+    expect(d.peticiones[0].signal.aborted).toBe(true);
+    intruso.close();
+  });
+
+  it("una líder oculta CEDE_MS con una seguidora visible: la visible coge el cerrojo, y sin bucles", async () => {
+    const d = demonioFalso(), nav = navegadorFalso();
+    const tabs = [nav.pestana(), nav.pestana(), nav.pestana()];
+    const ps = await abreEn(d, tabs);
+    d.vista(caso("G12"));
+    await flush();
+    tabs[2].oculta(true);
+    tabs[0].oculta(true);                                 // la líder
+    await avanza(CEDE_MS - 1000);
+    expect(streams(d)).toBe(1);
+    await avanza(RELEVO_AZAR_MS + 2000);
+    expect(streams(d)).toBe(2);
+    expect(lideres(ps)).toEqual(["no", "si", "no"]);      // la única visible, no la oculta que esperaba en la cola
+    expect(d.peticiones[0].signal.aborted).toBe(true);
+    await conPing(d, 120_000);
+    expect(streams(d)).toBe(2);
+    // Todas ocultas: nadie releva a nadie (con los timers frenados, se relevarían cada minuto).
+    tabs[1].oculta(true);
+    await conPing(d, 120_000);
+    expect(streams(d)).toBe(2);
+    expect(lideres(ps)).toEqual(["no", "si", "no"]);
+    // La primera que vuelve a verse releva en el acto a la líder, que lleva oculta más de CEDE_MS.
+    tabs[2].oculta(false);
+    await flush();
+    expect(streams(d)).toBe(3);
+    expect(lideres(ps)).toEqual(["no", "no", "si"]);
+    await conPing(d, 120_000);
+    expect(streams(d)).toBe(3);
+  });
+
+  it("con todas ocultas y la líder congelada, nadie la releva hasta que una se ve; entonces, en el acto", async () => {
+    const d = demonioFalso(), nav = navegadorFalso();
+    const tabs = [nav.pestana(), nav.pestana()];
+    const ps = await abreEn(d, tabs);
+    d.vista(caso("G12"));
+    await flush();
+    tabs[1].oculta(true);
+    tabs[0].congela();
+    await avanza(60_000);
+    expect(streams(d)).toBe(1);
+    tabs[1].oculta(false);
+    await flush();
+    expect(streams(d)).toBe(2);
+    expect(lideres(ps)[1]).toBe("si");
+  });
+
+  it("bfcache: una seguidora cierra el canal en pagehide y, en pageshow, vuelve a pintar sin stream propio ni token nuevo", async () => {
+    const d = demonioFalso(), nav = navegadorFalso();
+    const tabs = [nav.pestana(), nav.pestana(), nav.pestana()];
+    const ps = await abreEn(d, tabs);
+    const r = caso("G12");
+    d.vista(r);
+    await flush();
+    tabs[1].sale();
+    expect(nav.canales()).toBe(2);
+    await avanza(LATIDO_MS * 5);                          // los latidos no le llegan: no la sacan de la caché
+    const otra = structuredClone(r);
+    otra.persona = "persona-b";
+    d.vista(otra);
+    await flush();
+    expect(tabs[1].desalojada).toBe(false);
+    expect(sub(ps[1])).toContain("@persona-a");
+    tabs[1].vuelve();
+    await flush();
+    expect(sub(ps[1])).toContain("@persona-b");           // la última vista, de la líder (hola)
+    expect(streams(d)).toBe(1);
+    expect(nav.canales()).toBe(3);
+    for (const p of d.peticiones) expect(p.headers["X-HK-Token"]).toBe(TOKEN);
+    // La líder que sale suelta el cerrojo y corta su stream; otra lo coge. Al volver, es seguidora.
+    tabs[0].sale();
+    await flush();
+    expect(d.peticiones[0].signal.aborted).toBe(true);
+    expect(streams(d)).toBe(2);
+    expect(lideres(ps).slice(1).filter((x) => x === "si").length).toBe(1);
+    tabs[0].vuelve();
+    d.vista(r);
+    await flush();
+    expect(sub(ps[0])).toContain("@persona-a");
+    expect(streams(d)).toBe(2);
+    expect(lideres(ps)[0]).toBe("no");
+    expect(tabs[0].desalojada).toBe(false);
   });
 });
 

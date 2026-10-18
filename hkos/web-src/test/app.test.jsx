@@ -234,6 +234,8 @@ describe("acciones (api.md §4)", () => {
     [409, { error: "es de @persona-a según el plan" }, /es de @persona-a según el plan/],
     [429, {}, /tope de reclamos/],
     [502, { error: "gh: sin red" }, /gh ha fallado: gh: sin red/],
+    [503, { error: "ocupado" }, /^Tu demonio está terminando otra acción; prueba en unos segundos\.$/],
+    [503, { error: "otra cosa" }, /^Tu demonio ha contestado 503: otra cosa\.$/],
     [401, {}, /vuelve a abrir la web con hk-os web/],
   ])("Reclamar con %i lo dice sin dar la tarea por reclamada", async (status, datos, texto) => {
     const { d } = await monta({ acciones: { "/v1/reclamar": { status, datos } } });
