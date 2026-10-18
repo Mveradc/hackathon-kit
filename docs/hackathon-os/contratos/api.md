@@ -333,7 +333,7 @@ Cada conexión con el demonio tiene un plazo de socket de 10 s (tras congelar, 2
 
 **Salud de los servicios.** Cada 15 s, para cada servicio de `estado.json` → `servicios.lista` con `confirmacion.valor = confirmada`, `dueno_autoridad` = esta persona y un Puerto válido:
 - conecta por TCP a `127.0.0.1:<Puerto>` (0,5 s como mucho) y, si acepta y hay una Salud válida (§10), hace `GET <Salud>` en `127.0.0.1:<Puerto>`, con 2 s como mucho, sin seguir redirecciones, sin cuerpo y leyendo como mucho 4 KB;
-- emite `servicio.estado` solo cuando cambia (`escucha`, `salud`) respecto de lo último que emitió para esa `clave`, y una vez al arrancar;
+- emite `servicio.estado` una vez al arrancar, cuando cambia (`escucha`, `salud`) respecto de lo último que emitió para esa `clave` y, sin cambios, cada N s, con N = `umbral_viejo_s / 2` (el `umbral_viejo_s` de `os.md`, el mismo de la proyección: 150 s con el valor por defecto de 300). Como comprueba cada 15 s, sale en la primera vuelta en que se ha cumplido el plazo. Un cambio emite enseguida y la cuenta vuelve a empezar. Así «viejo» quiere decir «sin comprobar»: un portátil cerrado deja de emitir y se nota (tras congelar, 2026-10-18, decisión 1B del usuario en el PR #13; PR #33: `SaludServicios.ciclo`, `latido_s`, `emitido_en`);
 - nunca consulta otra IP, nunca ejecuta Arranque ni Prueba, y no consulta filas sin confirmar, de otra persona o con un formato que no vale.
 
 **Anotar** (`POST /v1/anotar`):
