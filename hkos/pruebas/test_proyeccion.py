@@ -185,6 +185,15 @@ class Markdown(unittest.TestCase):
         self.assertEqual(len(p.equilibra("x" * 300 + "«", 200)), 200)
         self.assertEqual(p.equilibra("x" * 198 + "«ab»", 200), "x" * 198 + "«»")
 
+    def test_novedad_de_un_relay_viejo(self):
+        """Decisión 17B del PR #13: linea_novedad vuelve a pasar el resumen por equilibra, de red por si el relay es
+        de antes del PR #25 y lo manda sin equilibrar. Con uno nuevo no cambia nada: equilibra es idempotente."""
+        for crudo, resumen in (("ok » (@persona-a) y «", "ok (@persona-a) y «»"),
+                               ("fuera» » de más «dentro", "fuera de más «dentro»"), ("» » »", "")):
+            n = {"tipo": "criterio", "resumen": crudo, "autor": "@persona-b", "observado_en": "2026-11-20T10:05:00Z"}
+            self.assertEqual(p.linea_novedad(n, timezone.utc), f"- 10:05 · criterio · «{resumen}» (@persona-b)")
+            self.assertEqual(p.equilibra(resumen, p.RESUMEN_MAX), resumen)
+
     def test_reservas_de_otras_personas_seccion_firma_y_tsv(self):
         """M8g (K-73): la sección «Reservas» y reservas.tsv solo llevan las de las demás; la firma no lleva horas."""
         e = estado_base()

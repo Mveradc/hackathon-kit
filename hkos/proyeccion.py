@@ -29,6 +29,7 @@ PRESENCIA_VIEJA_S = 180                 # R-12: presencia con más de 3 minutos
 FUENTE_VIEJA_S = 300                    # R-12: GitHub o relay con más de 5 (umbral_viejo_s de os.md)
 NOVEDADES_MAX = 5
 LINEA_MAX = 160                         # api.md §6
+RESUMEN_MAX = 200                       # caracteres del resumen de una novedad (estado.schema.json)
 SEP, SALTO = chr(9), chr(10)            # reservas.tsv: tabulador entre campos, una ruta por línea
 ZWJ = "\u200d"
 
@@ -353,12 +354,14 @@ def linea_novedad(n, tz):
     cabeza = " ".join(f"{_hora(n['observado_en'], tz)} · {tipo} ·".split()) + " "
     autor = f" ({' '.join(n['autor'].split())})" if n.get("autor") else ""
     # El resumen se recorta (110 como mucho) para que la línea entera, con sus comillas y el autor, quepa en LINEA_MAX:
-    # si la cortara _linea, se perdería la » de fuera y el autor.
+    # si la cortara _linea, se perdería la » de fuera y el autor. Antes, equilibra: el relay ya lo hace, y esto es la red
+    # por si el relay es viejo (decisión 17B del PR #13; con uno nuevo no cambia nada, es idempotente).
+    resumen = equilibra(n.get("resumen", ""), RESUMEN_MAX)
     sitio, largo = LINEA_MAX - len(cabeza) - len(autor), 110
-    cita = _entrecomilla(n.get("resumen", ""), largo)
+    cita = _entrecomilla(resumen, largo)
     while len(cita) > sitio and largo > 1:
         largo -= 1
-        cita = _entrecomilla(n.get("resumen", ""), largo)
+        cita = _entrecomilla(resumen, largo)
     return "- " + _linea(cabeza + cita + autor)
 
 
