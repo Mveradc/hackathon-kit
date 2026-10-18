@@ -356,6 +356,10 @@ Cada conexión con el demonio tiene un plazo de socket de 10 s (tras congelar, 2
 
   Nunca hay merge, rebase, checkout ni stash en la copia. Mismo entorno de git sin preguntas que el publicador de M8g (`GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`, `GIT_ASKPASS` vacío, `ssh -o BatchMode=yes`, `credential.interactive=false`).
 - **Después:** no emite evento ni avisa por GitHub. Los demás la ven en novedades cuando el relay hace su fetch, y la propia persona, en el siguiente `git pull`.
+- **Espera por la base y push sin informe** (tras congelar, 2026-10-17, PR #24, issue #18, hallazgos 2, 3 y 8):
+  - si el push se rechaza con un motivo de carrera y `origin/main` no se ha movido, el reintento espera 1 s y vuelve a hacer el fetch, como mucho 3 veces (`ESPERAS_BASE`, `ESPERA_BASE_S`, `Acciones._base`): otro push puede tener aún `main.lock`. Las esperas no pasan de 60 s desde que empezó Anotar (`self.limite`); el resto de Anotar no tiene ese tope. Si la base se mueve, reintenta; si no, `502` con el motivo, como antes;
+  - un push que falla sin ser una carrera (plazo vencido o salida distinta de 0) no da `502` sin mirar antes: hace un fetch y, si el commit ya está en `origin/main` (`merge-base --is-ancestor`), responde `200` con ese sha (`Acciones._subio`). Mira una sola vez, justo después: si el remoto actualiza `main` más tarde, o si ese fetch falla, sale `502` aunque la nota llegue a main (issue #27);
+  - si `origin/main` no tiene `criterios.md`, la plantilla se sube con LF aunque la copia del kit tenga CRLF (`Acciones._intento`).
 
 **Reclamar** (`POST /v1/reclamar`):
 - **Cuerpo:** `{"tarea":"T12"}`, con `^T[0-9]{2,3}$`.
