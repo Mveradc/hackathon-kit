@@ -219,6 +219,31 @@ class Confirmacion(unittest.TestCase):
         s = servicios.calcular(t, historia(("s1", BASE), ("w1sha", t)), mapa, AUTORIDAD, CONTRATOS, (), {}, {}, T)
         self.assertEqual(de(s, "cache")["confirmacion"]["valor"], "confirmada")
 
+    def test_borrada_y_vuelta_a_anadir_olvida_quien_la_confirmo(self):
+        """Decisión 2B (PR #13, hallazgo 10 del issue #2): al borrarse una clave de servicios.md se olvida su `por`;
+        solo cuentan las adiciones posteriores al último borrado (ADR-0011: ante la duda, sin confirmar)."""
+        cache = ("cache", "api/cache/", "6379", "—", "—", "@ana")
+        con_cache = md([API, WEB, MOTOR, cache], [WEB_API, MOTOR_WEB])
+        # ana la añade, ella misma la quita y luis la resucita tal cual: no sale confirmada por ana.
+        s = calc(con_cache, historia(("s1", BASE), ("a1", con_cache), ("a2", BASE), ("l1", con_cache)))
+        c = de(s, "cache")["confirmacion"]
+        self.assertEqual((c["valor"], c["por"], c["faltan"]), ("sin_confirmar", ["luis"], ["ana"]))
+        # Un sha desconocido que la vuelve a añadir (un revert reescrito) tampoco la confirma.
+        s = calc(con_cache, historia(("s1", BASE), ("a1", con_cache), ("l2", BASE), ("rebase-1", con_cache)))
+        self.assertEqual(de(s, "cache")["confirmacion"]["por"], [])
+        # Si ana la vuelve a añadir después del borrado, sí.
+        s = calc(con_cache, historia(("s1", BASE), ("a1", con_cache), ("l1", BASE), ("a2", con_cache)))
+        self.assertEqual(de(s, "cache")["confirmacion"]["valor"], "confirmada")
+        # Moverla de Propuestas a su tabla no es borrarla: la clave sigue en el fichero.
+        prop = md([API, WEB, MOTOR], [WEB_API, MOTOR_WEB], prop_s=[cache + ("@luis", "2026-11-25 18:10")])
+        s = calc(con_cache, historia(("s1", BASE), ("l1", prop), ("a1", con_cache)))
+        self.assertEqual(de(s, "cache")["confirmacion"]["por"], ["ana", "luis"])
+        # Una fila de /hack-scaffold que se borra y otra persona vuelve a añadir ya no es de scaffold.
+        sin_api = md([WEB, MOTOR], [WEB_API, MOTOR_WEB])
+        s = calc(BASE, historia(("s1", BASE), ("a1", sin_api), ("l1", BASE)))
+        c = de(s, "api")["confirmacion"]
+        self.assertEqual((c["valor"], c["de_scaffold"], c["por"]), ("sin_confirmar", False, ["luis"]))
+
     def test_fila_de_una_resolucion_de_merge_no_confirma(self):
         a = md([API, WEB, MOTOR, ("cache", "api/cache/", "1", "—", "—", "@ana")], [WEB_API, MOTOR_WEB])
         b = md([API, WEB, MOTOR, ("cache", "api/cache/", "2", "—", "—", "@ana")], [WEB_API, MOTOR_WEB])
