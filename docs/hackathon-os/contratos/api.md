@@ -377,6 +377,7 @@ Cada conexión con el demonio tiene un plazo de socket de 10 s (tras congelar, 2
   - si `gh` falla, `502` y no se emite nada. Cada llamada a `gh` tiene un plazo de 30 s; pasado, se mata el árbol de procesos, como en Anotar, y cuenta como un fallo (PR #16);
   - si lo que falla es el `gh issue edit`, además se añade a `acciones.jsonl` la línea `{"tipo":"reclamo_fallido","tarea":"T12","ts":"<UTC>"}`. Cuenta para el tope y nada más: no lleva `id` y su `tipo` no es `reclamo`, así que `escucha.sh` no la entrega (PR #16).
 - **Sin GitHub:** no asigna nada.
+- **Qué fallo es un `reclamo_fallido`** (tras congelar, 2026-10-17, PR #24, issue #18, hallazgo 10): con `FALLIDO_SOLO_RECHAZO = False`, que es como está, cuenta **cualquier** fallo del `gh issue edit`: un rechazo de GitHub, pero también un plazo vencido, un 5xx o un error de red. El código tiene preparada, apagada, la otra regla: con `True`, solo contaría si el stderr de `gh` trae `GraphQL: …` o `HTTP 4xx` (`RECHAZO_GH`, `Acciones.reclamar`). Cambiarla es decisión de los contratos (R-30).
 - **En los dos casos:**
   - emite `reclamo` (§2);
   - añade a `acciones.jsonl` la línea `{"id":"<id del evento>","tipo":"reclamo","tarea":"T12","ts":"<UTC>"}`, con un solo `write` en modo append.
