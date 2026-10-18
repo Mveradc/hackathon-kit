@@ -29,7 +29,7 @@ Hasta M8h la web era de solo lectura y la servía el relay con el token del equi
 
   Si el push se rechaza (alguien subió antes), repite **una vez** todo lo anterior sobre el `origin/main` nuevo. Si vuelve a fallar, no hace nada más y lo dice en la web, con el motivo. **Nunca** hace un merge, un rebase ni un checkout en la copia de la persona. Los mismos `git` sin preguntas que `publicar_wip` (`GIT_TERMINAL_PROMPT=0`, `GCM_INTERACTIVE=never`…).
 - **Entradas validadas por el demonio:** Anotar acepta solo los campos de la plantilla de `criterios.md`, con listas cerradas (papel y fuerza), en una sola línea, sin `#` al principio y con un máximo de 500 caracteres por campo. Reclamar solo acepta una tarea que existe, está libre y no es de otro dueño según el plan (`api.md` §5).
-- **Declarado, no derivado** (principio II): `reclamo` lleva la fuente `web` y la vista lo pinta como declarado. Cada escritura a GitHub desde la web cuenta para el tope de R-30, con un tope propio por persona y hora en el demonio.
+- **Declarado, no derivado** (principio II): `reclamo` lleva la fuente `web` y la vista lo pinta como declarado. Cada escritura a GitHub desde la web cuenta para el tope de R-30, con un tope propio por persona y hora en el demonio (10 reclamos y 30 notas; `api.md` §4).
 
 ## Alternativas descartadas
 - **Acciones por el relay con el token del equipo:** cualquiera del equipo, o quien tenga el token, podría actuar como otra persona y abrir turnos en su sesión.
