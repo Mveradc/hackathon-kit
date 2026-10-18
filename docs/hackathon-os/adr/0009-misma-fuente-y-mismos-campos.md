@@ -15,6 +15,11 @@ El principio IV decía que la web y el markdown inyectado son dos vistas «gener
   2. Un test de Vitest en `hkos/web-src/` que pinta cada vista con las mismas vistas de G1–G6 y G12 y comprueba que cada estado, dueño, colisión, antigüedad y desajuste aparece en el DOM con el mismo texto.
 - **Node** solo hace falta para quien compila la web y en CI (`web-m9a.yml`, que además comprueba que el compilado subido coincide con el fuente). Quien la usa no instala nada (principio VII).
 
+## Nota (2026-10-19, M10: ADR-0012, decisión 7B; ADR-0013)
+- Con `vista_jurado: sí` o `ruta_critica: sí`, `estado-equipo.md` lleva **una sola línea de resumen** por vista en la sección `## Jurado y ruta` (`api.md` §6 y §11): la de jurado («2 sin cubrir (1 «obligatorio») · 1 cubierta de 3») y la de ruta (veredicto, rango o motivo de «sin estimación», y el primer plazo pasado). El **detalle** (cada nota con su cobertura, enlaces y evidencias; la cadena, los hechos, la base y los hitos) va en el MCP (herramientas `jurado` y `ruta`) y en la web.
+- Es una excepción acotada a «los mismos campos»: la línea sale del campo `resumen` de cada bloque de la vista, y el MCP y la web, del mismo bloque. `igualdad.py` compara la línea del md con `resumen` y el bloque entero entre la vista del demonio y el MCP; Vitest, el bloque con el DOM (G13 y G14).
+- Motivo: el presupuesto de inyección (R-24, R-25b) y el principio X. Con 15 notas y una cadena de 10 tareas, el detalle no cabe en 2.500 caracteres junto a lo de siempre.
+
 ## Alternativas descartadas
 - **Solo igualdad de datos** (sin test del DOM): más barata, pero no detecta que la web oculte o transforme un campo.
 - **Mantener «mismo código»** (seguir sin build): el diseño de M9a (grafo, latidos, cuatro vistas, componentes) necesita componentes y estado de interfaz; escrito a mano sin build sería más frágil y no se podría probar con Vitest.

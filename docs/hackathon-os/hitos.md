@@ -2,7 +2,7 @@
 
 Cada hito construye solo lo que exige su validación (regla del kit). Un hito se cierra cuando se cumplen sus criterios, se anota el resultado en `evals/coordinacion/prueba.md` (sección «M8x») y el detalle en `docs/historial.md`. Entre paréntesis, los requisitos que cubre.
 
-Dependencias: `M8.0 → M8a → M8b → (M8c ∥ M8d) → M8e → M8f → M8g → M8h (fase 1) → M9a → M8h (fases 2 y 3)` (M9a se adelanta al ensayo por decisión del usuario, 2026-10-17; el ensayo, la fase 2 de M8h, queda aplazado sin fecha por decisión del usuario, 2026-10-18). M8c y M8d se pueden hacer en paralelo una vez congelados los contratos.
+Dependencias: `M8.0 → M8a → M8b → (M8c ∥ M8d) → M8e → M8f → M8g → M8h (fase 1) → M9a → M8h (fases 2 y 3)` (M9a se adelanta al ensayo por decisión del usuario, 2026-10-17; el ensayo, la fase 2 de M8h, queda aplazado sin fecha por decisión del usuario, 2026-10-18). M10 (0.5.0, abierto el 2026-10-19) va detrás de M9a y no espera al ensayo. M8c y M8d se pueden hacer en paralelo una vez congelados los contratos.
 
 Corte para una versión reducida: con M8a–M8f hay OS (estado común sin colisiones). M8g es el diferencial. M8h es obligatorio antes de usarlo con un equipo real.
 
@@ -195,6 +195,66 @@ Abierto el 2026-10-17 por decisión del usuario: se construye **antes** de la fa
 
 ---
 
+## M10 · Vista de jurado y ruta crítica (R-35, R-36; ADR-0012, ADR-0013)
+Abierto el 2026-10-19 por decisión del usuario, para la 0.5.0: decididas las tablas de ADR-0012 (jurado) y ADR-0013 (ruta crítica), ya aceptados, y las preguntas del Paso 0 (K-100, issue #41). Contratos en `api.md` §11 (K-101). Mismo método que M9a: Paso 0, ADR y contratos, servidor y datos, web, validación con modelo. Diseño de las pantallas: PR #43 (`docs/hackathon-os/diseno-web/`), ajustado a estas decisiones (margen contra la entrega, franja en lugar de horas declaradas).
+
+**Alcance (cerrado por el usuario)**
+- Dos vistas detrás de dos interruptores en `os.md`, `vista_jurado:` y `ruta_critica:`, apagados por defecto e independientes de `web_nueva:` (ADR-0012, decisión 8A). Salen en la web de trabajo, en `estado-equipo.md` (una línea por vista) y en el MCP (el detalle). Apagadas, todo como en la 0.4.0 (constitución I).
+- **Vista de jurado (R-35):** por cada nota de `criterios.md` (solo las notas, no la rúbrica), qué tarea la declara con la etiqueta `(criterios: …)` del plan, qué evidencia derivada tiene y su cobertura: `sin_tarea`, `ambigua`, `en_pitch` («recogida en el pitch (declarado)»), `declarada` o `cubierta`, además de «corregida por». Cubierta = todas sus tareas publicadas o cerradas; la Prueba se enseña como evidencia, no es condición. Nunca «cubierta» porque algo lo declare.
+- **Ruta crítica (R-36):** con `depende_de`, la cadena de cada persona (orden del plan), los `Hasta` resueltos, la franja del plan, la entrega de `equipo.md`, los descansos y el ritmo medido por persona, qué está atrasado y qué arrastra (hechos, desde el minuto uno) y si se llega a la entrega (estimación con rango, veredicto de cuatro valores y base). Con menos de 3 tareas medidas por persona, lo dice («n de 3») y no da hora.
+- Todo se calcula en `proyeccion.vista` (bloques `jurado` y `ruta`), a partir de lo que el relay pone en `estado.json`. La web solo pinta (ADR-0009).
+- Fuera: la rúbrica de `analisis.md`, botones, confirmar desde la web, cualquier acción nueva, replay y nivel B (siguen en «Después del M8»). Tampoco se replanifica sola: la ruta avisa y el equipo decide con `/hack-plan`.
+
+**Criterios de validación**
+1. Con los interruptores apagados (o sin ellos en `os.md`), todo como hoy: `hkos/pruebas`, `prueba_hooks.py`, `igualdad.py` (G1–G6 y G12), `robustez.py`, `colisiones_vivo.py` y `web_vivo.py` en verde. `estado.json`, la vista y `estado-equipo.md` salen byte a byte como en la 0.4.0 con los mismos datos. Las cuatro combinaciones de los dos interruptores, probadas. `comprobar.py` sin regresiones con un reto, sin coordinación.
+2. **G13 (jurado), sin modelo:** guion nuevo del simulador con notas en `criterios.md` (una que corrige a otra, dos en el mismo minuto, una de fuerza `dato` que solo afecta al pitch y está en `pitch.md`, una con texto imperativo) y tareas con la etiqueta `(criterios: …)` en «Cómo se comprueba» que avanzan hasta `publicada`. Para cada paso esperado, la cobertura de cada nota, sus tareas, su evidencia (sha y `observado_en`) y el orden (sin cubrir por fuerza y luego por hora) coinciden con el esperado. Ninguna nota sale `cubierta` sin todas sus tareas hechas. Una tarea `cerrada` a mano deja la nota `declarada`, con ⚑. Una cita con dos notas sale `ambigua`; con «· quién», casa con una. Una publicada que vuelve a `en_curso` deja la nota `cubierta` con «trabajo nuevo desde». Una Prueba que falla se enseña y no cambia la cobertura.
+3. **G14 (ruta), sin modelo:** guion largo con el plan del reto 03 (28 tareas, 39 h, con commits, descansos y un ajuste del plan) y el reloj simulado:
+   - antes de 3 tareas medidas de cada persona con tareas abiertas, «sin estimación (pocos datos: @x n de 3)» y ninguna hora prevista;
+   - un plazo vencido sale como hecho, rojo, con lo que arrastra (por dependencias y por orden del plan);
+   - con 3 o más, la estimación lleva rango, margen contra la entrega, base y veredicto (`a_tiempo`, `justo` o `no_llega`, los dos últimos en ámbar);
+   - sin `Entrega:` en `equipo.md`, «sin hora de entrega»; con dos horas en esa línea, las dos, sin elegir; con la fila de Hitos distinta, la discrepancia al lado **y la estimación sigue**; con «(confirmar)», estimación marcada «(confirmar)»; con un ciclo, el ciclo;
+   - una tarea «Si …» o `[SI DA TIEMPO]` sale fuera de la entrega; un `Hasta` que no se resuelve, «sin plazo», nunca «a tiempo»;
+   - la noche de los Descansos no hunde el ritmo ni saca «sin señales»; una persona sin señales fuera de ellos sale «sin señales desde HH:MM», no en riesgo por lentitud;
+   - con el relay caído, la estimación sale vieja con la antigüedad de su dato más viejo.
+4. **Igualdad (ADR-0009, con la nota de M10):** `igualdad.py` coincide en G1–G6, G12, G13 y G14: los bloques `jurado` y `ruta` enteros entre la vista del demonio y el MCP, y la línea de `## Jurado y ruta` de `estado-equipo.md` con el `resumen` de cada bloque. Vitest pinta G13 y G14 (y la vista de ejemplo de `api.md` §11.6), y cada campo sale en el DOM con el mismo texto. El CI recompila y el diff con lo subido sale vacío. Ninguna URL externa en `hkos/web/nueva/`.
+5. **Honestidad** (tablas de casos de `hkos/jurado.py` y `hkos/ruta.py`):
+   - ninguna estimación sin la palabra «estimación», su base y un rango; nunca una sola hora;
+   - con menos de 3 tareas medidas de alguna persona con tareas abiertas, ninguna hora prevista: «n de 3»;
+   - una tarea sin plazo sale «sin plazo», nunca «a tiempo»;
+   - rojo solo para hechos (plazo pasado); «no llega», ámbar;
+   - lo declarado (plazos, franjas, orden del plan, entrega, hitos, descansos, enlaces, pitch, cierres a mano) sale como declarado, con su procedencia;
+   - el texto de las notas sale entrecomillado y saneado, con autor y papel (constitución V).
+6. **Presupuesto y silencio** (R-24, R-25, R-25b, X):
+   - con 5 personas, 20 tareas y 15 notas, el bloque de inicio no pasa de 2.500 caracteres (la sección `## Jurado y ruta` son dos líneas);
+   - un cambio de cobertura (firma `jurado:`) o de veredicto (firma `ruta:`) da un delta de ≤ 600 caracteres;
+   - G10 ampliado: 30 minutos con el reloj corriendo, sin cambios de veredicto ni de cobertura, no inyectan nada (que la hora estimada, el margen o un hecho cambien sin cambiar el veredicto no cuenta).
+7. **Como K-99, con modelo y en el sandbox** (`Mveradc/hk-sandbox`, @hk-persona-b, o remoto `bare` y dos clones):
+   - `/hack-scaffold` y `/hack-plan` con el reto 03 y la coordinación activa: el `CLAUDE.md` recuerda `Txx ·` en los commits y el plan trae `Hasta` que se resuelven y «## Descansos» en el formato que se lee;
+   - dos notas anotadas desde la web y enlazadas con `/hack-check aplicar` (etiqueta `(criterios: …)` en el plan);
+   - una tarea publicada con su ID: la nota pasa a `cubierta` en la web de las dos personas en ≤ 60 s;
+   - la ruta del plan real, con sus plazos y su entrega;
+   - una sesión de Claude Code pregunta por MCP «¿qué criterio no cubrimos?» y «¿qué pone en riesgo la entrega?» y responde con lo que dice la vista, con su procedencia y sin añadir nada (se comprueba contra la vista);
+   - `comprobar.py` sin regresiones. Resultados en `evals/coordinacion/prueba.md` («M10»).
+
+*Nota (M10, decisiones del usuario, 2026-10-19):*
+- **Jurado (ADR-0012):** J1A solo las notas de `criterios.md`; J2A clave derivada (hash) en el relay, y las personas citan por «fecha hora · quién»; J3A etiqueta `(criterios: <fecha hora>)` al final de «Cómo se comprueba» en la fila del plan, declarada; J4A cubierta = todas sus tareas publicadas o cerradas, con la Prueba como evidencia y no como condición; J5B «recogida en el pitch (declarado)»; J6B sigue cubierta, con «trabajo nuevo desde»; J7B una línea de resumen en `estado-equipo.md` y el detalle en el MCP y la web, con nota en ADR-0009; J8A `vista_jurado:` y `ruta_critica:` en `os.md`.
+- **Ruta (ADR-0013):** R1A manda `Entrega:` de `equipo.md`; las discrepancias con Hitos y con notas `dato` se enseñan al lado, sin elegir y sin quitar la estimación (sin estimación solo si falta `Entrega:`, no se lee, trae dos horas o no se resuelve; con «(confirmar)», estimación marcada así); R2A `Hasta` resuelto con `Inicio:` y la zona de `equipo.md`, y si no, «sin plazo», nunca «a tiempo»; R3B `depende_de` y la cadena de cada persona; R4A franja derivada del plan, sin columna Horas; R5A ritmo por persona desde 3 tareas hechas; R6A rango, veredicto de 4 valores y base; R7A con pocos datos, solo hechos y «n de 3»; R8B todas menos «Si…» y `[SI DA TIEMPO]`; R9A leer «## Descansos»; R10A solo un delta, al cambiar el veredicto; R11C recordar `Txx ·` en el `CLAUDE.md` generado y decir «sin señales», no «va lenta».
+- **Diseño:** el margen se mide contra la entrega (la congelación es un hito, sin previsión propia); «no llega» es ámbar y el rojo, solo para hechos (un plazo pasado); el umbral de «sin cifra» es 3, fijo en el contrato (`base.minimo`); las notas sin cubrir, por fuerza y luego por hora.
+- **Validación sin datos reales** (#41, pregunta 12; constitución XI): guiones largos del simulador (G13, G14) y el sandbox (criterio 7) para cerrar el hito; el ensayo con un equipo, después, revisa el 3 y los umbrales del veredicto. Así se dice en `docs/limitaciones.md`.
+- **Requisitos:** ninguna decisión cambia R-35 ni R-36 (solo notas; con ritmo real).
+- **Fases**, cada una enseñada al usuario antes de seguir:
+  - K-100 (Paso 0: las medidas que quedan) y K-101 (ADR y contratos, en el PR #42);
+  - servidor y datos, en dos tandas de tres terminales en paralelo, sin rutas compartidas: K-102 ∥ K-103 ∥ K-104 y, después, K-105 ∥ K-106 ∥ K-107. K-106 es la web: empieza con la vista de ejemplo de `api.md` §11.6 y cierra con las vistas de K-105;
+  - K-108 (validación con modelo y en el sandbox).
+- **Orden de recorte si va con retraso** (la fecha la pone el usuario):
+  1. Primero, el ritmo: la ruta se queda en hechos (atrasadas, lo que arrastran, cadena por dependencias y por persona), siempre «sin estimación». R-36 queda parcial, y se dice. Salen del criterio 3 las viñetas de la estimación.
+  2. Después, la Prueba como evidencia en el jurado (`tareas[].conexiones`).
+  3. Después, las vistas propias en la web: jurado y ruta quedan como secciones de la cabina.
+
+  **No se recortan:** el apagado sin coste, la igualdad de ADR-0009, la honestidad (con pocos datos lo dice; nunca «cubierta» porque algo lo declare; rojo solo para hechos) y la constitución V para las notas.
+
+---
+
 ## Después del M8 (Pendiente)
 - **Web de trabajo (nivel A).** La primera parte es M9a (arriba): React + Vite, cuatro vistas, `servicios.md`, Anotar y Reclamar. Queda para después:
   - **Botones para las operaciones de terminal que se rompen** (commit y push de `.hackathon/`, `hk-os unir`, confirmar). Cada botón ejecuta un comando ya comprobado; nada de comandos libres.
@@ -204,6 +264,6 @@ Abierto el 2026-10-17 por decisión del usuario: se construye **antes** de la fa
   - **Nivel B, solo como idea (fuera de alcance por ahora):** la web como cabina, con el demonio lanzando sesiones en segundo plano (`claude -p` o el Agent SDK) por tarea y worktree; permisos, preguntas, gasto y fallos, en la web. Es lo que hace Vibe Kanban; el kit se diferencia por la sincronización del equipo. Se replantea cuando el nivel A esté probado.
   - **Orden:** después del ensayo y de la 0.4.0. Qué botones van primero lo decide lo que mida el ensayo (sección 7 de `evals/coordinacion/ensayo/hoja.md`, idas a la terminal), que se hace ya con la web de M9a.
 - Nivel 2b con Mergiraf (R-34).
-- Vista de jurado: cobertura de `criterios.md` por tareas y evidencias (R-35).
-- Ruta crítica y riesgo de entrega (R-36).
+- Vista de jurado: cobertura de `criterios.md` por tareas y evidencias (R-35). En M10 (arriba).
+- Ruta crítica y riesgo de entrega (R-36). En M10 (arriba).
 - Relay alojado alternativo, guard en pre-commit, replay y post-mortem desde el registro de eventos.

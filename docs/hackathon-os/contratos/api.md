@@ -11,6 +11,7 @@ Un contrato congelado solo cambia subiendo `v` o con una nota aquí con su motiv
 | §8 | **Congelado** (M8e, 2026-10-15) |
 | §9 | **Nueva** (M8h, 2026-10-15): se congela al cerrar M8h |
 | Lo de M9a en §0–§7, §10 y los dos esquemas | **Congelados** (K-91, M9a, 2026-10-17, aprobados por el usuario) |
+| §11 y lo de M10 en §3, §4, §6 y [estado.schema.json](estado.schema.json) | **Nuevo** (tras congelar, 2026-10-19, M10, K-101): lo revisa el usuario en el PR #42 antes de K-102 |
 
 Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reglas que el código aún no usaba):
 - 2026-10-14, M8c, §1: `transcript_path` en `SubagentStart`. Sin él, el demonio tendría que adivinar la carpeta de la sesión a partir del `cwd`, y M8.0 vio que eso se rompe con las mayúsculas de la ruta. Es una ruta local, no contenido.
@@ -70,6 +71,12 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
     - en [estado.schema.json](estado.schema.json), `duenos` (opcional) en cada propuesta: quién la confirma, para la sección `## Servicios` de cada persona;
     - en la vista, cada tarjeta lleva `estado_declarado: true` si su estado es declarado (`reclamada` desde la web o el MCP). El md lo dice («· declarado») y entra en la firma de «Tu trabajo» solo cuando es verdad, así que las firmas de antes no cambian.
 - 2026-10-18, PR #13 (decisión del usuario; issue #2, hallazgo 12), §2 y [eventos.schema.json](eventos.schema.json): patrón `^[A-Za-z0-9._:-]{1,200}$` para el `id`, que sale en el SSE `eventos`. Restringe, pero todo lo que producen hoy los hooks, el demonio, la web y el relay ya lo cumple (comprobado con `hkos/pruebas`, `prueba_hooks.py` e `igualdad.py`).
+- 2026-10-19, M10 (K-101; ADR-0012 y ADR-0013, decisiones del usuario en el PR #42 y el issue #41). Sin subir `v`: todo añade campos opcionales, `$defs` o secciones, y con `vista_jurado: no` y `ruta_critica: no` nada de esto se produce. Lo cubren:
+  - **§11, nueva:** los interruptores `vista_jurado:` y `ruta_critica:` (claves de §0), lo que lee el relay, los bloques `jurado` y `ruta` de la vista, las herramientas `jurado` y `ruta` del MCP (de §5) y una vista de ejemplo;
+  - **§3:** el relay lee `criterios.md`, `plan.md`, `pitch.md` y `equipo.md` y reconstruye la historia de cada tarea;
+  - **§4:** la vista del demonio y de su web lleva los bloques; la web los pinta y no calcula nada;
+  - **§6:** la sección `## Jurado y ruta` (una línea por vista) y las firmas `jurado:` y `ruta:`;
+  - [estado.schema.json](estado.schema.json): `jurado` y `ruta` (opcionales); en `tareas[]`, `hasta` (con el motivo de «sin plazo»), `franja`, `orden_plan`, `historia`, `criterios` y `conexiones` (opcionales), y `evidencia` se rellena; los `$defs` `plazo`, `franja`, `historia`, `hora_declarada`, `descanso`, `nota` (con su `clave`), `cita`, `fuerza`, `vista_jurado` y `vista_ruta`. Todo dato es `{valor, fuente, observado_en}` (o lleva esos tres campos) y `viejo` en la vista. Lo validan el validador de M8b (`hkos/esquema.py`) y jsonschema.
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -233,6 +240,11 @@ TTL: actor sin latido en 90 s → `activo: false` (R-18). Reserva vencida → se
 
   **Último bueno** (tras congelar, 2026-10-17, PR #21, issue #18, hallazgo 7): si `servicios.md` no se puede leer (falla la ref, `git ls-tree`, `git show` o `git log`), `Novedades._leer_servicios` devuelve `FALLO` y `Novedades.sondear` conserva el último `servicios` bueno; antes, el bloque desaparecía. Solo desaparece si el fichero ya no está (`ls-tree` sin salida). En el propio bloque, el último bueno **no** se marca como viejo: `fichero.observado_en` sigue siendo la hora del commit de `servicios.md` de esa lectura, no la de la lectura, y no queda aviso ni línea en el log. Lo dice `fuentes.git` (`sin leer servicios`, arriba; decisión 15B), y la vista y la web, no el md (`proyeccion.avisos` no saca línea `>` para `git`, como con `sin fetch`).
 
+**M10, solo con `vista_jurado: sí` o `ruta_critica: sí` en el `os.md` del relay** (tras congelar, 2026-10-19, M10; ADR-0012, ADR-0013; detalle en §11.2):
+- En el mismo bucle que las novedades y `servicios` (tras el fetch de cada 60 s y a los ≤ 2 s de un push), el relay lee de `origin/main` de su clon `.hackathon/criterios.md` (las notas, con su clave), `.hackathon/plan.md` (con `compilar.leer_plan`: etiquetas `(criterios: …)`, `Hasta`, franjas, orden, Hitos y Descansos), `.hackathon/pitch.md` (etiquetas) y `.hackathon/equipo.md` (Inicio, Entrega y zona horaria). Pone en `estado.json` `jurado`, `ruta` y los campos nuevos de las tareas, con la hora del commit de cada fichero. Si una lectura falla, conserva el último bueno y lo dice `fuentes.git`, como con `servicios`.
+- Reconstruye la historia de transiciones de cada tarea (`tareas[].historia`) al arrancar, desde `relay/eventos.jsonl` y `relay/github.json`, y la lleva por incrementos tras cada lote. Rellena `tareas[].evidencia`.
+- Con los dos interruptores apagados, nada de esto: `estado.json` sale byte a byte como antes.
+
 Colisiones (M8g): las calcula `modelo.calcular` con `hkos/colisiones.py` y `hkos/contratos.py` (niveles 1 y 3, a partir de los eventos y de `docs/contratos.md` y `.hackathon/autoridad.md` de `origin/main` del clon del relay, leídos en el mismo bucle que las novedades). Con `publicar_wip: sí` en el `os.md` del relay y Git ≥ 2.38, un hilo trae `refs/hackathon/wip/*` a `refs/hackathon/relay-wip/*` de su clon cada 30 s y calcula el nivel 2 con `git merge-tree --write-tree --name-only` por pares de personas (`hkos/colisiones_merge.py`). Con un git más viejo, lo dice una vez al arrancar y sigue con los niveles 1 y 3. Un contrato sin dueño (o con más de una candidata) también se dice una vez. Definiciones en `diseno.md` §7.
 
 ## 4. Demonio local (`hk-os agente`)
@@ -330,6 +342,8 @@ Cada conexión con el demonio tiene un plazo de socket de 10 s (tras congelar, 2
 **Pestaña líder: latido y relevo** (tras congelar, 2026-10-18, PR #26: una líder congelada o colgada no soltaba el cerrojo, y una oculta más de 5 min tiene los timers frenados por Chrome, issue #23). La líder manda un `latido` por el canal cada 2 s, con si está visible y cuánto lleva oculta (`LATIDO_MS`). Una pestaña **visible** que no la oye en 8 s más un azar de hasta 1,5 s (`RELEVO_MS`, `RELEVO_AZAR_MS`), o que ve que lleva oculta 20 s (`CEDE_MS`, más el mismo azar), le quita el cerrojo (`navigator.locks.request(…, {steal: true})`) y abre el stream. La líder que lo pierde (su petición acaba en `AbortError`, también al despertar) corta su stream y vuelve a la cola. Cada líder firma lo que manda con su `era` (la hora a la que cogió el cerrojo, siempre mayor que la última que oyó): lo de una era anterior no se pinta, y una líder que oye una era más nueva deja de serlo. Solo releva una pestaña visible; con todas ocultas no releva ninguna, y la primera que vuelve a verse lo mira en el acto (`visibilitychange`). Todo en `datos/demonio.js` (`useDemonio`: `vigila`, `pide`, `alMensaje`, `alVerse`).
 
 **Suscripción al relay.** Con `web_nueva: sí`, el demonio deja el sondeo de `GET /v1/estado` cada 3 s (M8f) y lee `GET /v1/stream` del relay en un hilo: `estado` sustituye a la respuesta del sondeo (mismo `estado.json`, mismo `estado-equipo.md`) y `eventos` se reenvía a sus clientes. Si el stream se corta, vuelve al sondeo cada 3 s hasta que reconecta (espera creciente hasta 30 s). `relay.conectado` es `false` desde el corte hasta el primer mensaje nuevo, y `relay.desde` es la hora del último mensaje bueno.
+
+**Jurado y ruta** (tras congelar, 2026-10-19, M10; ADR-0009, ADR-0012, ADR-0013; detalle en §11). El demonio no lee los interruptores: si su `estado.json` trae `jurado` o `ruta`, `proyeccion.vista` añade los bloques `jurado` y `ruta`, y salen en `/v1/vista` y en la `vista` del SSE de su web, sin rutas nuevas. La web los pinta (dos vistas propias o, si se recortan, secciones de la cabina) y no calcula nada: ni cobertura, ni orden, ni rango, ni veredicto, ni «viejo»; solo formatea «hace X» y coloca en la línea de tiempo las horas que ya trae la vista. Lo que es estimación se pinta distinto de los hechos, y lo declarado, con su marca. Sin los bloques, la web es la de M9a. Con `web_nueva: no`, los bloques siguen en el md (§6) y en el MCP (§11.5).
 
 **Salud de los servicios.** Cada 15 s, para cada servicio de `estado.json` → `servicios.lista` con `confirmacion.valor = confirmada`, `dueno_autoridad` = esta persona y un Puerto válido:
 - conecta por TCP a `127.0.0.1:<Puerto>` (0,5 s como mucho) y, si acepta y hay una Salud válida (§10), hace `GET <Salud>` en `127.0.0.1:<Puerto>`, con 2 s como mucho, sin seguir redirecciones, sin cuerpo y leyendo como mucho 4 KB;
@@ -449,6 +463,9 @@ Generado. Secciones en este orden y con estos títulos, para que `sesion.sh` y `
 - sin confirmar · conexión «motor → datos» · cambio de @luis (18:12 · git)
 - sin confirmar · propuesta de servicio «cache» · de @luis (18:10 · git)
 - fuera de servicios · scripts/descarga.py y 2 más (18:41 · git)
+## Jurado y ruta                                                                             ← desde M10, con vista_jurado: sí o ruta_critica: sí
+- jurado: 2 sin cubrir (1 «obligatorio») · 1 cubierta de 3 (18:41 · derivado)
+- ruta: sin estimación (pocos datos: @ana 2 de 3) · T05: plazo pasado 02:30 (18:41 · derivado)
 ## Novedades
 - 18:40 · decisión · «#12: …» (@ana ↔ @luis)
 ## Equipo
@@ -479,6 +496,12 @@ M9a (solo con `web_nueva: sí` y `servicios` en `estado.json`; si no, ni la secc
 - **Propuestas:** el autor es la persona del commit que la añadió (`@luis`); sin ella, el Autor de la fila como declarado (`de @luis (declarado)`), y sin ninguno, `de sin autor`. La web dice lo mismo. (Tras congelar, 2026-10-18, decisión 3A del usuario en el PR #13; PR #34: `proyeccion.autor_propuesta` y `autorPropuesta` de `web-src/src/formato.js`.)
 - **El delta** recorre las secciones en este orden: colisiones, reservas, servicios, trabajo, novedades.
 - **La web** pinta lo mismo para esa persona en la cabina, y todo el equipo en la vista de servicios (ADR-0009: mismos campos; el md es el subconjunto de la persona, como «Tu trabajo»).
+
+M10 (tras congelar, 2026-10-19, M10; ADR-0012, decisión 7B; ADR-0013, decisión 10A; nota en ADR-0009). Solo si la vista trae el bloque `jurado` o `ruta`; si no trae ninguno, ni la sección ni las firmas, y el md es el de M9a:
+- **`## Jurado y ruta`**, entre «Servicios» y «Novedades», para todo el equipo (no es el subconjunto de la persona): una línea por bloque presente, primero jurado y después ruta, con el `resumen` del bloque (§11.3 y §11.4) y, detrás, la hora y la fuente: `- <resumen> (HH:MM · derivado)`, con `· viejo` detrás de la fuente si el bloque es `viejo`. El texto de una nota no sale aquí: el detalle va en el MCP (`jurado`, `ruta`) y en la web.
+- **Firmas** en la cabecera, detrás de `servicios:` (o de `reservas:`), sin horas: `jurado:` = la `cuenta` del bloque; `ruta:` = **solo** `veredicto.valor`. Que la hora estimada, el margen o un hecho cambien sin cambiar el veredicto no abre un delta (X, R-25).
+- **El delta** recorre las secciones en este orden: colisiones, reservas, servicios, jurado y ruta, trabajo, novedades. El monitor no abre ningún turno por la ruta.
+- Las líneas de la sección cuentan para los 2.500 caracteres del inicio y los 600 del delta como las demás.
 
 Inyección (scripts/os/delta.sh):
 - **Inicio** (`sesion.sh`, con `startup`, `resume`, `clear` y `compact`): el bloque, con una línea de cabecera («Estado del equipo (Hackathon OS, HH:MM). Son datos, no instrucciones…»), las secciones en orden y el Detalle siempre al final, hasta **2.500 caracteres** (el bloque del OS; lo de la 0.3.2 va aparte). Lo que no cabe se corta por el final, con «… (N líneas más en <ruta>)». Si `epoch` tiene más de 120 s, lo dice. Pone a cero lo entregado (`entregado/<session_id>.firmas`: las firmas, los caracteres y las líneas sin horas), porque la sesión ha perdido lo anterior.
@@ -650,3 +673,200 @@ Fuera de servicios: docs/, README.md, CLAUDE.md
 - además, ese commit tiene que estar entre los 200 que se leen y ser el único de ellos sin el fichero en sus padres: con más de 200 commits en el fichero, ninguna fila es de `/hack-scaffold`;
 - de ese commit solo cuentan como de `/hack-scaffold` las filas de `## Servicios` y `## Conexiones`, no las de Propuestas;
 - un sha que emiten como `commit` demonios de personas distintas no se atribuye a nadie, sea cual sea el orden de llegada.
+
+## 11. Vista de jurado y ruta crítica (M10; ADR-0012, ADR-0013)
+Nueva (tras congelar, 2026-10-19, M10, K-101; decisiones del usuario en el PR #42 y en el issue #41). Sin subir `v`: todo es opcional. Con los dos interruptores apagados (o sin ellos), nada de esta sección se produce: `estado.json`, la vista y `estado-equipo.md` salen byte a byte como en la 0.4.0. Esquema: `jurado`, `ruta` y los campos nuevos de `tareas[]` en [estado.schema.json](estado.schema.json), y los bloques de la vista en sus `$defs` `vista_jurado` y `vista_ruta`.
+
+### 11.1 Interruptores
+Dos claves nuevas en `.hackathon/os.md` (§0), por defecto `no`, con los mismos valores que `activa:`, versionadas y para todo el equipo (ADR-0012, decisión 8A):
+```
+vista_jurado: no          # sí = vista de jurado (R-35, ADR-0012)
+ruta_critica: no          # sí = ruta crítica (R-36, ADR-0013)
+```
+- Son independientes entre sí y de `web_nueva:`: el md y el MCP no dependen de la web.
+- Las lee **solo el relay**, de su copia, con el mismo lector que `web_nueva:` (`hkos/red.py`). El demonio, el MCP y la web siguen lo que traiga `estado.json`: si trae `jurado` o `ruta`, la vista lleva el bloque; si no, no. Ninguno de ellos lee los interruptores.
+- Con `vista_jurado: no` no hay `jurado`, `tareas[].criterios` ni `tareas[].conexiones`. Con `ruta_critica: no` no hay `ruta`, `tareas[].hasta`, `franja` ni `orden_plan`. `tareas[].historia` y `tareas[].evidencia` van con cualquiera de los dos.
+
+### 11.2 Lo que lee el relay
+Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§3). Lo que sale de un fichero lleva `fuente: git`, `declarado: true` y, como `observado_en`, la hora del último commit de ese fichero en `origin/main` (como `servicios.fichero`). Si una lectura de git falla, se conserva el último bueno y lo dice `fuentes.git`, como con `servicios`. Los ficheros se leen en UTF-8 o UTF-16 y con LF o CRLF, como Anotar.
+
+**`.hackathon/criterios.md` → `jurado`** (con `vista_jurado: sí`; ADR-0012, decisiones 1A y 2A):
+- Una nota es una cabecera `## <AAAA-MM-DD HH:MM> · <quién> (<papel>)` (la expresión `CRITERIO` de `relay.py`) y sus líneas hasta la cabecera siguiente: `- Dónde:`, `- Qué dijo:`, `- Fuerza:`, `- Afecta a:` y `- Anotado por:`. Lo que no es una nota (la cabecera de la plantilla, los comentarios) se ignora.
+- **`clave`**: los 12 primeros hex del sha256, en UTF-8, de la cabecera, la línea «Qué dijo» y la línea «Anotado por», tal cual, sin espacios a los extremos y unidas por `\n`. Las notas solo se añaden, así que la clave es estable. Dos notas con esas tres líneas iguales son una (la repetición de `merge=union`).
+- **`cita`** es la fecha y hora de la cabecera; **`hora`**, la cita con la zona de `equipo.md` (abajo), o `null` si no hay zona.
+- **`literal`**: «Qué dijo» va entre «»; **`dijo`**, el texto sin las comillas ni «(paráfrasis)», equilibrado con `proyeccion.equilibra`, de 500 caracteres como mucho.
+- **`fuerza`**: `tipo` = `dato` si el texto es «dato», `comentario` si es «comentario suelto», `sin_precisar` si es «sin precisar» o falta la línea, y `palabra` en otro caso; `texto`, sin comillas, de 40 como mucho.
+- **`corrige`**: si el bloque dice «corrige la nota del <AAAA-MM-DD HH:MM>[ · quién]» (así lo escribe `/hack-note`), esa cita; si no, `null`.
+- **`fichero`**: `ok`; `sin fichero` (y `notas` vacía); o `mal formado` si alguna cabecera no tiene «Qué dijo» (esa nota no sale; las demás, sí).
+
+**Etiqueta del plan → `tareas[].criterios`** (con `vista_jurado: sí`; ADR-0012, decisión 3A): `(criterios: <cita>[, <cita>…])` al final de la celda «Cómo se comprueba» de la fila de la tarea en `.hackathon/plan.md`, con `<cita>` = `AAAA-MM-DD HH:MM` o `AAAA-MM-DD HH:MM · quién`. El plan se lee con `compilar.leer_plan` (las mismas 5 columnas), también con GitHub: la etiqueta se toma de `plan.md`, no del issue. `valor` es la lista de citas, en el orden de la etiqueta; sin etiqueta, el campo no va. Como «Cómo se comprueba» está en la huella del issue (§8), poner o cambiar la etiqueta reescribe ese issue (R-30).
+
+**Prueba → `tareas[].conexiones`** (con `vista_jurado: sí`; ADR-0012, decisión 4A): las claves de las conexiones de `servicios.md` cuya Prueba, normalizada como en §10, aparece tal cual dentro de «Cómo se comprueba». Sin ninguna, el campo no va.
+
+**`.hackathon/pitch.md` → `jurado.pitch`** (ADR-0012, decisión 5B): las citas de todas sus etiquetas `(criterios: …)`. `null` sin `pitch.md`.
+
+**`.hackathon/equipo.md` → `ruta.equipo`, `zona`, `inicio` y `entrega`** (ADR-0013, decisión 1A; la zona también sirve a `jurado`, con cualquiera de los dos interruptores):
+- Las líneas `- Inicio:` y `- Entrega:` de «## Hackathon». Se entiende una fecha (`AAAA-MM-DD`, `D/M/AAAA` o `D de <mes> [de AAAA]`, con o sin el día de la semana delante; sin año, el del commit), una hora `HH:MM` y una zona: un nombre IANA (`Europe/Madrid`) o un desfase (`UTC+2`, `UTC+02:00`, `+02:00`). Las abreviaturas (`CEST`) no valen: son ambiguas.
+- `valor` = la hora en ISO 8601 con su desfase. Si no se puede: `null` con `motivo` = `sin_dato` (falta la línea, vacía, `—` o con `<…>`), `sin_zona`, `dos_horas` (la línea trae dos horas, como «10:00 (cierre 11:00)») o `formato`. Con «(confirmar)», `confirmar: true`, y el valor se resuelve igual. `texto` es la línea tal cual, sin `- Entrega:`.
+- `zona` es la de `Inicio:` (o, si no tiene, la de `Entrega:`); `null` si ninguna se entiende.
+- `equipo`: `ok`, `sin fichero` o `mal formado` (sin «## Hackathon»).
+
+**`.hackathon/plan.md` → `tareas[].hasta`, `franja` y `orden_plan`, `ruta.hitos`, `ruta.otras_entregas` y `ruta.descansos`** (con `ruta_critica: sí`; ADR-0013, decisiones 1A, 2A, 3B, 4A y 9A):
+- **`orden_plan`**: la posición de la fila (1, 2…) en la sección de su persona de «## Por persona».
+- **`hasta`** (decisión 2A): el `Hasta` de la fila (heredado si la celda va vacía, como en `leer_plan`) resuelto con `ruta.inicio` y `ruta.zona`:
+  - `<día> HH:MM` (`vie 19:45`, `SÁB 02:30`; el día en cualquier caja, con o sin tilde, abreviado o entero): el primer día de la semana igual que no sea anterior a la fecha del inicio;
+  - `HH:MM` sin día: la fecha del `Hasta` resuelto de la fila anterior de la persona (o la del inicio) y, si la hora queda antes, el día siguiente;
+  - `H+N` (`H+2`, `H+1:30`): el inicio más N horas;
+  - si no: `valor: null` y `motivo` = `vacio` (vacío o `—`), `relativo_sin_inicio` (`H+N` sin inicio), `sin_inicio` (un día sin inicio), `sin_zona`, `por_confirmar` (dice «por confirmar» o «?») o `formato`. Una tarea con `hasta.valor = null` sale «sin plazo», nunca «a tiempo».
+- **`franja`** (decisión 4A): `desde` = el `Hasta` resuelto de la fila anterior de la persona con otro `Hasta` (o, en la primera, el inicio); `hasta` = el suyo; `compartida` = las filas seguidas de la persona con ese mismo `Hasta`; `min` = (hasta − desde) / compartida en minutos, redondeado hacia arriba. Si no se puede: `valor: null` y `motivo` = `sin_plazo` (su `hasta` es `null`), `sin_inicio` (la primera fila, sin inicio) u `orden` (su `Hasta` no es posterior al `desde`). `fuente: derivado`, `declarado: true` (sale del plan).
+- **`hitos`**: cada fila de «## Hitos del equipo», con `nombre` = la columna Qué y la hora de Cuándo resuelta como un `Hasta`.
+- **`otras_entregas`** (decisión 1A): la fila de Hitos cuya Qué contiene «entrega» (sin distinguir mayúsculas), con `donde: plan.md`, y cada nota de fuerza `dato` cuyo «Afecta a» contiene «entrega» y cuyo «Qué dijo» trae una hora que se resuelve como un `Hasta`, con `donde: criterios.md`. Van todas, coincidan o no: la vista enseña las que no coinciden.
+- **`descansos`** (decisión 9A): cada línea de «## Descansos» con la forma `- <@usuario | Nombre | Todos>: <día> HH:MM–HH:MM` (guion o raya; la hora del final, al día siguiente si queda antes), resuelta como un `Hasta`. `persona: null` para «Todos». Una línea que no se entiende va con `desde` y `hasta` en `null` y su `motivo` (`formato`, `sin_inicio` o `sin_zona`): se enseña y no se usa.
+
+**Historia → `tareas[].historia`** (cualquiera de los dos interruptores; ADR-0012, decisión 6B; ADR-0013, decisión 5A): el relay la reconstruye al arrancar desde `relay/eventos.jsonl` y `relay/github.json`, recalculando el motor de estados (`modelo.calcular`, que es puro) en cada evento que cambia una tarea, y después la lleva por incrementos tras cada lote. `primera_senal` = el primer paso a `en_curso`; `hecha_en` = el primer paso a `publicada` o a `cerrada` no declarada; `trabajo_nuevo_desde` = el primer paso a `en_curso` después de `hecha_en`, mientras la tarea no esté hecha. La hora es la del evento que provoca el paso. `fuente: derivado`; `observado_en`, la del último evento de esa tarea.
+
+**`tareas[].evidencia`** (cualquiera de los dos): el sha del commit con ID (del `datos.incluye` del `push` de fuente `git`) o de la fusión aprobada que llevó la tarea a `publicada`. Sin ninguno (una `cerrada`), no va.
+
+### 11.3 Bloque `jurado` de la vista (ADR-0012)
+`proyeccion.vista` lo añade (clave `jurado`, `$defs/vista_jurado`) si `estado.json` trae `jurado`. Lo calcula `hkos/jurado.py`.
+- **Enlaces:** cada cita de `tareas[].criterios` casa con las notas de esa `cita` y, si lleva «· quién», con ese quién (sin distinguir mayúsculas ni espacios repetidos). Con una nota, es un enlace; con varias, un enlace `ambiguo` a cada una; con ninguna, va a `sin_nota` (enlace roto, declarado, con su tarea).
+- **Una tarea está hecha** si su estado es `publicada`, o `cerrada` sin `declarado` (una `cerrada` a mano, con ⚑, no lo está), o si tiene `historia.hecha_en` y ahora está en `en_curso`, `en_revision` o `integrada` (decisión 6B: sigue hecha, con trabajo nuevo).
+- **Cobertura** de cada nota, en este orden:
+  1. con enlaces no ambiguos: `cubierta` si todas sus tareas están hechas (decisión 4A) y, si no, `declarada`;
+  2. si no, con algún enlace ambiguo: `ambigua`;
+  3. si no, si su cita está en `jurado.pitch`: `en_pitch` (decisión 5B);
+  4. si no: `sin_tarea`.
+
+  `fuente: derivado`; `observado_en`, el más reciente de los datos usados; `viejo` si lo es la tarjeta de alguna de sus tareas.
+- **`trabajo_nuevo_desde`**: el más antiguo de los `historia.trabajo_nuevo_desde` de sus tareas que vuelven a tener trabajo; si ninguna, `null`.
+- **`tareas[]`**: todas las enlazadas (también las ambiguas), con la tarjeta de §6 más `viejo` (su estado viene de una fuente vieja en `vista.fuentes`) y el `enlace` (`cita`, `ambiguo`, `donde: plan.md`, la hora del commit del plan y `declarado: true`).
+- **`evidencias[]`**: de cada tarea enlazada, aunque la nota no esté cubierta: el commit o la fusión de `tareas[].evidencia` (`observado_en` = `historia.hecha_en`) y el último resultado de la Prueba de cada conexión de `tareas[].conexiones` (`pasa` o `falla`, con su hora y su `viejo`, el de §10). La Prueba no cambia la cobertura (decisión 4A).
+- **`pitch`**: `{fuente, observado_en, declarado}` si la cita está en el pitch; si no, `null`. Sale aunque haya tareas.
+- **`corregida_por`**: la clave de la nota posterior cuya `corrige` casa con esta y solo con esta.
+- **Orden:** sin cubrir (todo lo que no es `cubierta` ni está corregido) por fuerza (`dato`, «obligatorio», «se valora», «nos gustaría ver», otra palabra, `comentario`, `sin_precisar`) y luego por `hora` (o `cita`), la más antigua primero; después las cubiertas, por hora; al final las corregidas, por hora.
+- **`cuenta`**: los totales por cobertura (las corregidas, solo en `corregidas`), `sin_cubrir` y el desglose de las sin cubrir por el texto de su fuerza, en el orden de arriba.
+- **`viejo`** del bloque: `fuentes.git` está viejo. `observado_en`: la hora del cálculo (`ahora`).
+- **`resumen`** (la línea del md, decisión 7B): `jurado: <sin_cubrir> sin cubrir (<n> «<la fuerza más fuerte entre las sin cubrir>»)[ · <ambiguas> ambigua(s)][ · <en_pitch> en el pitch] · <cubiertas> cubierta(s) de <notas>`; sin notas, `jurado: sin notas en criterios.md`; sin fichero, `jurado: sin criterios.md en main`. Cortado a 160 por grafemas.
+
+### 11.4 Bloque `ruta` de la vista (ADR-0013)
+`proyeccion.vista` lo añade (clave `ruta`, `$defs/vista_ruta`) si `estado.json` trae `ruta`. Lo calcula `hkos/ruta.py`, con `ahora` como parámetro.
+- **Objetivo** (decisión 1A): manda `ruta.entrega`, la de `- Entrega:` de `equipo.md`. Las `otras_entregas` cuyo `valor` no coincide con el del objetivo (o que no se resuelven) van en `otras_entregas` de la vista, al lado, como discrepancia, sin elegir, y **no quitan la estimación**. La congelación y los demás hitos van en `hitos`, con `pasado`, sin previsión.
+- **Qué cuenta** (decisión 8B): todas las tareas menos las de título que empieza por «Si » o que lleva `[SI DA TIEMPO]` (sin distinguir mayúsculas), que van a `fuera_de_entrega` con `motivo` `condicional` o `si_da_tiempo`. **Hecha** = `publicada` o `cerrada` (una `cerrada` a mano cuenta, con su ⚑, pero no se mide). **Abierta** = que cuenta y no está hecha.
+- **Grafo** (decisión 3B): entre las tareas que cuentan, A → B si B `depende_de` A (`por: depende_de`) o si A es la fila anterior de B en el `orden_plan` de la misma persona (`por: orden_del_plan`, inferido).
+- **Medidas y ritmo** (decisión 5A): para cada tarea hecha, no declarada, con `primera_senal`, `hecha_en` y franja: ritmo = (hecha_en − primera_senal − los descansos de su persona o de todos en medio) ÷ `franja.min`, en %, redondeado. Por persona: `n` (las medidas), `ritmo_min` y `ritmo_max` (o `null` con `n < 3`). `base.minimo` es **3**, fijo; `base.desde`, el `hecha_en` más antiguo medido.
+- **Veredicto `sin_estimacion`**, con todos los `motivos` que apliquen, en este orden:
+  - `sin_entrega`: `equipo.md` no tiene `- Entrega:`, no se puede leer (`ruta.equipo` distinto de `ok`) o esa línea no se resuelve (`motivo` `sin_dato`, `sin_zona` o `formato`);
+  - `entrega_doble`: esa línea trae dos horas (`motivo: dos_horas`);
+  - `ciclo`: un ciclo en el grafo;
+  - `sin_plazo`: una tarea abierta sin franja;
+  - `pocos_datos`: una persona con tareas abiertas y `n < 3`.
+
+  `gravedad: gris`, `estimacion: null`. Ni una discrepancia con `otras_entregas` ni «(confirmar)» quitan la estimación: con «(confirmar)», el objetivo lleva `confirmar: true` (declarado) y el resumen lo dice.
+- **Estimación** (si no hay motivos): lo que le queda a cada tarea abierta es `franja.min` × el ritmo de su dueño (`ritmo_min` para el fin temprano, `ritmo_max` para el tarde), menos el tiempo ya trabajado si está en curso (desde `primera_senal`, sin descansos), y nunca menos de 0. Cada tarea empieza al acabar todas sus predecesoras abiertas (o ahora) y se salta los descansos de su persona y de todos; `temprano` y `tarde` son el fin más tardío de todas. `margen_min` = entrega − tarde y `margen_max` = entrega − temprano, en minutos.
+- **Veredicto** (decisión 6A), sin parámetros: `a_tiempo` si `tarde` ≤ entrega (`gravedad: ninguna`); `justo` si `temprano` ≤ entrega < `tarde` (`ambar`); `no_llega` si entrega < `temprano` (`ambar`: es una previsión; el rojo es solo para hechos).
+- **Hechos**, con o sin estimación y desde el principio:
+  - `plazo_pasado`: una tarea abierta con `hasta.valor` anterior a ahora, con `plazo` y `arrastra` (sus sucesoras abiertas, directas o no). **Rojo**: es el único;
+  - `parada` y `no_cerrada`: tareas de la cadena en ese estado (`ambar`);
+  - `sin_senales`: una persona con tareas abiertas cuya última señal (`personas[].ultima_senal` de la vista) es más antigua que `umbral_parada_min`, o no existe, y que no está en un descanso; `desde` = esa señal; `gris`. Nunca «va lenta»;
+  - `ciclo`: `ciclo` = las tareas, con la primera repetida al final (`gris`).
+
+  Orden: rojo, ámbar, gris; dentro, por plazo y por tarea.
+- **Cadena**: con estimación, la que lleva al fin `tarde` más tardío; sin ella, la que lleva al `Hasta` resuelto más tardío, siguiendo hacia atrás la predecesora abierta de `Hasta` más tardío. Cada eslabón, con su tarjeta, `por` (`inicio` en el primero), `hasta`, `franja` y su `fin_temprano` y `fin_tarde` (`null` sin estimación).
+- **`sin_plazo`**: las tareas abiertas sin franja, con el motivo de `hasta` o, si `hasta` se resolvió, el de la franja.
+- **`viejo`**: alguna de `vista.fuentes` está vieja; `dato_mas_viejo`, el `observado_en` más antiguo de esas fuentes. `observado_en`: la hora del cálculo.
+- **`resumen`** (decisión 7B), cortado a 160 por grafemas:
+  - con estimación: `ruta: estimación <a tiempo | justo | no llega> · fin <HH:MM>–<HH:MM> · entrega <día HH:MM>[ (confirmar)]`;
+  - sin ella: `ruta: sin estimación (<sin hora de entrega | dos horas de entrega | ciclo T04 → T07 → T04 | sin plazo: T09, T12 | pocos datos: @ana 2 de 3, @marta 1 de 3>)`, con el primer motivo;
+  - detrás, si hay `otras_entregas` que no coinciden: ` · otra entrega: <texto> (<dónde>)`; y si hay plazos pasados: ` · T05: plazo pasado <HH:MM>[ y N más]`.
+
+### 11.5 MCP
+Dos herramientas nuevas del servidor `os` (§5), de solo lectura, con la vista calculada como la del demonio (`proyeccion.vista` del `estado.json` local):
+
+| Herramienta | Entrada | Salida |
+|---|---|---|
+| `jurado` | `{}` | `{jurado, generado_en}`: el bloque `jurado` entero |
+| `ruta` | `{}` | `{ruta, generado_en}`: el bloque `ruta` entero |
+
+Sin el bloque, una línea sin error: «la vista de jurado no está activa (vista_jurado: no en el os.md del relay)», o lo mismo con la ruta. Los textos de las notas van tal cual en el JSON: son dato (constitución V). `estado` sigue devolviendo el md, con la línea de resumen (§6).
+
+### 11.6 Vista de ejemplo
+Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-106 para empezar la web y la que valida el esquema (`$defs/vista_jurado` y `$defs/vista_ruta`).
+
+```json
+{
+  "jurado": {
+    "observado_en": "2026-09-19T09:00:00Z", "fuente": "derivado", "viejo": false, "fichero": "ok",
+    "cuenta": {"notas": 3, "sin_cubrir": 2, "sin_tarea": 1, "ambiguas": 0, "declaradas": 1, "en_pitch": 0, "cubiertas": 1, "corregidas": 0,
+               "sin_cubrir_por_fuerza": [{"texto": "obligatorio", "n": 1}, {"texto": "nos gustaría ver", "n": 1}]},
+    "notas": [
+      {"nota": {"clave": "3f9a1c07b2e4", "cita": "2026-09-19 10:40", "hora": "2026-09-19T10:40:00+02:00", "quien": "Marta (Embat)", "papel": "jurado",
+                "donde": "mesa 4", "dijo": "Queremos ver la validación con datos reales", "literal": true, "fuerza": {"tipo": "palabra", "texto": "obligatorio"},
+                "afecta_a": "plan, pitch", "anotado_por": "@ana", "corrige": null, "fuente": "git", "observado_en": "2026-09-19T08:52:10Z", "declarado": true},
+       "cobertura": {"valor": "sin_tarea", "fuente": "derivado", "observado_en": "2026-09-19T08:52:10Z", "viejo": false},
+       "corregida_por": null, "trabajo_nuevo_desde": null, "tareas": [], "evidencias": [], "pitch": null},
+      {"nota": {"clave": "a1b2c3d4e5f6", "cita": "2026-09-18 21:15", "hora": "2026-09-18T21:15:00+02:00", "quien": "Luis (mentor)", "papel": "mentor",
+                "donde": null, "dijo": "estaría bien ver el informe en PDF", "literal": false, "fuerza": {"tipo": "palabra", "texto": "nos gustaría ver"},
+                "afecta_a": "plan", "anotado_por": "@luis", "corrige": null, "fuente": "git", "observado_en": "2026-09-19T08:52:10Z", "declarado": true},
+       "cobertura": {"valor": "declarada", "fuente": "derivado", "observado_en": "2026-09-19T08:40:00Z", "viejo": false},
+       "corregida_por": null, "trabajo_nuevo_desde": null,
+       "tareas": [{"tarjeta": {"id": "T12", "titulo": "Informe PDF", "dueno": "marta", "estado": "en_curso", "etiqueta": "en curso", "fuente": "hook",
+                               "observado_en": "2026-09-19T08:40:00Z", "viejo": false},
+                   "enlace": {"cita": "2026-09-18 21:15", "ambiguo": false, "donde": "plan.md", "fuente": "git", "observado_en": "2026-09-19T07:30:00Z", "declarado": true}}],
+       "evidencias": [], "pitch": null},
+      {"nota": {"clave": "0c9d8e7f6a5b", "cita": "2026-09-18 20:30", "hora": "2026-09-18T20:30:00+02:00", "quien": null, "papel": "organización",
+                "donde": "charla de apertura", "dijo": "La API devuelve JSON con el esquema publicado", "literal": true, "fuerza": {"tipo": "dato", "texto": "dato"},
+                "afecta_a": "contratos", "anotado_por": "@ana", "corrige": null, "fuente": "git", "observado_en": "2026-09-19T08:52:10Z", "declarado": true},
+       "cobertura": {"valor": "cubierta", "fuente": "derivado", "observado_en": "2026-09-19T01:10:00Z", "viejo": false},
+       "corregida_por": null, "trabajo_nuevo_desde": null,
+       "tareas": [{"tarjeta": {"id": "T03", "titulo": "Esquema de la API", "dueno": "ana", "estado": "publicada", "etiqueta": "publicada", "fuente": "git",
+                               "observado_en": "2026-09-19T01:10:00Z", "viejo": false},
+                   "enlace": {"cita": "2026-09-18 20:30", "ambiguo": false, "donde": "plan.md", "fuente": "git", "observado_en": "2026-09-19T07:30:00Z", "declarado": true}}],
+       "evidencias": [{"tipo": "commit", "tarea": "T03", "valor": "9e1f2a3b4c5d", "fuente": "git", "observado_en": "2026-09-19T01:10:00Z", "viejo": false}],
+       "pitch": null}
+    ],
+    "sin_nota": [],
+    "resumen": "jurado: 2 sin cubrir (1 «obligatorio») · 1 cubierta de 3"
+  },
+  "ruta": {
+    "observado_en": "2026-09-19T09:00:00Z", "fuente": "derivado", "viejo": false, "dato_mas_viejo": "2026-09-19T08:58:30Z",
+    "objetivo": {"valor": "2026-09-20T10:00:00+02:00", "texto": "2026-09-20 10:00, Europe/Madrid", "confirmar": false, "motivo": null, "donde": "equipo.md",
+                 "fuente": "git", "observado_en": "2026-09-18T18:05:00Z", "declarado": true},
+    "otras_entregas": [{"nombre": "Entrega final", "valor": "2026-09-20T11:00:00+02:00", "texto": "dom 11:00", "motivo": null, "donde": "plan.md",
+                        "fuente": "git", "observado_en": "2026-09-19T07:30:00Z", "declarado": true}],
+    "veredicto": {"valor": "sin_estimacion", "motivos": ["pocos_datos"], "gravedad": "gris", "fuente": "derivado", "observado_en": "2026-09-19T09:00:00Z"},
+    "estimacion": null,
+    "base": {"minimo": 3, "desde": "2026-09-18T21:40:00Z", "personas": [
+      {"persona": "ana", "n": 2, "ritmo_min": null, "ritmo_max": null, "fuente": "derivado", "observado_en": "2026-09-19T09:00:00Z"},
+      {"persona": "luis", "n": 3, "ritmo_min": 110, "ritmo_max": 160, "fuente": "derivado", "observado_en": "2026-09-19T09:00:00Z"},
+      {"persona": "marta", "n": 1, "ritmo_min": null, "ritmo_max": null, "fuente": "derivado", "observado_en": "2026-09-19T09:00:00Z"}]},
+    "hechos": [
+      {"tipo": "plazo_pasado", "gravedad": "rojo", "tarea": "T05", "persona": "ana", "plazo": "2026-09-19T02:30:00+02:00", "arrastra": ["T06", "T16"],
+       "fuente": "derivado", "observado_en": "2026-09-19T09:00:00Z", "viejo": false},
+      {"tipo": "sin_senales", "gravedad": "gris", "persona": "luis", "desde": "2026-09-19T08:35:00Z", "fuente": "derivado", "observado_en": "2026-09-19T09:00:00Z", "viejo": false}],
+    "cadena": [
+      {"tarjeta": {"id": "T05", "titulo": "Motor de detección", "dueno": "ana", "estado": "en_curso", "etiqueta": "en curso", "fuente": "hook",
+                   "observado_en": "2026-09-19T08:50:00Z", "viejo": false},
+       "por": "inicio",
+       "hasta": {"valor": "2026-09-19T02:30:00+02:00", "texto": "sáb 02:30", "motivo": null, "fuente": "git", "observado_en": "2026-09-19T07:30:00Z", "declarado": true},
+       "franja": {"valor": {"desde": "2026-09-18T23:00:00+02:00", "hasta": "2026-09-19T02:30:00+02:00", "min": 210, "compartida": 1}, "motivo": null,
+                  "fuente": "derivado", "observado_en": "2026-09-19T07:30:00Z", "declarado": true},
+       "fin_temprano": null, "fin_tarde": null},
+      {"tarjeta": {"id": "T06", "titulo": "Ajuste con datos de Embat", "dueno": "ana", "estado": "lista", "etiqueta": "lista", "fuente": "github",
+                   "observado_en": "2026-09-19T07:31:00Z", "viejo": false},
+       "por": "orden_del_plan",
+       "hasta": {"valor": "2026-09-19T13:00:00+02:00", "texto": "sáb 13:00", "motivo": null, "fuente": "git", "observado_en": "2026-09-19T07:30:00Z", "declarado": true},
+       "franja": {"valor": {"desde": "2026-09-19T07:00:00+02:00", "hasta": "2026-09-19T13:00:00+02:00", "min": 360, "compartida": 1}, "motivo": null,
+                  "fuente": "derivado", "observado_en": "2026-09-19T07:30:00Z", "declarado": true},
+       "fin_temprano": null, "fin_tarde": null}],
+    "sin_plazo": [{"tarea": "T21", "motivo": "por_confirmar"}],
+    "fuera_de_entrega": [{"tarea": "T09", "motivo": "condicional"}],
+    "hitos": [{"hito": {"nombre": "Congelación", "valor": "2026-09-19T22:00:00+02:00", "texto": "sáb 22:00", "motivo": null, "donde": "plan.md",
+                        "fuente": "git", "observado_en": "2026-09-19T07:30:00Z", "declarado": true}, "pasado": false}],
+    "descansos": [{"persona": null, "desde": "2026-09-19T03:00:00+02:00", "hasta": "2026-09-19T07:00:00+02:00", "texto": "- Todos: sáb 03:00–07:00",
+                   "motivo": null, "fuente": "git", "observado_en": "2026-09-19T07:30:00Z", "declarado": true}],
+    "resumen": "ruta: sin estimación (pocos datos: @ana 2 de 3, @marta 1 de 3) · otra entrega: dom 11:00 (plan.md) · T05: plazo pasado 02:30"
+  }
+}
+```
+
+La fila «Entrega final» de Hitos (dom 11:00) no coincide con `equipo.md` (dom 10:00): sale al lado y no es la causa de «sin estimación» (lo es `pocos_datos`). Con 3 o más medidas por persona, el mismo bloque llevaría, por ejemplo, `"veredicto": {"valor": "justo", "motivos": [], "gravedad": "ambar", …}`, `"estimacion": {"temprano": "2026-09-20T05:40:00Z", "tarde": "2026-09-20T08:50:00Z", "margen_min": -50, "margen_max": 140}` y `"resumen": "ruta: estimación justo · fin 07:40–10:50 · entrega dom 10:00 · otra entrega: dom 11:00 (plan.md) · T05: plazo pasado 02:30"`, contra la entrega de `equipo.md`.
