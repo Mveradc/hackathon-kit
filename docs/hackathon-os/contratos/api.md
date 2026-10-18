@@ -223,7 +223,7 @@ TTL: actor sin latido en 90 s → `activo: false` (R-18). Reserva vencida → se
   - Un cliente que se conecta no recibe los anteriores: un paquete solo anima lo que llega mientras se mira (ADR-0009).
   - Se emiten hasta 200 por mensaje; si se juntan más, solo los 200 últimos, con `"recortados": n`.
   - Quien solo lee `estado` y `vista` (la web clásica, `carga.py`) ignora el evento nuevo.
-- **`servicios` en `estado.json`.** Se calcula en el mismo bucle que las novedades y los contratos (tras el `git fetch` de cada 60 s), a partir de:
+- **`servicios` en `estado.json`.** Se calcula en el mismo bucle que las novedades y los contratos (tras el `git fetch` de cada 60 s y, además, a los ≤ 2 s de recibir un push de un demonio; tras congelar, 2026-10-18, K-99), a partir de:
   - `.hackathon/servicios.md` de `origin/main` del clon del relay (formato en §10), su `git log -p` (hasta 200 commits) y el commit que lo creó;
   - `.hackathon/autoridad.md` (carpetas de cada dueño, con el mismo lector que `hkos/contratos.py`) y los títulos `##` de `docs/contratos.md`;
   - `git ls-tree -r --name-only origin/main` y las rutas del último `arbol` de cada actor;

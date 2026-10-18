@@ -248,9 +248,15 @@ def puerto_abierto(url):
 def urls_anunciadas(texto):
     urls = set(re.findall(r"https?://(?:localhost|127\.0\.0\.1):\d+[^\s'\"`»)]*", texto))
     # El servidor (uvicorn, vite…) imprime su raíz aunque el arranque anuncie otra ruta del mismo puerto:
-    # si hay una URL más concreta con el mismo origen, la raíz sobra.
-    return sorted(u for u in urls
-                  if not any(o != u and o.startswith(u.rstrip("/") + "/") for o in urls))
+    # si hay una URL más concreta con el mismo origen, la raíz sobra. localhost, 127.0.0.1 y ::1 son el mismo origen
+    # (uvicorn imprime 127.0.0.1 y el arranque puede anunciar localhost; K-99).
+    def partes(u):
+        m = re.match(r"(https?)://(?:localhost|127\.0\.0\.1|\[::1\]):(\d+)(.*)", u)
+        return (m.group(1), m.group(2)), m.group(3)
+    trozos = {u: partes(u) for u in urls}
+    return sorted(u for u, (origen, ruta) in trozos.items()
+                  if not any(o != u and oo == origen and r.startswith(ruta.rstrip("/") + "/")
+                             for o, (oo, r) in trozos.items()))
 
 
 def a2(c, espera=300):

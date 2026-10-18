@@ -452,8 +452,8 @@ def prueba(tmp):
         print(f"  {'≤30' if ok and t <= PLAZO_S else 'MAL'}  {t:6.1f} s  {nombre}")
     peores = [t for _, ok, t in medidas if ok]
     if peores:
-        print(f"  máximo {max(peores):.1f} s; el relay hace `git fetch` y lee servicios.md cada "
-              f"{60} s (NOVEDADES_S), el demonio mira git cada 15 s y la salud cada 15 s")
+        print(f"  máximo {max(peores):.1f} s; el relay hace `git fetch` y lee servicios.md cada 60 s (NOVEDADES_S) y a "
+              "los 2 s de un push de un demonio (ANTIRREBOTE_PUSH_S), el demonio mira git cada 15 s y la salud cada 15 s")
 
 
 def apagada(tmp):
