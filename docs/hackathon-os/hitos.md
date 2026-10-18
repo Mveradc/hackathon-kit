@@ -2,7 +2,7 @@
 
 Cada hito construye solo lo que exige su validación (regla del kit). Un hito se cierra cuando se cumplen sus criterios, se anota el resultado en `evals/coordinacion/prueba.md` (sección «M8x») y el detalle en `docs/historial.md`. Entre paréntesis, los requisitos que cubre.
 
-Dependencias: `M8.0 → M8a → M8b → (M8c ∥ M8d) → M8e → M8f → M8g → M8h (fase 1) → M9a → M8h (fases 2 y 3)` (M9a se adelanta al ensayo por decisión del usuario, 2026-10-17). M8c y M8d se pueden hacer en paralelo una vez congelados los contratos.
+Dependencias: `M8.0 → M8a → M8b → (M8c ∥ M8d) → M8e → M8f → M8g → M8h (fase 1) → M9a → M8h (fases 2 y 3)` (M9a se adelanta al ensayo por decisión del usuario, 2026-10-17; el ensayo, la fase 2 de M8h, queda aplazado sin fecha por decisión del usuario, 2026-10-18). M8c y M8d se pueden hacer en paralelo una vez congelados los contratos.
 
 Corte para una versión reducida: con M8a–M8f hay OS (estado común sin colisiones). M8g es el diferencial. M8h es obligatorio antes de usarlo con un equipo real.
 
@@ -136,6 +136,8 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 - **Criterio 3.** Los 10 minutos cuentan desde un repo con la cadena hecha (`plan.md` en `main`) y los requisitos instalados el día antes (`arranque.md`).
 - **Criterio 4.** Reto 03. El control va dentro del ensayo: 60 minutos con el OS apagado tras la cadena, el arranque del OS cronometrado y ≥ 3 horas con el OS. Se comparan tasas por persona y hora, con HackSpain como referencia secundaria. Con este N, el resultado es una tendencia, no una estadística.
 
+*Nota (M8h, decisión del usuario, 2026-10-18):* **el ensayo (fase 2, criterio 4, K-83) queda aplazado sin fecha**: ahora no se puede coordinar al equipo. Lo siguiente es cerrar M9a (decidir el borrador de contratos del PR #13, K-99 y anotar el cierre). Al cerrarlo, el usuario decide si la 0.4.0 sale sin ensayo (con el criterio 4 pendiente y dicho en `docs/limitaciones.md`) o espera a que se haga.
+
 ---
 
 ## M9a · Web de trabajo, nivel A (R-33; ADR-0009, ADR-0010, ADR-0011)
@@ -173,6 +175,11 @@ Abierto el 2026-10-17 por decisión del usuario: se construye **antes** de la fa
   2. Después, la vista de tablero: quedan la cabina, la red y los servicios.
 
   **No se recortan:** el respaldo de la web clásica, la seguridad de ADR-0010 y las dos acciones.
+
+*Estado (2026-10-18):*
+- **Revisiones independientes y arreglos.** Siete revisiones de solo lectura (issues #2, #6, #10, #15, #18, #23 y #27) y sus arreglos, en los PR #7 a #29. Ninguna alta abierta. De la última (#27) quedan medias: un Anotar cuyo push entra después del plazo puede duplicar la nota, `web.token` se regenera si falla la reescritura de uno no privado, `os.replace` falla en Windows con el fichero abierto por otro proceso, y el último `servicios` bueno no sale marcado como viejo (esto último, decisión de contratos).
+- **Contratos y ADR al día con el código:** borrador en el PR #13, con su tabla de decisiones pendientes. Lo decide el usuario antes de cerrar M9a.
+- **Siguiente:** decidir el PR #13 → K-99 → anotar el cierre de M9a en `evals/coordinacion/prueba.md` y `docs/historial.md`.
 
 *Estado (2026-10-17):*
 - **K-95 hecha (PR #8), salvo lo de K-99.** Los criterios 7 y 8 están cubiertos sin sandbox (`test_acciones.py` y `prueba_hooks.py`); falta su parte en `Mveradc/hk-sandbox` con @hk-persona-b y la prueba interactiva del turno, que son de K-99.

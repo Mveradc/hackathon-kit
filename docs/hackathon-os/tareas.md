@@ -187,6 +187,7 @@ Hecho cuando: criterio 3 de M8h cronometrado.
 ### K-83 · Ensayo con el equipo real
 Depende de: todo lo anterior
 Hecho cuando: criterio 4 de M8h, con la hoja de observación rellena en `evals/coordinacion/prueba.md`.
+**Aplazada sin fecha** (decisión del usuario, 2026-10-18): ahora no se puede coordinar al equipo. Va después del cierre de M9a.
 
 ### K-84 · Documentación y publicación
 Puedes tocar: `README.md`, `README.es.md`, `docs/limitaciones.md`, `CHANGELOG.md`, `.claude-plugin/plugin.json`
@@ -251,3 +252,4 @@ Hallazgos **1, 4, 5, 6, 9 y 13 resueltos** por el PR #7 (`hkos/servicios.py` y l
 ### K-99 · Validación con modelo y en sandbox
 Depende de: todo lo anterior · Puedes tocar: `evals/coordinacion/`, carpetas de prueba en `../`
 Hecho cuando: criterios 1, 5, 8 y 9 de M9a; `/hack-scaffold` y `/hack-plan` con el reto 03 y la coordinación activa; Anotar y Reclamar en `Mveradc/hk-sandbox` con @hk-persona-b; resultados en `evals/coordinacion/prueba.md` («M9a»).
+Va después de que el usuario decida el borrador de contratos y ADR del PR #13 (2026-10-18), para validar contra el contrato que quede.
