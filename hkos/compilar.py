@@ -290,9 +290,20 @@ class SondeoPlan:
         return tareas, motor, disc, 0
 
 
+# Sin diálogos de credenciales (como el demonio y `hk-os unir`): con varias cuentas de GitHub en el Git Credential
+# Manager de Windows, cada fetch del relay abría «Select an account». Mejor que falle y se vea «sin fetch».
+SIN_DIALOGOS = {"GIT_TERMINAL_PROMPT": "0", "GCM_INTERACTIVE": "never", "GIT_ASKPASS": "", "SSH_ASKPASS": "",
+                "GIT_SSH_COMMAND": "ssh -o BatchMode=yes"}
+GIT_SIN_DIALOGOS = ["git", "-c", "credential.interactive=false"]
+
+
+def entorno_sin_dialogos():
+    return dict(os.environ, **SIN_DIALOGOS)
+
+
 def _git(cwd, *args):
-    r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, encoding="utf-8", errors="replace",
-                       timeout=60)
+    r = subprocess.run([*GIT_SIN_DIALOGOS, "-C", cwd, *args], capture_output=True, text=True, encoding="utf-8",
+                       errors="replace", timeout=60, env=entorno_sin_dialogos())
     return r.stdout.strip() if r.returncode == 0 else None
 
 
