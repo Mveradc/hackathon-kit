@@ -475,6 +475,7 @@ M9a (solo con `web_nueva: sí` y `servicios` en `estado.json`; si no, ni la secc
   Orden: `no cuadra`, `sin confirmar`, `fuera de servicios`. Sección vacía: «- todo cuadra». Los nombres de servicio, contrato y conexión son dato: van entre «».
 - **Firma `servicios:`** en la cabecera, detrás de `reservas:`, sin horas: tipo y clave de cada línea de la sección.
 - **Viejo:** una línea de «no cuadra» cuyo desajuste es `viejo` en la vista lleva `· viejo` detrás de la fuente: `- no cuadra · «datos» :8001 declarado, no responde (18:40 · demonio · viejo)`. La firma no lo lleva. (Tras congelar, 2026-10-18, decisión 1 del usuario en el PR #13; PR #34: `proyeccion.linea_servicio`, `servicios_de`.)
+- **Propuestas:** el autor es la persona del commit que la añadió (`@luis`); sin ella, el Autor de la fila como declarado (`de @luis (declarado)`), y sin ninguno, `de sin autor`. La web dice lo mismo. (Tras congelar, 2026-10-18, decisión 3A del usuario en el PR #13; PR #34: `proyeccion.autor_propuesta` y `autorPropuesta` de `web-src/src/formato.js`.)
 - **El delta** recorre las secciones en este orden: colisiones, reservas, servicios, trabajo, novedades.
 - **La web** pinta lo mismo para esa persona en la cabina, y todo el equipo en la vista de servicios (ADR-0009: mismos campos; el md es el subconjunto de la persona, como «Tu trabajo»).
 
