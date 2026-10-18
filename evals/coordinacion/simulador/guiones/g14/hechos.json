@@ -1,0 +1,1327 @@
+{
+ "v": 1,
+ "guiones": {
+  "bien": "G14.json",
+  "riesgo": "G14r.json"
+ },
+ "que_es": "Lo que la ruta crítica tiene que decir en cada momento de G14 (rama «bien») y G14r (rama «riesgo»), como hechos y sin nombres de campo de la vista. Lo comprueba g13_g14.py contra el motor de estados y las entradas.",
+ "decisiones": {
+  "R1": "A: manda «Entrega:» de equipo.md; la fila Entrega de Hitos se enseña como discrepancia y no bloquea. Sin estimación solo si equipo.md no tiene Entrega, no se lee, trae dos horas o no se resuelve; con «(confirmar)» hay cifra, marcada",
+  "R2": "A: Hasta con Inicio y la zona de equipo.md; sin Inicio, todo Hasta sale «sin plazo (sin Inicio)»; lo que no se resuelve, «sin plazo (plazo sin resolver)»; una celda vacía hereda la de arriba",
+  "R3": "sin decidir: los hechos de dependencias usan solo depende_de; nada de lo de aquí depende de la cadena de cada persona",
+  "R4": "A: franja derivada del plan",
+  "R5": "A: por persona, N = 3",
+  "R6": "A: rango, veredicto de 4 valores y base",
+  "R7": "A: con n < 3, solo hechos y «n de 3»",
+  "R8": "B: no cuentan «Si …» ni [SI DA TIEMPO]",
+  "R9": "A: «## Descansos» del plan"
+ },
+ "veredictos": [
+  "a_tiempo",
+  "justo",
+  "no_llega",
+  "sin_estimacion"
+ ],
+ "zona": "Europe/Madrid (CEST, +02:00)",
+ "entradas": {
+  "equipo.md": [
+   {
+    "fichero": "guiones/g14/equipo-1.md",
+    "en_main_desde": "2026-09-18T17:00:00Z"
+   },
+   {
+    "fichero": "guiones/g14/equipo-2.md",
+    "en_main_desde": "2026-09-19T07:31:00Z"
+   }
+  ],
+  "plan.md": [
+   {
+    "fichero": "guiones/g14/plan-1.md",
+    "en_main_desde": "2026-09-18T17:00:00Z"
+   },
+   {
+    "fichero": "guiones/g14/plan-2.md",
+    "en_main_desde": "2026-09-19T07:31:00Z"
+   }
+  ]
+ },
+ "momentos": [
+  {
+   "nombre": "inicio",
+   "guion": "G14.json",
+   "ahora": "2026-09-18T19:30:00Z",
+   "t": 9000,
+   "equipo.md": "guiones/g14/equipo-1.md",
+   "plan.md": "guiones/g14/plan-1.md",
+   "inicio": {
+    "texto": "por confirmar",
+    "valor": null
+   },
+   "entrega": {
+    "texto": "2026-09-20 10:00 (Europe/Madrid)",
+    "valor": "2026-09-20T08:00:00Z",
+    "fuente": "equipo.md",
+    "declarado": true,
+    "fichero_desde": "2026-09-18T17:00:00Z",
+    "discrepancias": [
+     {
+      "fuente": "plan.md · Hitos del equipo · «Entrega final»",
+      "texto": "dom 20 sep 09:30",
+      "valor": "2026-09-20T07:30:00Z"
+     }
+    ],
+    "bloquea_estimacion": false
+   },
+   "veredicto": "sin_estimacion",
+   "cifra": {
+    "hay": false,
+    "motivo": "pocos datos: persona-a 2 de 3, persona-b 1 de 3, persona-c 0 de 3 (sin ritmo todavía); además, sin Inicio no hay ningún plazo",
+    "rango_frente_a_entrega": null
+   },
+   "base": {
+    "persona-a": {
+     "n": 2,
+     "de": 3,
+     "hechas": [
+      {
+       "tarea": "T01",
+       "primera_senal": "2026-09-18T17:05:00Z",
+       "publicada_en": "2026-09-18T17:50:00Z"
+      },
+      {
+       "tarea": "T02",
+       "primera_senal": "2026-09-18T17:55:00Z",
+       "publicada_en": "2026-09-18T18:40:00Z"
+      }
+     ]
+    },
+    "persona-b": {
+     "n": 1,
+     "de": 3,
+     "hechas": [
+      {
+       "tarea": "T11",
+       "primera_senal": "2026-09-18T17:30:00Z",
+       "publicada_en": "2026-09-18T18:40:00Z"
+      }
+     ]
+    },
+    "persona-c": {
+     "n": 0,
+     "de": 3,
+     "hechas": []
+    }
+   },
+   "plazos": {
+    "T01": {
+     "hasta": "H+1",
+     "efectivo": "H+1",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T02": {
+     "hasta": "H+2",
+     "efectivo": "H+2",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T03": {
+     "hasta": "H+4",
+     "efectivo": "H+4",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T04": {
+     "hasta": "",
+     "efectivo": "H+4",
+     "heredado_de": "T03",
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T05": {
+     "hasta": "H+8",
+     "efectivo": "H+8",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T06": {
+     "hasta": "H+16",
+     "efectivo": "H+16",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T07": {
+     "hasta": "",
+     "efectivo": "H+16",
+     "heredado_de": "T06",
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T08": {
+     "hasta": "H+18",
+     "efectivo": "H+18",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T09": {
+     "hasta": "H+21",
+     "efectivo": "H+21",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T10": {
+     "hasta": "H+24",
+     "efectivo": "H+24",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T11": {
+     "hasta": "H+4",
+     "efectivo": "H+4",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T12": {
+     "hasta": "",
+     "efectivo": "H+4",
+     "heredado_de": "T11",
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T13": {
+     "hasta": "",
+     "efectivo": "H+4",
+     "heredado_de": "T11",
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T14": {
+     "hasta": "H+6",
+     "efectivo": "H+6",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T15": {
+     "hasta": "H+14",
+     "efectivo": "H+14",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T16": {
+     "hasta": "H+16",
+     "efectivo": "H+16",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T17": {
+     "hasta": "H+20",
+     "efectivo": "H+20",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T18": {
+     "hasta": "",
+     "efectivo": "H+20",
+     "heredado_de": "T17",
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T19": {
+     "hasta": "H+23",
+     "efectivo": "H+23",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T20": {
+     "hasta": "H+2",
+     "efectivo": "H+2",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T21": {
+     "hasta": "H+4",
+     "efectivo": "H+4",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T22": {
+     "hasta": "H+17",
+     "efectivo": "H+17",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T23": {
+     "hasta": "",
+     "efectivo": "H+17",
+     "heredado_de": "T22",
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T24": {
+     "hasta": "H+19",
+     "efectivo": "H+19",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T25": {
+     "hasta": "H+21",
+     "efectivo": "H+21",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T26": {
+     "hasta": "H+23",
+     "efectivo": "H+23",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T27": {
+     "hasta": "H+26",
+     "efectivo": "H+26",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "sin Inicio"
+    },
+    "T28": {
+     "hasta": "hora por confirmar",
+     "efectivo": "hora por confirmar",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "plazo sin resolver"
+    }
+   },
+   "sin_plazo": {
+    "T03": "sin Inicio",
+    "T04": "sin Inicio",
+    "T05": "sin Inicio",
+    "T06": "sin Inicio",
+    "T07": "sin Inicio",
+    "T08": "sin Inicio",
+    "T09": "sin Inicio",
+    "T12": "sin Inicio",
+    "T13": "sin Inicio",
+    "T14": "sin Inicio",
+    "T15": "sin Inicio",
+    "T16": "sin Inicio",
+    "T17": "sin Inicio",
+    "T18": "sin Inicio",
+    "T19": "sin Inicio",
+    "T20": "sin Inicio",
+    "T21": "sin Inicio",
+    "T22": "sin Inicio",
+    "T23": "sin Inicio",
+    "T24": "sin Inicio",
+    "T25": "sin Inicio",
+    "T26": "sin Inicio",
+    "T27": "sin Inicio",
+    "T28": "plazo sin resolver"
+   },
+   "no_cuentan": {
+    "T10": "empieza por «Si …»"
+   },
+   "plazos_vencidos": {},
+   "en_riesgo": {},
+   "sin_senales": {},
+   "descansos": {
+    "resueltos": false,
+    "motivo": "sin Inicio",
+    "filas": [
+     {
+      "texto": "sáb 00:30–06:30",
+      "personas": [
+       "persona-c"
+      ],
+      "desde": null,
+      "hasta": null
+     },
+     {
+      "texto": "sáb 01:00–07:00",
+      "personas": [
+       "persona-b"
+      ],
+      "desde": null,
+      "hasta": null
+     },
+     {
+      "texto": "sáb 02:30–08:00",
+      "personas": [
+       "persona-a"
+      ],
+      "desde": null,
+      "hasta": null
+     },
+     {
+      "texto": "sáb 23:00–dom 07:30",
+      "personas": [
+       "persona-b",
+       "persona-c"
+      ],
+      "desde": null,
+      "hasta": null
+     },
+     {
+      "texto": "sáb 23:30–dom 07:00",
+      "personas": [
+       "persona-a"
+      ],
+      "desde": null,
+      "hasta": null
+     }
+    ]
+   },
+   "tareas": {
+    "T01": "publicada",
+    "T02": "publicada",
+    "T03": "en_curso",
+    "T04": "lista",
+    "T05": "pendiente",
+    "T06": "lista",
+    "T07": "lista",
+    "T08": "lista",
+    "T09": "pendiente",
+    "T10": "lista",
+    "T11": "publicada",
+    "T12": "en_curso",
+    "T13": "lista",
+    "T14": "lista",
+    "T15": "lista",
+    "T16": "lista",
+    "T17": "lista",
+    "T18": "lista",
+    "T19": "pendiente",
+    "T20": "en_curso",
+    "T21": "lista",
+    "T22": "lista",
+    "T23": "lista",
+    "T24": "lista",
+    "T25": "lista",
+    "T26": "lista",
+    "T27": "pendiente",
+    "T28": "lista"
+   },
+   "notas": [
+    "T20 lleva más de H+2 en curso, pero sin Inicio no tiene plazo: sale «sin plazo», ni a tiempo ni atrasada",
+    "Hay entrega (equipo.md); la discrepancia con Hitos se enseña igual"
+   ]
+  },
+  {
+   "nombre": "mitad bien",
+   "guion": "G14.json",
+   "ahora": "2026-09-19T11:00:00Z",
+   "t": 64800,
+   "equipo.md": "guiones/g14/equipo-2.md",
+   "plan.md": "guiones/g14/plan-2.md",
+   "inicio": {
+    "texto": "2026-09-18 19:00 (Europe/Madrid)",
+    "valor": "2026-09-18T17:00:00Z"
+   },
+   "entrega": {
+    "texto": "2026-09-20 10:00 (Europe/Madrid)",
+    "valor": "2026-09-20T08:00:00Z",
+    "fuente": "equipo.md",
+    "declarado": true,
+    "fichero_desde": "2026-09-19T07:31:00Z",
+    "discrepancias": [
+     {
+      "fuente": "plan.md · Hitos del equipo · «Entrega final»",
+      "texto": "dom 20 sep 09:30",
+      "valor": "2026-09-20T07:30:00Z"
+     }
+    ],
+    "bloquea_estimacion": false
+   },
+   "veredicto": "a_tiempo",
+   "cifra": {
+    "hay": true,
+    "motivo": "las tres personas con 3 o más tareas medidas (7, 6 y 5), todas por delante del plan",
+    "rango_frente_a_entrega": "los dos extremos, horas antes de la entrega"
+   },
+   "base": {
+    "persona-a": {
+     "n": 7,
+     "de": 3,
+     "hechas": [
+      {
+       "tarea": "T01",
+       "primera_senal": "2026-09-18T17:05:00Z",
+       "publicada_en": "2026-09-18T17:50:00Z"
+      },
+      {
+       "tarea": "T02",
+       "primera_senal": "2026-09-18T17:55:00Z",
+       "publicada_en": "2026-09-18T18:40:00Z"
+      },
+      {
+       "tarea": "T03",
+       "primera_senal": "2026-09-18T18:45:00Z",
+       "publicada_en": "2026-09-18T19:40:00Z"
+      },
+      {
+       "tarea": "T04",
+       "primera_senal": "2026-09-18T19:45:00Z",
+       "publicada_en": "2026-09-18T20:35:00Z"
+      },
+      {
+       "tarea": "T05",
+       "primera_senal": "2026-09-18T20:40:00Z",
+       "publicada_en": "2026-09-18T23:50:00Z"
+      },
+      {
+       "tarea": "T06",
+       "primera_senal": "2026-09-19T06:05:00Z",
+       "publicada_en": "2026-09-19T07:40:00Z"
+      },
+      {
+       "tarea": "T07",
+       "primera_senal": "2026-09-19T07:45:00Z",
+       "publicada_en": "2026-09-19T08:50:00Z"
+      }
+     ]
+    },
+    "persona-b": {
+     "n": 6,
+     "de": 3,
+     "hechas": [
+      {
+       "tarea": "T11",
+       "primera_senal": "2026-09-18T17:30:00Z",
+       "publicada_en": "2026-09-18T18:40:00Z"
+      },
+      {
+       "tarea": "T12",
+       "primera_senal": "2026-09-18T18:45:00Z",
+       "publicada_en": "2026-09-18T19:50:00Z"
+      },
+      {
+       "tarea": "T13",
+       "primera_senal": "2026-09-18T19:55:00Z",
+       "publicada_en": "2026-09-18T20:50:00Z"
+      },
+      {
+       "tarea": "T14",
+       "primera_senal": "2026-09-18T20:55:00Z",
+       "publicada_en": "2026-09-18T22:45:00Z"
+      },
+      {
+       "tarea": "T15",
+       "primera_senal": "2026-09-19T05:05:00Z",
+       "publicada_en": "2026-09-19T06:40:00Z"
+      },
+      {
+       "tarea": "T16",
+       "primera_senal": "2026-09-19T06:45:00Z",
+       "publicada_en": "2026-09-19T07:50:00Z"
+      }
+     ]
+    },
+    "persona-c": {
+     "n": 5,
+     "de": 3,
+     "hechas": [
+      {
+       "tarea": "T20",
+       "primera_senal": "2026-09-18T17:40:00Z",
+       "publicada_en": "2026-09-18T19:45:00Z"
+      },
+      {
+       "tarea": "T21",
+       "primera_senal": "2026-09-18T19:50:00Z",
+       "publicada_en": "2026-09-18T21:20:00Z"
+      },
+      {
+       "tarea": "T22",
+       "primera_senal": "2026-09-19T04:40:00Z",
+       "publicada_en": "2026-09-19T06:30:00Z"
+      },
+      {
+       "tarea": "T23",
+       "primera_senal": "2026-09-19T06:35:00Z",
+       "publicada_en": "2026-09-19T07:20:00Z"
+      },
+      {
+       "tarea": "T24",
+       "primera_senal": "2026-09-19T07:45:00Z",
+       "publicada_en": "2026-09-19T09:30:00Z"
+      }
+     ]
+    }
+   },
+   "plazos": {
+    "T01": {
+     "hasta": "H+1",
+     "efectivo": "H+1",
+     "heredado_de": null,
+     "valor": "2026-09-18T18:00:00Z",
+     "motivo": null
+    },
+    "T02": {
+     "hasta": "H+2",
+     "efectivo": "H+2",
+     "heredado_de": null,
+     "valor": "2026-09-18T19:00:00Z",
+     "motivo": null
+    },
+    "T03": {
+     "hasta": "H+4",
+     "efectivo": "H+4",
+     "heredado_de": null,
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T04": {
+     "hasta": "",
+     "efectivo": "H+4",
+     "heredado_de": "T03",
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T05": {
+     "hasta": "H+8",
+     "efectivo": "H+8",
+     "heredado_de": null,
+     "valor": "2026-09-19T01:00:00Z",
+     "motivo": null
+    },
+    "T06": {
+     "hasta": "H+16",
+     "efectivo": "H+16",
+     "heredado_de": null,
+     "valor": "2026-09-19T09:00:00Z",
+     "motivo": null
+    },
+    "T07": {
+     "hasta": "",
+     "efectivo": "H+16",
+     "heredado_de": "T06",
+     "valor": "2026-09-19T09:00:00Z",
+     "motivo": null
+    },
+    "T08": {
+     "hasta": "sáb 13:30",
+     "efectivo": "sáb 13:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T11:30:00Z",
+     "motivo": null
+    },
+    "T09": {
+     "hasta": "sáb 16:30",
+     "efectivo": "sáb 16:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T14:30:00Z",
+     "motivo": null
+    },
+    "T10": {
+     "hasta": "H+24",
+     "efectivo": "H+24",
+     "heredado_de": null,
+     "valor": "2026-09-19T17:00:00Z",
+     "motivo": null
+    },
+    "T11": {
+     "hasta": "H+4",
+     "efectivo": "H+4",
+     "heredado_de": null,
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T12": {
+     "hasta": "",
+     "efectivo": "H+4",
+     "heredado_de": "T11",
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T13": {
+     "hasta": "",
+     "efectivo": "H+4",
+     "heredado_de": "T11",
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T14": {
+     "hasta": "H+6",
+     "efectivo": "H+6",
+     "heredado_de": null,
+     "valor": "2026-09-18T23:00:00Z",
+     "motivo": null
+    },
+    "T15": {
+     "hasta": "H+14",
+     "efectivo": "H+14",
+     "heredado_de": null,
+     "valor": "2026-09-19T07:00:00Z",
+     "motivo": null
+    },
+    "T16": {
+     "hasta": "H+16",
+     "efectivo": "H+16",
+     "heredado_de": null,
+     "valor": "2026-09-19T09:00:00Z",
+     "motivo": null
+    },
+    "T17": {
+     "hasta": "sáb 15:30",
+     "efectivo": "sáb 15:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T13:30:00Z",
+     "motivo": null
+    },
+    "T18": {
+     "hasta": "",
+     "efectivo": "sáb 15:30",
+     "heredado_de": "T17",
+     "valor": "2026-09-19T13:30:00Z",
+     "motivo": null
+    },
+    "T19": {
+     "hasta": "sáb 18:30",
+     "efectivo": "sáb 18:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T16:30:00Z",
+     "motivo": null
+    },
+    "T20": {
+     "hasta": "H+2",
+     "efectivo": "H+2",
+     "heredado_de": null,
+     "valor": "2026-09-18T19:00:00Z",
+     "motivo": null
+    },
+    "T21": {
+     "hasta": "H+4",
+     "efectivo": "H+4",
+     "heredado_de": null,
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T22": {
+     "hasta": "H+17",
+     "efectivo": "H+17",
+     "heredado_de": null,
+     "valor": "2026-09-19T10:00:00Z",
+     "motivo": null
+    },
+    "T23": {
+     "hasta": "",
+     "efectivo": "H+17",
+     "heredado_de": "T22",
+     "valor": "2026-09-19T10:00:00Z",
+     "motivo": null
+    },
+    "T24": {
+     "hasta": "H+19",
+     "efectivo": "H+19",
+     "heredado_de": null,
+     "valor": "2026-09-19T12:00:00Z",
+     "motivo": null
+    },
+    "T25": {
+     "hasta": "sáb 16:30",
+     "efectivo": "sáb 16:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T14:30:00Z",
+     "motivo": null
+    },
+    "T26": {
+     "hasta": "sáb 18:30",
+     "efectivo": "sáb 18:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T16:30:00Z",
+     "motivo": null
+    },
+    "T27": {
+     "hasta": "sáb 21:00",
+     "efectivo": "sáb 21:00",
+     "heredado_de": null,
+     "valor": "2026-09-19T19:00:00Z",
+     "motivo": null
+    },
+    "T28": {
+     "hasta": "hora por confirmar",
+     "efectivo": "hora por confirmar",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "plazo sin resolver"
+    }
+   },
+   "sin_plazo": {
+    "T28": "plazo sin resolver"
+   },
+   "no_cuentan": {
+    "T10": "empieza por «Si …»",
+    "T18": "lleva [SI DA TIEMPO]"
+   },
+   "plazos_vencidos": {},
+   "en_riesgo": {},
+   "sin_senales": {},
+   "descansos": {
+    "resueltos": true,
+    "motivo": null,
+    "filas": [
+     {
+      "texto": "sáb 00:30–06:30",
+      "personas": [
+       "persona-c"
+      ],
+      "desde": "2026-09-18T22:30:00Z",
+      "hasta": "2026-09-19T04:30:00Z"
+     },
+     {
+      "texto": "sáb 01:00–07:00",
+      "personas": [
+       "persona-b"
+      ],
+      "desde": "2026-09-18T23:00:00Z",
+      "hasta": "2026-09-19T05:00:00Z"
+     },
+     {
+      "texto": "sáb 02:30–08:00",
+      "personas": [
+       "persona-a"
+      ],
+      "desde": "2026-09-19T00:30:00Z",
+      "hasta": "2026-09-19T06:00:00Z"
+     },
+     {
+      "texto": "sáb 23:00–dom 07:30",
+      "personas": [
+       "persona-b",
+       "persona-c"
+      ],
+      "desde": "2026-09-19T21:00:00Z",
+      "hasta": "2026-09-20T05:30:00Z"
+     },
+     {
+      "texto": "sáb 23:30–dom 07:00",
+      "personas": [
+       "persona-a"
+      ],
+      "desde": "2026-09-19T21:30:00Z",
+      "hasta": "2026-09-20T05:00:00Z"
+     }
+    ]
+   },
+   "tareas": {
+    "T01": "publicada",
+    "T02": "publicada",
+    "T03": "publicada",
+    "T04": "publicada",
+    "T05": "publicada",
+    "T06": "publicada",
+    "T07": "publicada",
+    "T08": "en_curso",
+    "T09": "lista",
+    "T10": "lista",
+    "T11": "publicada",
+    "T12": "publicada",
+    "T13": "publicada",
+    "T14": "publicada",
+    "T15": "publicada",
+    "T16": "publicada",
+    "T17": "en_curso",
+    "T18": "lista",
+    "T19": "pendiente",
+    "T20": "publicada",
+    "T21": "publicada",
+    "T22": "publicada",
+    "T23": "publicada",
+    "T24": "publicada",
+    "T25": "en_curso",
+    "T26": "lista",
+    "T27": "lista",
+    "T28": "lista"
+   },
+   "notas": [
+    "Los H+N se resuelven desde el ajuste con el Inicio de equipo.md",
+    "Solo T28 queda sin plazo",
+    "T19 espera a T08, que va en plazo: no está en riesgo"
+   ]
+  },
+  {
+   "nombre": "mitad con riesgo",
+   "guion": "G14r.json",
+   "ahora": "2026-09-19T11:00:00Z",
+   "t": 64800,
+   "equipo.md": "guiones/g14/equipo-2.md",
+   "plan.md": "guiones/g14/plan-2.md",
+   "inicio": {
+    "texto": "2026-09-18 19:00 (Europe/Madrid)",
+    "valor": "2026-09-18T17:00:00Z"
+   },
+   "entrega": {
+    "texto": "2026-09-20 10:00 (Europe/Madrid)",
+    "valor": "2026-09-20T08:00:00Z",
+    "fuente": "equipo.md",
+    "declarado": true,
+    "fichero_desde": "2026-09-19T07:31:00Z",
+    "discrepancias": [
+     {
+      "fuente": "plan.md · Hitos del equipo · «Entrega final»",
+      "texto": "dom 20 sep 09:30",
+      "valor": "2026-09-20T07:30:00Z"
+     }
+    ],
+    "bloquea_estimacion": false
+   },
+   "veredicto": "no_llega",
+   "cifra": {
+    "hay": true,
+    "motivo": "las tres personas con 3 o más tareas medidas (3, 6 y 4); persona-a va a un tercio del ritmo del plan en las tres",
+    "rango_frente_a_entrega": "los dos extremos, después de la entrega"
+   },
+   "base": {
+    "persona-a": {
+     "n": 3,
+     "de": 3,
+     "hechas": [
+      {
+       "tarea": "T01",
+       "primera_senal": "2026-09-18T17:10:00Z",
+       "publicada_en": "2026-09-18T20:10:00Z"
+      },
+      {
+       "tarea": "T02",
+       "primera_senal": "2026-09-18T20:15:00Z",
+       "publicada_en": "2026-09-18T23:15:00Z"
+      },
+      {
+       "tarea": "T03",
+       "primera_senal": "2026-09-19T06:05:00Z",
+       "publicada_en": "2026-09-19T09:05:00Z"
+      }
+     ]
+    },
+    "persona-b": {
+     "n": 6,
+     "de": 3,
+     "hechas": [
+      {
+       "tarea": "T11",
+       "primera_senal": "2026-09-18T17:30:00Z",
+       "publicada_en": "2026-09-18T18:40:00Z"
+      },
+      {
+       "tarea": "T12",
+       "primera_senal": "2026-09-18T18:45:00Z",
+       "publicada_en": "2026-09-18T19:50:00Z"
+      },
+      {
+       "tarea": "T13",
+       "primera_senal": "2026-09-18T19:55:00Z",
+       "publicada_en": "2026-09-18T20:50:00Z"
+      },
+      {
+       "tarea": "T14",
+       "primera_senal": "2026-09-18T20:55:00Z",
+       "publicada_en": "2026-09-18T22:45:00Z"
+      },
+      {
+       "tarea": "T15",
+       "primera_senal": "2026-09-19T05:05:00Z",
+       "publicada_en": "2026-09-19T06:40:00Z"
+      },
+      {
+       "tarea": "T16",
+       "primera_senal": "2026-09-19T06:45:00Z",
+       "publicada_en": "2026-09-19T07:50:00Z"
+      }
+     ]
+    },
+    "persona-c": {
+     "n": 4,
+     "de": 3,
+     "hechas": [
+      {
+       "tarea": "T20",
+       "primera_senal": "2026-09-18T17:40:00Z",
+       "publicada_en": "2026-09-18T19:45:00Z"
+      },
+      {
+       "tarea": "T21",
+       "primera_senal": "2026-09-18T19:50:00Z",
+       "publicada_en": "2026-09-18T21:20:00Z"
+      },
+      {
+       "tarea": "T22",
+       "primera_senal": "2026-09-19T04:40:00Z",
+       "publicada_en": "2026-09-19T06:30:00Z"
+      },
+      {
+       "tarea": "T23",
+       "primera_senal": "2026-09-19T06:35:00Z",
+       "publicada_en": "2026-09-19T08:30:30Z"
+      }
+     ]
+    }
+   },
+   "plazos": {
+    "T01": {
+     "hasta": "H+1",
+     "efectivo": "H+1",
+     "heredado_de": null,
+     "valor": "2026-09-18T18:00:00Z",
+     "motivo": null
+    },
+    "T02": {
+     "hasta": "H+2",
+     "efectivo": "H+2",
+     "heredado_de": null,
+     "valor": "2026-09-18T19:00:00Z",
+     "motivo": null
+    },
+    "T03": {
+     "hasta": "H+4",
+     "efectivo": "H+4",
+     "heredado_de": null,
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T04": {
+     "hasta": "",
+     "efectivo": "H+4",
+     "heredado_de": "T03",
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T05": {
+     "hasta": "H+8",
+     "efectivo": "H+8",
+     "heredado_de": null,
+     "valor": "2026-09-19T01:00:00Z",
+     "motivo": null
+    },
+    "T06": {
+     "hasta": "H+16",
+     "efectivo": "H+16",
+     "heredado_de": null,
+     "valor": "2026-09-19T09:00:00Z",
+     "motivo": null
+    },
+    "T07": {
+     "hasta": "",
+     "efectivo": "H+16",
+     "heredado_de": "T06",
+     "valor": "2026-09-19T09:00:00Z",
+     "motivo": null
+    },
+    "T08": {
+     "hasta": "sáb 13:30",
+     "efectivo": "sáb 13:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T11:30:00Z",
+     "motivo": null
+    },
+    "T09": {
+     "hasta": "sáb 16:30",
+     "efectivo": "sáb 16:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T14:30:00Z",
+     "motivo": null
+    },
+    "T10": {
+     "hasta": "H+24",
+     "efectivo": "H+24",
+     "heredado_de": null,
+     "valor": "2026-09-19T17:00:00Z",
+     "motivo": null
+    },
+    "T11": {
+     "hasta": "H+4",
+     "efectivo": "H+4",
+     "heredado_de": null,
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T12": {
+     "hasta": "",
+     "efectivo": "H+4",
+     "heredado_de": "T11",
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T13": {
+     "hasta": "",
+     "efectivo": "H+4",
+     "heredado_de": "T11",
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T14": {
+     "hasta": "H+6",
+     "efectivo": "H+6",
+     "heredado_de": null,
+     "valor": "2026-09-18T23:00:00Z",
+     "motivo": null
+    },
+    "T15": {
+     "hasta": "H+14",
+     "efectivo": "H+14",
+     "heredado_de": null,
+     "valor": "2026-09-19T07:00:00Z",
+     "motivo": null
+    },
+    "T16": {
+     "hasta": "H+16",
+     "efectivo": "H+16",
+     "heredado_de": null,
+     "valor": "2026-09-19T09:00:00Z",
+     "motivo": null
+    },
+    "T17": {
+     "hasta": "sáb 15:30",
+     "efectivo": "sáb 15:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T13:30:00Z",
+     "motivo": null
+    },
+    "T18": {
+     "hasta": "",
+     "efectivo": "sáb 15:30",
+     "heredado_de": "T17",
+     "valor": "2026-09-19T13:30:00Z",
+     "motivo": null
+    },
+    "T19": {
+     "hasta": "sáb 18:30",
+     "efectivo": "sáb 18:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T16:30:00Z",
+     "motivo": null
+    },
+    "T20": {
+     "hasta": "H+2",
+     "efectivo": "H+2",
+     "heredado_de": null,
+     "valor": "2026-09-18T19:00:00Z",
+     "motivo": null
+    },
+    "T21": {
+     "hasta": "H+4",
+     "efectivo": "H+4",
+     "heredado_de": null,
+     "valor": "2026-09-18T21:00:00Z",
+     "motivo": null
+    },
+    "T22": {
+     "hasta": "H+17",
+     "efectivo": "H+17",
+     "heredado_de": null,
+     "valor": "2026-09-19T10:00:00Z",
+     "motivo": null
+    },
+    "T23": {
+     "hasta": "",
+     "efectivo": "H+17",
+     "heredado_de": "T22",
+     "valor": "2026-09-19T10:00:00Z",
+     "motivo": null
+    },
+    "T24": {
+     "hasta": "H+19",
+     "efectivo": "H+19",
+     "heredado_de": null,
+     "valor": "2026-09-19T12:00:00Z",
+     "motivo": null
+    },
+    "T25": {
+     "hasta": "sáb 16:30",
+     "efectivo": "sáb 16:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T14:30:00Z",
+     "motivo": null
+    },
+    "T26": {
+     "hasta": "sáb 18:30",
+     "efectivo": "sáb 18:30",
+     "heredado_de": null,
+     "valor": "2026-09-19T16:30:00Z",
+     "motivo": null
+    },
+    "T27": {
+     "hasta": "sáb 21:00",
+     "efectivo": "sáb 21:00",
+     "heredado_de": null,
+     "valor": "2026-09-19T19:00:00Z",
+     "motivo": null
+    },
+    "T28": {
+     "hasta": "hora por confirmar",
+     "efectivo": "hora por confirmar",
+     "heredado_de": null,
+     "valor": null,
+     "motivo": "plazo sin resolver"
+    }
+   },
+   "sin_plazo": {
+    "T28": "plazo sin resolver"
+   },
+   "no_cuentan": {
+    "T10": "empieza por «Si …»",
+    "T18": "lleva [SI DA TIEMPO]"
+   },
+   "plazos_vencidos": {
+    "T04": {
+     "plazo": "2026-09-18T21:00:00Z",
+     "estado": "en_curso"
+    },
+    "T05": {
+     "plazo": "2026-09-19T01:00:00Z",
+     "estado": "pendiente"
+    },
+    "T06": {
+     "plazo": "2026-09-19T09:00:00Z",
+     "estado": "lista"
+    },
+    "T07": {
+     "plazo": "2026-09-19T09:00:00Z",
+     "estado": "lista"
+    }
+   },
+   "en_riesgo": {
+    "T04": [
+     "plazo_vencido"
+    ],
+    "T05": [
+     "plazo_vencido",
+     "espera_a T04"
+    ],
+    "T06": [
+     "plazo_vencido"
+    ],
+    "T07": [
+     "plazo_vencido"
+    ],
+    "T08": [
+     "estimacion"
+    ],
+    "T09": [
+     "estimacion"
+    ],
+    "T19": [
+     "espera_a T06",
+     "espera_a T07",
+     "espera_a T08"
+    ],
+    "T27": [
+     "espera_a T06"
+    ]
+   },
+   "sin_senales": {
+    "persona-c": {
+     "desde": "2026-09-19T08:30:00Z",
+     "discrepancias": {
+      "atribucion_ambigua": 2
+     },
+     "sin_tarea": 0,
+     "tareas_abiertas": {
+      "T24": "reclamada",
+      "T25": "reclamada"
+     },
+     "no_es": "nunca «@persona-c va lenta»: T24 y T25 no están en riesgo"
+    }
+   },
+   "descansos": {
+    "resueltos": true,
+    "motivo": null,
+    "filas": [
+     {
+      "texto": "sáb 00:30–06:30",
+      "personas": [
+       "persona-c"
+      ],
+      "desde": "2026-09-18T22:30:00Z",
+      "hasta": "2026-09-19T04:30:00Z"
+     },
+     {
+      "texto": "sáb 01:00–07:00",
+      "personas": [
+       "persona-b"
+      ],
+      "desde": "2026-09-18T23:00:00Z",
+      "hasta": "2026-09-19T05:00:00Z"
+     },
+     {
+      "texto": "sáb 02:30–08:00",
+      "personas": [
+       "persona-a"
+      ],
+      "desde": "2026-09-19T00:30:00Z",
+      "hasta": "2026-09-19T06:00:00Z"
+     },
+     {
+      "texto": "sáb 23:00–dom 07:30",
+      "personas": [
+       "persona-b",
+       "persona-c"
+      ],
+      "desde": "2026-09-19T21:00:00Z",
+      "hasta": "2026-09-20T05:30:00Z"
+     },
+     {
+      "texto": "sáb 23:30–dom 07:00",
+      "personas": [
+       "persona-a"
+      ],
+      "desde": "2026-09-19T21:30:00Z",
+      "hasta": "2026-09-20T05:00:00Z"
+     }
+    ]
+   },
+   "tareas": {
+    "T01": "publicada",
+    "T02": "publicada",
+    "T03": "publicada",
+    "T04": "en_curso",
+    "T05": "pendiente",
+    "T06": "lista",
+    "T07": "lista",
+    "T08": "lista",
+    "T09": "lista",
+    "T10": "lista",
+    "T11": "publicada",
+    "T12": "publicada",
+    "T13": "publicada",
+    "T14": "publicada",
+    "T15": "publicada",
+    "T16": "publicada",
+    "T17": "en_curso",
+    "T18": "lista",
+    "T19": "pendiente",
+    "T20": "publicada",
+    "T21": "publicada",
+    "T22": "publicada",
+    "T23": "publicada",
+    "T24": "reclamada",
+    "T25": "reclamada",
+    "T26": "lista",
+    "T27": "pendiente",
+    "T28": "lista"
+   },
+   "notas": [
+    "En riesgo por estimación solo T08 y T09 (con cualquier ritmo medido de persona-a acaban después de la entrega); T04–T07 ya tienen el plazo vencido",
+    "T17 (persona-b) y T24–T26 (persona-c) no están en riesgo",
+    "El commit del ajuste («Ajuste del plan: T08…») no es de T08: el ID no va al principio"
+   ]
+  }
+ ]
+}

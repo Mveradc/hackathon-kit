@@ -1,0 +1,568 @@
+{
+ "v": 1,
+ "guion": "G13.json",
+ "que_es": "Lo que la vista de jurado tiene que decir en cada momento de G13, como hechos y sin nombres de campo de la vista. Lo comprueba g13_g14.py contra el motor de estados (simula.py) y contra las entradas.",
+ "decisiones": {
+  "J1": "A: solo las notas de criterios.md",
+  "J2": "A: clave derivada (hash); las personas citan «fecha hora» o «fecha hora · quién»",
+  "J3": "A: etiqueta «(criterios: …)» en la fila del plan",
+  "J4": "A: cubierta = todas sus tareas publicadas o cerradas",
+  "J5": "B: «recogida en el pitch (declarado)»",
+  "J6": "B: sigue cubierta, con «trabajo nuevo desde»"
+ },
+ "estados": {
+  "sin_cubrir": "ninguna tarea del plan ni pitch.md la citan",
+  "recogida_en_pitch": "solo la cita pitch.md: declarado, nunca cubierta ni sin cubrir",
+  "planificada": "la citan tareas del plan y ninguna ha empezado (lista, pendiente o reclamada; una cerrada a mano cuenta como declarada, con ⚑)",
+  "en_curso": "la citan tareas del plan, alguna ha empezado o está publicada, y no todas están publicadas o cerradas",
+  "cubierta": "todas las tareas que la citan han llegado a publicada (o cerrada derivada); evidencia: el commit que las publicó, con la hora del push. Con J6 B, una que vuelve a en curso sigue contando, con «trabajo nuevo desde» la primera señal nueva",
+  "corregida": "una nota posterior en main dice «corrige la nota del <fecha hora>»: cuenta la nueva; la corregida enseña aún sus tareas y su evidencia"
+ },
+ "zona": "Europe/Madrid (CEST, +02:00): la hora de las cabeceras se lee con la del plan",
+ "entradas": {
+  "criterios.md": {
+   "fichero": "guiones/g13/criterios.md",
+   "nota": "cada nota llega a main en su en_main_desde"
+  },
+  "plan.md": {
+   "fichero": "guiones/g13/plan.md",
+   "en_main_desde": "2026-09-19T09:41:00Z",
+   "antes": "skills/hack-plan/examples/03-xray-embat-real-plan.md",
+   "antes_es": "el mismo plan sin las etiquetas (no hay momentos antes)"
+  },
+  "pitch.md": {
+   "fichero": "guiones/g13/pitch.md",
+   "en_main_desde": "2026-09-18T19:31:00Z"
+  }
+ },
+ "sin_senales": {
+  "persona-c": {
+   "desde": "2026-09-19T09:50:00Z",
+   "que": "reclama T23 y no da más señales; las notas de T23 no salen cubiertas, y nada dice que @persona-c vaya lenta"
+  }
+ },
+ "notas": [
+  {
+   "id": "N1",
+   "cabecera": "## 2026-09-18 19:30 · Marta Ruiz (organización)",
+   "cita": "2026-09-18 19:30",
+   "cuando": "2026-09-18T17:30:00Z",
+   "quien": "Marta Ruiz",
+   "papel": "organización",
+   "origen": "/hack-note",
+   "en_main_desde": "2026-09-18T17:41:00Z",
+   "citada_en_plan": [],
+   "citada_en_pitch": true,
+   "mismo_minuto_que": null,
+   "corrige": null,
+   "texto_imperativo": false,
+   "fuerza": "dato",
+   "anotado_por": "Persona C"
+  },
+  {
+   "id": "N2",
+   "cabecera": "## 2026-09-18 20:15 · Lucía (jurado)",
+   "cita": "2026-09-18 20:15",
+   "cuando": "2026-09-18T18:15:00Z",
+   "quien": "Lucía",
+   "papel": "jurado",
+   "origen": "Anotar",
+   "en_main_desde": "2026-09-18T18:16:00Z",
+   "citada_en_plan": [
+    "T11"
+   ],
+   "citada_en_pitch": true,
+   "mismo_minuto_que": "N3",
+   "corrige": null,
+   "texto_imperativo": false,
+   "fuerza": "nos gustaría ver",
+   "anotado_por": "@persona-b"
+  },
+  {
+   "id": "N3",
+   "cabecera": "## 2026-09-18 20:15 · Jorge (mentor de Embat)",
+   "cita": "2026-09-18 20:15",
+   "cuando": "2026-09-18T18:15:00Z",
+   "quien": "Jorge",
+   "papel": "mentor de Embat",
+   "origen": "/hack-note",
+   "en_main_desde": "2026-09-18T18:31:00Z",
+   "citada_en_plan": [
+    "T08",
+    "T13"
+   ],
+   "citada_en_pitch": false,
+   "mismo_minuto_que": "N2",
+   "corrige": null,
+   "texto_imperativo": false,
+   "fuerza": "se valora",
+   "anotado_por": "Persona A"
+  },
+  {
+   "id": "N4",
+   "cabecera": "## 2026-09-18 20:40 · Marta Ruiz (organización)",
+   "cita": "2026-09-18 20:40",
+   "cuando": "2026-09-18T18:40:00Z",
+   "quien": "Marta Ruiz",
+   "papel": "organización",
+   "origen": "/hack-note",
+   "en_main_desde": "2026-09-18T18:51:00Z",
+   "citada_en_plan": [
+    "T20"
+   ],
+   "citada_en_pitch": false,
+   "mismo_minuto_que": null,
+   "corrige": null,
+   "texto_imperativo": false,
+   "fuerza": "obligatorio",
+   "anotado_por": "Persona C"
+  },
+  {
+   "id": "N5",
+   "cabecera": "## 2026-09-19 10:40 · Jorge (mentor de Embat)",
+   "cita": "2026-09-19 10:40",
+   "cuando": "2026-09-19T08:40:00Z",
+   "quien": "Jorge",
+   "papel": "mentor de Embat",
+   "origen": "/hack-note",
+   "en_main_desde": "2026-09-19T08:51:00Z",
+   "citada_en_plan": [
+    "T06"
+   ],
+   "citada_en_pitch": false,
+   "mismo_minuto_que": null,
+   "corrige": null,
+   "texto_imperativo": false,
+   "fuerza": "obligatorio",
+   "anotado_por": "Persona A"
+  },
+  {
+   "id": "N6",
+   "cabecera": "## 2026-09-19 11:20 · Marta Ruiz (organización)",
+   "cita": "2026-09-19 11:20",
+   "cuando": "2026-09-19T09:20:00Z",
+   "quien": "Marta Ruiz",
+   "papel": "organización",
+   "origen": "Anotar",
+   "en_main_desde": "2026-09-19T09:21:00Z",
+   "citada_en_plan": [
+    "T09",
+    "T23"
+   ],
+   "citada_en_pitch": false,
+   "mismo_minuto_que": null,
+   "corrige": null,
+   "texto_imperativo": false,
+   "fuerza": "obligatorio",
+   "anotado_por": "@persona-c"
+  },
+  {
+   "id": "N7",
+   "cabecera": "## 2026-09-19 12:05 · Jorge (mentor de Embat)",
+   "cita": "2026-09-19 12:05",
+   "cuando": "2026-09-19T10:05:00Z",
+   "quien": "Jorge",
+   "papel": "mentor de Embat",
+   "origen": "/hack-note",
+   "en_main_desde": "2026-09-19T10:16:00Z",
+   "citada_en_plan": [],
+   "citada_en_pitch": false,
+   "mismo_minuto_que": null,
+   "corrige": "N5",
+   "texto_imperativo": false,
+   "fuerza": "se valora",
+   "anotado_por": "Persona A"
+  },
+  {
+   "id": "N8",
+   "cabecera": "## 2026-09-19 13:30 · Lucía (jurado)",
+   "cita": "2026-09-19 13:30",
+   "cuando": "2026-09-19T11:30:00Z",
+   "quien": "Lucía",
+   "papel": "jurado",
+   "origen": "Anotar",
+   "en_main_desde": "2026-09-19T11:31:00Z",
+   "citada_en_plan": [],
+   "citada_en_pitch": false,
+   "mismo_minuto_que": null,
+   "corrige": null,
+   "texto_imperativo": true,
+   "fuerza": "comentario suelto",
+   "anotado_por": "@persona-b"
+  }
+ ],
+ "momentos": [
+  {
+   "nombre": "M1 · sáb 12:00",
+   "ahora": "2026-09-19T10:00:00Z",
+   "t": 61200,
+   "tareas": {
+    "T06": "publicada",
+    "T08": "en_curso",
+    "T09": "pendiente",
+    "T11": "publicada",
+    "T13": "lista",
+    "T17": "lista",
+    "T20": "lista",
+    "T23": "reclamada"
+   },
+   "notas": {
+    "N1": {
+     "estado": "recogida_en_pitch",
+     "tareas": {},
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": true,
+     "motivo": "solo la cita pitch.md (declarado, J5 B); ninguna tarea del plan"
+    },
+    "N2": {
+     "estado": "cubierta",
+     "tareas": {
+      "T11": "publicada"
+     },
+     "evidencia": [
+      {
+       "tarea": "T11",
+       "sha": "111c0de",
+       "observado_en": "2026-09-18T21:20:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": true,
+     "motivo": "T11 publicada"
+    },
+    "N3": {
+     "estado": "en_curso",
+     "tareas": {
+      "T08": "en_curso",
+      "T13": "lista"
+     },
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "T08 en curso; T13 sin empezar"
+    },
+    "N4": {
+     "estado": "planificada",
+     "tareas": {
+      "T20": "lista"
+     },
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [
+      "T20"
+     ],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "T20 cerrada a mano (⚑, declarado): no es evidencia; no ha empezado"
+    },
+    "N5": {
+     "estado": "cubierta",
+     "tareas": {
+      "T06": "publicada"
+     },
+     "evidencia": [
+      {
+       "tarea": "T06",
+       "sha": "061c0de",
+       "observado_en": "2026-09-19T09:10:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "T06 publicada; N7 aún no está en main"
+    },
+    "N6": {
+     "estado": "planificada",
+     "tareas": {
+      "T09": "pendiente",
+      "T23": "reclamada"
+     },
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "ninguna empezada (T09 espera a T17; T23 solo reclamada)"
+    }
+   }
+  },
+  {
+   "nombre": "M2 · sáb 14:30",
+   "ahora": "2026-09-19T12:30:00Z",
+   "t": 70200,
+   "tareas": {
+    "T06": "publicada",
+    "T08": "publicada",
+    "T09": "pendiente",
+    "T11": "en_curso",
+    "T13": "en_curso",
+    "T17": "lista",
+    "T20": "lista",
+    "T23": "reclamada"
+   },
+   "notas": {
+    "N1": {
+     "estado": "recogida_en_pitch",
+     "tareas": {},
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": true,
+     "motivo": "solo la cita pitch.md (declarado, J5 B); ninguna tarea del plan"
+    },
+    "N2": {
+     "estado": "cubierta",
+     "tareas": {
+      "T11": "en_curso"
+     },
+     "evidencia": [
+      {
+       "tarea": "T11",
+       "sha": "111c0de",
+       "observado_en": "2026-09-18T21:20:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": "2026-09-19T12:15:00Z",
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": true,
+     "motivo": "J6 B: T11 vuelve a en curso con un commit nuevo, pero lo publicado sigue en main"
+    },
+    "N3": {
+     "estado": "en_curso",
+     "tareas": {
+      "T08": "publicada",
+      "T13": "en_curso"
+     },
+     "evidencia": [
+      {
+       "tarea": "T08",
+       "sha": "081c0de",
+       "observado_en": "2026-09-19T10:12:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "T08 publicada (su evidencia se enseña); falta T13 (J4 A: todas)"
+    },
+    "N4": {
+     "estado": "planificada",
+     "tareas": {
+      "T20": "lista"
+     },
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [
+      "T20"
+     ],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "T20 cerrada a mano (⚑, declarado): no es evidencia; no ha empezado"
+    },
+    "N5": {
+     "estado": "corregida",
+     "tareas": {
+      "T06": "publicada"
+     },
+     "evidencia": [
+      {
+       "tarea": "T06",
+       "sha": "061c0de",
+       "observado_en": "2026-09-19T09:10:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": "N7",
+     "tambien_en_pitch": false,
+     "motivo": "la corrige N7 (cuenta N7); su evidencia se enseña"
+    },
+    "N6": {
+     "estado": "planificada",
+     "tareas": {
+      "T09": "pendiente",
+      "T23": "reclamada"
+     },
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "ninguna empezada"
+    },
+    "N7": {
+     "estado": "sin_cubrir",
+     "tareas": {},
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "ninguna tarea ni el pitch la citan (las etiquetas son de antes de la nota)"
+    },
+    "N8": {
+     "estado": "sin_cubrir",
+     "tareas": {},
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "ninguna etiqueta la cita; su texto imperativo es dato (V): no crea ni cambia tareas"
+    }
+   }
+  },
+  {
+   "nombre": "M3 · sáb 20:30",
+   "ahora": "2026-09-19T18:30:00Z",
+   "t": 91800,
+   "tareas": {
+    "T06": "publicada",
+    "T08": "publicada",
+    "T09": "publicada",
+    "T11": "publicada",
+    "T13": "publicada",
+    "T17": "publicada",
+    "T20": "lista",
+    "T23": "reclamada"
+   },
+   "notas": {
+    "N1": {
+     "estado": "recogida_en_pitch",
+     "tareas": {},
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": true,
+     "motivo": "solo la cita pitch.md (declarado, J5 B); ninguna tarea del plan"
+    },
+    "N2": {
+     "estado": "cubierta",
+     "tareas": {
+      "T11": "publicada"
+     },
+     "evidencia": [
+      {
+       "tarea": "T11",
+       "sha": "112c0de",
+       "observado_en": "2026-09-19T13:00:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": true,
+     "motivo": "T11 publicada otra vez: desaparece «trabajo nuevo desde» y la evidencia es el commit nuevo"
+    },
+    "N3": {
+     "estado": "cubierta",
+     "tareas": {
+      "T08": "publicada",
+      "T13": "publicada"
+     },
+     "evidencia": [
+      {
+       "tarea": "T08",
+       "sha": "081c0de",
+       "observado_en": "2026-09-19T10:12:00Z"
+      },
+      {
+       "tarea": "T13",
+       "sha": "131c0de",
+       "observado_en": "2026-09-19T13:00:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "las dos publicadas"
+    },
+    "N4": {
+     "estado": "planificada",
+     "tareas": {
+      "T20": "lista"
+     },
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [
+      "T20"
+     ],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "T20 cerrada a mano (⚑, declarado): no es evidencia; no ha empezado"
+    },
+    "N5": {
+     "estado": "corregida",
+     "tareas": {
+      "T06": "publicada"
+     },
+     "evidencia": [
+      {
+       "tarea": "T06",
+       "sha": "061c0de",
+       "observado_en": "2026-09-19T09:10:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": "N7",
+     "tambien_en_pitch": false,
+     "motivo": "la corrige N7"
+    },
+    "N6": {
+     "estado": "en_curso",
+     "tareas": {
+      "T09": "publicada",
+      "T23": "reclamada"
+     },
+     "evidencia": [
+      {
+       "tarea": "T09",
+       "sha": "091c0de",
+       "observado_en": "2026-09-19T17:40:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "T09 publicada; T23 solo reclamada (persona-c sin señales desde sáb 11:50): nunca cubierta"
+    },
+    "N7": {
+     "estado": "sin_cubrir",
+     "tareas": {},
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "ninguna tarea ni el pitch la citan"
+    },
+    "N8": {
+     "estado": "sin_cubrir",
+     "tareas": {},
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "ninguna etiqueta la cita; texto imperativo, solo dato"
+    }
+   }
+  }
+ ]
+}

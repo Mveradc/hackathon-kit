@@ -1,0 +1,230 @@
+{
+ "descripcion": "Las 28 tareas de g13/plan.md (el plan de ejemplo del reto 03, skills/hack-plan/examples/03-xray-embat-real-plan.md, con las etiquetas de /hack-check), como las lee compilar.leer_plan. Lo comprueba g13_g14.py.",
+ "personas": [
+  {
+   "persona": "persona-a",
+   "nombre": "Persona A"
+  },
+  {
+   "persona": "persona-b",
+   "nombre": "Persona B"
+  },
+  {
+   "persona": "persona-c",
+   "nombre": "Persona C"
+  }
+ ],
+ "tareas": [
+  {
+   "id": "T01",
+   "titulo": "Fijar en `docs/contratos.md` los 24 meses `YYYY-MM` que se usan",
+   "bloque": "Contratos",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T02",
+   "titulo": "`GET /api/empresas/{company_id}/ficha` devuelve el ejemplo del contrato",
+   "bloque": "Ficha falsa",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T03",
+   "titulo": "Cargar los CSV de `datos/` en UTF-8 desde `motor/src/motor/datos.py`",
+   "bloque": "Datos",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T04",
+   "titulo": "Copiar las columnas reales de `data_dictionary.md` a `docs/contratos.md`",
+   "bloque": "Datos",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T05",
+   "titulo": "Calcular caja, cobros (días de cobro) y deuda mensuales por `company_id`, sin mezclar monedas",
+   "bloque": "Features",
+   "dueno": "persona-a",
+   "depende_de": [
+    "T03",
+    "T04"
+   ]
+  },
+  {
+   "id": "T06",
+   "titulo": "Score 0–100 suavizado con `tendencia` en `motor/src/motor/score.py`",
+   "bloque": "Score",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T07",
+   "titulo": "Desglose caja/cobros/deuda en puntos de score",
+   "bloque": "Score",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T08",
+   "titulo": "2–3 reglas sobre los datos de la empresa que citan su cifra",
+   "bloque": "Acciones",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T09",
+   "titulo": "Publicar motor y web en una URL pública (plataforma por elegir)",
+   "bloque": "Despliegue",
+   "dueno": "persona-a",
+   "depende_de": [
+    "T17"
+   ]
+  },
+  {
+   "id": "T10",
+   "titulo": "Apartar empresas y medir la estabilidad del score en ellas (`docs/validacion.md`)",
+   "bloque": "Validación",
+   "dueno": "persona-a",
+   "depende_de": []
+  },
+  {
+   "id": "T11",
+   "titulo": "Score, curva de 24 meses y flecha de tendencia en `web/src/`, con el JSON de ejemplo",
+   "bloque": "Ficha",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T12",
+   "titulo": "Desglose «qué lo movió» (caja, cobros, deuda) con signo",
+   "bloque": "Ficha",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T13",
+   "titulo": "Lista de 0–3 acciones con su cifra",
+   "bloque": "Ficha",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T14",
+   "titulo": "Elegir `company_id` y pedir la ficha a `/api` (T02)",
+   "bloque": "Selector",
+   "dueno": "persona-b",
+   "depende_de": [
+    "T02"
+   ]
+  },
+  {
+   "id": "T15",
+   "titulo": "Mensaje de carga y de empresa inexistente",
+   "bloque": "Estados",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T16",
+   "titulo": "Probar la ficha con 5 empresas reales y corregir lo que se rompa",
+   "bloque": "Datos reales",
+   "dueno": "persona-b",
+   "depende_de": [
+    "T06",
+    "T07",
+    "T08"
+   ]
+  },
+  {
+   "id": "T17",
+   "titulo": "`npm run build --prefix web` limpio para el despliegue",
+   "bloque": "Datos reales",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T18",
+   "titulo": "Ninguna vista enseña el score sin curva, tendencia y desglose",
+   "bloque": "Pulido",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T19",
+   "titulo": "Cada cifra lleva su moneda o «puntos»",
+   "bloque": "Pulido",
+   "dueno": "persona-b",
+   "depende_de": []
+  },
+  {
+   "id": "T20",
+   "titulo": "Preguntar a Embat las ambigüedades de abajo y anotar respuestas en `pitch/preguntas.md`",
+   "bloque": "Preguntas",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T21",
+   "titulo": "`pitch/guion.md`: CFO, comprador Embat y por qué lo compra",
+   "bloque": "Guion",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T22",
+   "titulo": "Actualizar reglas 8–10 y «Despliegue» de `CLAUDE.md` con las respuestas",
+   "bloque": "Supuestos",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T23",
+   "titulo": "Ajustar `.claude/skills/entrega/SKILL.md` a la forma de entrega",
+   "bloque": "Supuestos",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T24",
+   "titulo": "Elegir una empresa que mejora (≈45→65) y otra que cae (≈82→68) en `pitch/guion.md`",
+   "bloque": "Casos demo",
+   "dueno": "persona-c",
+   "depende_de": [
+    "T06"
+   ]
+  },
+  {
+   "id": "T25",
+   "titulo": "Revisar como CFO el texto de las acciones en `pitch/revision-acciones.md`",
+   "bloque": "Acciones",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T26",
+   "titulo": "`README.md` con la URL de la demo y el arranque local",
+   "bloque": "README",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T27",
+   "titulo": "Diapositivas en `pitch/` con capturas de las dos fichas",
+   "bloque": "Pitch",
+   "dueno": "persona-c",
+   "depende_de": []
+  },
+  {
+   "id": "T28",
+   "titulo": "Respuesta a «¿cómo sabéis que acierta?» con la cifra de T10",
+   "bloque": "Pitch",
+   "dueno": "persona-c",
+   "depende_de": [
+    "T10"
+   ]
+  }
+ ]
+}
