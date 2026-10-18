@@ -138,6 +138,8 @@ Cambios pequeños en piezas ya validadas, sin OS todavía.
 
 *Nota (M8h, decisión del usuario, 2026-10-18):* **el ensayo (fase 2, criterio 4, K-83) queda aplazado sin fecha**: ahora no se puede coordinar al equipo. Lo siguiente es cerrar M9a (decidir el borrador de contratos del PR #13, K-99 y anotar el cierre). Al cerrarlo, el usuario decide si la 0.4.0 sale sin ensayo (con el criterio 4 pendiente y dicho en `docs/limitaciones.md`) o espera a que se haga.
 
+*Nota (M8h, decisión del usuario, 2026-10-18, tras cerrar M9a):* **la 0.4.0 sale sin ensayo.** Fase 3 hecha con el criterio 4 pendiente: K-84 (README, `docs/limitaciones.md`, CHANGELOG y `plugin.json` en 0.4.0) y el criterio 5, ya validado en la fase 1. El ensayo sigue aplazado y no bloquea la 0.5.0; cuando se haga, se apunta aquí. M8h queda abierto solo por él.
+
 ---
 
 ## M9a · Web de trabajo, nivel A (R-33; ADR-0009, ADR-0010, ADR-0011)

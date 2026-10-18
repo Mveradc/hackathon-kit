@@ -308,6 +308,11 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Decisión del usuario:** el ensayo (M8h, fase 2) queda aplazado sin fecha.
 - **Resultados** en `evals/coordinacion/prueba.md` («M9a, K-99» y «M9a, cierre»).
 
+## v0.4.0 — Hackathon OS y web de trabajo (2026-10-18)
+- **Qué sale:** M8a–M8h (estado del equipo, colisiones, robustez y modo sin GitHub) y M9a (web de trabajo nivel A, `servicios.md`, Anotar y Reclamar), opcional y experimental.
+- **Decisión del usuario:** se publica sin el ensayo con un equipo real (criterio 4 de M8h, aplazado), y así lo dicen el README y `docs/limitaciones.md`.
+- **Siguiente:** la 0.5.0 (vista de jurado y ruta crítica, R-35 y R-36, entre lo de «Después del M8» en `hitos.md`).
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

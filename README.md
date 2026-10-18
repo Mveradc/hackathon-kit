@@ -2,8 +2,6 @@
 
 **English** · [Español](README.es.md)
 
-> `main` is in development (Hackathon OS); the stable version is [v0.3.2](https://github.com/Mveradc/hackathon-kit/releases/tag/v0.3.2).
-
 A Claude Code plugin that takes a hackathon challenge statement and gets your team ready to code: it analyses the challenge, proposes approaches for you to choose from, generates the repo, a per-person plan and a pitch outline, and checks all of it against the statement.
 
 **Who it's for:** hackathon teams that use Claude Code and want to go from the challenge statement to the first commit without losing the first hour. Prompts and templates are in Spanish, and the kit has only been validated in Spanish.
@@ -81,6 +79,20 @@ claude --agent hackathon-kit:orquestador
 - Progress lives in `.hackathon/estado/<person>.md`. **Restart the orchestrator after each block**: its context grows with every job, and a fresh session picks up from the state file without repeating merged work. It also recovers after a crash: it re-reviews a pending merge and asks you what to do with leftover worktrees, without deleting anything on its own.
 - Cost: about USD 0.9–1.6 per block of one or two jobs, most of it the orchestrator.
 
+## Hackathon OS (optional, experimental, since 0.4.0)
+
+> **Experimental.** Validated without a model (400+ tests and the evals in `evals/coordinacion/`) and in a sandbox with one person simulating the team. **Not yet rehearsed with a real team.**
+
+Keeps the whole team aware of who is doing what, what is already in `main` and where you are about to collide, without asking out loud. Turn it on with `activa: sí` in `.hackathon/os.md`; off, everything behaves as in 0.3.2.
+
+- **Team status.** A daemon per person (no model) reports what happens in their clone, and a relay on the coordinator's laptop puts it together. Each session gets a short «Team» block at start and, on every turn, only what changed and affects it. An `os` MCP server answers `estado`, `tarea` and `colisiones`. Anything stale is shown as stale, with its time.
+- **Collision warnings, never blocks:** two people in the same file, incompatible changes before merging (opt-in with `publicar_wip: sí`) and contracts touched by someone who doesn't own them.
+- **Work web** (`web_nueva: sí`): each person's daemon serves it on `127.0.0.1`. `hk-os web` opens it. Four views (cockpit, team graph, board, services), plus two actions: **Anotar** (adds a note to `criterios.md` in `origin/main` without touching your copy) and **Reclamar** (assigns the issue with your `gh` and opens one turn in your session). Nobody installs Node: the web ships built.
+- **`.hackathon/servicios.md`**: ports, health checks and connections between pieces. A row only shows as confirmed if its owner committed it from their own laptop.
+- **Without GitHub:** a team remote on the coordinator's laptop and tasks from `plan.md`.
+- **Requirements:** uv, Git (2.38+ on the coordinator's laptop), `gh` signed in with each person's account, bash 5 on macOS (`brew install bash`). The relay speaks plain HTTP: on an untrusted network use Tailscale or ZeroTier.
+- Ten-minute startup guide (in Spanish): [docs/hackathon-os/arranque.md](docs/hackathon-os/arranque.md). Design, contracts and decisions: [docs/hackathon-os/](docs/hackathon-os/).
+
 ## Cost and time
 
 - **Approximate cost per full chain:** about USD 4–5 per challenge. With v0.1.0, USD 4.70 on challenges 02 and 03 (`claude -p`); `/hack-check` is the most expensive step, about USD 1.50.
@@ -95,8 +107,9 @@ What it generates is a starting point, not a finished plan. The most important l
 - **Always run `/hack-check`, then review by hand.** Without the check, the chain takes inferences and ambiguities as facts. Even with it, an independent reviewer concluded on all five validation challenges that the team starts faster and better only *in part*: you have to settle the schedule, task split, absences and questions to the organisers yourselves.
 - **Plan coherence after the check.** When the check adds rows to the plan, it doesn't update the rest (breaks, dependencies, fallbacks). Make sure the plan is still consistent.
 - **Statements given as a URL.** With a URL, the analysis works on a summary of the page, not the literal text. Paste the text if you can.
-- **An `os` MCP server in `/mcp`.** The team-status server of the Hackathon OS (in development) is declared by the plugin, so it shows up in `/mcp` in every session, even with the OS off. Then it offers no tools, uses no network and does not need uv.
-- **`publicar_wip: sí` uploads your uncommitted work.** In the Hackathon OS (in development), this option in `.hackathon/os.md` pushes tracked changes and new files that `.gitignore` doesn't ignore to the remote. It excludes `.env*`, common keys, data folders and large files, but no list is complete: check your `.gitignore` first. Deleting the ref doesn't delete what was uploaded; rotate any key that gets pushed. It's off by default.
+- **An `os` MCP server in `/mcp`.** The team-status server of the Hackathon OS is declared by the plugin, so it shows up in `/mcp` in every session, even with the OS off. Then it offers no tools, uses no network and does not need uv.
+- **`publicar_wip: sí` uploads your uncommitted work.** In the Hackathon OS, this option in `.hackathon/os.md` pushes tracked changes and new files that `.gitignore` doesn't ignore to the remote. It excludes `.env*`, common keys, data folders and large files, but no list is complete: check your `.gitignore` first. Deleting the ref doesn't delete what was uploaded; rotate any key that gets pushed. It's off by default.
+- **The Hackathon OS has not been rehearsed with a real team.** It has been validated without a model and in a sandbox with one person simulating the team. Use it as an experiment and keep talking to each other.
 
 Full list (in Spanish): [docs/limitaciones.md](docs/limitaciones.md).
 

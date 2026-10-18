@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.4.0 — 2026-10-18
+
+Hackathon OS (opcional, experimental): el equipo ve en todo momento quién hace qué, qué está en `main` y dónde va a chocar, sin preguntarlo en voz alta. Se enciende con `activa: sí` en `.hackathon/os.md`; apagado, la cadena se comporta como en la 0.3.2.
+
+- **Estado del equipo.** Un demonio por persona (sin modelo) emite lo que pasa en su clon y un relay en el portátil de quien coordina lo junta. Cada sesión recibe al empezar un bloque «Equipo» (≤ 2.500 caracteres) y, en cada turno, solo lo que ha cambiado y la afecta. Un servidor MCP `os` (`estado`, `tarea`, `colisiones`) para la sesión y el orquestador. Todo lo viejo se dice como viejo, con su hora.
+- **Colisiones**, siempre como aviso: dos personas en el mismo fichero (nivel 1), cambios incompatibles antes de fusionar (nivel 2, opcional con `publicar_wip: sí`) y contratos tocados por quien no es su dueño (nivel 3). Reservas de ficheros y un turno solo cuando sale una roja nueva.
+- **Robustez:** modo sin GitHub (remoto `bare` y tareas desde `plan.md`), guion de arranque en 10 minutos (`docs/hackathon-os/arranque.md`) y evals de caídas, inyección y arranque.
+- **Web de trabajo** (`web_nueva: sí`): React + Vite, compilada y subida al repo (nadie instala Node), servida por el demonio de cada persona en `127.0.0.1`. Cuatro vistas (cabina, red, tablero y servicios). La animación solo se mueve con eventos reales. El token solo en memoria, y un solo stream por navegador.
+- **`.hackathon/servicios.md`** (lo genera `/hack-scaffold`): puertos, salud, conexiones y su Prueba. Una fila solo sale confirmada si su dueño la escribió en un commit hecho en su portátil (ADR-0011). Los desajustes (puerto sin respuesta, Prueba que falla, código fuera de todo servicio) salen en la vista.
+- **Dos acciones desde la web:** Anotar (una nota en `criterios.md` de `origin/main` sin tocar tu copia) y Reclamar (asigna el issue con tu `gh` y abre un turno en tu sesión con texto fijo). Con topes por hora, saneado y sin coautoría (ADR-0010).
+- **Seguridad** (ADR-0010): el demonio solo escucha en `127.0.0.1`, comprueba `Host` y `Origin`, no da CORS y demuestra con un HMAC que es el tuyo antes de que `hk-os web` le mande el token. Los secretos, privados del usuario también en Windows.
+- Contratos y decisiones en `docs/hackathon-os/` (constitución, ADR-0005–0011 y `contratos/api.md`).
+- Validado sin modelo (más de 400 pruebas y las evals de `evals/coordinacion/`) y con modelo en un sandbox con una persona simulando al equipo: [evals/coordinacion/prueba.md](evals/coordinacion/prueba.md) (M8 y M9a). **Sin ensayo con un equipo real todavía** (criterio 4 de M8h, aplazado): ver [docs/limitaciones.md](docs/limitaciones.md).
+
 ## 0.3.2 — 2026-10-13
 
 - `/hack-approaches` evalúa el encaje de cada enfoque con el equipo si existe `.hackathon/equipo.md`: quién cubre cada pieza, los huecos, las ausencias que chocan con una fase crítica y quién puede defenderlo, en unas 60 palabras por enfoque, más una fila en la tabla. El orden lo asegura: primero guarda los enfoques, sacados solo del reto, y después lee `equipo.md` y añade el encaje sin tocar lo ya escrito.
