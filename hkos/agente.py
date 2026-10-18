@@ -411,13 +411,20 @@ class Suscripcion:
 
 class SaludServicios:
     """M9a (api.md §4, ADR-0011): cada 15 s, puerto y salud de los servicios confirmados de esta persona, solo en
-    127.0.0.1. Emite `servicio.estado` una vez al arrancar y después solo cuando cambia (escucha, salud). Nunca ejecuta
-    Arranque ni Prueba, y no consulta filas sin confirmar, de otra persona o con un formato que no vale."""
+    127.0.0.1. Emite `servicio.estado` una vez al arrancar, cuando cambia (escucha, salud) y, sin cambios, cada
+    umbral_viejo_s / 2 (decisión 1B del PR #13): así «viejo» en la proyección quiere decir «sin comprobar», y un portátil
+    cerrado se nota. Nunca ejecuta Arranque ni Prueba, y no consulta filas sin confirmar, de otra persona o con un
+    formato que no vale."""
     CADA_S, CONEXION_S, HTTP_S, LEER_MAX = 15, 0.5, 2, 4096
 
     def __init__(self, ag):
         self.ag = ag
         self.ultimo, self.emitidos, self.cuando = {}, set(), -1e18   # lo último emitido por clave (servicios.json)
+        self.emitido_en = {}                                         # clave → reloj de su último servicio.estado
+
+    def latido_s(self):
+        """Cada cuánto sale `servicio.estado` aunque no cambie: la mitad del umbral_viejo_s de os.md."""
+        return self.ag.umbral_viejo_s / 2
 
     def candidatos(self, estado):
         s = (estado or {}).get("servicios") or {}
@@ -466,7 +473,7 @@ class SaludServicios:
     def ciclo(self):
         if self.ag.reloj() - self.cuando < self.CADA_S:
             return []
-        self.cuando = self.ag.reloj()
+        self.cuando = ahora = self.ag.reloj()
         with self.ag.lock:
             estado = self.ag.estado
         eventos = []
@@ -474,10 +481,11 @@ class SaludServicios:
             escucha, salud = self.comprobar(x["puerto"], x.get("salud"))
             k = x["clave"]
             valor = {"escucha": escucha, "salud": salud}
-            if k in self.emitidos and self.ultimo.get(k) == valor:
+            if (k in self.emitidos and self.ultimo.get(k) == valor
+                    and ahora - self.emitido_en.get(k, -1e18) < self.latido_s()):
                 continue
             self.emitidos.add(k)
-            self.ultimo[k] = valor
+            self.ultimo[k], self.emitido_en[k] = valor, ahora
             eventos.append({"v": 1, "id": f"demonio-{self.ag.persona}-servicio-{k}-{int(self.ag.reloj() * 1000)}",
                             "ts": self.ag.ahora(), "actor": {"persona": self.ag.persona, "papel": "demonio"},
                             "tipo": "servicio.estado", "fuente": "demonio",

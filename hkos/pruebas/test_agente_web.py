@@ -608,6 +608,35 @@ class SaludServicios(Base):
         self.a.ciclo_servicios()
         self.assertEqual([e["tipo"] for e in self.a.cola], ["servicio.estado", "servicio.estado"])
 
+    def test_latido_cada_mitad_de_umbral_viejo(self):
+        """Decisión 1B (PR #13): sin cambios, `servicio.estado` sale otra vez cada umbral_viejo_s / 2 (el de os.md, el
+        de la proyección), para que «viejo» quiera decir «sin comprobar». Antes, solo al arrancar y al cambiar."""
+        cerrado = puerto_libre()
+        self.a.estado = {"servicios": {"lista": [self.fila("api", "a" * 12, self.p, "/salud"),
+                                                 self.fila("cerrado", "b" * 12, cerrado)], "desajustes": []}}
+        for umbral in (300, 120):
+            self.a.umbral_viejo_s = umbral
+            self.a.salud_servicios = agente_mod.SaludServicios(self.a)
+            n, inicio, salidas = umbral / 2, self.reloj.t, []
+            for _ in range(int(2 * n // 15) + 1):
+                salidas += [(self.reloj.t - inicio, e["datos"]["clave"]) for e in self.a.salud_servicios.ciclo()]
+                self.reloj.t += 15
+            self.assertEqual(salidas, [(t, k) for t in (0, n, 2 * n) for k in ("a" * 12, "b" * 12)], umbral)
+        # Un cambio emite enseguida y el latido cuenta desde él.
+        self.reloj.t += 15
+        self.assertEqual(self.a.salud_servicios.ciclo(), [])
+        self.servicio.shutdown()
+        self.servicio.server_close()
+        self.reloj.t += 15
+        self.assertEqual([e["datos"]["clave"] for e in self.a.salud_servicios.ciclo()], ["a" * 12])
+        self.reloj.t += 15
+        self.assertEqual([e["datos"]["clave"] for e in self.a.salud_servicios.ciclo()], ["b" * 12])   # 60 s tras el de b
+        for _ in range(2):
+            self.reloj.t += 15
+            self.assertEqual(self.a.salud_servicios.ciclo(), [])
+        self.reloj.t += 15
+        self.assertEqual([e["datos"]["clave"] for e in self.a.salud_servicios.ciclo()], ["a" * 12])   # 60 s tras el cambio
+
     def test_servicio_a_gotas_no_bloquea_a_los_demas(self):
         """Issue #6 [reproducido]: un servicio que responde a 1 byte/s dejaba comprobar() bloqueado (el plazo valía por
         cada recv). Ahora HTTP_S es para toda la consulta: sale sin código y el siguiente servicio se mira igual."""
