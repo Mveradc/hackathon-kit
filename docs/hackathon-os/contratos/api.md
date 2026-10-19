@@ -84,6 +84,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§11.2, §11.4 y el esquema:** los descansos se leen de la tabla `| Turno | Quién |` y de las líneas `- quién: turno`, con varias personas por turno (`descanso.personas`) y día en el final, y se restan de la franja al medir el ritmo (ajuste 4 de ADR-0013);
   - **§11.2, §11.4 y el esquema:** «dos horas» en `- Entrega:` son dos horas distintas sin contar la zona; manda la primera y la otra va a `otras_entregas`, sin quitar la estimación. Valen «dom 20 sep 09:30» y «dom 20 sep 2026 10:00», y sin zona se hereda la de `Inicio:`. Solo es una entrega la fila de Hitos «Entrega» o «Entrega final…»; una nota dato sale como «(criterios.md, nota de HH:MM)», sin su texto (ajuste 5 de ADR-0013);
   - **§11.2, §11.3 y el esquema:** `tareas[].evidencia` = `{valor, tipo, fuente, observado_en}`, el último sha publicado con su hora; una tarea `parada` o `no_cerrada` tras `hecha_en` sigue contando como hecha (ajuste 6 de ADR-0012);
+  - **§6, §11.1 y §11.5:** el delta de `## Jurado y ruta` se filtra por línea y firma (la línea de la ruta, solo si cambia su veredicto), y el MCP lista `jurado` y `ruta` solo con su interruptor encendido (ajuste 7 de ADR-0012 y ADR-0013);
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -508,6 +509,7 @@ M10 (tras congelar, 2026-10-19, M10; ADR-0012, decisión 7B; ADR-0013, decisión
 - **`## Jurado y ruta`**, entre «Servicios» y «Novedades», para todo el equipo (no es el subconjunto de la persona): una línea por bloque presente, primero jurado y después ruta, con el `resumen` del bloque (§11.3 y §11.4) y, detrás, la hora y la fuente: `- <resumen> (HH:MM · derivado)`, con `· viejo` detrás de la fuente si el bloque es `viejo`. El texto de una nota no sale aquí: el detalle va en el MCP (`jurado`, `ruta`) y en la web.
 - **Firmas** en la cabecera, detrás de `servicios:` (o de `reservas:`), sin horas: `jurado:` = la `cuenta` del bloque; `ruta:` = **solo** `veredicto.valor`. Que la hora estimada, el margen o un hecho cambien sin cambiar el veredicto no abre un delta (X, R-25).
 - **El delta** recorre las secciones en este orden: colisiones, reservas, servicios, jurado y ruta, trabajo, novedades. El monitor no abre ningún turno por la ruta.
+- **En «Jurado y ruta», el delta se filtra por línea y firma** (tras congelar, 2026-10-19, M10, issue #46, ajuste 7 de ADR-0012 y ADR-0013), no por las líneas que la sesión no tenía: la línea `- jurado: …` solo se inyecta si cambió la firma `jurado:`, y la línea `- ruta: …` solo si cambió la firma `ruta:`, es decir, su veredicto (R10A). Que cambie `jurado:` no arrastra la línea de la ruta, aunque su texto («fin 07:40–10:50», «plazo pasado») se haya movido (X, R-25).
 - Las líneas de la sección cuentan para los 2.500 caracteres del inicio y los 600 del delta como las demás.
 
 Inyección (scripts/os/delta.sh):
@@ -691,7 +693,8 @@ vista_jurado: no          # sí = vista de jurado (R-35, ADR-0012)
 ruta_critica: no          # sí = ruta crítica (R-36, ADR-0013)
 ```
 - Son independientes entre sí y de `web_nueva:`: el md y el MCP no dependen de la web.
-- Las lee **solo el relay**, de su copia, con el mismo lector que `web_nueva:` (`hkos/red.py`). El demonio, el MCP y la web siguen lo que traiga `estado.json`: si trae `jurado` o `ruta`, la vista lleva el bloque; si no, no. Ninguno de ellos lee los interruptores.
+- Las lee **el relay**, de su copia, con el mismo lector que `web_nueva:` (`hkos/red.py`). El demonio y la web siguen lo que traiga `estado.json`: si trae `jurado` o `ruta`, la vista lleva el bloque; si no, no. Ninguno de los dos lee los interruptores.
+- **El MCP** los lee solo para `tools/list` (tras congelar, 2026-10-19, M10, issue #46, ajuste 7 de ADR-0012), de la copia principal de su clon, como los hooks (§0), con el mismo lector: lista `jurado` solo con `vista_jurado: sí` y `ruta` solo con `ruta_critica: sí`. Con los dos apagados, `tools/list` es el de la 0.4.0 (§11.5). Lo que devuelven sigue saliendo de `estado.json`.
 - Con `vista_jurado: no` no hay `jurado`, `tareas[].criterios` ni `tareas[].conexiones`. Con `ruta_critica: no` no hay `ruta`, `tareas[].hasta`, `franja` ni `orden_plan`. `tareas[].historia` y `tareas[].evidencia` van con cualquiera de los dos.
 
 ### 11.2 Lo que lee el relay
@@ -798,14 +801,14 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
   - y si hay plazos pasados: ` · T05: plazo pasado <HH:MM>[ y N más]`.
 
 ### 11.5 MCP
-Dos herramientas nuevas del servidor `os` (§5), de solo lectura, con la vista calculada como la del demonio (`proyeccion.vista` del `estado.json` local):
+Dos herramientas nuevas del servidor `os` (§5), de solo lectura, con la vista calculada como la del demonio (`proyeccion.vista` del `estado.json` local). **Cada una solo se lista con su interruptor encendido** en el `os.md` de la copia principal (§11.1; tras congelar, 2026-10-19, M10, issue #46, ajuste 7 de ADR-0012): con `vista_jurado: no` y `ruta_critica: no`, `tools/list` es exactamente el de la 0.4.0.
 
 | Herramienta | Entrada | Salida |
 |---|---|---|
 | `jurado` | `{}` | `{jurado, generado_en}`: el bloque `jurado` entero |
 | `ruta` | `{}` | `{ruta, generado_en}`: el bloque `ruta` entero |
 
-Sin el bloque, una línea sin error: «la vista de jurado no está activa (vista_jurado: no en el os.md del relay)», o lo mismo con la ruta. Los textos de las notas van tal cual en el JSON: son dato (constitución V). `estado` sigue devolviendo el md, con la línea de resumen (§6).
+Listada pero sin el bloque en `estado.json` (el `os.md` del relay no la activa, el relay es anterior o aún no ha leído los ficheros), una línea sin error: «el estado del relay no trae la vista de jurado (vista_jurado: no en su os.md, o un relay anterior)», o lo mismo con la ruta. Los textos de las notas van tal cual en el JSON: son dato (constitución V). `estado` sigue devolviendo el md, con la línea de resumen (§6).
 
 ### 11.6 Vista de ejemplo
 Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-106 para empezar la web y la que valida el esquema (`$defs/vista_jurado` y `$defs/vista_ruta`).
