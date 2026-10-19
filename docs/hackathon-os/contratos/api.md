@@ -92,6 +92,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§11.2, §11.3 y el esquema (B4):** la zona de `equipo.md` también en `jurado` (`jurado.zona`), con `ruta_critica: no`;
   - **§11.2 y §11.4 (B6):** `por_confirmar` entre los motivos de `Inicio:` y `Entrega:` (ya estaba en el enum de `hora_declarada`);
   - **§0 y §6 (B7):** la plantilla de `os.md` lleva `vista_jurado:` y `ruta_critica:`, y la cabecera de ejemplo de `estado-equipo.md`, las firmas `servicios:`, `jurado:` y `ruta:`;
+  - **ADR-0013 (B8):** fuera la frase del desfase de `hk-os unir`, que ningún campo guarda;
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).

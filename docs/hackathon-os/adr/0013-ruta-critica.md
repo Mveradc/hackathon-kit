@@ -27,7 +27,7 @@ Valen la constitución II, III, IV y X (una hora estimada que se mueve con el re
 - **Sin plazo no es «a tiempo».** Una tarea con `Hasta` vacío o sin resolver sale en una lista aparte, «sin plazo», con su motivo, y no cuenta como a tiempo ni como atrasada. **No quita la estimación** (ajuste 1, issue #46): el resto se estima y el resumen lo dice («sin contar T28 (sin plazo)»).
 - **Sin señales no es lento.** Si una persona no deja señales (commits sin ID, `atribucion_ambigua`, sin OS), la vista dice «sin señales de @x desde HH:MM» (gris) y enseña al lado sus `sin_tarea` y discrepancias; nunca «@x va lenta». No hay ningún hecho de tipo «lentitud».
 - **Lo declarado, como declarado:** `Hasta`, la franja, el orden del plan, la entrega, los hitos y los descansos salen del plan o de `equipo.md` y llevan su procedencia y la hora del commit de ese fichero (como `servicios`). Una tarea `cerrada` a mano cuenta como hecha para la ruta, con su ⚑, pero no se mide para el ritmo.
-- **Horas con zona:** toda hora sale con la zona horaria de `equipo.md`. Los `ts` de los commits son del reloj del portátil: si se guarda el desfase que imprime `hk-os unir`, se enseña.
+- **Horas con zona:** toda hora sale con la zona horaria de `equipo.md`. Los `ts` de los commits son del reloj del portátil.
 - **Viejo:** sin relay o sin GitHub, la estimación sale vieja, con la antigüedad de su dato más viejo (III, R-12).
 - **Prueba doble de ADR-0009:** `igualdad.py` con el guion nuevo **G14** (ruta), y Vitest pinta G14.
 
