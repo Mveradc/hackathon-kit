@@ -91,6 +91,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§11.3 y el esquema (B3):** `enlace` y `pitch` llevan `donde`, `fuente` y `observado_en`, sin autor;
   - **§11.2, §11.3 y el esquema (B4):** la zona de `equipo.md` también en `jurado` (`jurado.zona`), con `ruta_critica: no`;
   - **§11.2 y §11.4 (B6):** `por_confirmar` entre los motivos de `Inicio:` y `Entrega:` (ya estaba en el enum de `hora_declarada`);
+  - **§0 y §6 (B7):** la plantilla de `os.md` lleva `vista_jurado:` y `ruta_critica:`, y la cabecera de ejemplo de `estado-equipo.md`, las firmas `servicios:`, `jurado:` y `ruta:`;
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -114,7 +115,11 @@ datos_excluidos: data/, datos/   # ADR-0007: nunca se publican en refs/hackathon
 puerto_agente:            # vacío = 47100 + (cksum del git común) % 900 (ADR-0004)
 apagado_min: 30           # el demonio sale tras este tiempo sin eventos ni sesiones
 web_nueva: no             # sí = la web de trabajo de M9a, servida por el demonio de cada persona (§4, ADR-0010)
+vista_jurado: no          # sí = vista de jurado (R-35, ADR-0012; §11)
+ruta_critica: no          # sí = ruta crítica (R-36, ADR-0013; §11)
 ```
+
+`vista_jurado:` y `ruta_critica:` (M10; tras congelar, 2026-10-19, M10, issue #46, B7: faltaban en esta plantilla): por defecto, `no`, con los mismos valores que `activa:`. Qué hacen y quién los lee, en §11.1.
 
 El token del relay **no** va aquí: va en `<git común>/hackathon/os/token` (fuera de git).
 
@@ -461,7 +466,8 @@ Disponibilidad (M8.0, P1): en sesiones normales, como herramientas diferidas. En
 Generado. Secciones en este orden y con estos títulos, para que `sesion.sh` y `delta.sh` puedan recortar por sección sin parsear Markdown complejo:
 
 ```
-<!-- hk-os v1 persona=<usuario> generado_en=<de estado.json> hora=<HH:MM local> epoch=<época de la escritura> relay=ok|viejo github=ok|viejo firmas=trabajo:<12 hex>,colisiones:<12 hex>,novedades:<12 hex>,reservas:<12 hex> -->
+<!-- hk-os v1 persona=<usuario> generado_en=<de estado.json> hora=<HH:MM local> epoch=<época de la escritura> relay=ok|viejo github=ok|viejo firmas=trabajo:<12 hex>,colisiones:<12 hex>,novedades:<12 hex>,reservas:<12 hex>,servicios:<12 hex>,jurado:<12 hex>,ruta:<12 hex> -->
+                                                                                             ← servicios: desde M9a; jurado: y ruta:, desde M10, cada una solo con su bloque (issue #46, B7)
 > Relay sin respuesta desde 18:31: lo efímero (presencia, ficheros) puede estar viejo.      ← solo si cae
 > GitHub (tareas): sin datos nuevos desde 18:29 (limitado).                                 ← solo si es viejo
 ## Tu trabajo
