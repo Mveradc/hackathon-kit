@@ -28,7 +28,7 @@ DIAS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
 GRAVEDAD = {"rojo": 0, "ambar": 1, "gris": 2}
 LEGIBLE = {"a_tiempo": "a tiempo", "justo": "justo", "no_llega": "no llega"}
 RESUMEN_MAX = 120                           # M17: la línea del md, con « (HH:MM · fuente · viejo)», cabe en 160
-TEXTO_LIBRE_MAX = 40                        # #56, 7: el texto libre de otra entrega, recortado (como la Fuerza)
+TEXTO_LIBRE_MAX = 30                        # #56, 7 (§6): el texto libre de un resumen, en grafemas
 DESFASE = re.compile(r"^(?:UTC)?([+-])(\d{1,2})(?::?(\d\d))?$")
 
 
@@ -120,12 +120,17 @@ def _zona(ruta):
 
 
 def entre_comillas(texto, n=TEXTO_LIBRE_MAX):
-    """Un texto libre de un fichero del equipo para un resumen (#56, 7; constitución V): entre «», con las « » de dentro
-    equilibradas (una » suya no cierra la cita) y recortado a n con «…». Su fichero va detrás, y nunca un autor."""
-    from proyeccion import equilibra
-    llano = " ".join(texto.split())
-    corto = equilibra(llano, n - 1 if len(llano) > n else n)
-    return f"«{corto}{'…' if len(llano) > n else ''}»"
+    """Un texto libre de un fichero del equipo para un resumen (#56, 7; §6): entre «», con las « » de dentro
+    equilibradas (una » suya no cierra la cita) y recortado a n grafemas, con «…» dentro de las comillas si no cabe. Su
+    fichero va detrás, y nunca un autor."""
+    from proyeccion import equilibra, grafemas
+    gs = list(grafemas(equilibra(texto, len(texto) + 2 * texto.count("«") + 1)))
+    if len(gs) <= n:
+        return f"«{''.join(gs)}»"
+    k = n - 1
+    while k > 0 and len(list(grafemas(equilibra("".join(gs[:k]), 10 ** 6)))) + 1 > n:
+        k -= 1
+    return f"«{equilibra(''.join(gs[:k]).rstrip(), 10 ** 6)}…»"
 
 
 def _cuantas(n, cosa):
@@ -424,44 +429,31 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         d = fecha(x).astimezone(tz)
         return f"{DIAS[d.weekday()]} {d.strftime('%H:%M')}"
 
-    # #56, 5 (decisión del usuario): el plazo pasado (el único rojo, los primeros por hora) va justo detrás del
-    # veredicto, con estimación o sin ella, y los detalles van abreviados (los IDs, en sin_plazo[] y base.personas[]),
-    # para que el corte a 120 nunca lo quite.
-    pasados = [f"{x['tarea']}: plazo pasado {hm(x['plazo'])}" for x in hechos if x["tipo"] == "plazo_pasado"]
+    # #56, 5 (contrato del PR #59, §11.4): las partes, separadas por « · »: el veredicto; justo detrás, el plazo pasado
+    # (el único rojo, el primero por hora, «y N más»), para que el corte a 120 nunca lo quite; con estimación, el fin y
+    # la entrega; sin ella, el primer motivo, abreviado; «sin contar …»; y la primera otra entrega.
+    partes = [f"ruta: estimación {LEGIBLE[valor]}" if estimacion else "ruta: sin estimación"]
+    pasados = [x for x in hechos if x["tipo"] == "plazo_pasado"]
+    if pasados:
+        partes.append(f"{pasados[0]['tarea']}: plazo pasado {hm(pasados[0]['plazo'])}" +
+                      (f" y {len(pasados) - 1} más" if len(pasados) > 1 else ""))
     if estimacion:
-        cabeza = f"ruta: estimación {LEGIBLE[valor]}"
-        fin_ = f" · fin {hm(estimacion['temprano'])}–{hm(estimacion['tarde'])} · entrega {dia_hm(objetivo['valor'])}" + \
-               (" (confirmar)" if objetivo.get("confirmar") else "")
-
-        def con(k):
-            resto = len(pasados) - k
-            return cabeza + (" · " + ", ".join(pasados[:k]) if k else "") + (f" +{resto} más" if resto else "") + fin_
-        k = len(pasados)        # todos si caben con el fin y la entrega; si no, los primeros y «+<n> más»
-        while k > 1 and len(con(k)) > RESUMEN_MAX:
-            k -= 1
-        resumen = con(k)
+        partes.append(f"fin {hm(estimacion['temprano'])}–{hm(estimacion['tarde'])} · entrega {dia_hm(objetivo['valor'])}"
+                      + (" (confirmar)" if objetivo.get("confirmar") else ""))
         if sin_plazo:
-            resumen += f" · sin contar {_cuantas(len(sin_plazo), 'tarea')} (sin plazo)"
+            partes.append(f"sin contar {', '.join(x['tarea'] for x in sin_plazo)} (sin plazo)")
     else:
-        texto = {"sin_entrega": "sin hora de entrega", "ciclo": "ciclo",
-                 "sin_plazo": "sin plazo: " + _cuantas(len(sin_plazo), "tarea"),
-                 "pocos_datos": "pocos datos: " + _cuantas(len(pocos), "persona")}
-        cabeza = "ruta: sin estimación" + (f" · {pasados[0]}" + (f" y {len(pasados) - 1} más" if len(pasados) > 1 else "")
-                                           if pasados else "")
-        dentro = " · ".join(texto[x] for x in motivos)      # si no cabe, se recorta el paréntesis, nunca el plazo
-        resumen = f"{cabeza} ({corta(dentro, max(1, RESUMEN_MAX - len(cabeza) - 3))})"
+        partes.append({"sin_entrega": "sin hora de entrega", "ciclo": "ciclo " + " → ".join(ciclo or []),
+                       "sin_plazo": "sin plazo: " + _cuantas(len(sin_plazo), "tarea"),
+                       "pocos_datos": "pocos datos: " + _cuantas(len(pocos), "persona")}[motivos[0]])
     if otras:
         o = otras[0]
         if o["donde"] == "criterios.md":     # de una nota: su hora resuelta y la de la cita, nunca su texto (#46, 5)
             de_nota = o["cita"][11:16] if o.get("cita") else "—"     # #56: solo la cita (ya no la forma provisional)
-            resumen += f" · otra entrega: {dia_hm(o['valor']) if o.get('valor') else '—'} " \
-                       f"(criterios.md, nota de {de_nota})"
-        elif not o.get("texto"):
-            resumen += f" · otra entrega: — ({o['donde']})"
+            partes.append(f"otra entrega: {dia_hm(o['valor']) if o.get('valor') else '—'} (criterios.md, nota de {de_nota})")
         else:                               # #56, 7: texto libre (constitución V): entre «», recortado, con su fichero
-            cabe = min(TEXTO_LIBRE_MAX, RESUMEN_MAX - len(f"{resumen} · otra entrega: «» ({o['donde']})"))
-            if cabe >= 4:                   # recortado para que quepa con su fichero; si no cabe ni así, no va
-                resumen += f" · otra entrega: {entre_comillas(o['texto'], cabe)} ({o['donde']})"
+            partes.append(f"otra entrega: {entre_comillas(o['texto']) if o.get('texto') else '—'} ({o['donde']})")
+    resumen = " · ".join(partes)
 
     return {
         "observado_en": ahora, "fuente": "derivado", "viejo": any(d.get("viejo") for d in leidas),

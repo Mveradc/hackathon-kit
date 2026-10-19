@@ -120,9 +120,11 @@ def _resumen(fichero, cuenta, fuerte):
         return "jurado: sin criterios.md en main"
     if not cuenta["notas"]:
         return "jurado: sin notas en criterios.md"
-    # #56, 7: el texto de Fuerza es libre (constitución V): entre «», recortado, con su fichero y sin autor.
-    partes = [f"{cuenta['sin_cubrir']} sin cubrir" +
-              (f" ({fuerte['n']} {entre_comillas(fuerte['texto'])} (criterios.md))" if fuerte else "")]
+    # #56, 7 (§11.3 del contrato): la Fuerza es texto libre: detrás de « · », entre «», recortada a 30 grafemas, con su
+    # fichero y sin autor.
+    partes = [f"{cuenta['sin_cubrir']} sin cubrir"]
+    if fuerte:
+        partes.append(f"{fuerte['n']} {entre_comillas(fuerte['texto'])} (criterios.md)")
     if cuenta["ambiguas"]:
         partes.append(f"{cuenta['ambiguas']} ambigua" + "s" * (cuenta["ambiguas"] != 1))
     if cuenta["en_pitch"]:
