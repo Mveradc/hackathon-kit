@@ -229,7 +229,7 @@ class TablaK102(Base):
         # Con una de las dos sin hacer: sin cubrir, y la evidencia de la hecha se enseña igual.
         tareas[1] = tarea("T04", "lista", ["2026-09-18 20:30"], fuente="github")
         x = self.calcula([n], tareas)["notas"][0]
-        self.assertEqual(x["cobertura"]["valor"], "planificada")       # ninguna con primera señal
+        self.assertEqual(x["cobertura"]["valor"], "en_curso")          # #56, 3: T03 ya no está lista ni pendiente
         self.assertEqual([e["tarea"] for e in x["evidencias"]], ["T03"])
 
     def test_dos_notas_en_el_mismo_minuto(self):
@@ -415,6 +415,32 @@ class TablaK102(Base):
         self.assertEqual((self.cobertura(b, amb1), self.cobertura(b, amb2)), ("planificada", "ambigua"))
         self.assertEqual(b["resumen"], "jurado: 2 sin cubrir (2 «obligatorio») · 1 ambigua · 0 cubiertas de 2")
 
+    def test_56_3_en_curso_por_el_estado_aunque_no_haya_primera_senal(self):
+        """#56, punto 3 (fila 6): «en curso» si alguna de sus tareas tiene un estado distinto de lista, pendiente y
+        reclamada, o historia.primera_senal; si no, «planificada». La historia se hace sin latidos y solo con los pasos a
+        en_curso, así que una tarea en curso por un latido (J1) o publicada sin pasar por en_curso con otra lista (J1b)
+        se quedaba en «planificada»."""
+        n = nota("2026-09-19 10:40")
+        sin_historia = {"primera_senal": None, "hecha_en": None, "trabajo_nuevo_desde": None, "fuente": "derivado",
+                        "observado_en": AHORA}
+        j1 = [dict(tarea("T01", "en_curso", ["2026-09-19 10:40"]), historia=dict(sin_historia)),
+              tarea("T02", "reclamada", ["2026-09-19 10:40"], fuente="mcp")]
+        self.assertEqual(self.cobertura(self.calcula([n], j1), n), "en_curso")
+        j1b = [tarea("T01", "publicada", ["2026-09-19 10:40"], fuente="git", hecha_en="2026-09-19T09:00:00Z"),
+               tarea("T02", "lista", ["2026-09-19 10:40"])]
+        self.assertEqual(self.cobertura(self.calcula([n], j1b), n), "en_curso")
+        for valor in ("parada", "no_cerrada", "en_revision", "integrada"):
+            with self.subTest(valor):
+                self.assertEqual(self.cobertura(self.calcula([n], [tarea("T01", valor, ["2026-09-19 10:40"])]), n), "en_curso")
+        # Lista, pendiente o reclamada, sin primera señal: planificada (aunque una ⚑ la dé por cerrada).
+        for valor in ("lista", "pendiente", "reclamada"):
+            with self.subTest(valor):
+                t = tarea("T01", valor, ["2026-09-19 10:40"], declarado="cerrada" if valor == "lista" else None)
+                self.assertEqual(self.cobertura(self.calcula([n], [t]), n), "planificada")
+        # Con primera señal (empezó y volvió a pendiente por una dependencia), en curso.
+        t = tarea("T01", "pendiente", ["2026-09-19 10:40"], fuente="github", primera="2026-09-19T08:00:00Z")
+        self.assertEqual(self.cobertura(self.calcula([n], [t]), n), "en_curso")
+
     def test_prueba_que_falla_y_prueba_vieja_no_cambian_la_cobertura(self):
         a, b_ = nota("2026-09-19 10:40"), nota("2026-09-19 11:20", dijo="la entrega por formulario")
         k1, k2 = "c0ffee000001", "c0ffee000002"
@@ -429,7 +455,7 @@ class TablaK102(Base):
         self.assertEqual((x["cobertura"]["valor"], x["cobertura"]["viejo"]), ("cubierta", False))
         self.assertEqual(x["evidencias"][1], {"tipo": "prueba", "tarea": "T05", "valor": "falla", "conexion": k1,
                                               "fuente": "hook", "observado_en": "2026-09-19T09:58:00Z", "viejo": False})
-        self.assertEqual((y["cobertura"]["valor"], y["cobertura"]["viejo"]), ("planificada", False))
+        self.assertEqual((y["cobertura"]["valor"], y["cobertura"]["viejo"]), ("en_curso", False))     # #56, 3: por su estado
         self.assertEqual(y["evidencias"], [{"tipo": "prueba", "tarea": "T06", "valor": "pasa", "conexion": k2,
                                             "fuente": "hook", "observado_en": "2026-09-19T08:00:00Z", "viejo": True}])
         # Sin las Pruebas, la misma cobertura.

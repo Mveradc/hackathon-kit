@@ -57,9 +57,16 @@ def hecha(t):
     return e["valor"] in SIGUE_HECHA and bool((t.get("historia") or {}).get("hecha_en"))
 
 
+SIN_EMPEZAR = ("lista", "pendiente", "reclamada")
+
+
 def con_senales(t):
-    """Ha empezado: tiene historia.primera_senal (api.md §11.3, #46, 2)."""
-    return bool((t.get("historia") or {}).get("primera_senal"))
+    """Ha empezado: su estado no es lista, pendiente ni reclamada, o tiene historia.primera_senal (api.md §11.3; #46,
+    2; #56, punto 3). Por el estado, también una en curso por un latido o publicada sin pasar por en_curso, que la
+    historia (sin latidos, solo con los pasos a en_curso) deja sin primera_senal. Un estado declarado (desde la web,
+    con ⚑) no es una señal: no cuenta."""
+    e = t["estado"]
+    return (e["valor"] not in SIN_EMPEZAR and not e.get("declarado")) or bool((t.get("historia") or {}).get("primera_senal"))
 
 
 def _viejas(fuentes, ahora, umbral):
@@ -162,7 +169,7 @@ def bloque(jurado, tareas, ahora, fuentes=None, servicios=None, umbral_viejo_s=F
     for n in notas:
         es = list(enlaces[n["clave"]].values())
         firmes = [t for t, _, ambiguo, _ in es if not ambiguo]
-        if firmes:      # sin cubrir: en curso si alguna de sus tareas tiene señales; si no, planificada (#46, 2)
+        if firmes:      # sin cubrir: en curso si alguna de sus tareas ha empezado; si no, planificada (#46, 2; #56, 3)
             valor = "cubierta" if all(hecha(t) for t in firmes) else \
                 "en_curso" if any(con_senales(t) for t in firmes) else "planificada"
         elif es:
