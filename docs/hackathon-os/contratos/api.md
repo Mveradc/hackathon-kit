@@ -110,6 +110,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§11.2, §11.4 y el esquema (punto 2):** «sin señales desde» cuenta solo las señales atribuidas a una tarea (ni commits sin ID, ni ediciones con `atribucion_ambigua`, ni latidos), como dice ADR-0013, de `ruta.senales` (nuevo, obligatorio en `ruta`); una persona con tareas abiertas y ninguna señal también sale. `personas[].ultima_senal` de la vista deja de usarse para esto;
   - **§11.3 y el esquema (punto 3):** una nota con tareas sin hacer está `en_curso` si alguna tiene el estado de la tarjeta distinto de `lista`, `pendiente` y `reclamada`, o tiene `historia.primera_senal`; si no, `planificada`;
   - **§11.1, §11.2, §11.4, §11.6 y el esquema (punto 4):** «fuera de la entrega» se decide con el título de la fila del `plan.md` vigente (`tareas[].titulo_plan`, nuevo), no con el del issue; `fuera_de_entrega[]` lleva su `fuente` (`git`) y su `observado_en`;
+  - **§6, §11.4, §11.6 y el esquema (punto 5):** en el `resumen` de la ruta, «plazo pasado» va justo detrás del veredicto, también con estimación, antes de los motivos y de sus detalles; en el md, los motivos se abrevian («pocos datos: <n> personas», «sin plazo: <n> tareas»). El detalle completo sigue en la vista;
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -503,7 +504,7 @@ Generado. Secciones en este orden y con estos títulos, para que `sesion.sh` y `
 - fuera de servicios · scripts/descarga.py y 2 más (18:41 · git)
 ## Jurado y ruta                                                                             ← desde M10, con vista_jurado: sí o ruta_critica: sí
 - jurado: 2 sin cubrir (1 «obligatorio») · 1 cubierta de 3 (18:41 · derivado)
-- ruta: sin estimación (pocos datos: @ana 2 de 3) · T05: plazo pasado 02:30 (18:41 · derivado)
+- ruta: sin estimación · T05: plazo pasado 02:30 · pocos datos: 1 persona (18:41 · derivado)
 ## Novedades
 - 18:40 · decisión · «#12: …» (@ana ↔ @luis)
 ## Equipo
@@ -831,12 +832,13 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **`sin_plazo`**: las tareas abiertas sin franja, con el motivo de `hasta` o, si `hasta` se resolvió, el de la franja, y la `fuente` y el `observado_en` de ese dato (tras congelar, 2026-10-19, M10, issue #46, B2).
 - **`fuera_de_entrega`**: las que no cuentan, con su `motivo` y la `fuente` y el `observado_en` de su título (B2): los de `titulo_plan` (`git`, la hora del commit de `plan.md`; ajuste 3, punto 4).
 - **`viejo`**: alguna de `vista.fuentes` está vieja; `dato_mas_viejo`, el `observado_en` más antiguo de esas fuentes. `observado_en`: la hora del cálculo.
-- **`resumen`** (decisión 7B), cortado a **120** por grafemas (tras congelar, 2026-10-19, M10, issue #46, M17, como el del jurado):
-  - con estimación: `ruta: estimación <a tiempo | justo | no llega> · fin <HH:MM>–<HH:MM> · entrega <día HH:MM>[ (confirmar)]`;
-  - sin ella: `ruta: sin estimación (<sin hora de entrega | ciclo T04 → T07 → T04 | sin plazo: T28[, T30…] | pocos datos: @ana 2 de 3, @marta 1 de 3>)`, con el primer motivo (`sin plazo: …`, tras congelar, 2026-10-19, M10, ajuste 2);
-  - detrás, si hay plazos pasados: ` · T05: plazo pasado <HH:MM>[ y N más]`. Va **antes** que lo que sigue, para que el corte a 120 no quite el único dato rojo (tras congelar, 2026-10-19, M10, ajuste 2);
-  - detrás, con estimación y tareas en `sin_plazo`: ` · sin contar T28[, T30…] (sin plazo)` (ajuste 1);
-  - y, si hay `otras_entregas` que no coinciden, la primera: ` · otra entrega: <texto> (<dónde>)` si viene de `plan.md` o `equipo.md`, y ` · otra entrega: <día HH:MM> (criterios.md, nota de <HH:MM>)` si viene de una nota, con la hora resuelta y la de la cita de la nota: **nunca su texto** (constitución V; ajuste 5).
+- **`resumen`** (decisión 7B), cortado a **120** por grafemas (tras congelar, 2026-10-19, M10, issue #46, M17, como el del jurado). Las partes van en este orden, separadas por ` · ` (tras congelar, 2026-10-19, M10, ajuste 3, punto 5):
+  - el veredicto: `ruta: estimación <a tiempo | justo | no llega>` o `ruta: sin estimación`;
+  - **justo detrás del veredicto**, si hay plazos pasados: `T05: plazo pasado <HH:MM>[ y N más]`, antes de los motivos y de cualquier detalle, para que el corte a 120 no quite el único dato rojo por largo que sea lo demás (tras congelar, 2026-10-19, M10, ajuste 2; ajuste 3, punto 5: antes iba detrás del motivo, y «pocos datos» con 5 personas lo echaba del corte);
+  - con estimación, su detalle: `fin <HH:MM>–<HH:MM> · entrega <día HH:MM>[ (confirmar)]`;
+  - sin ella, el primer motivo, **abreviado**: `sin hora de entrega`, `ciclo T04 → T07 → T04`, `sin plazo: <n> tareas` (las de `sin_plazo[]`) o `pocos datos: <n> personas` (aquellas por las que sale `pocos_datos`), con «1 tarea» y «1 persona» en singular (ajuste 3, punto 5). El detalle completo (qué tareas, cuántas medidas de cuántas) sigue en la vista: `sin_plazo[]` y `base.personas`;
+  - con estimación y tareas en `sin_plazo`: `sin contar T28[, T30…] (sin plazo)` (ajuste 1);
+  - y, si hay `otras_entregas` que no coinciden, la primera: `otra entrega: <texto> (<dónde>)` si viene de `plan.md` o `equipo.md`, y `otra entrega: <día HH:MM> (criterios.md, nota de <HH:MM>)` si viene de una nota, con la hora resuelta y la de la cita de la nota: **nunca su texto** (constitución V; ajuste 5).
 
 ### 11.5 MCP
 Dos herramientas nuevas del servidor `os` (§5), de solo lectura, con la vista calculada como la del demonio (`proyeccion.vista` del `estado.json` local). **Cada una solo se lista con su interruptor encendido** en el `os.md` de la copia principal (§11.1; tras congelar, 2026-10-19, M10, issue #46, ajuste 7 de ADR-0012): con `vista_jurado: no` y `ruta_critica: no`, `tools/list` es exactamente el de la 0.4.0.
@@ -928,9 +930,9 @@ Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-1
                   {"personas": ["luis", "marta"], "desde": "2026-09-19T23:00:00+02:00", "hasta": "2026-09-20T07:30:00+02:00",
                    "texto": "| sáb 23:00–dom 07:30 | Luis y Marta |",
                    "motivo": null, "fuente": "git", "observado_en": "2026-09-19T07:30:00Z", "declarado": true}],
-    "resumen": "ruta: sin estimación (pocos datos: @ana 2 de 3, @marta 1 de 3) · T05: plazo pasado 02:30 · otra entrega: dom 11:00 (pla…"
+    "resumen": "ruta: sin estimación · T05: plazo pasado 02:30 · pocos datos: 2 personas · otra entrega: dom 11:00 (plan.md)"
   }
 }
 ```
 
-La fila «Entrega final» de Hitos (dom 11:00) no coincide con `equipo.md` (dom 10:00): sale al lado y no es la causa de «sin estimación» (lo es `pocos_datos`). Con 3 o más medidas por persona, el mismo bloque llevaría, por ejemplo, `"veredicto": {"valor": "justo", "motivos": [], "gravedad": "ambar", …}`, `"estimacion": {"temprano": "2026-09-20T05:40:00Z", "tarde": "2026-09-20T08:50:00Z", "margen_min": -50, "margen_max": 140}`, en `riesgos` las tareas cuyo `fin_tarde` pasa de las 08:00Z (por ejemplo, `{"tarea": "T16", "tipo": "estimacion", "fin_tarde": "2026-09-20T08:50:00Z", "dueno": "ana", "en_cadena": true, "viejo": false}`) y `"resumen": "ruta: estimación justo · fin 07:40–10:50 · entrega dom 10:00 · T05: plazo pasado 02:30 · sin contar T21 (sin plazo) · o…"`, contra la entrega de `equipo.md`. Los dos resúmenes llegan cortados a 120 (issue #46, M17): el detalle completo está en el bloque, en el MCP y en la web. El plazo pasado va antes que «sin contar…» y «otra entrega…», así que el corte no lo quita (tras congelar, 2026-10-19, M10, ajuste 2).
+La fila «Entrega final» de Hitos (dom 11:00) no coincide con `equipo.md` (dom 10:00): sale al lado y no es la causa de «sin estimación» (lo es `pocos_datos`). Con 3 o más medidas por persona, el mismo bloque llevaría, por ejemplo, `"veredicto": {"valor": "justo", "motivos": [], "gravedad": "ambar", …}`, `"estimacion": {"temprano": "2026-09-20T05:40:00Z", "tarde": "2026-09-20T08:50:00Z", "margen_min": -50, "margen_max": 140}`, en `riesgos` las tareas cuyo `fin_tarde` pasa de las 08:00Z (por ejemplo, `{"tarea": "T16", "tipo": "estimacion", "fin_tarde": "2026-09-20T08:50:00Z", "dueno": "ana", "en_cadena": true, "viejo": false}`) y `"resumen": "ruta: estimación justo · T05: plazo pasado 02:30 · fin 07:40–10:50 · entrega dom 10:00 · sin contar T21 (sin plazo) · o…"`, contra la entrega de `equipo.md`. Ese segundo resumen llega cortado a 120 (issue #46, M17): el detalle completo está en el bloque, en el MCP y en la web. El plazo pasado va justo detrás del veredicto y «pocos datos» va abreviado (las 2 personas de `base.personas` con `n < 3`), así que el corte no quita el plazo pasado por muchas personas o tareas que haya (tras congelar, 2026-10-19, M10, ajuste 2; ajuste 3, punto 5).
