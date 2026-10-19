@@ -548,7 +548,7 @@
       "properties": {
         "relay": { "$ref": "#/$defs/dato" },
         "github": { "$ref": "#/$defs/dato" },
-        "git": { "$ref": "#/$defs/dato" }
+        "git": { "$ref": "#/$defs/dato", "description": "Tras congelar, 2026-10-19, M10, ajuste 3, punto 8 (api.md §11.2): con vista_jurado: sí o ruta_critica: sí, observado_en es la hora de la última lectura correcta del remoto (el último git fetch bueno), no la del último commit: un repo sin commits nuevos no está viejo. Con los dos apagados, como en la 0.4.0." }
       }
     },
     "personas": {
