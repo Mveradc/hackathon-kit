@@ -50,7 +50,7 @@ jobs:
           enable-cache: false
       - name: Dependencias (versiones exactas del lock)
         run: npm ci
-      - name: Vistas de ejemplo al día (G1–G6, G12, 5×20 desde el relay de verdad)
+      - name: Vistas de ejemplo al día (G1–G6, G12, 5×20 desde el relay de verdad; M10, api.md §11.6, G13 y G14)
         run: |
           uv run --no-project scripts/vistas_ejemplo.py
           git diff --exit-code -- test/vistas

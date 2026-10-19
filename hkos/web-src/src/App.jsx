@@ -4,11 +4,17 @@ import { useDemonio } from "./datos/demonio.js";
 import { horaLocal } from "./formato.js";
 import { Cabina } from "./vistas/Cabina.jsx";
 import { Fuentes } from "./vistas/comun.jsx";
+import { Jurado } from "./vistas/Jurado.jsx";
 import { Red } from "./vistas/Red.jsx";
+import { Ruta } from "./vistas/Ruta.jsx";
 import { Servicios } from "./vistas/Servicios.jsx";
 import { Tablero } from "./vistas/Tablero.jsx";
 
 const VISTAS = [["cabina", "Cabina"], ["red", "Red"], ["tablero", "Tablero"], ["servicios", "Servicios"]];
+// M10: cada una solo si la vista trae su bloque (lo pone el relay con vista_jurado: o ruta_critica:). Sin ellos, la
+// navegación y todo lo demás es lo de la 0.4.0.
+const VISTAS_M10 = [["jurado", "Jurado"], ["ruta", "Ruta crítica"]];
+const COMPONENTE = { cabina: Cabina, red: Red, tablero: Tablero, servicios: Servicios, jurado: Jurado, ruta: Ruta };
 
 function temaInicial() {
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
@@ -82,7 +88,10 @@ export function App({ token, fetchImpl, pestanas = null }) {
 
   const reclamo = { reclamar, ocupado, aviso };
   const props = { respuesta: d.respuesta, eventos: d.eventos, sinConexion: d.sinConexion, reclamo, anotar };
-  const Vista = { cabina: Cabina, red: Red, tablero: Tablero, servicios: Servicios }[vista];
+  const vistas = [...VISTAS, ...VISTAS_M10.filter(([k]) => d.respuesta.vista[k])];
+  // Si el bloque de la vista elegida deja de llegar, se vuelve a la Cabina.
+  const actual = vistas.some(([k]) => k === vista) ? vista : "cabina";
+  const Vista = COMPONENTE[actual];
 
   return (
     <main className={`hk-app${d.sinConexion ? " is-offline" : ""}`} data-sin-conexion={d.sinConexion ? "si" : "no"}
@@ -96,8 +105,8 @@ export function App({ token, fetchImpl, pestanas = null }) {
           <div className="hk-cabecera__der">
             <Fuentes respuesta={d.respuesta} />
             <nav className="hk-nav" aria-label="Vistas">
-              {VISTAS.map(([k, t]) => (
-                <button key={k} type="button" aria-current={vista === k ? "page" : undefined} onClick={() => setVista(k)}>{t}</button>
+              {vistas.map(([k, t]) => (
+                <button key={k} type="button" aria-current={actual === k ? "page" : undefined} onClick={() => setVista(k)}>{t}</button>
               ))}
             </nav>
             <button type="button" className="hk-tema" onClick={() => setTema(tema === "dark" ? "light" : "dark")}>

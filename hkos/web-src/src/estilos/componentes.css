@@ -178,6 +178,94 @@ body {
 .hk-node.is-stale .hk-node__state { fill: var(--state-stale); }
 @keyframes hk-halo { 0% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.7); } }
 
+/* CriterioRow (0.5.0) */
+.hk-crit {
+  display: grid; grid-template-columns: 172px minmax(0, 1.3fr) minmax(0, 1fr); gap: var(--space-3) var(--space-6);
+  padding: 14px var(--space-4); border-radius: var(--radius-md);
+  background: var(--surface-200); border: 1px solid var(--line);
+}
+.hk-crit--sin_tarea, .hk-crit--ambigua { border-color: var(--state-wait); }
+.hk-crit--corregida { border-style: dashed; border-color: var(--line-strong); color: var(--ink-muted); padding-block: var(--space-3); }
+.hk-crit--corregida .hk-crit__quote { font-size: 14px; line-height: 20px; text-decoration: line-through; text-decoration-color: var(--line-strong); }
+.hk-crit--corregida .hk-crit__time, .hk-crit--corregida .hk-crit__who { font-weight: 400; }
+.hk-crit__when, .hk-crit__said, .hk-crit__cover { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+.hk-crit__cover { gap: var(--space-2); }
+.hk-crit__time { font-family: var(--font-mono); font-size: 13px; line-height: 18px; font-weight: 500; }
+.hk-crit__who { font-size: 13px; line-height: 18px; font-weight: 600; }
+.hk-crit__where, .hk-crit__muted { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.hk-crit__strength { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 11px; line-height: 14px; color: var(--ink-faint); }
+.hk-crit__force { font-family: var(--font-mono); padding: 2px 6px; border-radius: var(--radius-sm); border: 1px solid var(--line-strong); color: var(--ink-muted); }
+.hk-crit__force--dato, .hk-crit__force--palabra { color: var(--ink); }
+.hk-crit__quote { font-size: 15px; line-height: 22px; overflow-wrap: anywhere; }
+.hk-crit__item { display: flex; flex-direction: column; gap: 3px; padding-left: 10px; border-left: 2px solid var(--line-strong); }
+.hk-crit__item.is-stale { border-left-style: dashed; border-left-color: var(--state-stale); }
+.hk-crit__line { display: flex; flex-wrap: wrap; gap: 2px var(--space-2); align-items: baseline; font-size: 13px; line-height: 18px; }
+.hk-crit__id { font-family: var(--font-mono); font-weight: 500; color: var(--git); }
+.hk-crit__path { font-family: var(--font-mono); font-weight: 500; overflow-wrap: anywhere; }
+.hk-crit__item.is-stale .hk-crit__id, .hk-crit__item.is-stale .hk-crit__title { color: var(--ink-muted); }
+.hk-crit__foot { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.hk-crit__note { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.hk-crit__item.is-stale .hk-crit__note { color: var(--state-stale); }
+.hk-crit__link { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--space-2); font-size: 12px; line-height: 16px; color: var(--ink-faint); }
+.hk-crit__tag { font-family: var(--font-mono); font-size: 12px; color: var(--declared); }
+.hk-crit__hint { font-size: 12px; line-height: 16px; color: var(--ink-faint); }
+
+/* Cadena (0.5.0). La franja del plan es declarada (violeta); lo estimado, siempre discontinuo; el rojo, solo para un
+   plazo que ya pasó (un hecho). */
+.hk-chain { display: grid; gap: var(--space-3); }
+.hk-chain__grid { display: grid; grid-template-columns: 236px minmax(0, 1fr) 232px; gap: 6px var(--space-4); align-items: center; }
+.hk-chain__fila { display: contents; }
+.hk-chain__ticks { position: relative; height: 16px; }
+.hk-chain__tick { position: absolute; font-family: var(--font-mono); font-size: 11px; line-height: 14px; color: var(--ink-faint); white-space: nowrap; }
+.hk-chain__who, .hk-chain__state { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; }
+.hk-chain__line { font-size: 13px; line-height: 18px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.hk-chain__id { font-family: var(--font-mono); font-weight: 500; color: var(--git); }
+.hk-chain__title { font-weight: 400; }
+.hk-chain__sub, .hk-chain__note { font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.hk-chain__note--plazo_pasado { color: var(--state-fail); }
+.hk-chain__note--no_llega { color: var(--state-wait); }
+.hk-chain__note--vieja { color: var(--state-stale); }
+.hk-chain__lane { position: relative; height: 30px; border-radius: var(--radius-sm); background: var(--surface-200); }
+.hk-chain__mark { position: absolute; top: 0; bottom: 0; width: 0; }
+.hk-chain__mark--ahora { border-left: 2px solid var(--relay); }
+.hk-chain__mark--hito { border-left: 1px dashed var(--line-strong); }
+.hk-chain__mark--entrega { border-left: 2px dashed var(--ink-muted); }
+.hk-chain__deadline { position: absolute; top: 2px; bottom: 2px; width: 0; border-left: 2px solid var(--ink-faint); z-index: 1; }
+.hk-chain__deadline.is-past { border-left-color: var(--state-fail); }
+.hk-chain__bar { position: absolute; top: 7px; height: 16px; box-sizing: border-box; border-radius: 3px; border: 1px solid var(--line-strong); background: var(--surface-100); }
+.hk-chain__bar--franja { border-color: var(--declared); background: var(--declared-soft); }
+.hk-chain__bar--curso { border-color: var(--relay); background: var(--relay-soft); }
+.hk-chain__bar--plazo_pasado { border-color: var(--state-fail); background: var(--fail-soft); }
+.hk-chain__bar--vieja { border-style: dashed; border-color: var(--state-stale); background: transparent; }
+.hk-chain__bar--est { border-style: dashed; background: transparent; }
+.hk-chain__bar--prevista { border-color: var(--ink-muted); }
+.hk-chain__bar--no_llega { border-color: var(--state-wait); background: var(--wait-soft); }
+.hk-chain__range { position: absolute; top: 7px; height: 16px; box-sizing: border-box; border-radius: 3px; border: 1px dashed var(--line-strong); background: var(--surface-100); }
+.hk-chain__range--ok { border-color: var(--state-ok); }
+.hk-chain__range--wait { border-color: var(--state-wait); background: var(--wait-soft); }
+.hk-chain__end { font-family: var(--font-mono); font-size: 13px; line-height: 18px; color: var(--ink-muted); }
+.hk-chain__end--ok { color: var(--state-ok); }
+.hk-chain__end--wait { color: var(--state-wait); }
+.hk-chain__legend { display: flex; flex-wrap: wrap; gap: var(--space-2) 20px; font-size: 12px; line-height: 16px; color: var(--ink-muted); }
+.hk-chain__key { display: inline-flex; align-items: center; gap: 6px; }
+.hk-chain__swatch { position: static; display: inline-block; width: 18px; height: 10px; box-sizing: border-box; border-radius: 2px; border: 1px solid var(--line-strong); }
+.hk-chain__swatch--deadline, .hk-chain__swatch.hk-chain__mark--ahora, .hk-chain__swatch.hk-chain__mark--hito, .hk-chain__swatch.hk-chain__mark--entrega { width: 0; height: 12px; border-width: 0; border-radius: 0; }
+.hk-chain__swatch--deadline { border-left: 2px solid var(--ink-faint); }
+.hk-chain__swatch.hk-chain__mark--ahora { border-left: 2px solid var(--relay); }
+.hk-chain__swatch.hk-chain__mark--hito { border-left: 1px dashed var(--line-strong); }
+.hk-chain__swatch.hk-chain__mark--entrega { border-left: 2px dashed var(--ink-muted); }
+.hk-chain__boxes { display: flex; flex-wrap: wrap; align-items: stretch; gap: var(--space-2); }
+.hk-chain__box { flex: 1 1 170px; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding: 10px var(--space-3); border-radius: var(--radius-md); background: var(--surface-200); border: 1px solid var(--line); }
+.hk-chain__box .hk-chain__id { font-size: 13px; }
+.hk-chain__arrow { color: var(--ink-faint); }
+.hk-chain__box .hk-chain__title { font-size: 13px; line-height: 18px; font-weight: 600; }
+.hk-chain__franja { font-family: var(--font-mono); font-size: 12px; line-height: 16px; color: var(--declared); }
+
+@media (max-width: 1100px) {
+  .hk-crit { grid-template-columns: minmax(0, 1fr); }
+  .hk-chain__grid { grid-template-columns: minmax(0, 1fr); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .hk-pulse__dot, .hk-pulse__dot::after, .hk-panel--wait, .hk-panel--fail, .hk-alert--rojo, .hk-node__halo, .hk-btn.is-busy::after { animation: none !important; }
   .hk-pulse--wait .hk-pulse__dot::after, .hk-pulse--fail .hk-pulse__dot::after { opacity: .9; transform: scale(1.2); }

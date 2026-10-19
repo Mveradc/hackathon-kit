@@ -89,6 +89,38 @@ html[data-theme="light"] { color-scheme: light; }
 .hk-viejo { color: var(--state-stale); font-weight: 600; }
 .hk-declarado { color: var(--declared); font-weight: 600; }
 
+/* Ruta crítica (0.5.0): el veredicto, los hitos y lo que pone la entrega en riesgo */
+.hk-veredicto { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, .9fr); background: var(--surface-100);
+  border-radius: var(--radius-lg); box-shadow: var(--panel); border: 1px solid transparent; }
+.hk-veredicto--ambar { border-color: var(--state-wait); box-shadow: var(--glow-wait); }
+.hk-veredicto__col { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); padding: 20px 24px; min-width: 0; }
+.hk-veredicto__col + .hk-veredicto__col { border-left: 1px solid var(--line); }
+.hk-veredicto__cifra { font: 500 28px/36px var(--font-mono); color: var(--ink-muted); }
+.hk-veredicto__cifra--ok { color: var(--state-ok); }
+.hk-veredicto__cifra--wait { color: var(--state-wait); }
+.hk-estimacion { font: 500 11px/14px var(--font-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--ink-muted);
+  border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); padding: 1px 6px; }
+.hk-hitos { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 200px), 1fr)); gap: var(--space-3); }
+.hk-hito { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; padding-top: 6px; border-top: 3px solid var(--line-strong); }
+.hk-hito--pasado { border-top-color: var(--ink-muted); }
+.hk-hito--sin { border-top-style: dashed; }
+.hk-hito .hk-prov, .hk-ficha--ancha .hk-prov { white-space: nowrap; }
+.hk-riesgo { display: flex; flex-direction: column; gap: 6px; }
+.hk-riesgo__cuerpo { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding-left: 12px; border-left: 2px solid var(--line-strong); }
+.hk-riesgo__tipo { font: 500 11px/14px var(--font-mono); letter-spacing: .06em; }
+.hk-riesgo__cuerpo--fail { border-left-color: var(--state-fail); }
+.hk-riesgo__cuerpo--fail .hk-riesgo__tipo { color: var(--state-fail); }
+.hk-riesgo__cuerpo--wait { border-left-color: var(--state-wait); border-left-style: dashed; }
+.hk-riesgo__cuerpo--wait .hk-riesgo__tipo { color: var(--state-wait); }
+.hk-riesgo__cuerpo--stale { border-left-color: var(--state-stale); border-left-style: dashed; }
+.hk-riesgo__cuerpo--stale .hk-riesgo__tipo { color: var(--state-stale); }
+.hk-ficha--ancha { grid-template-columns: 96px minmax(0, 1fr); gap: var(--space-3); }
+.hk-ficha--ancha .hk-bloque { padding-top: 6px; }
+@media (max-width: 1100px) {
+  .hk-veredicto { grid-template-columns: minmax(0, 1fr); }
+  .hk-veredicto__col + .hk-veredicto__col { border-left: 0; border-top: 1px solid var(--line); }
+}
+
 /* Formularios (Anotar) */
 .hk-form { display: flex; flex-direction: column; gap: var(--space-2); }
 .hk-form label { font-size: 12px; color: var(--ink-muted); }

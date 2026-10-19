@@ -108,6 +108,55 @@ export function nombrePropuesta(p) {
   return p.tipo === "servicio" ? `servicio «${c.nombre || ""}»` : `conexión «${c.de || ""} → ${c.a || ""}»`;
 }
 
+// --- M10: jurado y ruta (ADR-0012, ADR-0013). Solo formato: las horas llegan resueltas en la vista y aquí se escriben
+// en la zona de equipo.md; nada de cobertura, orden, rangos, veredicto ni «viejo».
+
+const DIAS = ["dom", "lun", "mar", "mié", "jue", "vie", "sáb"];       // los de ruta.DIAS, en el orden de getUTCDay
+
+/** Desfase en minutos de una hora ISO con zona («…+02:00» → 120, «…Z» → 0), o null. */
+function desfase(iso) {
+  const m = /(Z|([+-])(\d\d):(\d\d))$/.exec(iso || "");
+  if (!m) return null;
+  return m[1] === "Z" ? 0 : (m[2] === "-" ? -1 : 1) * (Number(m[3]) * 60 + Number(m[4]));
+}
+
+/** La zona de las horas de jurado y ruta, la misma con la que ruta.py escribe el resumen (ruta._zona): el desfase de la
+ *  entrega de equipo.md; sin ella, el de la primera nota con hora (las resuelve el relay con la zona de equipo.md); si
+ *  no, UTC. En minutos. */
+export function zonaM10(vista) {
+  const candidatas = [vista?.ruta?.objetivo?.valor, ...(vista?.jurado?.notas || []).map((x) => x.nota.hora)];
+  for (const h of candidatas) {
+    const d = desfase(h);
+    if (h && d != null) return d;
+  }
+  return 0;
+}
+
+export function textoZona(min) {
+  const a = Math.abs(min);
+  return `UTC${min < 0 ? "−" : "+"}${dos(Math.floor(a / 60))}:${dos(a % 60)}`;
+}
+
+function partes(iso, zona) {
+  const t = ms(iso);
+  if (!Number.isFinite(t)) return null;
+  const d = new Date(t + zona * 60000);
+  return { dia: DIAS[d.getUTCDay()], n: d.getUTCDate(), hm: `${dos(d.getUTCHours())}:${dos(d.getUTCMinutes())}` };
+}
+
+/** «02:30» en la zona de equipo.md. */
+export const hm = (iso, zona) => partes(iso, zona)?.hm ?? "";
+/** «sáb 02:30». */
+export const diaHm = (iso, zona) => { const p = partes(iso, zona); return p ? `${p.dia} ${p.hm}` : ""; };
+/** «sáb 19 · 02:30». */
+export const fechaHm = (iso, zona) => { const p = partes(iso, zona); return p ? `${p.dia} ${p.n} · ${p.hm}` : ""; };
+
+/** Minutos de la vista (el margen) escritos como «+15 h 30» o «−0 h 40». */
+export function duracion(min) {
+  const a = Math.abs(min);
+  return `${min < 0 ? "−" : "+"}${Math.floor(a / 60)} h ${dos(a % 60)}`;
+}
+
 /** Quién propone, como proyeccion.autor_propuesta: la persona del commit; sin ella, el Autor de la fila, declarado
  *  (decisión 3A del PR #13). */
 export function autorPropuesta(p) {
