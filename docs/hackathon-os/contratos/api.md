@@ -87,6 +87,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§6, §11.1 y §11.5:** el delta de `## Jurado y ruta` se filtra por línea y firma (la línea de la ruta, solo si cambia su veredicto), y el MCP lista `jurado` y `ruta` solo con su interruptor encendido (ajuste 7 de ADR-0012 y ADR-0013);
   - **§6, §11.3, §11.4 y el esquema (M17):** el `resumen` de cada bloque, 120 caracteres como mucho;
   - **§11.3 y el esquema (M20):** `corregida_por` = `{valor, fuente: "declarado", observado_en}`;
+  - **§11.4 y el esquema (B2):** cada elemento de `sin_plazo[]` y `fuera_de_entrega[]` lleva `fuente` y `observado_en`;
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -793,7 +794,8 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
   Orden: rojo, ámbar, gris; dentro, por plazo y por tarea.
 - **Cadena**: con estimación, la que lleva al fin `tarde` más tardío; sin ella, la que lleva al `Hasta` resuelto más tardío, siguiendo hacia atrás la predecesora abierta de `Hasta` más tardío. Cada eslabón, con su tarjeta, `por` (`inicio` en el primero), `hasta`, `franja` y su `fin_temprano` y `fin_tarde` (`null` sin estimación).
 - **`riesgos`** (tras congelar, 2026-10-19, M10, issue #46, ajuste 3 de ADR-0013; R-36): con estimación, cada tarea abierta cuyo `fin_tarde` es posterior a la entrega, esté o no en la cadena: `{tarea, tipo: "estimacion", fin_tarde, dueno, en_cadena, viejo}` (`viejo`, el de su tarjeta). Orden: por `fin_tarde`, la más tardía primero, y por tarea. Sin estimación, `[]`. Es una previsión: ámbar, nunca rojo. La cadena sigue siendo solo de tareas abiertas (las hechas no salen). La vista **no** da una hora central, ni previsión por hito, ni «fiabilidad»: el rango y la `base` lo dicen.
-- **`sin_plazo`**: las tareas abiertas sin franja, con el motivo de `hasta` o, si `hasta` se resolvió, el de la franja.
+- **`sin_plazo`**: las tareas abiertas sin franja, con el motivo de `hasta` o, si `hasta` se resolvió, el de la franja, y la `fuente` y el `observado_en` de ese dato (tras congelar, 2026-10-19, M10, issue #46, B2).
+- **`fuera_de_entrega`**: las que no cuentan, con su `motivo` y la `fuente` y el `observado_en` de su título (B2).
 - **`viejo`**: alguna de `vista.fuentes` está vieja; `dato_mas_viejo`, el `observado_en` más antiguo de esas fuentes. `observado_en`: la hora del cálculo.
 - **`resumen`** (decisión 7B), cortado a **120** por grafemas (tras congelar, 2026-10-19, M10, issue #46, M17, como el del jurado):
   - con estimación: `ruta: estimación <a tiempo | justo | no llega> · fin <HH:MM>–<HH:MM> · entrega <día HH:MM>[ (confirmar)]`;
@@ -882,8 +884,8 @@ Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-1
                   "fuente": "derivado", "observado_en": "2026-09-19T07:30:00Z", "declarado": true},
        "fin_temprano": null, "fin_tarde": null}],
     "riesgos": [],
-    "sin_plazo": [{"tarea": "T21", "motivo": "por_confirmar"}],
-    "fuera_de_entrega": [{"tarea": "T09", "motivo": "condicional"}],
+    "sin_plazo": [{"tarea": "T21", "motivo": "por_confirmar", "fuente": "git", "observado_en": "2026-09-19T07:30:00Z"}],
+    "fuera_de_entrega": [{"tarea": "T09", "motivo": "condicional", "fuente": "github", "observado_en": "2026-09-19T07:31:00Z"}],
     "hitos": [{"hito": {"nombre": "Congelación", "valor": "2026-09-19T22:00:00+02:00", "texto": "sáb 22:00", "motivo": null, "donde": "plan.md",
                         "fuente": "git", "observado_en": "2026-09-19T07:30:00Z", "declarado": true}, "pasado": false}],
     "descansos": [{"personas": null, "desde": "2026-09-19T03:00:00+02:00", "hasta": "2026-09-19T07:00:00+02:00", "texto": "- Todos: sáb 03:00–07:00",
