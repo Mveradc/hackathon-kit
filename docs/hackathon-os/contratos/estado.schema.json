@@ -99,7 +99,7 @@
       "properties": {
         "primera_senal": { "$ref": "#/$defs/hora_o_nada", "description": "Primer paso a en_curso." },
         "hecha_en": { "$ref": "#/$defs/hora_o_nada", "description": "Primer paso a publicada, o a cerrada no declarada." },
-        "trabajo_nuevo_desde": { "$ref": "#/$defs/hora_o_nada", "description": "Primer paso a en_curso después de hecha_en, si ahora no está hecha." },
+        "trabajo_nuevo_desde": { "$ref": "#/$defs/hora_o_nada", "description": "Primer paso a en_curso después de hecha_en, si ahora no está hecha. Tras congelar, 2026-10-19, M10, ajuste 3, punto 9: si lo hay, la ruta mide lo trabajado desde aquí, no desde primera_senal." },
         "fuente": { "$ref": "#/$defs/fuente" },
         "observado_en": { "type": "string", "format": "date-time" }
       }
