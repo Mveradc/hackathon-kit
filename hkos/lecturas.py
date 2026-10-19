@@ -262,7 +262,10 @@ def leer_equipo(texto, ct, anio):
                                  "observado_en": ct, "declarado": True, "_dt": dt}
         salida["otras"] += [{"valor": _iso(o), "texto": _txt(linea), "motivo": None, "donde": "equipo.md",
                              "fuente": "git", "observado_en": ct, "declarado": True} for o in otras]
-    zona_n, salida["tz"] = next(((z, tz) for z, tz in zonas if z), (None, None))
+    # #56, 6: la zona IANA si alguna de las dos líneas la da (con ella las horas cambian bien en el cambio de hora);
+    # si no, el desfase de Inicio: (o el de Entrega:).
+    zona_n, salida["tz"] = next(((z, tz) for z, tz in zonas if z and "/" in z), None) or \
+        next(((z, tz) for z, tz in zonas if z), (None, None))
     salida["zona"] = _dato(zona_n, "git", ct)
     return salida
 

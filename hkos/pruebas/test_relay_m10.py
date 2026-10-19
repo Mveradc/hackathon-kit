@@ -990,6 +990,29 @@ class Issue46(SinZoneinfo):
         b = ruta_mod.calcular(r["ruta"], [t18], CT, personas=PERSONAS)
         self.assertEqual([(x["tarea"], x["motivo"]) for x in b["fuera_de_entrega"]], [("T18", "si_da_tiempo")])
 
+    def test_56_6_zona_iana_si_equipo_md_la_da_y_el_cambio_de_hora(self):
+        """#56, punto 6, sin tzdata: ruta.zona (y jurado.zona) es la IANA si alguna línea de equipo.md la da y, si no, el
+        desfase; con ella, un reto que cruza el cambio de hora del 25 oct 2026 resuelve y escribe bien las horas de
+        antes (+02:00) y de después (+01:00)."""
+        r = calcula(equipo=self.equipo(inicio="2026-10-24 10:00 +02:00", entrega="2026-10-25 12:00 (Europe/Madrid)"))
+        self.assertEqual((r["ruta"]["zona"]["valor"], r["jurado"]["zona"]["valor"]), ("Europe/Madrid", "Europe/Madrid"))
+        r = calcula(equipo=self.equipo(inicio="2026-10-24 10:00 +02:00", entrega="2026-10-25 12:00"))
+        self.assertEqual(r["ruta"]["zona"]["valor"], "+02:00")
+        plan = ("# Plan\n\n## Por persona\n\n### Persona A · todo\n| ID | Hasta | Bloque | Tarea | Cómo se comprueba |\n"
+                "|---|---|---|---|---|\n| T01 | sáb 23:00 | x | Antes del cambio | Se ve |\n"
+                "| T02 | dom 09:30 | x | Después del cambio | Se ve |\n")
+        r = calcula(equipo=self.equipo(inicio="2026-10-24 10:00 (Europe/Madrid)", entrega="2026-10-25 12:00 (Europe/Madrid)"),
+                    plan=plan, jurado=False)
+        self.assertEqual([r["tareas"][t]["hasta"]["valor"] for t in ("T01", "T02")],
+                         ["2026-10-24T23:00:00+02:00", "2026-10-25T09:30:00+01:00"])
+        self.assertEqual(r["ruta"]["entrega"]["valor"], "2026-10-25T12:00:00+01:00")
+        tareas = [dict({"id": t, "titulo": t, "dueno": "persona-a", "depende_de": [], "declarado": None,
+                        "estado": {"valor": "lista", "fuente": "derivado", "observado_en": CT}}, **r["tareas"][t])
+                  for t in ("T01", "T02")]
+        b = ruta_mod.calcular(r["ruta"], tareas, "2026-10-25T08:00:00Z", personas=PERSONAS)
+        self.assertIn("T01: plazo pasado 23:00", b["resumen"])                  # con el desfase fijo, «22:00»
+        self.assertEqual(b["zona"], r["ruta"]["zona"])
+
     def test_b4_zona_en_el_bloque_jurado_y_b6_por_confirmar(self):
         r = calcula(equipo=leer("g14/equipo-2.md"), criterios=leer("g13/criterios.md"), ruta=False)
         self.assertIsNone(r["ruta"])

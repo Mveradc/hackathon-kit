@@ -100,8 +100,14 @@ def _origen(t, ahora, *claves):
 
 
 def _zona(ruta):
-    """La zona de las horas del resumen: el desfase de la entrega (o del inicio) de equipo.md, que el relay resuelve
-    con su zona; si no, la zona si es un desfase; si no, UTC. Sin zoneinfo: sin tzdata (Windows) daría otra salida."""
+    """La zona de las horas del resumen (#56, 6): la zona IANA de equipo.md, con lecturas.zona (zoneinfo o, sin
+    tzdata, el respaldo de la UE), para que un reto que cruza un cambio de hora escriba bien las de antes y las de
+    después; si no se resuelve, el desfase de la entrega (o del inicio); si no, la zona si es un desfase; si no, UTC."""
+    from lecturas import zona          # aquí: lecturas importa proyeccion, que importa este módulo
+    nombre = str(_v(ruta.get("zona")) or "")
+    tz = zona(nombre) if "/" in nombre else None
+    if tz is not None:
+        return tz
     for d in (ruta.get("entrega"), ruta.get("inicio")):
         if d and d.get("valor"):
             return fecha(d["valor"]).tzinfo
@@ -430,6 +436,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
 
     return {
         "observado_en": ahora, "fuente": "derivado", "viejo": any(d.get("viejo") for d in leidas),
+        # #56, 6: la de equipo.md, tal cual (como vista_jurado.zona): IANA si la da y, si no, el desfase.
+        "zona": dict(ruta.get("zona") or {"valor": None, "fuente": "git", "observado_en": ahora, "declarado": True}),
         "dato_mas_viejo": dato_mas_viejo, "objetivo": objetivo, "otras_entregas": otras,
         "veredicto": {"valor": valor, "motivos": motivos, "gravedad": gravedad, "fuente": "derivado",
                       "observado_en": ahora},

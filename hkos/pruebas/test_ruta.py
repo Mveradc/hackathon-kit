@@ -525,6 +525,38 @@ class Tabla(Base):
         self.assertTrue(fuera_de_entrega({"titulo": "Si sobra: X"}) == "condicional" and
                         fuera_de_entrega({"titulo": "Si sobra: X", "titulo_plan": dato("X")}) is None)
 
+    def test_56_6_horas_con_la_zona_iana_a_traves_del_cambio_de_hora(self):
+        """#56, punto 6: las horas del resumen salen con la zona IANA de equipo.md, no con el desfase fijo de la entrega.
+        Un reto del sáb 24 al dom 25 oct 2026 (el cambio de hora, a las 03:00 de verano) escribe bien las horas de antes
+        (+02:00) y las de después (+01:00), también sin tzdata (el respaldo de la UE de lecturas). Antes, «23:00» de
+        antes del cambio salía «22:00». vista_ruta.zona es ruta.zona de estado.json, tal cual."""
+        import lecturas
+        antes = lecturas.ZONEINFO
+        self.addCleanup(setattr, lecturas, "ZONEINFO", antes)
+        tareas = ana()[:3]
+        t04 = tarea("T04", "ana", "lista", 4, franja=(0, 60))
+        t04["hasta"]["valor"] = "2026-10-25T09:30:00+01:00"
+        t04["franja"]["valor"].update(desde="2026-10-25T08:30:00+01:00", hasta="2026-10-25T09:30:00+01:00")
+        t05 = tarea("T05", "ana", "en_curso", None, franja=(0, 60))
+        t05["hasta"]["valor"] = "2026-10-24T23:00:00+02:00"                     # sáb 23:00, antes del cambio
+        t05["franja"]["valor"].update(desde="2026-10-24T22:00:00+02:00", hasta="2026-10-24T23:00:00+02:00")
+        tareas += [t04, t05]
+        ruta = ruta_de(None, inicio=declarada("2026-10-24T10:00:00+02:00", "2026-10-24 10:00 (Europe/Madrid)"))
+        ruta["entrega"] = declarada("2026-10-25T12:00:00+01:00", "2026-10-25 12:00 (Europe/Madrid)")
+        for zi in (True, False):
+            with self.subTest(zoneinfo=zi):
+                lecturas.ZONEINFO = zi
+                b = self.corre(ruta, copy.deepcopy(tareas), ahora="2026-10-25T08:00:00Z")      # dom 09:00 de invierno
+                self.assertEqual(b["veredicto"]["valor"], "a_tiempo")
+                for trozo in ("T05: plazo pasado 23:00", "fin 09:30–10:30", "entrega dom 12:00"):
+                    self.assertIn(trozo, b["resumen"])
+                self.assertEqual(b["zona"], ruta["zona"])
+        # Con un desfase en equipo.md, la zona es ese desfase, y las horas, con él.
+        fija = dict(ruta, zona=dato("+01:00"))
+        b = self.corre(fija, copy.deepcopy(tareas), ahora="2026-10-25T08:00:00Z")
+        self.assertEqual(b["zona"]["valor"], "+01:00")
+        self.assertIn("T05: plazo pasado 22:00", b["resumen"])
+
     def test_descansos_ni_en_el_ritmo_ni_en_el_fin_ni_sin_senales(self):
         # Ritmo: T03 (90 min) con 30 min de descanso de Ana dentro: 60 min de 60, 100 %.
         tareas = ana()
