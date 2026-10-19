@@ -53,7 +53,8 @@ DESFASE = re.compile(r"(?:\b(?:UTC|GMT)\s*([+\-−])\s*(\d{1,2})(?::?([0-5]\d))?
 SOLO_UTC = re.compile(r"\b(?:UTC|GMT)\b(?!\s*[+\-−]\s*\d)")
 FECHA_ISO = re.compile(r"(?<!\d)(\d{4})-(\d\d)-(\d\d)(?!\d)")
 FECHA_BARRAS = re.compile(r"(?<!\d)(\d{1,2})/(\d{1,2})/(\d{4})(?!\d)")
-FECHA_DE = re.compile(r"(?<!\d)(\d{1,2}) de ([a-z]+)(?: de (\d{4}))?")
+# «20 de septiembre de 2026», «dom 20 sep 2026», «20 sep»: con o sin «de», con o sin día de la semana y año.
+FECHA_TEXTO = re.compile(r"(?:\b([a-z]+)\.?,?\s+)?(?<![\d:])(\d{1,2})\s+(?:de\s+)?([a-z]+)\.?(?:,?\s+(?:de\s+)?(\d{4}))?(?!\d)")
 HORA_EN = re.compile(r"(?<![\d:])(\d{1,2}):(\d\d)(?![\d:])")
 
 # Zonas de la UE con su desfase de invierno (horas), para cuando zoneinfo no las tiene (Windows sin tzdata).
@@ -181,34 +182,44 @@ def _fecha_equipo(texto, anio):
     m = FECHA_BARRAS.search(l)
     if m:
         return date(int(m.group(3)), int(m.group(2)), int(m.group(1)))
-    m = FECHA_DE.search(l)
-    if m and m.group(2) in MESES:
-        return date(int(m.group(3) or anio), MESES[m.group(2)], int(m.group(1)))
+    for m in FECHA_TEXTO.finditer(l):
+        if m.group(3) in MESES:
+            dia = date(int(m.group(4) or anio), MESES[m.group(3)], int(m.group(2)))
+            if m.group(1) in DIAS and DIAS[m.group(1)] != dia.weekday():
+                raise ValueError("el día de la semana no cuadra con la fecha")
+            return dia
     return None
 
 
-def hora_equipo(texto, anio):
-    """`- Inicio:` o `- Entrega:` → (datetime|None, motivo, confirmar, zona normalizada|None, tzinfo|None, aviso)."""
+def hora_equipo(texto, anio, tz_defecto=None, varias=False):
+    """`- Inicio:` o `- Entrega:` → (datetime|None, motivo, confirmar, zona normalizada|None, tzinfo|None, aviso,
+    [otras horas]). Sin zona en la línea, la de `tz_defecto` (la de Inicio:, para Entrega:). Dos horas distintas (sin
+    contar la zona): con `varias` (Entrega:), la primera manda y las demás salen en la lista, el mismo día o el
+    siguiente; sin él, `dos_horas`."""
     t = (texto or "").strip()
     confirmar = "(confirmar)" in t.lower()
     t = re.sub(r"\(confirmar\)", "", t, flags=re.I).strip()
     zona_n, tz, resto, aviso = _zona_de(t)
     if not t or t in ("—", "-") or "<" in t:
-        return None, "sin_dato", confirmar, zona_n, tz, aviso
+        return None, "sin_dato", confirmar, zona_n, tz, aviso, []
     if "por confirmar" in _llano(t) or "?" in t:
-        return None, "por_confirmar", confirmar, zona_n, tz, aviso
-    horas = HORA_EN.findall(resto)
-    if len(horas) > 1:
-        return None, "dos_horas", confirmar, zona_n, tz, aviso
+        return None, "por_confirmar", confirmar, zona_n, tz, aviso, []
+    horas = list(dict.fromkeys((int(h), int(mi)) for h, mi in HORA_EN.findall(resto)))
+    if len(horas) > 1 and not varias:
+        return None, "dos_horas", confirmar, zona_n, tz, aviso, []
     try:
         dia = _fecha_equipo(resto, anio)
         if dia is None or not horas:
-            return None, "formato", confirmar, zona_n, tz, aviso
-        if tz is None:
-            return None, "sin_zona", confirmar, zona_n, tz, aviso
-        return _local(dia, *horas[0], tz), None, confirmar, zona_n, tz, aviso
+            return None, "formato", confirmar, zona_n, tz, aviso, []
+        usada = tz or (tz_defecto if zona_n is None and aviso is None else None)
+        if usada is None:
+            return None, "sin_zona", confirmar, zona_n, tz, aviso, []
+        dt = _local(dia, *horas[0], usada)
+        otras = [_local(dia, *h, usada) for h in horas[1:]]
+        otras = [o if o > dt else _local(dia + timedelta(days=1), *h, usada) for o, h in zip(otras, horas[1:])]
+        return dt, None, confirmar, zona_n, usada, aviso, otras
     except ValueError:
-        return None, "formato", confirmar, zona_n, tz, aviso
+        return None, "formato", confirmar, zona_n, tz, aviso, []
 
 
 def _seccion(texto, titulo):
@@ -229,23 +240,28 @@ def _dato(valor, fuente, observado_en, declarado=True):
 
 
 def leer_equipo(texto, ct, anio):
-    """equipo.md → {equipo, zona, inicio, entrega, tz, avisos} (api.md §11.2, ADR-0013 decisión 1A)."""
+    """equipo.md → {equipo, zona, inicio, entrega, tz, avisos, otras} (api.md §11.2, ADR-0013 decisión 1A). Entrega:
+    sin zona usa la de Inicio:; con dos horas, la primera manda y las demás van a `otras` (para otras_entregas)."""
     sec = None if texto is None else _seccion(texto, "Hackathon")
     estado = "sin fichero" if texto is None else ("mal formado" if sec is None else "ok")
-    salida = {"equipo": _dato(estado, "git", ct), "inicio": None, "entrega": None, "tz": None, "avisos": []}
-    zonas = []
+    salida = {"equipo": _dato(estado, "git", ct), "inicio": None, "entrega": None, "tz": None, "avisos": [], "otras": []}
+    zonas, tz_inicio = [], None
     for clave in ("Inicio", "Entrega"):
         if sec is None:
             continue
         linea = next((l.strip()[len(f"- {clave}:"):] for l in sec if l.strip().startswith(f"- {clave}:")), None)
-        dt, motivo, confirmar, zona_n, tz, aviso = hora_equipo(linea, anio) if linea is not None else \
-            (None, "sin_dato", False, None, None, None)
+        dt, motivo, confirmar, zona_n, tz, aviso, otras = \
+            hora_equipo(linea, anio, tz_inicio, clave == "Entrega") if linea is not None else \
+            (None, "sin_dato", False, None, None, None, [])
         zonas.append((zona_n, tz))
+        tz_inicio = tz if zona_n else tz_inicio
         if aviso:
             salida["avisos"].append(aviso)
         salida[clave.lower()] = {"valor": _iso(dt), "texto": _txt(linea) if linea is not None else None,
                                  "confirmar": confirmar, "motivo": motivo, "donde": "equipo.md", "fuente": "git",
                                  "observado_en": ct, "declarado": True, "_dt": dt}
+        salida["otras"] += [{"valor": _iso(o), "texto": _txt(linea), "motivo": None, "donde": "equipo.md",
+                             "fuente": "git", "observado_en": ct, "declarado": True} for o in otras]
     zona_n, salida["tz"] = next(((z, tz) for z, tz in zonas if z), (None, None))
     salida["zona"] = _dato(zona_n, "git", ct)
     return salida
@@ -416,21 +432,24 @@ def _filas(lineas):
 
 def _quienes(texto, personas):
     """Las personas de una celda o de un «- <quién>:» de Descansos: @usuario, el nombre de coordinacion.md o «Todos»
-    (una entrada por persona del equipo; sin equipo, None = todos)."""
+    (todas las del equipo). None = todo el equipo: «Todos» sin equipo, o la celda vacía."""
     nombres = {p["nombre"].lower(): p["persona"] for p in personas}
     usuarios = {p["persona"].lower() for p in personas}
-    salida = []
+    salida, todos = [], False
     for x in re.split(r"\s*(?:,|/|&|\+|\by\b)\s*", (texto or "").strip()):
         x = x.strip()
         if not x:
             continue
         if _llano(x) in ("todos", "todo el equipo", "el equipo", "equipo", "todas"):
-            salida += [p["persona"] for p in personas] or [None]
+            todos = True
+            salida += [p["persona"] for p in personas]
         elif x.startswith("@"):
             salida.append(x[1:].lower() if x[1:].lower() in usuarios else x[1:])
         else:
             salida.append(nombres.get(x.lower(), x))
-    return [proyeccion.corta(p, TEXTO_MAX) if p else p for p in dict.fromkeys(salida)] or [None]
+    if todos and not personas:
+        return None
+    return [proyeccion.corta(p, TEXTO_MAX) for p in dict.fromkeys(salida)] or None
 
 
 def _turno(texto, inicio, tz):
@@ -459,8 +478,9 @@ def _turno(texto, inicio, tz):
 
 def leer_descansos(texto, personas, inicio, tz, ct):
     """«## Descansos» del plan (ADR-0013, decisión 9A): la tabla «| <turno> | <quién> |» (la de /hack-plan, los
-    ejemplos 02 y 03 y G13/G14) y la lista «- <quién>: <turno>» de api.md §11.2. Lo que no se entiende sale con
-    desde y hasta en null y su motivo: se enseña y no se usa."""
+    ejemplos 02 y 03 y G13/G14) y la lista «- <quién>: <turno>» de api.md §11.2. Una entrada por turno, con todas sus
+    personas (null = todo el equipo). Lo que no se entiende sale con desde y hasta en null y su motivo: se enseña y no
+    se usa."""
     lineas = _seccion(texto, "Descansos") or []
     filas = []
     for linea, celdas in _filas(lineas):
@@ -475,9 +495,9 @@ def leer_descansos(texto, personas, inicio, tz, ct):
     salida = []
     for linea, turno, quien in filas:
         desde, hasta, motivo = _turno(turno, inicio, tz)
-        for p in (_quienes(quien, personas) if motivo != "formato" else [None]):
-            salida.append({"persona": p, "desde": _iso(desde), "hasta": _iso(hasta), "texto": proyeccion.corta(linea, TEXTO_MAX),
-                           "motivo": motivo, "fuente": "git", "observado_en": ct, "declarado": True})
+        salida.append({"personas": _quienes(quien, personas), "desde": _iso(desde),
+                       "hasta": _iso(hasta), "texto": proyeccion.corta(linea, TEXTO_MAX), "motivo": motivo,
+                       "fuente": "git", "observado_en": ct, "declarado": True})
     return salida
 
 
@@ -539,9 +559,17 @@ def leer_plan(texto, personas, ct, inicio, tz, anio, inicio_motivo=None):
     return salida
 
 
+def es_entrega(que):
+    """La fila de Hitos que es la entrega: Qué es «Entrega» o empieza por «Entrega final» («Entrega temprana» es un
+    hito más)."""
+    l = _llano(que)
+    return l.rstrip(" .:") == "entrega" or re.match(r"entrega final\b", l) is not None
+
+
 def entregas_de_notas(notas, inicio, tz, anio):
     """Las notas de fuerza `dato` que afectan a la entrega y traen una hora que se resuelve como un Hasta (con día de la
-    semana o fecha), para otras_entregas (ADR-0013, decisión 1A)."""
+    semana o fecha), para otras_entregas (ADR-0013, decisión 1A). Sin el texto de la nota (api.md §6, V): solo
+    «(criterios.md, nota de HH:MM)»."""
     salida = []
     for n in notas:
         if n["fuerza"]["tipo"] != "dato" or not ENTREGA.search(n["afecta_a"] or ""):
@@ -552,8 +580,9 @@ def entregas_de_notas(notas, inicio, tz, anio):
                 continue
             dt, motivo = resolver(texto, inicio, tz, None, anio)
             if dt is not None:
-                salida.append({"valor": _iso(dt), "texto": _txt(m.group(0)), "motivo": None, "donde": "criterios.md",
-                               "fuente": "git", "observado_en": n["observado_en"], "declarado": True})
+                salida.append({"valor": _iso(dt), "texto": f"(criterios.md, nota de {n['cita'][11:16]})", "motivo": None,
+                               "donde": "criterios.md", "fuente": "git", "observado_en": n["observado_en"],
+                               "declarado": True})
                 break
     return salida
 
@@ -592,7 +621,7 @@ def calcular(textos, cts, personas, vista_jurado, ruta_critica):
     if vista_jurado:
         crit = leer_criterios(textos.get("criterios"), ct("criterios"), tz)
         salida["jurado"] = {"fichero": crit["fichero"], "notas": crit["notas"],
-                            "pitch": leer_pitch(textos.get("pitch"), ct("pitch"))}
+                            "pitch": leer_pitch(textos.get("pitch"), ct("pitch")), "zona": eq["zona"]}
         ct_con = max(ct("plan"), ct("servicios"))
         for tid, x in (plan or {}).items():
             campos = salida["tareas"].setdefault(tid, {})
@@ -603,10 +632,11 @@ def calcular(textos, cts, personas, vista_jurado, ruta_critica):
                 campos["conexiones"] = _dato(claves, "git", ct_con)
     if ruta_critica:
         texto_plan = textos.get("plan")
-        hitos = leer_hitos(texto_plan, inicio, tz, anio, ct("plan"), inicio_motivo) if texto_plan is not None else []
+        filas = leer_hitos(texto_plan, inicio, tz, anio, ct("plan"), inicio_motivo) if texto_plan is not None else []
+        hitos = [h for h in filas if not es_entrega(h["nombre"])]
         notas = salida["jurado"]["notas"] if salida["jurado"] else \
             leer_criterios(textos.get("criterios"), ct("criterios"), tz)["notas"]
-        otras = [h for h in hitos if ENTREGA.search(h["nombre"] or "")] + entregas_de_notas(notas, inicio, tz, anio)
+        otras = eq["otras"] + [h for h in filas if es_entrega(h["nombre"])] + entregas_de_notas(notas, inicio, tz, anio)
         salida["ruta"] = {"equipo": eq["equipo"], "zona": eq["zona"], "inicio": _publica(eq["inicio"]),
                           "entrega": _publica(eq["entrega"]), "otras_entregas": otras, "hitos": hitos,
                           "descansos": leer_descansos(texto_plan, personas, inicio, tz, ct("plan"))
