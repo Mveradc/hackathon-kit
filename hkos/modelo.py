@@ -272,7 +272,8 @@ def _historia_tarea(t, issue, lista, equipo, umbral_parada_s):
     sha suyo (regla 8). Las dependencias no cambian ninguno de esos pasos (solo lista frente a pendiente).
     `lista`: sus eventos y los push de git que incluyen algún sha suyo (los demás no la mueven), en orden.
 
-    Devuelve (historia, evidencia): evidencia es el sha del commit con ID o de la fusión que la publicó la última vez."""
+    Devuelve (historia, evidencia): evidencia es {valor: sha, tipo: commit | fusion, fuente, observado_en} del commit
+    con ID o de la fusión que la publicó la última vez, con la hora de esa publicación (ADR-0012, decisión 6B)."""
     t = dict(t, depende_de=[])
     acciones = sorted(issue.get("acciones", []), key=lambda a: fecha(a["ts"]))
     primera = hecha = nuevo = evidencia = None
@@ -301,12 +302,16 @@ def _historia_tarea(t, issue, lista, equipo, umbral_parada_s):
         if valor in HECHAS and not hecha_ahora:
             hecha, nuevo = hecha or e["ts"], None
             incluye = set(d.get("incluye", []))
-            if e["tipo"] == "commit":
-                evidencia = d.get("sha")
-            elif r["fusion"] and r["fusion"] in incluye:
-                evidencia = r["fusion"]
+            commit = next((s for s in reversed(commits) if s in incluye), None)
+            if e["tipo"] == "commit" and d.get("sha"):
+                sha, tipo = d["sha"], "commit"
+            elif r["fusion"] and (r["fusion"] in incluye or not commit):
+                sha, tipo = r["fusion"], "fusion"
             else:
-                evidencia = next((s for s in reversed(commits) if s in incluye), None) or r["fusion"] or evidencia
+                sha, tipo = commit, "commit"
+            if sha:
+                evidencia = {"valor": sha, "tipo": tipo, "fuente": e["fuente"] if e["fuente"] in ("git", "github") else "git",
+                             "observado_en": e["ts"]}
         hecha_ahora, previo = valor in HECHAS, valor
     ultimo = max([e["ts"] for e in lista] + [a["ts"] for a in acciones] + [issue["creado_en"]], key=fecha)
     return ({"primera_senal": primera, "hecha_en": hecha, "trabajo_nuevo_desde": None if hecha_ahora else nuevo,
