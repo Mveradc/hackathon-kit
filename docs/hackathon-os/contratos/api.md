@@ -107,6 +107,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **`tareas[].evidencia`:** solo como objeto `{valor, tipo, fuente, observado_en}`, sin el sha suelto.
 - 2026-10-19, M10, tras congelar, ajuste 3 (diez puntos decididos por el usuario sobre la revisión independiente del issue #56 y el PR #58; ADR-0012 y ADR-0013, «Ajuste 3 tras congelar»). Sin subir `v`. Lo marcado «tras congelar, 2026-10-19, M10, ajuste 3» en §6, §11 y el esquema. Lo cubren:
   - **§11.4 (punto 1):** lo que le queda a una tarea abierta = su **franja neta** (la franja sin descansos, la misma con la que se mide el ritmo) × ritmo, menos lo trabajado. La estimación salta los descansos una sola vez, al avanzar. Se quita la contradicción entre «Medidas y ritmo» y «Estimación»;
+  - **§11.2, §11.4 y el esquema (punto 2):** «sin señales desde» cuenta solo las señales atribuidas a una tarea (ni commits sin ID, ni ediciones con `atribucion_ambigua`, ni latidos), como dice ADR-0013, de `ruta.senales` (nuevo, obligatorio en `ruta`); una persona con tareas abiertas y ninguna señal también sale. `personas[].ultima_senal` de la vista deja de usarse para esto;
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -722,7 +723,7 @@ ruta_critica: no          # sí = ruta crítica (R-36, ADR-0013)
 - Son independientes entre sí y de `web_nueva:`: el md y el MCP no dependen de la web.
 - Las lee **el relay**, de su copia, con el mismo lector que `web_nueva:` (`hkos/red.py`). El demonio y la web siguen lo que traiga `estado.json`: si trae `jurado` o `ruta`, la vista lleva el bloque; si no, no. Ninguno de los dos lee los interruptores.
 - **El MCP** los lee solo para `tools/list` (tras congelar, 2026-10-19, M10, issue #46, ajuste 7 de ADR-0012), de la copia principal de su clon, como los hooks (§0), con el mismo lector: lista `jurado` solo con `vista_jurado: sí` y `ruta` solo con `ruta_critica: sí`. Con los dos apagados, `tools/list` es el de la 0.4.0 (§11.5). Lo que devuelven sigue saliendo de `estado.json`.
-- Con `vista_jurado: no` no hay `jurado`, `tareas[].criterios` ni `tareas[].conexiones`. Con `ruta_critica: no` no hay `ruta`, `tareas[].hasta`, `franja` ni `orden_plan`. `tareas[].historia` y `tareas[].evidencia` van con cualquiera de los dos.
+- Con `vista_jurado: no` no hay `jurado`, `tareas[].criterios` ni `tareas[].conexiones`. Con `ruta_critica: no` no hay `ruta` (ni, dentro, `senales`), `tareas[].hasta`, `franja` ni `orden_plan`. `tareas[].historia` y `tareas[].evidencia` van con cualquiera de los dos.
 
 ### 11.2 Lo que lee el relay
 Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§3). Lo que sale de un fichero lleva `fuente: git`, `declarado: true` y, como `observado_en`, la hora del último commit de ese fichero en `origin/main` (como `servicios.fichero`). Si una lectura de git falla, se conserva el último bueno y lo dice `fuentes.git`, como con `servicios`. Los ficheros se leen en UTF-8 o UTF-16 y con LF o CRLF, como Anotar.
@@ -770,6 +771,8 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 
 **Historia → `tareas[].historia`** (cualquiera de los dos interruptores; ADR-0012, decisión 6B; ADR-0013, decisión 5A): el relay la reconstruye al arrancar desde `relay/eventos.jsonl` y `relay/github.json`, recalculando el motor de estados (`modelo.calcular`, que es puro) en cada evento que cambia una tarea, y después la lleva por incrementos tras cada lote. `primera_senal` = el primer paso a `en_curso`; `hecha_en` = el primer paso a `publicada` o a `cerrada` no declarada; `trabajo_nuevo_desde` = el primer paso a `en_curso` después de `hecha_en`, mientras la tarea no esté hecha. La hora es la del evento que provoca el paso. `fuente: derivado`; `observado_en`, la del último evento de esa tarea.
 
+**Señales → `ruta.senales`** (con `ruta_critica: sí`; tras congelar, 2026-10-19, M10, ajuste 3, punto 2; ADR-0013): una entrada por persona del equipo (las de `personas[]` y los dueños de las tareas), `{persona, valor, fuente: derivado, observado_en}`, con `valor` = el `ts` del último evento de `relay/eventos.jsonl` cuyo `actor.persona` es esa persona y al que el motor de estados (`modelo.atribuir`) **atribuye una tarea**, o `null` si no hay ninguno. No son señal: los commits sin ID, las ediciones con `atribucion_ambigua` (no tienen tarea) ni los latidos (no son eventos). `observado_en`, la hora del último lote de eventos que ha aplicado el relay. Se lleva por incrementos, como la historia.
+
 **`tareas[].evidencia`** (cualquiera de los dos; tras congelar, 2026-10-19, M10, issue #46, ajuste 6 de ADR-0012): `{valor, tipo, fuente, observado_en}`, con `valor` = el sha del commit con ID (del `datos.incluye` del `push` de fuente `git`, `tipo: commit`) o de la fusión aprobada (`tipo: fusion`) que llevó la tarea a `publicada`. Si se publicó más de una vez, **el último** sha publicado, y `observado_en` = la hora de ese paso a `publicada` (no `historia.hecha_en`, que es el primero). Sin ninguno (una `cerrada`), no va.
 
 ### 11.3 Bloque `jurado` de la vista (ADR-0012)
@@ -816,7 +819,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **Hechos**, con o sin estimación y desde el principio:
   - `plazo_pasado`: una tarea abierta con `hasta.valor` anterior a ahora, con `plazo` y `arrastra` (sus sucesoras abiertas, directas o no). **Rojo**: es el único;
   - `parada` y `no_cerrada`: tareas de la cadena en ese estado (`ambar`);
-  - `sin_senales`: una persona con tareas abiertas cuya última señal (`personas[].ultima_senal` de la vista) es más antigua que `umbral_parada_min`, o no existe, y que no está en un descanso; `desde` = esa señal; `gris`. Nunca «va lenta»;
+  - `sin_senales`: una persona con tareas abiertas cuya última señal **atribuida a una tarea** (`ruta.senales` de `estado.json`, §11.2) es más antigua que `umbral_parada_min`, o no existe, y que no está en un descanso; `desde` = esa señal, o `null` si no ha dado **ninguna** (también sale: tiene tareas abiertas y nada las mueve); `gris`. Nunca «va lenta». Los commits sin ID, las ediciones con `atribucion_ambigua` y los latidos no son señal, como dice ADR-0013, así que `personas[].ultima_senal` de la vista, que los cuenta, **ya no se usa** para esto (tras congelar, 2026-10-19, M10, ajuste 3, punto 2);
   - `ciclo`: `ciclo` = las tareas, con la primera repetida al final (`gris`).
 
   Orden: rojo, ámbar, gris; dentro, por plazo y por tarea.

@@ -447,7 +447,7 @@
               "tarea": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
               "persona": { "type": "string" },
               "plazo": { "$ref": "#/$defs/hora_o_nada" },
-              "desde": { "$ref": "#/$defs/hora_o_nada", "description": "En sin_senales, la última señal." },
+              "desde": { "$ref": "#/$defs/hora_o_nada", "description": "En sin_senales, la última señal atribuida a una tarea (ruta.senales de estado.json), o null si no ha dado ninguna (tras congelar, 2026-10-19, M10, ajuste 3, punto 2)." },
               "arrastra": { "type": "array", "items": { "type": "string", "pattern": "^T[0-9]{2,3}$" } },
               "ciclo": { "type": "array", "items": { "type": "string", "pattern": "^T[0-9]{2,3}$" } },
               "fuente": { "$ref": "#/$defs/fuente" },
@@ -814,7 +814,7 @@
     "ruta": {
       "type": "object",
       "description": "Tras congelar, 2026-10-19, M10 (ADR-0013, api.md §11): solo con ruta_critica: sí en el os.md del relay. Lo declarado de equipo.md y plan.md de origin/main; la ruta la calcula proyeccion.vista.",
-      "required": ["equipo", "zona", "inicio", "entrega", "otras_entregas", "hitos", "descansos"],
+      "required": ["equipo", "zona", "inicio", "entrega", "otras_entregas", "hitos", "descansos", "senales"],
       "additionalProperties": false,
       "properties": {
         "equipo": { "$ref": "#/$defs/dato", "description": "valor: ok | sin fichero | mal formado; observado_en: hora del commit de equipo.md." },
@@ -823,7 +823,22 @@
         "entrega": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }], "description": "Decisión 1A: - Entrega: de equipo.md. Sin el motivo dos_horas: manda la primera hora y la otra va a otras_entregas (ajuste 5 de ADR-0013; tras congelar, 2026-10-19, M10, ajuste 2)." },
         "otras_entregas": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada" }, "description": "Para compararlas con la entrega (issue #46, ajuste 5): la segunda hora de Entrega: (donde equipo.md), las filas de Hitos cuya Qué es «Entrega» o empieza por «Entrega final» (donde plan.md) y las notas de fuerza dato que afectan a la entrega (donde criterios.md, con su cita y sin su texto)." },
         "hitos": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada" }, "description": "La tabla «Hitos del equipo» del plan (la congelación es uno), sin las filas de entrega, que van solo a otras_entregas (issue #46, B9)." },
-        "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso" } }
+        "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso" } },
+        "senales": {
+          "type": "array",
+          "description": "Tras congelar, 2026-10-19, M10, ajuste 3, punto 2 (api.md §11.2; ADR-0013): por persona del equipo, la hora de su última señal atribuida a una tarea (el último evento suyo al que modelo.atribuir da tarea), o null si ninguna. Los commits sin ID, las ediciones con atribucion_ambigua y los latidos no son señal. De aquí sale «sin señales» de la ruta, no de personas[].ultima_senal de la vista.",
+          "items": {
+            "type": "object",
+            "required": ["persona", "valor", "fuente", "observado_en"],
+            "additionalProperties": false,
+            "properties": {
+              "persona": { "type": "string" },
+              "valor": { "$ref": "#/$defs/hora_o_nada" },
+              "fuente": { "$ref": "#/$defs/fuente" },
+              "observado_en": { "type": "string", "format": "date-time", "description": "La hora del último lote de eventos que ha aplicado el relay." }
+            }
+          }
+        }
       }
     }
   }
