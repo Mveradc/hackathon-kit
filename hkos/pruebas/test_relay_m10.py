@@ -881,6 +881,10 @@ class Issue46(SinZoneinfo):
             self.assertEqual((r["entrega"]["valor"], r["otras_entregas"]), ("2026-09-20T10:00:00+02:00", []), entrega)
         r = calcula(equipo=self.equipo(inicio="2026-09-18 19:00 (cierre 20:00) (Europe/Madrid)"), jurado=False)["ruta"]
         self.assertEqual((r["inicio"]["valor"], r["inicio"]["motivo"]), (None, "dos_horas"))   # en Inicio: no
+        # En el esquema, dos_horas solo vale en Inicio: ($defs/hora_inicio); en Entrega: ($defs/hora_declarada), no.
+        con_jsonschema(self, estado_minimo(ruta=r))
+        mala = dict(r, entrega=dict(r["entrega"], valor=None, motivo="dos_horas"))
+        self.assertIsNotNone(esquema_estado().error(estado_minimo(ruta=mala)))
 
     def test_5_fechas_con_dia_y_mes_y_sin_zona(self):
         casos = (("dom 20 sep 09:30 (Europe/Madrid)", "2026-09-20T09:30:00+02:00", None),

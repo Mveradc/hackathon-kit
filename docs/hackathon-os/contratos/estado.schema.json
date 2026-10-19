@@ -114,15 +114,33 @@
         "valor": { "$ref": "#/$defs/hora_o_nada" },
         "texto": { "$ref": "#/$defs/texto_o_nada" },
         "confirmar": { "type": "boolean", "description": "La línea lleva «(confirmar)»." },
-        "motivo": { "anyOf": [
-          { "type": "null" },
-          { "enum": ["sin_dato", "sin_zona", "formato", "por_confirmar"] },
-          { "enum": ["dos_horas"], "description": "Tras congelar, 2026-10-19, M10, ajuste 2: en Inicio:, la línea trae dos horas distintas (sin contar la zona) y valor es null: la segunda no tiene a dónde ir. TRANSITORIO (issue #46) solo en ruta.entrega (la línea Entrega:): se quita de allí al adaptar el código, porque tras el ajuste 5 de ADR-0013 manda la primera (valor) y la otra va a otras_entregas con donde equipo.md." }
-        ] },
+        "motivo": {
+          "anyOf": [{ "type": "null" }, { "enum": ["sin_dato", "sin_zona", "formato", "por_confirmar"] }],
+          "description": "Sin dos_horas: con dos horas en Entrega: manda la primera (valor) y la otra va a otras_entregas con donde equipo.md (ajuste 5 de ADR-0013). La de Inicio:, que sí puede llevar dos_horas, es $defs/hora_inicio (tras congelar, 2026-10-19, M10, ajuste 2)."
+        },
         "donde": { "enum": ["equipo.md", "plan.md", "criterios.md"] },
         "cita": { "$ref": "#/$defs/cita", "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 5): con donde criterios.md, la cita de la nota (su texto no va: texto es null, constitución V); en las demás, ausente." },
         "fuente": { "$ref": "#/$defs/fuente" },
         "observado_en": { "type": "string", "format": "date-time", "description": "Hora del commit de ese fichero en origin/main." },
+        "declarado": { "const": true }
+      }
+    },
+    "hora_inicio": {
+      "type": "object",
+      "description": "Tras congelar, 2026-10-19, M10, ajuste 2: la línea Inicio: de equipo.md (ruta.inicio). Como $defs/hora_declarada, pero con el motivo dos_horas y siempre de equipo.md, sin nombre ni cita.",
+      "required": ["valor", "texto", "motivo", "donde", "fuente", "observado_en", "declarado"],
+      "additionalProperties": false,
+      "properties": {
+        "valor": { "$ref": "#/$defs/hora_o_nada" },
+        "texto": { "$ref": "#/$defs/texto_o_nada" },
+        "confirmar": { "type": "boolean", "description": "La línea lleva «(confirmar)»." },
+        "motivo": {
+          "anyOf": [{ "type": "null" }, { "enum": ["sin_dato", "sin_zona", "formato", "por_confirmar", "dos_horas"] }],
+          "description": "dos_horas: la línea trae dos horas distintas (sin contar la zona) y valor es null: la segunda no tiene a dónde ir (tras congelar, 2026-10-19, M10, ajuste 2)."
+        },
+        "donde": { "const": "equipo.md" },
+        "fuente": { "$ref": "#/$defs/fuente" },
+        "observado_en": { "type": "string", "format": "date-time", "description": "Hora del commit de equipo.md en origin/main." },
         "declarado": { "const": true }
       }
     },
@@ -836,8 +854,8 @@
       "properties": {
         "equipo": { "$ref": "#/$defs/dato", "description": "valor: ok | sin fichero | mal formado; observado_en: hora del commit de equipo.md." },
         "zona": { "$ref": "#/$defs/dato", "description": "valor: la zona horaria de Inicio: (IANA o ±HH:MM), o null si no se entiende; fuente git, declarado." },
-        "inicio": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }] },
-        "entrega": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }], "description": "Decisión 1A: - Entrega: de equipo.md." },
+        "inicio": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_inicio" }], "description": "- Inicio: de equipo.md. Tras congelar, 2026-10-19, M10, ajuste 2: $defs/hora_inicio, la única que puede llevar el motivo dos_horas." },
+        "entrega": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }], "description": "Decisión 1A: - Entrega: de equipo.md. Sin el motivo dos_horas: manda la primera hora y la otra va a otras_entregas (ajuste 5 de ADR-0013; tras congelar, 2026-10-19, M10, ajuste 2)." },
         "otras_entregas": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada" }, "description": "Para compararlas con la entrega (issue #46, ajuste 5): la segunda hora de Entrega: (donde equipo.md), las filas de Hitos cuya Qué es «Entrega» o empieza por «Entrega final» (donde plan.md) y las notas de fuerza dato que afectan a la entrega (donde criterios.md, con su cita y sin su texto)." },
         "hitos": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada" }, "description": "La tabla «Hitos del equipo» del plan (la congelación es uno), sin las filas de entrega, que van solo a otras_entregas (issue #46, B9)." },
         "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso" } }
