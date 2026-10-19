@@ -80,12 +80,15 @@ def nota(i, obs):
 def con_m10(e, con_jurado=True, con_ruta=True, notas=15):
     """El estado con lo que deja el relay con los interruptores (api.md §11.2): las notas citadas por las primeras
     tareas del plan y, en la ruta, la entrega de equipo.md y ningún Hasta resuelto (el resumen más largo: «sin plazo:
-    T01, T02…», cortado a 120)."""
+    T01, T02…», cortado a 120). historia.ultima_senal (#56, 2): la de cada tarea de una persona con sesión es la hora de
+    su último latido (lo último que tocó su sesión); persona-e, sin sesión, nunca dio señales (null)."""
     e = copy.deepcopy(e)
     obs = e["generado_en"]
+    ultima = {x["persona"]: max((a["ultimo_latido"] for a in x["actores"]), key=fecha, default=None)
+              for x in e["personas"]}
     for t in e["tareas"]:
-        t["historia"] = {"primera_senal": None, "hecha_en": None, "trabajo_nuevo_desde": None, "fuente": "derivado",
-                         "observado_en": obs}
+        t["historia"] = {"primera_senal": None, "hecha_en": None, "trabajo_nuevo_desde": None,
+                         "ultima_senal": ultima.get(t["dueno"]), "fuente": "derivado", "observado_en": obs}
     if con_jurado:
         e["jurado"] = {"fichero": git_("ok", obs), "zona": git_("Europe/Madrid", obs),
                        "notas": [nota(i, obs) for i in range(notas)], "pitch": None}
