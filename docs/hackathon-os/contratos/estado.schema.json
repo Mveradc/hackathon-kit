@@ -365,13 +365,14 @@
     "vista_ruta": {
       "type": "object",
       "description": "Tras congelar, 2026-10-19, M10 (ADR-0013; api.md §11): el bloque ruta de proyeccion.vista, solo con ruta_critica: sí. No es un campo de estado.json.",
-      "required": ["observado_en", "fuente", "viejo", "dato_mas_viejo", "objetivo", "otras_entregas", "veredicto", "estimacion", "base", "hechos", "riesgos", "cadena", "sin_plazo", "fuera_de_entrega", "hitos", "descansos", "resumen"],
+      "required": ["observado_en", "fuente", "viejo", "dato_mas_viejo", "zona", "objetivo", "otras_entregas", "veredicto", "estimacion", "base", "hechos", "riesgos", "cadena", "sin_plazo", "fuera_de_entrega", "hitos", "descansos", "resumen"],
       "additionalProperties": false,
       "properties": {
         "observado_en": { "type": "string", "format": "date-time" },
         "fuente": { "$ref": "#/$defs/fuente" },
         "viejo": { "type": "boolean" },
         "dato_mas_viejo": { "$ref": "#/$defs/hora_o_nada" },
+        "zona": { "$ref": "#/$defs/dato", "description": "Tras congelar, 2026-10-19, M10, ajuste 3, punto 6: ruta.zona de estado.json, tal cual, con la forma de vista_jurado.zona. valor: el nombre IANA si equipo.md lo da y, si no, el desfase; null sin zona. Las horas de la ruta (las de la vista que calcula ruta.py y las del resumen) se escriben con esta zona, con el desfase de cada instante, no con un desfase fijo." },
         "objetivo": {
           "description": "Decisión 1A y diseño: la entrega de equipo.md (la congelación es un hito). null sin equipo.md legible.",
           "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }]
@@ -397,7 +398,7 @@
           }
         },
         "estimacion": {
-          "description": "null salvo con veredicto a_tiempo, justo o no_llega. Siempre un rango, nunca una sola hora.",
+          "description": "null salvo con veredicto a_tiempo, justo o no_llega. Siempre un rango, nunca una sola hora. Tras congelar, 2026-10-19, M10, ajuste 3, punto 6: temprano y tarde (como fin_temprano, fin_tarde y riesgos[].fin_tarde) llevan el desfase de la zona de equipo.md en ese instante.",
           "anyOf": [{ "type": "null" }, {
             "type": "object",
             "required": ["temprano", "tarde", "margen_min", "margen_max"],
@@ -819,7 +820,7 @@
       "additionalProperties": false,
       "properties": {
         "equipo": { "$ref": "#/$defs/dato", "description": "valor: ok | sin fichero | mal formado; observado_en: hora del commit de equipo.md." },
-        "zona": { "$ref": "#/$defs/dato", "description": "valor: la zona horaria de Inicio: (IANA o ±HH:MM), o null si no se entiende; fuente git, declarado." },
+        "zona": { "$ref": "#/$defs/dato", "description": "valor: la zona horaria de Inicio: (IANA o ±HH:MM), o null si no se entiende; fuente git, declarado. Tras congelar, 2026-10-19, M10, ajuste 3, punto 6: el nombre IANA si equipo.md lo da (en Inicio: o, si no, en Entrega:) y, si no, el desfase." },
         "inicio": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_inicio" }], "description": "- Inicio: de equipo.md. Tras congelar, 2026-10-19, M10, ajuste 2: $defs/hora_inicio, la única que puede llevar el motivo dos_horas." },
         "entrega": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }], "description": "Decisión 1A: - Entrega: de equipo.md. Sin el motivo dos_horas: manda la primera hora y la otra va a otras_entregas (ajuste 5 de ADR-0013; tras congelar, 2026-10-19, M10, ajuste 2)." },
         "otras_entregas": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada" }, "description": "Para compararlas con la entrega (issue #46, ajuste 5): la segunda hora de Entrega: (donde equipo.md), las filas de Hitos cuya Qué es «Entrega» o empieza por «Entrega final» (donde plan.md) y las notas de fuerza dato que afectan a la entrega (donde criterios.md, con su cita y sin su texto)." },
