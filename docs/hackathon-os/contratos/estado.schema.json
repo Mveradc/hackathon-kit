@@ -342,7 +342,13 @@
             }
           }
         },
-        "resumen": { "type": "string", "maxLength": 160, "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora." }
+        "resumen": {
+          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho.",
+          "anyOf": [
+            { "type": "string", "maxLength": 120 },
+            { "type": "string", "maxLength": 160, "description": "TRANSITORIO (issue #46): se quita al adaptar el código. El tope anterior, 160." }
+          ]
+        }
       }
     },
     "vista_ruta": {
@@ -509,7 +515,13 @@
           }
         },
         "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso" } },
-        "resumen": { "type": "string", "maxLength": 160, "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora." }
+        "resumen": {
+          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho.",
+          "anyOf": [
+            { "type": "string", "maxLength": 120 },
+            { "type": "string", "maxLength": 160, "description": "TRANSITORIO (issue #46): se quita al adaptar el código. El tope anterior, 160." }
+          ]
+        }
       }
     }
   },
