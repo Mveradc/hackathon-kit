@@ -387,6 +387,24 @@ class Tabla(Base):
         self.assertEqual([x["tarea"] for x in b["sin_plazo"]], ["T04"])
         self.assertTrue(b["resumen"].endswith(" · sin contar T04 (sin plazo)"))
 
+    def test_sin_ninguna_franja_sin_plazo_y_pocos_datos(self):
+        """Decisión del usuario (api.md §11.4; ADR-0013, ajuste 2, punto 4): sin ninguna abierta que cuenta con franja,
+        salen sin_plazo y, de quien tiene abiertas que cuentan y menos de 3 medidas, pocos_datos (sin plazos tampoco
+        hay medidas). Quien ya tiene 3 no sale."""
+        tareas = luis(n=2, abiertas=False) + [tarea("T12", "luis", "lista", 3, motivo="vacio")]
+        b = self.corre(ruta_de(240), tareas)
+        self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("sin_estimacion", ["sin_plazo", "pocos_datos"]))
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T12)")
+        self.assertEqual([(p["persona"], p["n"]) for p in b["base"]["personas"]], [("luis", 2)])
+        # Con Ana (3 medidas) y sus abiertas también sin franja, pocos_datos sigue siendo solo de Luis.
+        sin_franja = [tarea("T04", "ana", "lista", 4, motivo="por_confirmar"), tarea("T05", "ana", "lista", 5, motivo="vacio")]
+        b = self.corre(ruta_de(240), ana()[:3] + sin_franja + tareas)
+        self.assertEqual(b["veredicto"]["motivos"], ["sin_plazo", "pocos_datos"])
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T04, T05, T12)")
+        # Con alguna abierta con franja (T06 de Ana), sin_plazo no es motivo, y Luis, sin abiertas con franja, no cuenta.
+        b = self.corre(ruta_de(240), ana()[:3] + sin_franja + [tarea("T06", "ana", "lista", 6, franja=(0, 60))] + tareas)
+        self.assertEqual(b["veredicto"]["motivos"], [])
+
     def test_resumen_plazo_pasado_antes_de_sin_contar_y_otra_entrega(self):
         """Decisión del usuario: «plazo pasado» (el único rojo) va antes de «sin contar…» y de «otra entrega…», para que
         el corte a 120 no se lo lleve."""
