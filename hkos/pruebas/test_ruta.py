@@ -1,7 +1,7 @@
 """K-103 (R-36, ADR-0013; api.md §11.4): la ruta crítica de hkos/ruta.py, con su tabla de casos, los tres momentos de G14
 y los casos de la cadena de cada persona (decisión 3B). Cada salida se valida contra $defs/vista_ruta de
-estado.schema.json, tal cual y sin lo «TRANSITORIO (issue #46)» salvo el motivo sin_plazo (con el validador de M8b y,
-si está, con jsonschema), y cada entrada, contra estado.schema.json.
+estado.schema.json, ya sin lo transitorio del issue #46 (con el validador de M8b y, si está, con jsonschema), y cada
+entrada, contra estado.schema.json.
 Sin red, sin git y con `ahora` como parámetro.
 
 Uso: uv run --no-project --with "jsonschema[format-nongpl]" -m unittest hkos/pruebas/test_ruta.py -v
@@ -39,46 +39,10 @@ class _Vista(Esquema):
         return self._error({"$ref": "#/$defs/vista_ruta"}, valor, "")
 
 
-def endurecido(raiz, guarda=lambda rama: False, requeridos=()):
-    """El esquema como quedará en K-105 (cuerpo del PR #53, «Para endurecer en K-105»): sin las ramas y propiedades
-    «TRANSITORIO (issue #46)» (salvo las que `guarda` deja) y con los `requeridos` = [(ruta en $defs, campo)]."""
-    r = copy.deepcopy(raiz)
-
-    def transitoria(s):
-        return isinstance(s, dict) and str(s.get("description", "")).startswith("TRANSITORIO") and not guarda(s)
-
-    def poda(s):
-        if isinstance(s, dict):
-            if "anyOf" in s:
-                s["anyOf"] = [x for x in s["anyOf"] if not transitoria(x)]
-            if isinstance(s.get("properties"), dict):
-                s["properties"] = {k: v for k, v in s["properties"].items() if not transitoria(v)}
-            for v in s.values():
-                poda(v)
-        elif isinstance(s, list):
-            for v in s:
-                poda(v)
-    poda(r)
-    for ruta, campo in requeridos:
-        s = r["$defs"]
-        for parte in ruta:
-            s = s[parte]
-        s["required"] = s.get("required", []) + [campo]
-    return r
-
-
-# La salida, contra el esquema fusionado (#53) y contra el mismo sin lo transitorio (K-105): sin entrega_doble ni
-# dos_horas, sin el tope de 160, con riesgos y con la procedencia de sin_plazo[] y fuera_de_entrega[]. El motivo
-# sin_plazo se queda: decisión del usuario, cuando ninguna abierta que cuenta tiene franja.
+# La salida, contra el esquema ya sin lo transitorio del issue #46 (cierre del contrato de M10): sin entrega_doble ni
+# dos_horas en la entrega, sin el tope de 160, con riesgos y con la procedencia de sin_plazo[] y fuera_de_entrega[].
+# El motivo sin_plazo se queda: decisión del usuario, cuando ninguna abierta que cuenta tiene franja.
 VISTA, ESTADO = _Vista("estado.schema.json"), Esquema("estado.schema.json")
-DURA = _Vista("estado.schema.json")
-_RUTA = ("vista_ruta", "properties")
-DURA.raiz = endurecido(VISTA.raiz, guarda=lambda rama: rama.get("enum") == ["sin_plazo"], requeridos=[
-    (("vista_ruta",), "riesgos"),
-    (_RUTA + ("sin_plazo", "items"), "fuente"), (_RUTA + ("sin_plazo", "items"), "observado_en"),
-    (_RUTA + ("fuera_de_entrega", "items"), "fuente"), (_RUTA + ("fuera_de_entrega", "items"), "observado_en")])
-ESTADO_DURO = Esquema("estado.schema.json")
-ESTADO_DURO.raiz = endurecido(ESTADO.raiz)          # la entrada: descansos con personas, sin dos_horas
 
 
 def _jsonschema(raiz):
@@ -95,15 +59,14 @@ def _jsonschema(raiz):
         return None
 
 
-JSONSCHEMA, JSONSCHEMA_DURO = _jsonschema(VISTA.raiz), _jsonschema(DURA.raiz)
+JSONSCHEMA = _jsonschema(VISTA.raiz)
 
 
 def errores(bloque):
-    """None si la salida valida contra los dos esquemas (con el validador del OS y, si está, con jsonschema)."""
-    e = VISTA.error(bloque) or DURA.error(bloque)
-    for js in (JSONSCHEMA, JSONSCHEMA_DURO):
-        if e is None and js is not None:
-            e = next(((list(x.absolute_path), x.message) for x in js.iter_errors(bloque)), None)
+    """None si la salida valida contra $defs/vista_ruta (con el validador del OS y, si está, con jsonschema)."""
+    e = VISTA.error(bloque)
+    if e is None and JSONSCHEMA is not None:
+        e = next(((list(x.absolute_path), x.message) for x in JSONSCHEMA.iter_errors(bloque)), None)
     return e
 
 
@@ -207,7 +170,6 @@ class Base(unittest.TestCase):
         estado = {"v": 1, "generado_en": ahora, "fuentes": {}, "personas": [], "tareas": tareas, "colisiones": [],
                   "ruta": ruta}
         self.assertIsNone(ESTADO.error(estado), "la entrada no tiene la forma de estado.schema.json")
-        self.assertIsNone(ESTADO_DURO.error(estado), "la entrada usa una forma transitoria de estado.schema.json")
         bloque = calcular(ruta, tareas, ahora, personas=personas, fuentes=fuentes, **kw)
         self.assertIsNone(errores(bloque), "la salida no valida contra $defs/vista_ruta")
         self.assertLessEqual(len(bloque["resumen"]), 120)
@@ -239,7 +201,7 @@ class Tabla(Base):
         b = self.corre(ruta_de(30, descansos=[descanso(["@ana", "Luis"], m(30), m(40))]), tareas)
         self.assertTrue(b["riesgos"] and b["sin_plazo"] and b["fuera_de_entrega"])
         self.assertIsNone(errores(b))
-        # Lo transitorio del esquema (#53), que el código ya no produce, no pasa: K-105 lo quita.
+        # Lo que era transitorio en el esquema (#53), que el código ya no produce, no pasa.
         malos = {"entrega_doble": dict(b, veredicto=dict(b["veredicto"], motivos=["entrega_doble"])),
                  "sin riesgos": {k: v for k, v in b.items() if k != "riesgos"},
                  "sin_plazo sin procedencia": dict(b, sin_plazo=[{"tarea": "T05", "motivo": "por_confirmar"}]),
@@ -424,6 +386,24 @@ class Tabla(Base):
         self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("a_tiempo", []))
         self.assertEqual([x["tarea"] for x in b["sin_plazo"]], ["T04"])
         self.assertTrue(b["resumen"].endswith(" · sin contar T04 (sin plazo)"))
+
+    def test_sin_ninguna_franja_sin_plazo_y_pocos_datos(self):
+        """Decisión del usuario (api.md §11.4; ADR-0013, ajuste 2, punto 4): sin ninguna abierta que cuenta con franja,
+        salen sin_plazo y, de quien tiene abiertas que cuentan y menos de 3 medidas, pocos_datos (sin plazos tampoco
+        hay medidas). Quien ya tiene 3 no sale."""
+        tareas = luis(n=2, abiertas=False) + [tarea("T12", "luis", "lista", 3, motivo="vacio")]
+        b = self.corre(ruta_de(240), tareas)
+        self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("sin_estimacion", ["sin_plazo", "pocos_datos"]))
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T12)")
+        self.assertEqual([(p["persona"], p["n"]) for p in b["base"]["personas"]], [("luis", 2)])
+        # Con Ana (3 medidas) y sus abiertas también sin franja, pocos_datos sigue siendo solo de Luis.
+        sin_franja = [tarea("T04", "ana", "lista", 4, motivo="por_confirmar"), tarea("T05", "ana", "lista", 5, motivo="vacio")]
+        b = self.corre(ruta_de(240), ana()[:3] + sin_franja + tareas)
+        self.assertEqual(b["veredicto"]["motivos"], ["sin_plazo", "pocos_datos"])
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T04, T05, T12)")
+        # Con alguna abierta con franja (T06 de Ana), sin_plazo no es motivo, y Luis, sin abiertas con franja, no cuenta.
+        b = self.corre(ruta_de(240), ana()[:3] + sin_franja + [tarea("T06", "ana", "lista", 6, franja=(0, 60))] + tareas)
+        self.assertEqual(b["veredicto"]["motivos"], [])
 
     def test_resumen_plazo_pasado_antes_de_sin_contar_y_otra_entrega(self):
         """Decisión del usuario: «plazo pasado» (el único rojo) va antes de «sin contar…» y de «otra entrega…», para que

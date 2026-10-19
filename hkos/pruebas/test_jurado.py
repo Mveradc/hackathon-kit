@@ -2,8 +2,8 @@
 tres momentos de G13 (evals/coordinacion/simulador/guiones/g13/hechos.json), sin relay, sin red y sin git.
 
 Cada entrada valida contra estado.schema.json (la nota de $defs/nota, tareas[] y jurado: la forma que produce K-104) y
-cada salida contra $defs/vista_jurado, tal cual y sin lo «TRANSITORIO (issue #46)» (como quedará en K-105), con el
-validador del OS (esquema.py) y, si está, con jsonschema.
+cada salida contra $defs/vista_jurado, ya sin lo transitorio del issue #46, con el validador del OS (esquema.py) y, si
+está, con jsonschema.
 Uso: uv run --no-project --with "jsonschema[format-nongpl]" -m unittest discover -s hkos/pruebas -v
 """
 import copy
@@ -27,40 +27,7 @@ except ImportError:
     jsonschema = None
 
 
-def endurecido(raiz, guarda=lambda rama: False, requeridos=()):
-    """El esquema como quedará en K-105 (cuerpo del PR #53, «Para endurecer en K-105»): sin las ramas y propiedades
-    «TRANSITORIO (issue #46)» (salvo las que `guarda` deja) y con los `requeridos` = [(ruta en $defs, campo)]."""
-    r = copy.deepcopy(raiz)
-
-    def transitoria(s):
-        return isinstance(s, dict) and str(s.get("description", "")).startswith("TRANSITORIO") and not guarda(s)
-
-    def poda(s):
-        if isinstance(s, dict):
-            if "anyOf" in s:
-                s["anyOf"] = [x for x in s["anyOf"] if not transitoria(x)]
-            if isinstance(s.get("properties"), dict):
-                s["properties"] = {k: v for k, v in s["properties"].items() if not transitoria(v)}
-            for v in s.values():
-                poda(v)
-        elif isinstance(s, list):
-            for v in s:
-                poda(v)
-    poda(r)
-    for ruta, campo in requeridos:
-        s = r["$defs"]
-        for parte in ruta:
-            s = s[parte]
-        s["required"] = s.get("required", []) + [campo]
-    return r
-
-
 ESQ = Esquema("estado.schema.json")
-DURO = Esquema("estado.schema.json")
-_NOTAS = ("vista_jurado", "properties", "notas", "items", "properties")
-DURO.raiz = endurecido(ESQ.raiz, requeridos=[
-    (("vista_jurado", "properties", "cuenta"), "planificadas"), (("vista_jurado", "properties", "cuenta"), "en_curso"),
-    (_NOTAS + ("pitch", "anyOf", 1), "donde")])
 G13 = os.path.join(KIT, "evals", "coordinacion", "simulador", "guiones", "g13")
 AHORA = "2026-09-19T10:00:00Z"
 PLAN = "2026-09-19T07:30:00Z"            # hora del commit de plan.md
@@ -93,17 +60,11 @@ def validador(sub, esq=ESQ):
     return errores
 
 
-# La salida, contra el esquema fusionado (#53) y contra el mismo sin lo transitorio (K-105): sin «declarada», sin
-# «declaradas», sin corregida_por suelta, sin el tope de 160, con planificadas, en_curso y pitch.donde.
-_VISTA, _VISTA_DURA = validador({"$ref": "#/$defs/vista_jurado"}), validador({"$ref": "#/$defs/vista_jurado"}, DURO)
-
-
-def VISTA(valor):
-    return _VISTA(valor) or _VISTA_DURA(valor)
-
-
+# La salida, contra el esquema ya sin lo transitorio del issue #46 (cierre del contrato de M10): sin «declarada», sin
+# «declaradas», sin corregida_por suelta, sin el tope de 160, con planificadas, en_curso, pitch.donde y zona.
+VISTA = validador({"$ref": "#/$defs/vista_jurado"})
 NOTA = validador({"$ref": "#/$defs/nota"})
-TAREAS = validador(DURO.raiz["properties"]["tareas"], DURO)       # tareas[].evidencia, solo como objeto
+TAREAS = validador(ESQ.raiz["properties"]["tareas"])       # tareas[].evidencia, solo como objeto
 JURADO = validador(ESQ.raiz["properties"]["jurado"])
 
 
@@ -142,8 +103,10 @@ def tarea(tid, valor, citas=None, fuente="hook", obs=AHORA, evidencia=None, hech
     return t
 
 
-def estado_jurado(notas, pitch=None, fichero="ok"):
+def estado_jurado(notas, pitch=None, fichero="ok", zona="+02:00"):
+    """El bloque jurado de estado.json; zona, la de equipo.md (B4: el relay siempre la pone, aunque sea null)."""
     return {"fichero": {"valor": fichero, "fuente": "git", "observado_en": CRITERIOS, "declarado": True},
+            "zona": {"valor": zona, "fuente": "git", "observado_en": PLAN, "declarado": True},
             "notas": notas,
             "pitch": None if pitch is None else {"valor": pitch, "fuente": "git", "observado_en": PITCH, "declarado": True}}
 
@@ -190,7 +153,7 @@ class TablaK102(Base):
         """El validador de las pruebas no deja pasar cualquier cosa."""
         b = jurado.bloque(estado_jurado([nota("2026-09-19 10:40")]), [], AHORA)
         self.assertIsNone(VISTA(b))
-        # También lo transitorio del esquema (#53), que el código ya no produce: K-105 lo quita.
+        # Tampoco lo que era transitorio en el esquema (#53), que el código ya no produce.
         x = b["notas"][0]
         malos = {"cobertura inventada": ("cobertura", "recogida"), "declarada": ("cobertura", "declarada"),
                  "corregida_por suelta": ("corregida_por", "0123456789ab"),
@@ -217,7 +180,9 @@ class TablaK102(Base):
         b = self.calcula(None, [t], j=j)
         self.assertIsNone(VISTA(b))
         self.assertEqual(b["zona"], zona)                                    # B4: la de equipo.md, tal cual
-        self.assertNotIn("zona", self.calcula([n]))                          # sin ella en estado.json, no va
+        # Ya no es opcional: sin ella, ni la entrada (jurado de estado.json) ni la vista validan.
+        self.assertIsNotNone(JURADO({k: v for k, v in j.items() if k != "zona"}))
+        self.assertIsNotNone(VISTA({k: v for k, v in b.items() if k != "zona"}))
 
     def test_sin_tarea(self):
         n = nota("2026-09-19 10:40")
@@ -664,7 +629,9 @@ def momentos_g13():
             if tid in plan:
                 t["criterios"] = {"valor": plan[tid], "fuente": "git", "observado_en": plan_en, "declarado": True}
             tareas.append(t)
-        j = {"fichero": {"valor": "ok", "fuente": "git", "observado_en": obs, "declarado": True}, "notas": notas, "pitch": pitch}
+        j = {"fichero": {"valor": "ok", "fuente": "git", "observado_en": obs, "declarado": True},
+             "zona": {"valor": "+02:00", "fuente": "git", "observado_en": plan_en, "declarado": True},    # la de las horas
+             "notas": notas, "pitch": pitch}
         salida.append((mo, j, tareas, ids))
     return salida
 

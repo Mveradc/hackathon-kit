@@ -77,7 +77,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§4:** la vista del demonio y de su web lleva los bloques; la web los pinta y no calcula nada;
   - **§6:** la sección `## Jurado y ruta` (una línea por vista) y las firmas `jurado:` y `ruta:`;
   - [estado.schema.json](estado.schema.json): `jurado` y `ruta` (opcionales); en `tareas[]`, `hasta` (con el motivo de «sin plazo»), `franja`, `orden_plan`, `historia`, `criterios` y `conexiones` (opcionales), y `evidencia` se rellena; los `$defs` `plazo`, `franja`, `historia`, `hora_declarada`, `descanso`, `nota` (con su `clave`), `cita`, `fuerza`, `vista_jurado` y `vista_ruta`. Todo dato es `{valor, fuente, observado_en}` (o lleva esos tres campos) y `viejo` en la vista. Lo validan el validador de M8b (`hkos/esquema.py`) y jsonschema.
-- 2026-10-19, M10, issue #46 (las «Decisiones que faltan» de la revisión de los contratos de M10, decididas por el usuario; ajustes en ADR-0012 y ADR-0013). Sin subir `v`. Lo que cambia de forma se escribe aquí solo con la forma nueva; el esquema admite aún la anterior, con su `description` «TRANSITORIO (issue #46)», hasta que el código se adapte (K-105). Lo cubren:
+- 2026-10-19, M10, issue #46 (las «Decisiones que faltan» de la revisión de los contratos de M10, decididas por el usuario; ajustes en ADR-0012 y ADR-0013). Sin subir `v`. Lo que cambia de forma se escribe aquí solo con la forma nueva; el esquema admite aún la anterior, con su `description` «TRANSITORIO (issue #46)», hasta que el código se adapte (K-105; ya no la admite: ver «cierre del contrato», abajo). Lo cubren:
   - **§11.4 y [estado.schema.json](estado.schema.json):** una tarea abierta sin plazo no quita la estimación: sale en `sin_plazo[]` y el resto se estima (ajuste 1 de ADR-0013);
   - **§11.3 y el esquema:** «sin cubrir» es todo lo no cubierto, sin las corregidas; `declarada` se parte en `planificada` y `en_curso`, y `cuenta` lo dice (ajuste 2 de ADR-0012);
   - **§11.4 y el esquema:** `ruta.riesgos[]`, las tareas que según la estimación acaban después de la entrega; sin hora central, previsión por hito ni «fiabilidad» (ajuste 3 de ADR-0013);
@@ -94,10 +94,17 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§0 y §6 (B7):** la plantilla de `os.md` lleva `vista_jurado:` y `ruta_critica:`, y la cabecera de ejemplo de `estado-equipo.md`, las firmas `servicios:`, `jurado:` y `ruta:`;
   - **ADR-0013 (B8):** fuera la frase del desfase de `hk-os unir`, que ningún campo guarda;
   - **§11.2 y el esquema (B9):** la fila de entrega de Hitos va solo a `otras_entregas`, no se repite en `hitos`.
-- 2026-10-19, M10, tras congelar, ajuste 2 (tres puntos en que el issue #46 dejó el contrato distinto del código, decididos por el usuario; ADR-0013, «Ajuste 2 tras congelar»). Sin subir `v`. Lo cubren:
+- 2026-10-19, M10, tras congelar, ajuste 2 (tres puntos en que el issue #46 dejó el contrato distinto del código, y uno que no decía, decididos por el usuario; ADR-0013, «Ajuste 2 tras congelar»). Sin subir `v`. Lo cubren:
   - **§11.4 y el esquema:** `sin_plazo` vuelve a ser motivo de `sin_estimacion`, solo cuando ninguna tarea abierta que cuenta tiene franja (si no, «sin plazo» daría «a tiempo» sin medir nada); si alguna la tiene, todo queda como dice el ajuste 1. En el esquema, `sin_plazo` deja de ser transitorio en `veredicto.motivos`;
-  - **§11.2 y el esquema:** `dos_horas` se queda como motivo de `Inicio:` (allí la segunda hora no tiene a dónde ir); solo deja de existir en `Entrega:`, donde manda la primera (ajuste 5). En `$defs/hora_declarada`, sigue siendo transitorio solo para `Entrega:`;
-  - **§11.4 y §11.6:** en el `resumen` de la ruta, «plazo pasado» va antes que «sin contar…» y «otra entrega…», para que el corte a 120 caracteres no quite el único dato rojo.
+  - **§11.2 y el esquema:** `dos_horas` se queda como motivo de `Inicio:` (allí la segunda hora no tiene a dónde ir); solo deja de existir en `Entrega:`, donde manda la primera (ajuste 5). En el esquema, `ruta.inicio` es `$defs/hora_inicio`, la única con `dos_horas`; `$defs/hora_declarada` (la de `Entrega:`, el objetivo, los hitos y `otras_entregas`) ya no lo admite. Antes compartían `$defs/hora_declarada`, y una entrega con `dos_horas` validaba;
+  - **§11.4 y §11.6:** en el `resumen` de la ruta, «plazo pasado» va antes que «sin contar…» y «otra entrega…», para que el corte a 120 caracteres no quite el único dato rojo;
+  - **§11.4 (decisión del usuario):** cuando ninguna tarea abierta que cuenta tiene franja, salen `sin_plazo` y `pocos_datos` (este, de las personas con tareas abiertas que cuentan y `n < 3`): sin plazos tampoco hay medidas.
+- 2026-10-19, M10, tras congelar, cierre del contrato: el esquema deja de admitir la forma de antes del issue #46. Se quitan las ramas «TRANSITORIO (issue #46)» y pasa a obligatorio lo que el PR #53 dejó «para endurecer en K-105», porque `jurado.py`, `ruta.py` y `lecturas.py` (con el relay) ya producen solo la forma nueva: lo comprueban `hkos/pruebas`, `igualdad.py` y `g13_g14.py`. Sin subir `v`: restringe, pero nada de lo que produce el código cambia. En [estado.schema.json](estado.schema.json):
+  - **`vista_jurado`:** sin `declarada` en `cobertura.valor` ni `declaradas` en `cuenta`, con `planificadas` y `en_curso` obligatorios; `corregida_por`, solo como objeto; `pitch.donde`, obligatorio; `zona`, obligatoria, y también la de `jurado` en `estado.json`;
+  - **`vista_ruta`:** `riesgos`, obligatorio; sin `entrega_doble` en `veredicto.motivos`; `fuente` y `observado_en`, obligatorios en `sin_plazo[]` y `fuera_de_entrega[]`;
+  - **los dos `resumen`:** 120 caracteres como mucho, sin el tope anterior de 160;
+  - **`$defs/descanso`:** solo con `personas`, sin la forma de una sola `persona`;
+  - **`tareas[].evidencia`:** solo como objeto `{valor, tipo, fuente, observado_en}`, sin el sha suelto.
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -796,7 +803,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
   - `sin_entrega`: `equipo.md` no tiene `- Entrega:`, no se puede leer (`ruta.equipo` distinto de `ok`) o esa línea no se resuelve (`motivo` `sin_dato`, `sin_zona`, `por_confirmar` o `formato`);
   - `ciclo`: un ciclo en el grafo;
   - `sin_plazo`: hay tareas abiertas que cuentan y **ninguna** tiene franja (tras congelar, 2026-10-19, M10, ajuste 2): sin ninguna franja no hay nada que medir, y estimar daría «a tiempo» sin haber medido nada;
-  - `pocos_datos`: una persona con tareas abiertas con franja y `n < 3`.
+  - `pocos_datos`: una persona con tareas abiertas con franja y `n < 3`. Si ninguna tarea abierta que cuenta tiene franja (el caso de `sin_plazo`), una persona con tareas abiertas que cuentan y `n < 3`: salen **los dos**, `sin_plazo` y `pocos_datos`, porque sin plazos tampoco hay medidas (tras congelar, 2026-10-19, M10, ajuste 2).
 
   Si alguna tarea abierta que cuenta tiene franja, una sin franja **no** quita la estimación (tras congelar, 2026-10-19, M10, issue #46, ajuste 1 de ADR-0013): va a `sin_plazo` y el resto se estima. En ese caso `sin_plazo` no es un motivo (tras congelar, 2026-10-19, M10, ajuste 2). Tampoco lo es `entrega_doble`: con dos horas en `- Entrega:`, manda la primera y la otra va a `otras_entregas` (ajuste 5).
 

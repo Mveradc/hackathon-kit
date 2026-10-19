@@ -114,11 +114,10 @@
         "valor": { "$ref": "#/$defs/hora_o_nada" },
         "texto": { "$ref": "#/$defs/texto_o_nada" },
         "confirmar": { "type": "boolean", "description": "La línea lleva «(confirmar)»." },
-        "motivo": { "anyOf": [
-          { "type": "null" },
-          { "enum": ["sin_dato", "sin_zona", "formato", "por_confirmar"] },
-          { "enum": ["dos_horas"], "description": "Tras congelar, 2026-10-19, M10, ajuste 2: en Inicio:, la línea trae dos horas distintas (sin contar la zona) y valor es null: la segunda no tiene a dónde ir. TRANSITORIO (issue #46) solo en ruta.entrega (la línea Entrega:): se quita de allí al adaptar el código, porque tras el ajuste 5 de ADR-0013 manda la primera (valor) y la otra va a otras_entregas con donde equipo.md." }
-        ] },
+        "motivo": {
+          "anyOf": [{ "type": "null" }, { "enum": ["sin_dato", "sin_zona", "formato", "por_confirmar"] }],
+          "description": "Sin dos_horas: con dos horas en Entrega: manda la primera (valor) y la otra va a otras_entregas con donde equipo.md (ajuste 5 de ADR-0013). La de Inicio:, que sí puede llevar dos_horas, es $defs/hora_inicio (tras congelar, 2026-10-19, M10, ajuste 2)."
+        },
         "donde": { "enum": ["equipo.md", "plan.md", "criterios.md"] },
         "cita": { "$ref": "#/$defs/cita", "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 5): con donde criterios.md, la cita de la nota (su texto no va: texto es null, constitución V); en las demás, ausente." },
         "fuente": { "$ref": "#/$defs/fuente" },
@@ -126,41 +125,40 @@
         "declarado": { "const": true }
       }
     },
+    "hora_inicio": {
+      "type": "object",
+      "description": "Tras congelar, 2026-10-19, M10, ajuste 2: la línea Inicio: de equipo.md (ruta.inicio). Como $defs/hora_declarada, pero con el motivo dos_horas y siempre de equipo.md, sin nombre ni cita.",
+      "required": ["valor", "texto", "motivo", "donde", "fuente", "observado_en", "declarado"],
+      "additionalProperties": false,
+      "properties": {
+        "valor": { "$ref": "#/$defs/hora_o_nada" },
+        "texto": { "$ref": "#/$defs/texto_o_nada" },
+        "confirmar": { "type": "boolean", "description": "La línea lleva «(confirmar)»." },
+        "motivo": {
+          "anyOf": [{ "type": "null" }, { "enum": ["sin_dato", "sin_zona", "formato", "por_confirmar", "dos_horas"] }],
+          "description": "dos_horas: la línea trae dos horas distintas (sin contar la zona) y valor es null: la segunda no tiene a dónde ir (tras congelar, 2026-10-19, M10, ajuste 2)."
+        },
+        "donde": { "const": "equipo.md" },
+        "fuente": { "$ref": "#/$defs/fuente" },
+        "observado_en": { "type": "string", "format": "date-time", "description": "Hora del commit de equipo.md en origin/main." },
+        "declarado": { "const": true }
+      }
+    },
     "descanso": {
       "description": "Tras congelar, 2026-10-19, M10 (ADR-0013, decisión 9A; issue #46, ajuste 4): un turno de «## Descansos» del plan, de una fila de la tabla «| Turno | Quién |» o de una línea «- <quién>: <turno>». Varias personas por turno; el final puede llevar día.",
-      "anyOf": [
-        {
-          "type": "object",
-          "required": ["personas", "desde", "hasta", "texto", "motivo", "fuente", "observado_en", "declarado"],
-          "additionalProperties": false,
-          "properties": {
-            "personas": { "anyOf": [{ "type": "null" }, { "type": "array", "items": { "type": "string", "maxLength": 60 } }], "description": "Los usuarios del turno, en orden (uno que no se resuelve, tal cual); null = «Todos»." },
-            "desde": { "$ref": "#/$defs/hora_o_nada" },
-            "hasta": { "$ref": "#/$defs/hora_o_nada" },
-            "texto": { "type": "string", "maxLength": 300, "description": "La fila o la línea tal cual." },
-            "motivo": { "anyOf": [{ "type": "null" }, { "enum": ["formato", "sin_inicio", "sin_zona"] }] },
-            "fuente": { "$ref": "#/$defs/fuente" },
-            "observado_en": { "type": "string", "format": "date-time" },
-            "declarado": { "const": true }
-          }
-        },
-        {
-          "type": "object",
-          "description": "TRANSITORIO (issue #46): se quita al adaptar el código. La forma anterior, con una sola persona (persona) en vez de la lista personas.",
-          "required": ["persona", "desde", "hasta", "texto", "motivo", "fuente", "observado_en", "declarado"],
-          "additionalProperties": false,
-          "properties": {
-            "persona": { "$ref": "#/$defs/texto_o_nada", "description": "null = todo el equipo." },
-            "desde": { "$ref": "#/$defs/hora_o_nada" },
-            "hasta": { "$ref": "#/$defs/hora_o_nada" },
-            "texto": { "type": "string", "maxLength": 300 },
-            "motivo": { "anyOf": [{ "type": "null" }, { "enum": ["formato", "sin_inicio", "sin_zona"] }] },
-            "fuente": { "$ref": "#/$defs/fuente" },
-            "observado_en": { "type": "string", "format": "date-time" },
-            "declarado": { "const": true }
-          }
-        }
-      ]
+      "type": "object",
+      "required": ["personas", "desde", "hasta", "texto", "motivo", "fuente", "observado_en", "declarado"],
+      "additionalProperties": false,
+      "properties": {
+        "personas": { "anyOf": [{ "type": "null" }, { "type": "array", "items": { "type": "string", "maxLength": 60 } }], "description": "Los usuarios del turno, en orden (uno que no se resuelve, tal cual); null = «Todos»." },
+        "desde": { "$ref": "#/$defs/hora_o_nada" },
+        "hasta": { "$ref": "#/$defs/hora_o_nada" },
+        "texto": { "type": "string", "maxLength": 300, "description": "La fila o la línea tal cual." },
+        "motivo": { "anyOf": [{ "type": "null" }, { "enum": ["formato", "sin_inicio", "sin_zona"] }] },
+        "fuente": { "$ref": "#/$defs/fuente" },
+        "observado_en": { "type": "string", "format": "date-time" },
+        "declarado": { "const": true }
+      }
     },
     "fuerza": {
       "type": "object",
@@ -209,7 +207,7 @@
     "vista_jurado": {
       "type": "object",
       "description": "Tras congelar, 2026-10-19, M10 (ADR-0012; api.md §11): el bloque jurado de proyeccion.vista, solo con vista_jurado: sí. No es un campo de estado.json: se define aquí para validar la vista de ejemplo y la de los guiones.",
-      "required": ["observado_en", "fuente", "viejo", "cuenta", "notas", "sin_nota", "resumen"],
+      "required": ["observado_en", "fuente", "viejo", "zona", "cuenta", "notas", "sin_nota", "resumen"],
       "additionalProperties": false,
       "properties": {
         "observado_en": { "type": "string", "format": "date-time" },
@@ -220,7 +218,7 @@
         "cuenta": {
           "type": "object",
           "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 2 de ADR-0012): sin_cubrir = sin_tarea + ambiguas + planificadas + en_curso + en_pitch (todo lo no cubierto, sin las corregidas, que solo van en corregidas). Una ambigua no cuenta en sin_tarea.",
-          "required": ["notas", "corregidas", "cubiertas", "sin_cubrir", "sin_tarea", "ambiguas", "en_pitch", "sin_cubrir_por_fuerza"],
+          "required": ["notas", "corregidas", "cubiertas", "sin_cubrir", "sin_tarea", "ambiguas", "planificadas", "en_curso", "en_pitch", "sin_cubrir_por_fuerza"],
           "additionalProperties": false,
           "properties": {
             "notas": { "type": "integer", "minimum": 0 },
@@ -232,7 +230,6 @@
             "planificadas": { "type": "integer", "minimum": 0, "description": "Enlazadas a tareas que no han empezado (ninguna con historia.primera_senal)." },
             "en_curso": { "type": "integer", "minimum": 0, "description": "Enlazadas a tareas sin hacer, alguna con señales." },
             "en_pitch": { "type": "integer", "minimum": 0 },
-            "declaradas": { "type": "integer", "minimum": 0, "description": "TRANSITORIO (issue #46): se quita al adaptar el código. Lo sustituyen planificadas y en_curso." },
             "sin_cubrir_por_fuerza": {
               "type": "array",
               "items": {
@@ -258,10 +255,7 @@
                 "required": ["valor", "fuente", "observado_en", "viejo"],
                 "additionalProperties": false,
                 "properties": {
-                  "valor": { "anyOf": [
-                    { "enum": ["sin_tarea", "ambigua", "planificada", "en_curso", "en_pitch", "cubierta"], "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 2 de ADR-0012): planificada = sus tareas no han empezado; en_curso = alguna tiene señales." },
-                    { "enum": ["declarada"], "description": "TRANSITORIO (issue #46): se quita al adaptar el código. Lo sustituyen planificada y en_curso." }
-                  ] },
+                  "valor": { "enum": ["sin_tarea", "ambigua", "planificada", "en_curso", "en_pitch", "cubierta"], "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 2 de ADR-0012): planificada = sus tareas no han empezado; en_curso = alguna tiene señales." },
                   "fuente": { "$ref": "#/$defs/fuente" },
                   "observado_en": { "type": "string", "format": "date-time" },
                   "viejo": { "type": "boolean" }
@@ -280,8 +274,7 @@
                       "fuente": { "const": "declarado" },
                       "observado_en": { "type": "string", "format": "date-time" }
                     }
-                  },
-                  { "type": "string", "pattern": "^[0-9a-f]{12}$", "description": "TRANSITORIO (issue #46): se quita al adaptar el código. La forma anterior, la clave suelta." }
+                  }
                 ]
               },
               "trabajo_nuevo_desde": { "$ref": "#/$defs/hora_o_nada", "description": "Decisión 6B: sigue cubierta, con el trabajo nuevo desde esta hora." },
@@ -332,7 +325,7 @@
                 "description": "Decisión 5B: la cita en .hackathon/pitch.md, como declarado; nunca hace la nota cubierta.",
                 "anyOf": [{ "type": "null" }, {
                   "type": "object",
-                  "required": ["fuente", "observado_en", "declarado"],
+                  "required": ["donde", "fuente", "observado_en", "declarado"],
                   "additionalProperties": false,
                   "description": "Tras congelar, 2026-10-19, M10, issue #46 (B3): donde, fuente y observado_en, sin autor (pitch.md no dice quién puso la etiqueta).",
                   "properties": {
@@ -364,17 +357,15 @@
         },
         "resumen": {
           "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho.",
-          "anyOf": [
-            { "type": "string", "maxLength": 120 },
-            { "type": "string", "maxLength": 160, "description": "TRANSITORIO (issue #46): se quita al adaptar el código. El tope anterior, 160." }
-          ]
+          "type": "string",
+          "maxLength": 120
         }
       }
     },
     "vista_ruta": {
       "type": "object",
       "description": "Tras congelar, 2026-10-19, M10 (ADR-0013; api.md §11): el bloque ruta de proyeccion.vista, solo con ruta_critica: sí. No es un campo de estado.json.",
-      "required": ["observado_en", "fuente", "viejo", "dato_mas_viejo", "objetivo", "otras_entregas", "veredicto", "estimacion", "base", "hechos", "cadena", "sin_plazo", "fuera_de_entrega", "hitos", "descansos", "resumen"],
+      "required": ["observado_en", "fuente", "viejo", "dato_mas_viejo", "objetivo", "otras_entregas", "veredicto", "estimacion", "base", "hechos", "riesgos", "cadena", "sin_plazo", "fuera_de_entrega", "hitos", "descansos", "resumen"],
       "additionalProperties": false,
       "properties": {
         "observado_en": { "type": "string", "format": "date-time" },
@@ -396,8 +387,7 @@
               "type": "array",
               "items": { "anyOf": [
                 { "enum": ["sin_entrega", "ciclo", "pocos_datos"] },
-                { "enum": ["sin_plazo"], "description": "Tras congelar, 2026-10-19, M10, ajuste 2: solo cuando hay tareas abiertas que cuentan y ninguna tiene franja (si no, «sin plazo» daría «a tiempo» sin medir nada). Si alguna tiene franja, las que no la tienen van a sin_plazo[] y no quitan la estimación (ajuste 1 de ADR-0013)." },
-                { "enum": ["entrega_doble"], "description": "TRANSITORIO (issue #46): se quita al adaptar el código. Tras el ajuste 5 de ADR-0013, con dos horas en Entrega: manda la primera y la otra va a otras_entregas." }
+                { "enum": ["sin_plazo"], "description": "Tras congelar, 2026-10-19, M10, ajuste 2: solo cuando hay tareas abiertas que cuentan y ninguna tiene franja (si no, «sin plazo» daría «a tiempo» sin medir nada). Si alguna tiene franja, las que no la tienen van a sin_plazo[] y no quitan la estimación (ajuste 1 de ADR-0013)." }
               ] },
               "description": "sin_entrega: equipo.md sin Entrega:, ilegible o sin resolver. Las otras_entregas que no coinciden no quitan la estimación (decisión 1A); ni dos horas en Entrega: (ajuste 5) ni una tarea abierta sin plazo si alguna otra tiene franja (ajuste 1), tampoco (issue #46). sin_plazo: ninguna tarea abierta que cuenta tiene franja (tras congelar, 2026-10-19, M10, ajuste 2)."
             },
@@ -505,7 +495,7 @@
           "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 1 de ADR-0013): las tareas abiertas que cuentan y no tienen franja. Si alguna otra abierta tiene franja, no quitan la estimación: cuentan 0 min y el resumen dice «sin contar T28 (sin plazo)». Si ninguna la tiene, el veredicto es sin_estimacion con el motivo sin_plazo (tras congelar, 2026-10-19, M10, ajuste 2).",
           "items": {
             "type": "object",
-            "required": ["tarea", "motivo"],
+            "required": ["tarea", "motivo", "fuente", "observado_en"],
             "additionalProperties": false,
             "properties": {
               "tarea": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
@@ -519,7 +509,7 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["tarea", "motivo"],
+            "required": ["tarea", "motivo", "fuente", "observado_en"],
             "additionalProperties": false,
             "properties": {
               "tarea": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
@@ -541,10 +531,8 @@
         "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso" } },
         "resumen": {
           "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 2: «plazo pasado» va antes que «sin contar…» y «otra entrega…», para que el corte no quite el único dato rojo.",
-          "anyOf": [
-            { "type": "string", "maxLength": 120 },
-            { "type": "string", "maxLength": 160, "description": "TRANSITORIO (issue #46): se quita al adaptar el código. El tope anterior, 160." }
-          ]
+          "type": "string",
+          "maxLength": 120
         }
       }
     }
@@ -614,20 +602,15 @@
           "fusion": { "type": "string" },
           "evidencia": {
             "description": "Comprobación del revisor o commit que la publica. Tras congelar, 2026-10-19, M10 (ADR-0012; issue #46, ajuste 6): con vista_jurado: sí o ruta_critica: sí, el relay la rellena con el ÚLTIMO sha publicado (commit con ID o fusión aprobada que la llevó a publicada) y su hora.",
-            "anyOf": [
-              {
-                "type": "object",
-                "required": ["valor", "tipo", "fuente", "observado_en"],
-                "additionalProperties": false,
-                "properties": {
-                  "valor": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "El sha." },
-                  "tipo": { "enum": ["commit", "fusion"] },
-                  "fuente": { "$ref": "#/$defs/fuente" },
-                  "observado_en": { "type": "string", "format": "date-time", "description": "La hora del paso a publicada que dejó ese sha (la última, si se publicó más de una vez)." }
-                }
-              },
-              { "type": "string", "description": "TRANSITORIO (issue #46): se quita al adaptar el código. La forma anterior, el sha (o la comprobación) suelto, sin tipo ni hora." }
-            ]
+            "type": "object",
+            "required": ["valor", "tipo", "fuente", "observado_en"],
+            "additionalProperties": false,
+            "properties": {
+              "valor": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "El sha." },
+              "tipo": { "enum": ["commit", "fusion"] },
+              "fuente": { "$ref": "#/$defs/fuente" },
+              "observado_en": { "type": "string", "format": "date-time", "description": "La hora del paso a publicada que dejó ese sha (la última, si se publicó más de una vez)." }
+            }
           },
           "hasta": { "$ref": "#/$defs/plazo", "description": "Tras congelar, 2026-10-19, M10: solo con ruta_critica: sí." },
           "franja": { "$ref": "#/$defs/franja", "description": "Tras congelar, 2026-10-19, M10: solo con ruta_critica: sí." },
@@ -816,7 +799,7 @@
     "jurado": {
       "type": "object",
       "description": "Tras congelar, 2026-10-19, M10 (ADR-0012, api.md §11): solo con vista_jurado: sí en el os.md del relay. Lo que el relay lee de origin/main de su clon; la cobertura la calcula proyeccion.vista.",
-      "required": ["fichero", "notas", "pitch"],
+      "required": ["fichero", "zona", "notas", "pitch"],
       "additionalProperties": false,
       "properties": {
         "fichero": { "$ref": "#/$defs/dato", "description": "valor: ok | sin fichero | mal formado; observado_en: hora del commit de criterios.md en origin/main." },
@@ -836,8 +819,8 @@
       "properties": {
         "equipo": { "$ref": "#/$defs/dato", "description": "valor: ok | sin fichero | mal formado; observado_en: hora del commit de equipo.md." },
         "zona": { "$ref": "#/$defs/dato", "description": "valor: la zona horaria de Inicio: (IANA o ±HH:MM), o null si no se entiende; fuente git, declarado." },
-        "inicio": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }] },
-        "entrega": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }], "description": "Decisión 1A: - Entrega: de equipo.md." },
+        "inicio": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_inicio" }], "description": "- Inicio: de equipo.md. Tras congelar, 2026-10-19, M10, ajuste 2: $defs/hora_inicio, la única que puede llevar el motivo dos_horas." },
+        "entrega": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }], "description": "Decisión 1A: - Entrega: de equipo.md. Sin el motivo dos_horas: manda la primera hora y la otra va a otras_entregas (ajuste 5 de ADR-0013; tras congelar, 2026-10-19, M10, ajuste 2)." },
         "otras_entregas": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada" }, "description": "Para compararlas con la entrega (issue #46, ajuste 5): la segunda hora de Entrega: (donde equipo.md), las filas de Hitos cuya Qué es «Entrega» o empieza por «Entrega final» (donde plan.md) y las notas de fuerza dato que afectan a la entrega (donde criterios.md, con su cita y sin su texto)." },
         "hitos": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada" }, "description": "La tabla «Hitos del equipo» del plan (la congelación es uno), sin las filas de entrega, que van solo a otras_entregas (issue #46, B9)." },
         "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso" } }
