@@ -1,5 +1,7 @@
 // Las dos acciones de M9a (api.md §4, ADR-0010), solo a tu demonio: JSON, X-HK-Token y nada en la query. El demonio
 // valida y decide; la web solo dice lo que ha contestado.
+import { sinBidi } from "../formato.js";
+
 export async function accion(fetchImpl, token, ruta, cuerpo) {
   let r;
   try {
@@ -14,7 +16,7 @@ export async function accion(fetchImpl, token, ruta, cuerpo) {
   }
   let datos = {};
   try {
-    datos = await r.json();
+    datos = sinBidi(await r.json());
   } catch {
     /* sin cuerpo JSON */
   }

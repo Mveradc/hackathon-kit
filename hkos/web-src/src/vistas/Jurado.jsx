@@ -1,5 +1,5 @@
 import { CriterioEvidencia, CriterioPrueba, CriterioRow, CriterioTarea, Panel, ProvenanceTag, StatusPulse } from "../componentes/componentes.jsx";
-import { canal, ETIQUETAS, fechaHm, hace, hm, textoZona, zonaM10 } from "../formato.js";
+import { canal, ETIQUETAS, fechaHm, hace, hm, textoZona, zonaJurado } from "../formato.js";
 import { Vacio } from "./comun.jsx";
 
 // Jurado (pantallas/jurado.dc.html; R-35, ADR-0012, api.md §11.3): cada nota de criterios.md y lo que la cubre. Todo
@@ -49,11 +49,11 @@ function Nota({ x, porClave, zona, servido }) {
   return (
     <CriterioRow data-nota={n.clave} data-cobertura={x.cobertura.valor} data-corregida={corregida ? "si" : undefined}
       time={<time dateTime={n.hora || undefined} data-hora-nota="">{cuando}</time>}
-      who={<><span data-quien="">{n.quien ?? "sin nombre"}</span> (<span data-papel="">{n.papel}</span>)</>}
-      where={n.donde ? <span data-donde-nota="">{n.donde}</span> : null}
+      who={<>{n.quien != null ? <>«<span data-quien="">{n.quien}</span>»</> : <span data-quien="">sin nombre</span>} (<span data-papel="">{n.papel}</span>)</>}
+      where={n.donde ? <>«<span data-donde-nota="">{n.donde}</span>»</> : null}
       strength={n.fuerza.texto} strengthKind={n.fuerza.tipo}
-      said={n.literal ? <>«<span data-dijo="">{n.dijo}</span>»</> : <>(paráfrasis) <span data-dijo="">{n.dijo}</span></>}
-      affects={n.afecta_a ? <span data-afecta="">{n.afecta_a}</span> : null}
+      said={<>{n.literal ? null : "(paráfrasis) "}«<span data-dijo="">{n.dijo}</span>»</>}
+      affects={n.afecta_a ? <>«<span data-afecta="">{n.afecta_a}</span>»</> : null}
       corrects={n.corrige} by={n.anotado_por} age={hace(n.observado_en, servido)} at={n.observado_en}
       coverage={cobertura} coverageStale={!!x.cobertura.viejo}
       coverageLabel={corregida ? `Corregida por la de ${otra ? (otra.nota.hora ? fechaHm(otra.nota.hora, zona) : otra.nota.cita) : "otra nota"}` : undefined}
@@ -74,7 +74,7 @@ function Nota({ x, porClave, zona, servido }) {
 export function Jurado({ respuesta }) {
   const { vista, servido_en: servido } = respuesta;
   const j = vista.jurado;
-  const zona = zonaM10(vista);
+  const zona = zonaJurado(vista);
   const c = j.cuenta;
   const porClave = Object.fromEntries(j.notas.map((x) => [x.nota.clave, x]));
   const sin = j.notas.filter((x) => !x.corregida_por && x.cobertura.valor !== "cubierta");
@@ -89,7 +89,7 @@ export function Jurado({ respuesta }) {
         <span className="hk-texto-sec">Cada nota de criterios.md y lo que la cubre. Las notas y sus enlaces a tareas (la
           etiqueta «(criterios: …)» en la fila de plan.md) los escribe el equipo; el estado de cada tarea y las
           evidencias en main, el OS. Calculado a las <span className="hk-mono" data-calculado="">{hm(j.observado_en, zona)}</span>,
-          horas en {j.zona ? <span data-zona="">{j.zona.valor}</span> : "la zona de equipo.md"} ({textoZona(zona)}).</span>
+          horas en {j.zona ? <span data-zona="">{j.zona.valor}</span> : "la zona de equipo.md"}{typeof zona === "number" ? ` (${textoZona(zona)})` : ""}.</span>
       </div>
       <div className="hk-acciones">
         <ProvenanceTag source={canal(j.fuente)} label={j.fuente} age={hace(j.observado_en, servido)} at={j.observado_en}

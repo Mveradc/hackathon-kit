@@ -22,9 +22,9 @@ que pinta la web, cada uno validado contra $defs/vista_jurado y $defs/vista_ruta
   y sus interruptores, como en igualdad.py y g13_g14.py (evals/coordinacion/simulador/m10.py: los ficheros de cada
   guion en un repo de git con su historia). G13, solo con vista_jurado; G14, solo con ruta_critica. De la vista, solo los bloques.
 Cada caso lleva `antiguedades` (como arriba, más la de `ruta.dato_mas_viejo`) y `horas`: cada hora de cada bloque
-escrita en la zona con que la enseña la web, {bloque: {hora: {hm, dia, fecha}}}. La del jurado, como ruta.py en el
-resumen (el desfase de la entrega; sin ella, el de las notas; si no, UTC); la de la ruta, `ruta.zona` (issue #56: el
-nombre IANA de equipo.md o el desfase) y, sin ella, la del jurado.
+escrita en la zona con que la enseña la web, {bloque: {hora: {hm, dia, fecha}}}: la `zona` del bloque (issue #56 para
+la ruta, #63 para el jurado: el nombre IANA de equipo.md o el desfase) y, sin ella, como ruta.py en el resumen (el
+desfase de la entrega; sin ella, el de las notas; si no, UTC).
 
 Uso (desde hkos/web-src): uv run --no-project scripts/vistas_ejemplo.py   → test/vistas/*.json y test/vistas/m10/*.json
 """
@@ -120,10 +120,10 @@ def zona_m10(vista):
     return timezone.utc
 
 
-def zona_ruta(vista):
-    """La zona de las horas de la ruta (issue #56): `ruta.zona.valor`, un desfase ±HH:MM o un nombre IANA (con
-    lecturas.zona, la que usa el relay); sin ella o si no se resuelve, la del jurado (zona_m10)."""
-    valor = ((vista.get("ruta") or {}).get("zona") or {}).get("valor")
+def zona_de(vista, bloque):
+    """La zona de las horas de un bloque (issue #56 la ruta, #63 el jurado): su `zona.valor`, un desfase ±HH:MM o un
+    nombre IANA (con lecturas.zona, la que usa el relay); sin ella o si no se resuelve, zona_m10."""
+    valor = ((vista.get(bloque) or {}).get("zona") or {}).get("valor")
     m = re.fullmatch(r"([+-])(\d\d):(\d\d)", valor or "")
     if m:
         return timezone((1 if m.group(1) == "+" else -1) * timedelta(hours=int(m.group(2)), minutes=int(m.group(3))))
@@ -148,7 +148,7 @@ def caso_m10(vista, ahora, persona, **extra):
             err = ESQUEMA._error({"$ref": f"#/$defs/{defs}"}, vista[clave], clave)
             if err is not None:
                 raise SystemExit(f"bloque `{clave}` que no valida contra $defs/{defs}: {err}")
-    zonas = {"jurado": zona_m10(vista), "ruta": zona_ruta(vista)}
+    zonas = {k: zona_de(vista, k) for k in ("jurado", "ruta")}
     horas = {k: escritas(vista[k], zonas[k]) for k in ("jurado", "ruta") if k in vista}
     edades = set(observados(vista)) | {x for x in [(vista.get("ruta") or {}).get("dato_mas_viejo")] if x}
     return dict({"servido_en": ahora, "persona": persona, "relay": {"conectado": True, "desde": ahora}, "vista": vista,

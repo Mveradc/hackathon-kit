@@ -103,7 +103,7 @@ function marcasDeHora(min, max, zona) {
   return salida;
 }
 
-function Linea({ r, zona, servido, porTarea, pasados, riesgos, callados }) {
+function Linea({ r, zona, servido, pasados, riesgos }) {
   const horas = [ms(r.observado_en)];
   for (const e of r.cadena) {
     if (e.franja.valor) horas.push(ms(e.franja.valor.desde), ms(e.franja.valor.hasta));
@@ -114,9 +114,9 @@ function Linea({ r, zona, servido, porTarea, pasados, riesgos, callados }) {
   if (r.estimacion) horas.push(ms(r.estimacion.temprano), ms(r.estimacion.tarde));
   const min = Math.min(...horas), max = Math.max(...horas);
   const marcas = [{ at: ms(r.observado_en), kind: "ahora", label: "ahora" },
-    ...r.hitos.filter((h) => h.hito.valor).map((h) => ({ at: ms(h.hito.valor), kind: "hito", label: h.hito.nombre })),
+    ...r.hitos.filter((h) => h.hito.valor).map((h) => ({ at: ms(h.hito.valor), kind: "hito", label: `«${h.hito.nombre}» · declarado · ${h.hito.donde}` })),
     ...(r.objetivo?.valor ? [{ at: ms(r.objetivo.valor), kind: "entrega", label: "entrega" }] : [])];
-  const filas = r.cadena.map((e) => fila(e, zona, servido, porTarea, pasados, riesgos, callados, true));
+  const filas = r.cadena.map((e) => fila(e, zona, servido, pasados, riesgos, r.veredicto.valor, true));
   const [, , tono] = VEREDICTO[r.veredicto.valor] || VEREDICTO.sin_estimacion;
   const est = r.estimacion;
   return (
@@ -127,11 +127,14 @@ function Linea({ r, zona, servido, porTarea, pasados, riesgos, callados }) {
   );
 }
 
-function fila(e, zona, servido, porTarea, pasados, riesgos, callados, linea) {
+// Lo que dice cada fila sale de campos de la vista (ADR-0009, issue #63): «No llega» solo si el veredicto es no_llega
+// (si no, el eslabón en `riesgos` es un «Riesgo»), y la barra `vieja` solo si la tarjeta trae `viejo` («sin señales»
+// no es «viejo»).
+function fila(e, zona, servido, pasados, riesgos, veredicto, linea) {
   const t = e.tarjeta;
-  const pasado = pasados.has(t.id), riesgo = riesgos.has(t.id), callado = callados.has(t.dueno) || t.viejo;
+  const pasado = pasados.has(t.id), riesgo = riesgos.has(t.id);
   const fr = e.franja.valor;
-  const pulse = pasado ? ["fail", "Plazo pasado"] : riesgo ? ["wait", "No llega (estimación)"]
+  const pulse = pasado ? ["fail", "Plazo pasado"] : riesgo ? ["wait", veredicto === "no_llega" ? "No llega (estimación)" : "Riesgo (estimación)"]
     : t.viejo ? ["stale", t.etiqueta] : t.estado === "en_curso" ? ["live", t.etiqueta] : ["idle", t.etiqueta];
   return {
     id: t.id, title: `«${t.titulo}»`,
@@ -146,7 +149,7 @@ function fila(e, zona, servido, porTarea, pasados, riesgos, callados, linea) {
     note: e.fin_tarde ? <span data-fin-eslabon="">estimación: acaba entre <Hora iso={e.fin_temprano} zona={zona} /> y <Hora iso={e.fin_tarde} zona={zona} /></span> : null,
     noteKind: riesgo ? "no_llega" : "normal",
     ...(linea ? {
-      kind: pasado ? "plazo_pasado" : callado ? "vieja" : "franja",
+      kind: pasado ? "plazo_pasado" : t.viejo ? "vieja" : "franja",
       from: fr ? ms(fr.desde) : undefined, to: fr ? ms(fr.hasta) : undefined,
       est: e.fin_tarde ? [ms(e.fin_temprano), ms(e.fin_tarde)] : undefined, estKind: riesgo ? "no_llega" : "prevista",
       deadline: e.hasta.valor ? ms(e.hasta.valor) : undefined, deadlinePast: pasado,
@@ -166,7 +169,6 @@ export function Ruta({ respuesta }) {
   const porTarea = new Map([...tarjetas(vista), ...r.cadena.map((e) => e.tarjeta)].map((t) => [t.id, t]));
   const pasados = new Set(r.hechos.filter((h) => h.tipo === "plazo_pasado").map((h) => h.tarea));
   const riesgos = new Set(r.riesgos.map((x) => x.tarea));
-  const callados = new Set(r.hechos.filter((h) => h.tipo === "sin_senales").map((h) => h.persona));
   const ciclo = r.hechos.find((h) => h.tipo === "ciclo");
   const textoMotivo = (m) => m === "ciclo" && ciclo ? `ciclo ${ciclo.ciclo.join(" → ")}`
     : m === "sin_plazo" ? `${MOTIVO_SIN[m]}: ${r.sin_plazo.map((x) => x.tarea).join(", ")}` : MOTIVO_SIN[m] || m;
@@ -230,7 +232,7 @@ export function Ruta({ respuesta }) {
           </div>
           {r.otras_entregas.map((o, i) => (
             <div key={i} className="hk-bloque" data-otra-entrega={o.donde}>
-              <span className="hk-texto"><b>Otra entrega</b>{o.nombre ? <> · <span data-nombre="">{o.nombre}</span></> : null}{" "}
+              <span className="hk-texto"><b>Otra entrega</b>{o.nombre ? <> · «<span data-nombre="">{o.nombre}</span>»</> : null}{" "}
                 {o.donde === "criterios.md"
                   ? <><Hora iso={o.valor} zona={zona} /> (criterios.md, nota de <span data-cita="">{o.cita ? o.cita.slice(11, 16) : "—"}</span>)</>
                   : <HoraDeclarada d={o} zona={zona} />}</span>
@@ -246,7 +248,7 @@ export function Ruta({ respuesta }) {
           {r.hitos.map((h, i) => (
             <div key={i} className={`hk-hito hk-hito--${h.hito.valor ? (h.pasado ? "pasado" : "viene") : "sin"}`} data-hito={h.hito.nombre}>
               <span className="hk-meta">{h.hito.valor ? <Hora iso={h.hito.valor} zona={zona} /> : "sin hora"}</span>
-              <span className="hk-texto"><b>{h.hito.nombre}</b></span>
+              <span className="hk-texto"><b>«<span data-nombre="">{h.hito.nombre}</span>»</b></span>
               <span className="hk-texto-sec" data-pasado={h.pasado ? "si" : "no"}>{h.hito.valor ? (h.pasado ? "Ya pasó" : "Por venir") : `Sin hora · ${MOTIVO[h.hito.motivo] || h.hito.motivo || "—"}`} · «{h.hito.texto}»</span>
               <Declarado donde={h.hito.donde} d={h.hito} servido={servido} />
             </div>
@@ -258,10 +260,10 @@ export function Ruta({ respuesta }) {
 
       <Panel title="La cadena más larga" meta={r.cadena.length ? `tareas abiertas · ${r.cadena.map((e) => e.tarjeta.id).join(" → ")}` : "ninguna"}>
         {!r.cadena.length ? <Vacio>Ninguna tarea abierta con «Hasta» resuelto.</Vacio>
-          : est ? <Linea r={r} zona={zona} servido={servido} porTarea={porTarea} pasados={pasados} riesgos={riesgos} callados={callados} />
+          : est ? <Linea r={r} zona={zona} servido={servido} pasados={pasados} riesgos={riesgos} />
             : (
               <>
-                <Cadena layout="cajas" rows={r.cadena.map((e) => fila(e, zona, servido, porTarea, pasados, riesgos, callados, false))} />
+                <Cadena layout="cajas" rows={r.cadena.map((e) => fila(e, zona, servido, pasados, riesgos, r.veredicto.valor, false))} />
                 <span className="hk-texto-sec">Sin línea de tiempo mientras no haya estimación: las barras saldrían de las franjas del plan y parecerían una previsión. Es lo que dice plan.md.</span>
               </>
             )}
@@ -299,7 +301,7 @@ export function Ruta({ respuesta }) {
               <dt>Descansos</dt>
               <dd>{r.descansos.length ? r.descansos.map((d, i) => (
                 <span key={i} className="hk-bloque" data-descanso={i}>
-                  <span className="hk-mono hk-dato" data-texto="">{d.texto}</span>
+                  <span className="hk-mono hk-dato">«<span data-texto="">{d.texto}</span>»</span>
                   <span>{d.personas ? d.personas.map(arroba).join(", ") : "Todos"} · {d.desde
                     ? <><Hora iso={d.desde} zona={zona} /> – <Hora iso={d.hasta} zona={zona} /></>
                     : `no se entiende (${MOTIVO[d.motivo] || d.motivo}): se enseña y no se usa`}</span>

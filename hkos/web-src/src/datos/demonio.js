@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { sinBidi } from "../formato.js";
 import { lectorSSE } from "./sse.js";
 
 // Lo que la web recibe de su demonio (api.md §4, ADR-0010):
@@ -89,9 +90,9 @@ function fuente({ token, fetchImpl, emite }) {
     espera = ESPERA_MIN;            // solo un stream que trae algo reinicia la espera (no uno que se corta enseguida)
     if (event === "vista") {
       clearTimeout(sinVista);
-      recibido({ t: "vista", r: JSON.parse(data) });
+      recibido({ t: "vista", r: sinBidi(JSON.parse(data)) });
     } else if (event === "eventos") {
-      recibido({ t: "eventos", lista: (JSON.parse(data).eventos || []).filter((e) => e && e.id) });
+      recibido({ t: "eventos", lista: (sinBidi(JSON.parse(data)).eventos || []).filter((e) => e && e.id) });
     } else if (event === "ping") recibido({ t: "ping" });
   };
 
@@ -101,7 +102,7 @@ function fuente({ token, fetchImpl, emite }) {
       if (!vivo) return;
       if (r.status === 401) return fallo("token");
       if (r.status === 503) return fallo("sin estado");
-      if (r.ok) recibido({ t: "vista", r: await r.json() });
+      if (r.ok) recibido({ t: "vista", r: sinBidi(await r.json()) });
     } catch {
       /* el demonio no responde: lo dirá «sin conexión» */
     }
