@@ -57,9 +57,16 @@ def hecha(t):
     return e["valor"] in SIGUE_HECHA and bool((t.get("historia") or {}).get("hecha_en"))
 
 
+SIN_EMPEZAR = ("lista", "pendiente", "reclamada")
+
+
 def con_senales(t):
-    """Ha empezado: tiene historia.primera_senal (api.md §11.3, #46, 2)."""
-    return bool((t.get("historia") or {}).get("primera_senal"))
+    """Ha empezado: su estado no es lista, pendiente ni reclamada, o tiene historia.primera_senal (api.md §11.3; #46,
+    2; #56, punto 3). Por el estado, también una en curso por un latido o publicada sin pasar por en_curso, que la
+    historia (sin latidos, solo con los pasos a en_curso) deja sin primera_senal. Un estado declarado (desde la web,
+    con ⚑) no es una señal: no cuenta."""
+    e = t["estado"]
+    return (e["valor"] not in SIN_EMPEZAR and not e.get("declarado")) or bool((t.get("historia") or {}).get("primera_senal"))
 
 
 def _viejas(fuentes, ahora, umbral):
@@ -108,11 +115,16 @@ def _evidencias(t, conexiones, viejas, ahora, umbral):
 def _resumen(fichero, cuenta, fuerte):
     """fuerte: la fuerza más alta entre las sin cubrir, {texto, n}, o None."""
     from proyeccion import corta
+    from ruta import entre_comillas
     if fichero == "sin fichero":
         return "jurado: sin criterios.md en main"
     if not cuenta["notas"]:
         return "jurado: sin notas en criterios.md"
-    partes = [f"{cuenta['sin_cubrir']} sin cubrir" + (f" ({fuerte['n']} «{fuerte['texto']}»)" if fuerte else "")]
+    # #56, 7 (§11.3 del contrato): la Fuerza es texto libre: detrás de « · », entre «», recortada a 30 grafemas, con su
+    # fichero y sin autor.
+    partes = [f"{cuenta['sin_cubrir']} sin cubrir"]
+    if fuerte:
+        partes.append(f"{fuerte['n']} {entre_comillas(fuerte['texto'])} (criterios.md)")
     if cuenta["ambiguas"]:
         partes.append(f"{cuenta['ambiguas']} ambigua" + "s" * (cuenta["ambiguas"] != 1))
     if cuenta["en_pitch"]:
@@ -162,7 +174,7 @@ def bloque(jurado, tareas, ahora, fuentes=None, servicios=None, umbral_viejo_s=F
     for n in notas:
         es = list(enlaces[n["clave"]].values())
         firmes = [t for t, _, ambiguo, _ in es if not ambiguo]
-        if firmes:      # sin cubrir: en curso si alguna de sus tareas tiene señales; si no, planificada (#46, 2)
+        if firmes:      # sin cubrir: en curso si alguna de sus tareas ha empezado; si no, planificada (#46, 2; #56, 3)
             valor = "cubierta" if all(hecha(t) for t in firmes) else \
                 "en_curso" if any(con_senales(t) for t in firmes) else "planificada"
         elif es:
