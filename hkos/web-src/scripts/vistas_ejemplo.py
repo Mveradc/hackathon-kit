@@ -18,13 +18,13 @@ TRABAJO de proyeccion.py que la web repite.
 M10 (K-106; R-35, R-36, ADR-0012, ADR-0013; api.md §11): en test/vistas/m10/, los bloques `jurado` y `ruta` de la vista
 que pinta la web, cada uno validado contra $defs/vista_jurado y $defs/vista_ruta:
 - ejemplo.json: la vista de ejemplo de api.md §11.6, tal cual (se lee del contrato);
-- G13.json y G14.json: los tres momentos de G13 y de G14, con los bloques que calculan hkos/jurado.py y hkos/ruta.py
-  con las entradas que dejaría el relay (las de hkos/pruebas/test_jurado.py y test_ruta.py, de los hechos de
-  guiones/g13 y g14). Cuando K-105 lleve los bloques a proyeccion.vista y los guiones G13 y G14 al montaje de
-  igualdad.py, se sacarán como G12, del relay de verdad y con proyeccion.vista: caso_m10() ya recibe una vista.
-Cada caso lleva `antiguedades` (como arriba, más la de `ruta.dato_mas_viejo`) y `horas`: cada hora de los bloques en
-la zona de equipo.md, tal como la escribe ruta.py en el resumen (el desfase de la entrega; sin ella, el de las notas):
-{hora: {hm, dia, fecha}}.
+- G13.json y G14.json: los momentos de G13 y de G14, con la vista entera que da proyeccion.vista con el relay de verdad
+  y sus interruptores, como en igualdad.py y g13_g14.py (evals/coordinacion/simulador/m10.py: los ficheros de cada
+  guion en un repo de git con su historia). G13, solo con vista_jurado; G14, solo con ruta_critica. De la vista, solo los bloques.
+Cada caso lleva `antiguedades` (como arriba, más la de `ruta.dato_mas_viejo`) y `horas`: cada hora de cada bloque
+escrita en la zona con que la enseña la web, {bloque: {hora: {hm, dia, fecha}}}. La del jurado, como ruta.py en el
+resumen (el desfase de la entrega; sin ella, el de las notas; si no, UTC); la de la ruta, `ruta.zona` (issue #56: el
+nombre IANA de equipo.md o el desfase) y, sin ella, la del jurado.
 
 Uso (desde hkos/web-src): uv run --no-project scripts/vistas_ejemplo.py   → test/vistas/*.json y test/vistas/m10/*.json
 """
@@ -34,13 +34,15 @@ import re
 import shutil
 import sys
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 WEB = os.path.dirname(AQUI)
 KIT = os.path.dirname(os.path.dirname(WEB))
 SIM = os.path.join(KIT, "evals", "coordinacion", "simulador")
 sys.path[:0] = [os.path.join(KIT, "hkos"), SIM]
+import lecturas  # noqa: E402
+import m10  # noqa: E402
 import proyeccion  # noqa: E402
 import relay as relay_mod  # noqa: E402
 from esquema import Esquema  # noqa: E402
@@ -118,6 +120,26 @@ def zona_m10(vista):
     return timezone.utc
 
 
+def zona_ruta(vista):
+    """La zona de las horas de la ruta (issue #56): `ruta.zona.valor`, un desfase ±HH:MM o un nombre IANA (con
+    lecturas.zona, la que usa el relay); sin ella o si no se resuelve, la del jurado (zona_m10)."""
+    valor = ((vista.get("ruta") or {}).get("zona") or {}).get("valor")
+    m = re.fullmatch(r"([+-])(\d\d):(\d\d)", valor or "")
+    if m:
+        return timezone((1 if m.group(1) == "+" else -1) * timedelta(hours=int(m.group(2)), minutes=int(m.group(3))))
+    return (valor and lecturas.zona(valor)) or zona_m10(vista)
+
+
+def escritas(bloque, tz):
+    """{hora: {hm, dia, fecha}} de cada hora ISO del bloque, en la zona tz."""
+    salida = {}
+    for h in sorted(set(horas_de(bloque))):
+        d = datetime.fromisoformat(h.replace("Z", "+00:00")).astimezone(tz)
+        salida[h] = {"hm": d.strftime("%H:%M"), "dia": f"{DIAS[d.weekday()]} {d.strftime('%H:%M')}",
+                     "fecha": f"{DIAS[d.weekday()]} {d.day} · {d.strftime('%H:%M')}"}
+    return salida
+
+
 def caso_m10(vista, ahora, persona, **extra):
     """Lo que serviría el demonio con los bloques de M10 en la vista, validados contra el esquema, con las antigüedades
     y las horas de Python para comprobar la web sin pasar por su formato."""
@@ -126,12 +148,8 @@ def caso_m10(vista, ahora, persona, **extra):
             err = ESQUEMA._error({"$ref": f"#/$defs/{defs}"}, vista[clave], clave)
             if err is not None:
                 raise SystemExit(f"bloque `{clave}` que no valida contra $defs/{defs}: {err}")
-    tz = zona_m10(vista)
-    horas = {}
-    for h in sorted(set(horas_de({k: vista[k] for k in ("jurado", "ruta") if k in vista}))):
-        d = datetime.fromisoformat(h.replace("Z", "+00:00")).astimezone(tz)
-        horas[h] = {"hm": d.strftime("%H:%M"), "dia": f"{DIAS[d.weekday()]} {d.strftime('%H:%M')}",
-                    "fecha": f"{DIAS[d.weekday()]} {d.day} · {d.strftime('%H:%M')}"}
+    zonas = {"jurado": zona_m10(vista), "ruta": zona_ruta(vista)}
+    horas = {k: escritas(vista[k], zonas[k]) for k in ("jurado", "ruta") if k in vista}
     edades = set(observados(vista)) | {x for x in [(vista.get("ruta") or {}).get("dato_mas_viejo")] if x}
     return dict({"servido_en": ahora, "persona": persona, "relay": {"conectado": True, "desde": ahora}, "vista": vista,
                  "antiguedades": {o: proyeccion._edad(o, ahora) for o in sorted(edades)},
@@ -148,24 +166,29 @@ def ejemplo_api():
     return caso_m10(v, v["jurado"]["observado_en"], "ana")
 
 
-def momentos_m10():
-    """G13 y G14: los bloques de hkos/jurado.py y hkos/ruta.py con las entradas de los momentos de sus guiones."""
-    sys.path.insert(0, os.path.join(KIT, "hkos", "pruebas"))
-    import jurado
-    import ruta
-    import test_jurado
-    import test_ruta
-    g13 = []
-    for mo, j, tareas, _ in test_jurado.momentos_g13():
-        fuentes = {k: dict(d, observado_en=mo["ahora"]) for k, d in test_jurado.FUENTES.items()}
-        b = jurado.bloque(j, tareas, mo["ahora"], fuentes=fuentes)
-        g13.append(caso_m10({"jurado": b}, mo["ahora"], "persona-a", momento=mo["nombre"]))
-    g14 = []
-    for mo in test_ruta.HECHOS["momentos"]:
-        r, tareas, personas = test_ruta.momento_g14(mo)
-        b = ruta.calcular(r, tareas, mo["ahora"], personas=personas)
-        g14.append(caso_m10({"ruta": b}, mo["ahora"], "persona-a", momento=mo["nombre"]))
-    return g13, g14
+def momentos_m10(tmp):
+    """G13 y G14 con el relay de verdad (m10.py) y proyeccion.vista, como vivo_g13 y vivo_g14 de g13_g14.py: cada
+    momento de sus hechos, G13 solo con vista_jurado y G14 solo con ruta_critica (con las tareas del plan en main)."""
+    g13 = carga(os.path.join(SIM, "guiones", "G13.json"))
+    h13 = carga(os.path.join(SIM, g13["hechos"]))
+    casos13 = []
+    for mo in h13["momentos"]:
+        r = m10.relay(tmp, g13, m10.versiones_g13(g13, h13, mo["ahora"]), mo["ahora"], ruta=False)
+        casos13.append(caso_m10(bloques(m10.vista(r)), mo["ahora"], r.personas[0]["persona"], momento=mo["nombre"]))
+    h14 = carga(os.path.join(SIM, "guiones", "g14", "hechos.json"))
+    casos14 = []
+    for mo in h14["momentos"]:
+        g14 = carga(os.path.join(SIM, "guiones", mo["guion"]))
+        versiones = m10.versiones_g14(h14, mo["ahora"])
+        plan = [f["plan.md"] for _, f in versiones if "plan.md" in f][-1]
+        r = m10.relay(tmp, g14, versiones, mo["ahora"], jurado=False, tareas=m10.tareas_del_plan(g14, plan))
+        casos14.append(caso_m10(bloques(m10.vista(r)), mo["ahora"], r.personas[0]["persona"], momento=mo["nombre"]))
+    return casos13, casos14
+
+
+def bloques(v):
+    """De la vista, solo los bloques de M10 (lo que pintan Jurado y Ruta crítica)."""
+    return {k: v[k] for k in ("jurado", "ruta") if k in v}
 
 
 def main():
@@ -205,7 +228,7 @@ def main():
         guarda("G12", [respuesta(r.estado, p["persona"]) for p in g12.PERSONAS])
         os.makedirs(SALIDA_M10, exist_ok=True)
         guarda("ejemplo", [ejemplo_api()], SALIDA_M10)
-        g13, g14 = momentos_m10()
+        g13, g14 = momentos_m10(tmp)
         guarda("G13", g13, SALIDA_M10)
         guarda("G14", g14, SALIDA_M10)
     finally:

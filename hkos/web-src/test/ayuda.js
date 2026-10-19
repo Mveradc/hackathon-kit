@@ -24,8 +24,8 @@ export function casos() {
 }
 
 /** Las vistas de M10 (scripts/vistas_ejemplo.py, test/vistas/m10/): [{nombre, respuesta, antiguedades, horas}], con
- *  la vista de ejemplo de api.md §11.6 y los momentos de G13 y G14. `horas`: cada hora de los bloques escrita por
- *  Python en la zona de equipo.md ({hora: {hm, dia, fecha}}). */
+ *  la vista de ejemplo de api.md §11.6 y los momentos de G13 y G14. `horas`: cada hora de cada bloque escrita por
+ *  Python en la zona con que la enseña la web ({bloque: {hora: {hm, dia, fecha}}}; la de la ruta, `ruta.zona`). */
 export function casosM10() {
   const salida = [];
   for (const f of readdirSync(DIR + "m10").filter((x) => x.endsWith(".json")).sort()) {

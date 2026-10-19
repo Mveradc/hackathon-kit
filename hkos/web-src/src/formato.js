@@ -132,7 +132,38 @@ export function zonaM10(vista) {
   return 0;
 }
 
+/** La zona de las horas de la ruta (issue #56): `ruta.zona.valor` de la vista, un desfase «±HH:MM» (en minutos) o un
+ *  nombre IANA («Europe/Madrid», que el navegador sabe pasar a cada hora con su horario de verano); sin ella o si no se
+ *  entiende, la de zonaM10, como antes. */
+export function zonaRuta(vista) {
+  const v = vista?.ruta?.zona?.valor;
+  const m = /^([+-])(\d\d):(\d\d)$/.exec(v || "");
+  if (m) return (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
+  return v && formatoIana(v) ? v : zonaM10(vista);
+}
+
+const IANA = new Map();
+function formatoIana(nombre) {
+  if (!IANA.has(nombre)) {
+    let f = null;
+    try {
+      f = new Intl.DateTimeFormat("en-US", { timeZone: nombre, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric" });
+    } catch { /* nombre que el navegador no conoce */ }
+    IANA.set(nombre, f);
+  }
+  return IANA.get(nombre);
+}
+
+/** Minutos de desfase de la zona (minutos fijos o un nombre IANA) en el instante t (ms). */
+export function minutosZona(zona, t) {
+  if (typeof zona === "number") return zona;
+  const p = Object.fromEntries(formatoIana(zona).formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+  const local = Date.UTC(Number(p.year), Number(p.month) - 1, Number(p.day), Number(p.hour), Number(p.minute));
+  return Math.round((local - Math.floor(t / 60000) * 60000) / 60000);
+}
+
 export function textoZona(min) {
+  if (typeof min === "string") return min;
   const a = Math.abs(min);
   return `UTC${min < 0 ? "−" : "+"}${dos(Math.floor(a / 60))}:${dos(a % 60)}`;
 }
@@ -140,7 +171,7 @@ export function textoZona(min) {
 function partes(iso, zona) {
   const t = ms(iso);
   if (!Number.isFinite(t)) return null;
-  const d = new Date(t + zona * 60000);
+  const d = new Date(t + minutosZona(zona, t) * 60000);
   return { dia: DIAS[d.getUTCDay()], n: d.getUTCDate(), hm: `${dos(d.getUTCHours())}:${dos(d.getUTCMinutes())}` };
 }
 

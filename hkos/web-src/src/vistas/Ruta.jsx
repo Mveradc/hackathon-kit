@@ -1,5 +1,5 @@
 import { Cadena, Panel, ProvenanceTag, StatusPulse, TaskCard } from "../componentes/componentes.jsx";
-import { arroba, canal, diaHm, duracion, hace, hm, ms, tarjetas, textoZona, zonaM10 } from "../formato.js";
+import { arroba, canal, diaHm, duracion, hace, hm, minutosZona, ms, tarjetas, textoZona, zonaRuta } from "../formato.js";
 import { Vacio } from "./comun.jsx";
 
 // Ruta crítica (pantallas/ruta-critica.dc.html; R-36, ADR-0013, api.md §11.4). Todo sale del bloque `ruta` de la
@@ -95,8 +95,9 @@ function Riesgo({ r, tarjeta, objetivo, zona, servido }) {
 function marcasDeHora(min, max, zona) {
   const H = 3600000, paso = [1, 2, 3, 4, 6, 12, 24].find((p) => (max - min) / (p * H) <= 8) || 24;
   const salida = [];
-  for (let t = Math.ceil((min + zona * 60000) / H) * H - zona * 60000; t <= max; t += H) {
-    const h = new Date(t + zona * 60000).getUTCHours();
+  const z = minutosZona(zona, min) * 60000;
+  for (let t = Math.ceil((min + z) / H) * H - z; t <= max; t += H) {
+    const h = new Date(t + minutosZona(zona, t) * 60000).getUTCHours();
     if (h % paso === 0) salida.push({ at: t, label: diaHm(new Date(t).toISOString(), zona) });
   }
   return salida;
@@ -156,7 +157,8 @@ function fila(e, zona, servido, porTarea, pasados, riesgos, callados, linea) {
 export function Ruta({ respuesta }) {
   const { vista, servido_en: servido } = respuesta;
   const r = vista.ruta;
-  const zona = zonaM10(vista);
+  const zona = zonaRuta(vista);
+  const zonaDada = r.zona?.valor != null && (typeof zona === "string" || /^[+-]\d\d:\d\d$/.test(r.zona.valor));
   const [pulso, palabra, tono] = VEREDICTO[r.veredicto.valor] || VEREDICTO.sin_estimacion;
   const est = r.estimacion;
   const obj = r.objetivo;
@@ -176,7 +178,8 @@ export function Ruta({ respuesta }) {
         <span className="hk-texto-sec">Si la cadena de tareas abiertas más larga acaba antes de la entrega y con qué margen,
           siempre como un rango. Lo calcula el OS con las dependencias, el orden de cada persona y las franjas de plan.md
           y el ritmo real de cada persona; aquí solo se pinta. Calculado a las <span className="hk-mono" data-calculado="">{hm(r.observado_en, zona)}</span>,
-          horas de equipo.md ({textoZona(zona)}).</span>
+          horas de equipo.md ({zonaDada ? <span data-zona="">{r.zona.valor}</span> : textoZona(zona)}).</span>
+        {zonaDada ? <ProvenanceTag source="declarado" label="zona · equipo.md" age={hace(r.zona.observado_en, servido)} at={r.zona.observado_en} /> : null}
       </div>
 
       <section className={`hk-veredicto hk-veredicto--${r.veredicto.gravedad}`} aria-label="Veredicto" data-veredicto={r.veredicto.valor}>
