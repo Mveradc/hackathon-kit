@@ -193,17 +193,20 @@
         "fichero": { "type": "string", "enum": ["ok", "sin fichero", "mal formado"] },
         "cuenta": {
           "type": "object",
-          "required": ["notas", "sin_cubrir", "sin_tarea", "ambiguas", "declaradas", "en_pitch", "cubiertas", "corregidas", "sin_cubrir_por_fuerza"],
+          "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 2 de ADR-0012): sin_cubrir = sin_tarea + ambiguas + planificadas + en_curso + en_pitch (todo lo no cubierto, sin las corregidas, que solo van en corregidas). Una ambigua no cuenta en sin_tarea.",
+          "required": ["notas", "corregidas", "cubiertas", "sin_cubrir", "sin_tarea", "ambiguas", "en_pitch", "sin_cubrir_por_fuerza"],
           "additionalProperties": false,
           "properties": {
             "notas": { "type": "integer", "minimum": 0 },
+            "corregidas": { "type": "integer", "minimum": 0 },
+            "cubiertas": { "type": "integer", "minimum": 0 },
             "sin_cubrir": { "type": "integer", "minimum": 0 },
             "sin_tarea": { "type": "integer", "minimum": 0 },
             "ambiguas": { "type": "integer", "minimum": 0 },
-            "declaradas": { "type": "integer", "minimum": 0 },
+            "planificadas": { "type": "integer", "minimum": 0, "description": "Enlazadas a tareas que no han empezado (ninguna con historia.primera_senal)." },
+            "en_curso": { "type": "integer", "minimum": 0, "description": "Enlazadas a tareas sin hacer, alguna con señales." },
             "en_pitch": { "type": "integer", "minimum": 0 },
-            "cubiertas": { "type": "integer", "minimum": 0 },
-            "corregidas": { "type": "integer", "minimum": 0 },
+            "declaradas": { "type": "integer", "minimum": 0, "description": "TRANSITORIO (issue #46): se quita al adaptar el código. Lo sustituyen planificadas y en_curso." },
             "sin_cubrir_por_fuerza": {
               "type": "array",
               "items": {
@@ -229,7 +232,10 @@
                 "required": ["valor", "fuente", "observado_en", "viejo"],
                 "additionalProperties": false,
                 "properties": {
-                  "valor": { "enum": ["sin_tarea", "ambigua", "declarada", "en_pitch", "cubierta"] },
+                  "valor": { "anyOf": [
+                    { "enum": ["sin_tarea", "ambigua", "planificada", "en_curso", "en_pitch", "cubierta"], "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 2 de ADR-0012): planificada = sus tareas no han empezado; en_curso = alguna tiene señales." },
+                    { "enum": ["declarada"], "description": "TRANSITORIO (issue #46): se quita al adaptar el código. Lo sustituyen planificada y en_curso." }
+                  ] },
                   "fuente": { "$ref": "#/$defs/fuente" },
                   "observado_en": { "type": "string", "format": "date-time" },
                   "viejo": { "type": "boolean" }

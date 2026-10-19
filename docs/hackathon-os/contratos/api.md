@@ -79,6 +79,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - [estado.schema.json](estado.schema.json): `jurado` y `ruta` (opcionales); en `tareas[]`, `hasta` (con el motivo de «sin plazo»), `franja`, `orden_plan`, `historia`, `criterios` y `conexiones` (opcionales), y `evidencia` se rellena; los `$defs` `plazo`, `franja`, `historia`, `hora_declarada`, `descanso`, `nota` (con su `clave`), `cita`, `fuerza`, `vista_jurado` y `vista_ruta`. Todo dato es `{valor, fuente, observado_en}` (o lleva esos tres campos) y `viejo` en la vista. Lo validan el validador de M8b (`hkos/esquema.py`) y jsonschema.
 - 2026-10-19, M10, issue #46 (las «Decisiones que faltan» de la revisión de los contratos de M10, decididas por el usuario; ajustes en ADR-0012 y ADR-0013). Sin subir `v`. Lo que cambia de forma se escribe aquí solo con la forma nueva; el esquema admite aún la anterior, con su `description` «TRANSITORIO (issue #46)», hasta que el código se adapte (K-105). Lo cubren:
   - **§11.4 y [estado.schema.json](estado.schema.json):** una tarea abierta sin plazo no quita la estimación: sale en `sin_plazo[]` y el resto se estima (ajuste 1 de ADR-0013);
+  - **§11.3 y el esquema:** «sin cubrir» es todo lo no cubierto, sin las corregidas; `declarada` se parte en `planificada` y `en_curso`, y `cuenta` lo dice (ajuste 2 de ADR-0012);
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -734,7 +735,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **Enlaces:** cada cita de `tareas[].criterios` casa con las notas de esa `cita` y, si lleva «· quién», con ese quién (sin distinguir mayúsculas ni espacios repetidos). Con una nota, es un enlace; con varias, un enlace `ambiguo` a cada una; con ninguna, va a `sin_nota` (enlace roto, declarado, con su tarea).
 - **Una tarea está hecha** si su estado es `publicada`, o `cerrada` sin `declarado` (una `cerrada` a mano, con ⚑, no lo está), o si tiene `historia.hecha_en` y ahora está en `en_curso`, `en_revision` o `integrada` (decisión 6B: sigue hecha, con trabajo nuevo).
 - **Cobertura** de cada nota, en este orden:
-  1. con enlaces no ambiguos: `cubierta` si todas sus tareas están hechas (decisión 4A) y, si no, `declarada`;
+  1. con enlaces no ambiguos: `cubierta` si todas sus tareas están hechas (decisión 4A); si no, `en_curso` si alguna de esas tareas tiene señales (`historia.primera_senal` no es `null`) y, si no, `planificada` (tras congelar, 2026-10-19, M10, issue #46, ajuste 2 de ADR-0012: lo que era `declarada`);
   2. si no, con algún enlace ambiguo: `ambigua`;
   3. si no, si su cita está en `jurado.pitch`: `en_pitch` (decisión 5B);
   4. si no: `sin_tarea`.
@@ -746,7 +747,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **`pitch`**: `{fuente, observado_en, declarado}` si la cita está en el pitch; si no, `null`. Sale aunque haya tareas.
 - **`corregida_por`**: la clave de la nota posterior cuya `corrige` casa con esta y solo con esta.
 - **Orden:** sin cubrir (todo lo que no es `cubierta` ni está corregido) por fuerza (`dato`, «obligatorio», «se valora», «nos gustaría ver», otra palabra, `comentario`, `sin_precisar`) y luego por `hora` (o `cita`), la más antigua primero; después las cubiertas, por hora; al final las corregidas, por hora.
-- **`cuenta`**: los totales por cobertura (las corregidas, solo en `corregidas`), `sin_cubrir` y el desglose de las sin cubrir por el texto de su fuerza, en el orden de arriba.
+- **`cuenta`** (ajuste 2): `{notas, corregidas, cubiertas, sin_cubrir, sin_tarea, ambiguas, planificadas, en_curso, en_pitch, sin_cubrir_por_fuerza}`. Los totales por cobertura no cuentan las corregidas, que solo van en `corregidas`; `sin_cubrir` = `sin_tarea` + `ambiguas` + `planificadas` + `en_curso` + `en_pitch` (todo lo no cubierto, sin las corregidas), y una ambigua no cuenta en `sin_tarea`. `sin_cubrir_por_fuerza`: el desglose de las sin cubrir por el texto de su fuerza, en el orden de arriba.
 - **`viejo`** del bloque: `fuentes.git` está viejo. `observado_en`: la hora del cálculo (`ahora`).
 - **`resumen`** (la línea del md, decisión 7B): `jurado: <sin_cubrir> sin cubrir (<n> «<la fuerza más fuerte entre las sin cubrir>»)[ · <ambiguas> ambigua(s)][ · <en_pitch> en el pitch] · <cubiertas> cubierta(s) de <notas>`; sin notas, `jurado: sin notas en criterios.md`; sin fichero, `jurado: sin criterios.md en main`. Cortado a 160 por grafemas.
 
@@ -800,7 +801,7 @@ Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-1
 {
   "jurado": {
     "observado_en": "2026-09-19T09:00:00Z", "fuente": "derivado", "viejo": false, "fichero": "ok",
-    "cuenta": {"notas": 3, "sin_cubrir": 2, "sin_tarea": 1, "ambiguas": 0, "declaradas": 1, "en_pitch": 0, "cubiertas": 1, "corregidas": 0,
+    "cuenta": {"notas": 3, "corregidas": 0, "cubiertas": 1, "sin_cubrir": 2, "sin_tarea": 1, "ambiguas": 0, "planificadas": 0, "en_curso": 1, "en_pitch": 0,
                "sin_cubrir_por_fuerza": [{"texto": "obligatorio", "n": 1}, {"texto": "nos gustaría ver", "n": 1}]},
     "notas": [
       {"nota": {"clave": "3f9a1c07b2e4", "cita": "2026-09-19 10:40", "hora": "2026-09-19T10:40:00+02:00", "quien": "Marta (Embat)", "papel": "jurado",
@@ -811,7 +812,7 @@ Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-1
       {"nota": {"clave": "a1b2c3d4e5f6", "cita": "2026-09-18 21:15", "hora": "2026-09-18T21:15:00+02:00", "quien": "Luis (mentor)", "papel": "mentor",
                 "donde": null, "dijo": "estaría bien ver el informe en PDF", "literal": false, "fuerza": {"tipo": "palabra", "texto": "nos gustaría ver"},
                 "afecta_a": "plan", "anotado_por": "@luis", "corrige": null, "fuente": "git", "observado_en": "2026-09-19T08:52:10Z", "declarado": true},
-       "cobertura": {"valor": "declarada", "fuente": "derivado", "observado_en": "2026-09-19T08:40:00Z", "viejo": false},
+       "cobertura": {"valor": "en_curso", "fuente": "derivado", "observado_en": "2026-09-19T08:40:00Z", "viejo": false},
        "corregida_por": null, "trabajo_nuevo_desde": null,
        "tareas": [{"tarjeta": {"id": "T12", "titulo": "Informe PDF", "dueno": "marta", "estado": "en_curso", "etiqueta": "en curso", "fuente": "hook",
                                "observado_en": "2026-09-19T08:40:00Z", "viejo": false},

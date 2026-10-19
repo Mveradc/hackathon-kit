@@ -16,17 +16,19 @@ Valen la constitución II (lo declarado se muestra como declarado y no sustituye
 ## Decisión (común)
 - **Detrás de su interruptor**, `vista_jurado:` en `os.md` (decisión 8A). Apagado, ni el relay lee nada nuevo ni la vista lleva el bloque `jurado`: `estado.json`, la vista y `estado-equipo.md` salen byte a byte como en la 0.4.0 (constitución I).
 - **Dónde se calcula:** el relay pone en `estado.json` las notas leídas de `origin/main` (con su clave y todos sus campos), las etiquetas del plan y del pitch y la historia de cada tarea; `proyeccion.vista` calcula el bloque `jurado`. La web solo lo pinta (ADR-0009). El cálculo es una función pura con su tabla de casos (`hkos/jurado.py`).
-- **Cinco estados de cobertura por nota, cada uno `{valor, fuente, observado_en}` y `viejo`:**
+- **Seis estados de cobertura por nota, cada uno `{valor, fuente, observado_en}` y `viejo`:**
   - `sin_tarea`: nada la recoge;
   - `ambigua`: solo la recoge una etiqueta que casa con más de una nota (decisión 2). Se dice, no se elige una;
   - `en_pitch`: solo la recoge el pitch, «recogida en el pitch (declarado)» (decisión 5);
-  - `declarada`: alguna tarea la declara (decisión 3), pero falta lo que pide la decisión 4;
+  - alguna tarea la declara (decisión 3), pero falta lo que pide la decisión 4 (ajuste 2: lo que antes era `declarada`, en dos):
+    - `planificada`: ninguna de sus tareas ha empezado;
+    - `en_curso`: alguna de sus tareas tiene señales;
   - `cubierta`: lo pide la decisión 4, con la evidencia y la hora de cada pieza.
 
-  «Sin cubrir» es todo lo que no es `cubierta`. Una cita de la etiqueta que no casa con ninguna nota sale aparte, como enlace roto (declarado, con su tarea).
+  «Sin cubrir» es todo lo que no es `cubierta`, sin contar las corregidas: `sin_tarea` + `ambigua` + `planificada` + `en_curso` + `en_pitch` (ajuste 2). Una cita de la etiqueta que no casa con ninguna nota sale aparte, como enlace roto (declarado, con su tarea).
 - **Corregida por.** Una nota que otra posterior dice corregir («corrige la nota del <fecha hora>», que es como lo escribe `/hack-note`) sale **corregida por** la nueva, y cuenta la nueva. Es texto que escribe una persona: la relación se enseña como declarada. Si la cita casa con más de una nota, no se marca ninguna.
 - **Orden:** primero las sin cubrir, por fuerza (`dato`, «obligatorio», «se valora», «nos gustaría ver», otra palabra, «comentario suelto», «sin precisar») y luego por hora (la más antigua primero); después las cubiertas, por hora; al final las corregidas. La vista llega ordenada: la web no ordena.
-- **Nunca «cubierta» porque algo lo declare.** Una tarea `cerrada` a mano (⚑) o `reclamada` desde la web es declarada: deja la nota en `declarada`, con su ⚑, nunca como evidencia. El pitch tampoco cubre.
+- **Nunca «cubierta» porque algo lo declare.** Una tarea `cerrada` a mano (⚑) o `reclamada` desde la web es declarada: deja la nota en `planificada` o `en_curso`, con su ⚑, nunca como evidencia. El pitch tampoco cubre.
 - **La evidencia se enseña siempre que exista**, aunque la nota no llegue a `cubierta`: el sha del commit o de la fusión que publicó la tarea y el resultado de la Prueba de sus conexiones, con su procedencia y su hora. Si su fuente está vieja (`umbral_viejo_s`), la evidencia y la cobertura salen viejas (III, R-12).
 - **`tareas[].evidencia`** se rellena (por fin) con el sha del commit con ID o de la fusión aprobada que la llevó a `publicada`, para esta vista y para la ruta crítica (ADR-0013).
 - **Las notas son dato** (V): en la web y en el MCP, entrecomilladas, con quién lo dijo, su papel y «Anotado por», saneadas con `sanear` y equilibradas como las novedades. Una nota que dice «haced X» no se convierte en una orden para nadie.
@@ -45,6 +47,13 @@ Valen la constitución II (lo declarado se muestra como declarado y no sustituye
 | **6. Una tarea publicada que vuelve a `en_curso`** | **B.** La nota sigue `cubierta` con la evidencia de antes y «trabajo nuevo desde HH:MM» | Lo publicado sigue en `main`: la evidencia sigue siendo verdad, y la vista no parpadea con cada arreglo |
 | **7. Qué lleva `estado-equipo.md`** | **B.** Una línea de resumen («2 sin cubrir (1 «obligatorio») · 1 cubierta de 3») en la sección `## Jurado y ruta`; el detalle, en el MCP (`jurado`) y la web. Nota en ADR-0009 | Lo más barato en tokens (R-24, R-25b, X). La igualdad compara la línea con la vista, y el detalle del MCP y de la web sale del mismo bloque |
 | **8. Interruptores** (vale también para ADR-0013) | **A.** Uno por vista en `os.md`: `vista_jurado:` y `ruta_critica:`, apagados por defecto e independientes de `web_nueva:` | Cada una se prueba y se recorta sola (orden de recorte de M10). El md y el MCP no dependen de la web |
+
+## Ajustes tras la revisión (2026-10-19, issue #46)
+Decididos por el usuario sobre las «Decisiones que faltan» de la revisión de los contratos de M10. Mandan sobre lo de arriba donde lo contradigan.
+
+| Ajuste | Elegido | Por qué |
+|---|---|---|
+| **2. «Sin cubrir» y lo que era `declarada`** | «Sin cubrir» = todo lo no cubierto, sin las corregidas. `declarada` se parte en `planificada` (sus tareas no han empezado) y `en_curso` (alguna tiene señales). `jurado.cuenta` = `{notas, corregidas, cubiertas, sin_cubrir, sin_tarea, ambiguas, planificadas, en_curso, en_pitch, sin_cubrir_por_fuerza}`, con `sin_cubrir` = `sin_tarea` + `ambiguas` + `planificadas` + `en_curso` + `en_pitch`. Una ambigua no cuenta en `sin_tarea` | «Sin cubrir» tenía tres significados (ADR, hechos de G13, pantalla) y así no se cumple md = web (A2). La pantalla distingue «planificada» y «en curso», y la web no puede calcularlo (M8): sale del bloque |
 
 ## Alternativas descartadas
 - **Que un modelo decida qué cubre cada nota** (lo que hace hoy `/hack-check` en `verificacion.md`): es lo que dice un modelo, no una señal (constitución II). Sigue como ayuda para poner las etiquetas de la decisión 3.
