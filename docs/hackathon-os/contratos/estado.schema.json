@@ -227,8 +227,8 @@
             "sin_cubrir": { "type": "integer", "minimum": 0 },
             "sin_tarea": { "type": "integer", "minimum": 0 },
             "ambiguas": { "type": "integer", "minimum": 0 },
-            "planificadas": { "type": "integer", "minimum": 0, "description": "Enlazadas a tareas que no han empezado (ninguna con historia.primera_senal)." },
-            "en_curso": { "type": "integer", "minimum": 0, "description": "Enlazadas a tareas sin hacer, alguna con señales." },
+            "planificadas": { "type": "integer", "minimum": 0, "description": "Enlazadas a tareas que no han empezado: todas en lista, pendiente o reclamada y ninguna con historia.primera_senal (tras congelar, 2026-10-19, M10, ajuste 3, punto 3)." },
+            "en_curso": { "type": "integer", "minimum": 0, "description": "Enlazadas a tareas sin hacer, alguna con el estado de la tarjeta distinto de lista, pendiente y reclamada o con historia.primera_senal (tras congelar, 2026-10-19, M10, ajuste 3, punto 3)." },
             "en_pitch": { "type": "integer", "minimum": 0 },
             "sin_cubrir_por_fuerza": {
               "type": "array",
@@ -255,7 +255,7 @@
                 "required": ["valor", "fuente", "observado_en", "viejo"],
                 "additionalProperties": false,
                 "properties": {
-                  "valor": { "enum": ["sin_tarea", "ambigua", "planificada", "en_curso", "en_pitch", "cubierta"], "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 2 de ADR-0012): planificada = sus tareas no han empezado; en_curso = alguna tiene señales." },
+                  "valor": { "enum": ["sin_tarea", "ambigua", "planificada", "en_curso", "en_pitch", "cubierta"], "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 2 de ADR-0012): planificada = sus tareas no han empezado; en_curso = alguna tiene señales. Tras congelar, 2026-10-19, M10, ajuste 3, punto 3: en_curso si alguna tiene el estado de la tarjeta distinto de lista, pendiente y reclamada, o historia.primera_senal; si no, planificada." },
                   "fuente": { "$ref": "#/$defs/fuente" },
                   "observado_en": { "type": "string", "format": "date-time" },
                   "viejo": { "type": "boolean" }
