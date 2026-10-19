@@ -1,6 +1,6 @@
 # ADR-0013 · Ruta crítica: de dónde salen dependencias, horas y ritmo, cómo se dice la incertidumbre y qué se hace sin datos
 
-Estado: **aceptada** (2026-10-19, por el usuario al decidir la tabla del PR #42 y las preguntas del issue #41, «M10, Paso 0»). Contratos en `api.md` §11 y `estado.schema.json` (K-101). El interruptor es la decisión 8 de ADR-0012.
+Estado: **aceptada** (2026-10-19, por el usuario al decidir la tabla del PR #42 y las preguntas del issue #41, «M10, Paso 0»). Contratos en `api.md` §11 y `estado.schema.json` (K-101). El interruptor es la decisión 8 de ADR-0012. Ajustada el mismo día con las decisiones del issue #46 (abajo, «Ajustes tras la revisión»).
 
 ## Contexto
 R-36: «DONDE la ruta crítica esté activa, el sistema DEBE estimar, con las dependencias y el ritmo real, si se llega a la entrega y qué tareas la ponen en riesgo». Lo que hay hoy (inventario del issue #41, §2, §3 y §6):
@@ -50,7 +50,7 @@ Valen la constitución II, III, IV y X (una hora estimada que se mueve con el re
 Validación sin datos reales (#41, pregunta 12): guiones largos del simulador (G14, 39 h del reto 03, con commits, descansos y un ajuste del plan) para cerrar el hito, y el ensayo con un equipo después.
 
 ## Ajustes tras la revisión (2026-10-19, issue #46)
-Decididos por el usuario sobre las «Decisiones que faltan» de la revisión de los contratos de M10. Mandan sobre lo de arriba donde lo contradigan.
+Decididos por el usuario sobre las «Decisiones que faltan» de la revisión de los contratos de M10. Mandan sobre lo de arriba donde lo contradigan. La numeración es la del issue; los ajustes 2 y 6 son de ADR-0012. Detalle en `api.md` (§0, §6 y §11) y en `estado.schema.json`.
 
 | Ajuste | Elegido | Por qué |
 |---|---|---|

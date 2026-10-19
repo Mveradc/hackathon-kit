@@ -11,7 +11,7 @@ Un contrato congelado solo cambia subiendo `v` o con una nota aquí con su motiv
 | §8 | **Congelado** (M8e, 2026-10-15) |
 | §9 | **Nueva** (M8h, 2026-10-15): se congela al cerrar M8h |
 | Lo de M9a en §0–§7, §10 y los dos esquemas | **Congelados** (K-91, M9a, 2026-10-17, aprobados por el usuario) |
-| §11 y lo de M10 en §3, §4, §6 y [estado.schema.json](estado.schema.json) | **Nuevo** (tras congelar, 2026-10-19, M10, K-101): lo revisa el usuario en el PR #42 antes de K-102 |
+| §11 y lo de M10 en §3, §4, §6 y [estado.schema.json](estado.schema.json) | **Nuevo** (tras congelar, 2026-10-19, M10, K-101): lo revisa el usuario en el PR #42 antes de K-102. Ajustado el 2026-10-19 con las decisiones del issue #46 (abajo) |
 
 Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reglas que el código aún no usaba):
 - 2026-10-14, M8c, §1: `transcript_path` en `SubagentStart`. Sin él, el demonio tendría que adivinar la carpeta de la sesión a partir del `cwd`, y M8.0 vio que eso se rompe con las mayúsculas de la ruta. Es una ruta local, no contenido.

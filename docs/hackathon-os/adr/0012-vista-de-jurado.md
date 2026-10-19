@@ -1,6 +1,6 @@
 # ADR-0012 · Vista de jurado: qué es «cubrir» un criterio, qué cuenta como evidencia, qué se declara y qué se confirma
 
-Estado: **aceptada** (2026-10-19, por el usuario al decidir la tabla del PR #42 y las preguntas del issue #41, «M10, Paso 0»). Contratos en `api.md` §11 y `estado.schema.json` (K-101).
+Estado: **aceptada** (2026-10-19, por el usuario al decidir la tabla del PR #42 y las preguntas del issue #41, «M10, Paso 0»). Contratos en `api.md` §11 y `estado.schema.json` (K-101). Ajustada el mismo día con las decisiones del issue #46 (abajo, «Ajustes tras la revisión»).
 
 ## Contexto
 R-35: «DONDE la vista de jurado esté activa, el sistema DEBE mostrar qué tarea o evidencia cubre cada nota de `criterios.md`». Lo que hay hoy (inventario del issue #41, §1 y §4):
@@ -49,7 +49,7 @@ Valen la constitución II (lo declarado se muestra como declarado y no sustituye
 | **8. Interruptores** (vale también para ADR-0013) | **A.** Uno por vista en `os.md`: `vista_jurado:` y `ruta_critica:`, apagados por defecto e independientes de `web_nueva:` | Cada una se prueba y se recorta sola (orden de recorte de M10). El md y el MCP no dependen de la web |
 
 ## Ajustes tras la revisión (2026-10-19, issue #46)
-Decididos por el usuario sobre las «Decisiones que faltan» de la revisión de los contratos de M10. Mandan sobre lo de arriba donde lo contradigan.
+Decididos por el usuario sobre las «Decisiones que faltan» de la revisión de los contratos de M10. Mandan sobre lo de arriba donde lo contradigan. La numeración es la del issue; los ajustes 1, 3, 4 y 5 son de ADR-0013. Detalle en `api.md` (§0, §6 y §11) y en `estado.schema.json`.
 
 | Ajuste | Elegido | Por qué |
 |---|---|---|
