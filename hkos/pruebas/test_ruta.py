@@ -272,10 +272,10 @@ class Tabla(Base):
                 self.assertEqual(b["objetivo"] is not None, con_objetivo)
                 self.assertEqual(b["resumen"], "ruta: sin estimación (sin hora de entrega)")
                 self.assertTrue(all(e["fin_tarde"] is None for e in b["cadena"]))
-        # Con más de un motivo, todos, en el orden del contrato; el resumen dice el primero.
+        # Con más de un motivo, todos, en el orden del contrato, y el resumen los dice todos, abreviados (#56, 5).
         b = self.corre(ruta_de(None), ana()[:2] + ana()[3:])
         self.assertEqual(b["veredicto"]["motivos"], ["sin_entrega", "pocos_datos"])
-        self.assertEqual(b["resumen"], "ruta: sin estimación (sin hora de entrega)")
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin hora de entrega · pocos datos: 1 persona)")
 
     def test_otras_entregas_al_lado_con_estimacion(self):
         hito = declarada(m(300), "dom 11:00", donde="plan.md", nombre="Entrega final")
@@ -322,7 +322,7 @@ class Tabla(Base):
         self.assertIsNone(b["estimacion"])
         self.assertEqual(self.hechos(b, "ciclo"), [{"tipo": "ciclo", "gravedad": "gris", "ciclo": ["T04", "T12", "T04"],
                                                     "fuente": "derivado", "observado_en": iso(T0), "viejo": False}])
-        self.assertEqual(b["resumen"], "ruta: sin estimación (ciclo T04 → T12 → T04)")
+        self.assertEqual(b["resumen"], "ruta: sin estimación (ciclo)")
 
     def test_tarea_abierta_sin_franja_aparte_y_el_resto_se_estima(self):
         """#46, 1: una abierta que cuenta sin plazo no quita la estimación: va a sin_plazo[] (con su procedencia, B2),
@@ -338,7 +338,7 @@ class Tabla(Base):
                          (iso(T0 + timedelta(minutes=30)), iso(T0 + timedelta(minutes=90))))
         self.assertEqual([e["tarjeta"]["id"] for e in b["cadena"]], ["T04"])
         self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 10:30–11:30 · entrega sáb 14:00 · "
-                                       "sin contar T05 (sin plazo)")
+                                       "sin contar 1 tarea (sin plazo)")
         self.assertEqual(self.hechos(b, "plazo_pasado"), [])
         # Lo que espera a una sin plazo espera a lo que ella espera (T12 → T05 → T04): la sin plazo no ocupa tiempo.
         con_luis = tareas + luis()
@@ -353,7 +353,7 @@ class Tabla(Base):
         b = self.corre(ruta_de(240), solas)
         self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("sin_estimacion", ["sin_plazo"]))
         self.assertIsNone(b["estimacion"])
-        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T04, T05)")
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: 2 tareas)")
         # Con Hasta resuelto pero sin franja (no es posterior a la anterior), el motivo y la procedencia, los de la franja.
         tareas[-1] = tarea("T05", "ana", "lista", 5, motivo_franja="orden")
         tareas[-1]["hasta"].update(valor=m(60), texto="sáb 11:00", motivo=None)
@@ -383,12 +383,12 @@ class Tabla(Base):
         b = self.corre(ruta_de(240), solas)
         self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("sin_estimacion", ["sin_plazo"]))
         self.assertEqual((b["estimacion"], b["riesgos"]), (None, []))
-        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T04)")
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: 1 tarea)")
         # Con una abierta con franja de otra persona (T12 de Luis), ya hay qué estimar: T04 sale aparte.
         b = self.corre(ruta_de(240), solas + luis())
         self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("a_tiempo", []))
         self.assertEqual([x["tarea"] for x in b["sin_plazo"]], ["T04"])
-        self.assertTrue(b["resumen"].endswith(" · sin contar T04 (sin plazo)"))
+        self.assertTrue(b["resumen"].endswith(" · sin contar 1 tarea (sin plazo)"))
 
     def test_sin_ninguna_franja_sin_plazo_y_pocos_datos(self):
         """Decisión del usuario (api.md §11.4; ADR-0013, ajuste 2, punto 4): sin ninguna abierta que cuenta con franja,
@@ -397,32 +397,62 @@ class Tabla(Base):
         tareas = luis(n=2, abiertas=False) + [tarea("T12", "luis", "lista", 3, motivo="vacio")]
         b = self.corre(ruta_de(240), tareas)
         self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("sin_estimacion", ["sin_plazo", "pocos_datos"]))
-        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T12)")
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: 1 tarea · pocos datos: 1 persona)")
         self.assertEqual([(p["persona"], p["n"]) for p in b["base"]["personas"]], [("luis", 2)])
         # Con Ana (3 medidas) y sus abiertas también sin franja, pocos_datos sigue siendo solo de Luis.
         sin_franja = [tarea("T04", "ana", "lista", 4, motivo="por_confirmar"), tarea("T05", "ana", "lista", 5, motivo="vacio")]
         b = self.corre(ruta_de(240), ana()[:3] + sin_franja + tareas)
         self.assertEqual(b["veredicto"]["motivos"], ["sin_plazo", "pocos_datos"])
-        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T04, T05, T12)")
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: 3 tareas · pocos datos: 1 persona)")
         # Con alguna abierta con franja (T06 de Ana), sin_plazo no es motivo, y Luis, sin abiertas con franja, no cuenta.
         b = self.corre(ruta_de(240), ana()[:3] + sin_franja + [tarea("T06", "ana", "lista", 6, franja=(0, 60))] + tareas)
         self.assertEqual(b["veredicto"]["motivos"], [])
 
     def test_resumen_plazo_pasado_antes_de_sin_contar_y_otra_entrega(self):
-        """Decisión del usuario: «plazo pasado» (el único rojo) va antes de «sin contar…» y de «otra entrega…», para que
-        el corte a 120 no se lo lleve."""
+        """Decisión del usuario (#56, 5): «plazo pasado» (el único rojo) va justo detrás del veredicto, antes del fin, de
+        «sin contar…» y de «otra entrega…», para que el corte a 120 no se lo lleve."""
         tareas = ana()
         tareas[3] = tarea("T04", "ana", "en_curso", 4, franja=(-70, -10), primera=-60)
         tareas[4] = tarea("T05", "ana", "lista", 5, motivo="por_confirmar")
         otra = declarada(m(300), "dom 11:00", donde="plan.md", nombre="Entrega final")
         b = self.corre(ruta_de(600, otras_entregas=[otra]), tareas)
-        # Entera no cabe en 120: el corte se lleva «otra entrega», no el plazo pasado (antes, al final, se perdía).
-        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 10:00–10:30 · entrega sáb 20:00 · "
-                                       "T04: plazo pasado 09:50 · sin contar T05 (sin plazo) …")
-        # Sin estimación, igual: el plazo pasado, justo detrás del motivo.
+        # Entera no cabe en 120: el corte se lleva lo de detrás, no el plazo pasado.
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · T04: plazo pasado 09:50 · fin 10:00–10:30 · "
+                                       "entrega sáb 20:00 · sin contar 1 tarea (sin pla…")
+        # Sin estimación, igual: el plazo pasado, justo detrás del veredicto, y los motivos, entre paréntesis detrás.
         b = self.corre(ruta_de(None, otras_entregas=[otra]), tareas)
-        self.assertEqual(b["resumen"], "ruta: sin estimación (sin hora de entrega) · T04: plazo pasado 09:50 · "
+        self.assertEqual(b["resumen"], "ruta: sin estimación · T04: plazo pasado 09:50 (sin hora de entrega) · "
                                        "otra entrega: dom 11:00 (plan.md)")
+
+    def test_56_5_resumen_plazo_pasado_detras_del_veredicto_y_detalles_abreviados(self):
+        """#56, punto 5: con 5 personas a 0 de 3 y 5 plazos pasados, el resumen conserva el plazo pasado (antes, la
+        lista de «pocos datos: @… 0 de 3, …» lo echaba del corte a 120). Los detalles van abreviados («pocos datos: <n>
+        personas», «sin plazo: <n> tareas»), con todos los motivos en el paréntesis, que es lo que se recorta."""
+        nombres = ["ana-ruiz-de-la-fuente", "bea-martinez-soler", "carlos-gonzalez-pena", "dani-fernandez-lopez",
+                   "elena-sanchez-ortega"]
+        tareas = [tarea(f"T0{i + 1}", p, "en_curso", 1, franja=(-120, -60 + i), primera=-100) for i, p in enumerate(nombres)]
+        b = self.corre(ruta_de(600), tareas, personas=[{"persona": p, "nombre": p} for p in nombres])
+        self.assertEqual(b["veredicto"]["motivos"], ["pocos_datos"])
+        self.assertEqual(len(self.hechos(b, "plazo_pasado")), 5)
+        self.assertEqual(b["resumen"], "ruta: sin estimación · T01: plazo pasado 09:00 y 4 más (pocos datos: 5 personas)")
+        # Con todos los motivos y muchas personas, el paréntesis se recorta; el plazo pasado, nunca.
+        muchas = [f"persona-{i:02d}" for i in range(12)]
+        tareas = [tarea(f"T{i + 1:02d}", p, "en_curso", None, motivo_franja="orden", primera=-100)
+                  for i, p in enumerate(muchas)]
+        for i, t in enumerate(tareas):
+            t["hasta"].update(valor=m(-20 + i), motivo=None, texto="sáb 09:40")
+        tareas[0]["depende_de"], tareas[1]["depende_de"] = ["T02"], ["T01"]
+        b = self.corre(ruta_de(None), tareas, personas=[{"persona": p, "nombre": p} for p in muchas])
+        self.assertEqual(b["veredicto"]["motivos"], ["sin_entrega", "ciclo", "sin_plazo", "pocos_datos"])
+        self.assertTrue(b["resumen"].startswith("ruta: sin estimación · T01: plazo pasado 09:40 y 11 más (sin hora de "
+                                                "entrega · ciclo · sin plazo: 12 tareas · "), b["resumen"])
+        self.assertEqual((len(b["resumen"]), b["resumen"][-2:]), (120, "…)"))
+        # Con estimación, los primeros plazos pasados por hora que quepan, y «+<n> más».
+        tareas = ana()
+        tareas[3:] = [tarea(f"T{40 + i}", "ana", "en_curso", None, franja=(-60, -50 + i), primera=-55) for i in range(8)]
+        b = self.corre(ruta_de(600), tareas)
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · T40: plazo pasado 09:10 +7 más · fin 10:00–10:00 · "
+                                       "entrega sáb 20:00")
 
     def test_plazo_vencido_rojo_y_lo_que_arrastra(self):
         tareas = ana()
@@ -437,13 +467,14 @@ class Tabla(Base):
                                     "observado_en": iso(T0), "viejo": False}])
         self.assertEqual([h["tipo"] for h in b["hechos"] if h["gravedad"] == "rojo"], ["plazo_pasado"])
         self.assertNotEqual(b["veredicto"]["gravedad"], "rojo")
-        self.assertTrue(b["resumen"].endswith(" · T04: plazo pasado 09:50"))
-        # Con dos pasados, el primero por plazo y «y N más».
+        self.assertTrue(b["resumen"].startswith("ruta: estimación a tiempo · T04: plazo pasado 09:50 · fin "))
+        # Con dos pasados, los dos por plazo (caben: #56, 5).
         por_id(tareas, "T12")["franja"]["valor"].update(desde=m(-60), hasta=m(-5), min=55)
         por_id(tareas, "T12")["hasta"]["valor"] = m(-5)
         b = self.corre(ruta_de(600), tareas)
         self.assertEqual([h["tarea"] for h in self.hechos(b, "plazo_pasado")], ["T04", "T12"])
-        self.assertTrue(b["resumen"].endswith(" · T04: plazo pasado 09:50 y 1 más"))
+        self.assertTrue(b["resumen"].startswith("ruta: estimación a tiempo · T04: plazo pasado 09:50, "
+                                                "T12: plazo pasado 09:55 · fin "))
         # Una hecha con el plazo pasado no es un hecho.
         b = self.corre(ruta_de(600), ana())
         self.assertEqual(self.hechos(b, "plazo_pasado"), [])
@@ -465,7 +496,7 @@ class Tabla(Base):
         self.assertEqual([(p["persona"], p["n"], p["ritmo_min"], p["ritmo_max"]) for p in b["base"]["personas"]],
                          [("ana", 3, 50, 150), ("luis", 2, None, None), ("marta", 1, None, None)])
         # Marta no tiene nada abierto: no cuenta para «pocos datos».
-        self.assertEqual(b["resumen"], "ruta: sin estimación (pocos datos: @luis 2 de 3)")
+        self.assertEqual(b["resumen"], "ruta: sin estimación (pocos datos: 1 persona)")
         self.assertTrue(b["cadena"] and all(e["fin_temprano"] is None and e["fin_tarde"] is None for e in b["cadena"]))
         # Con la tercera medida de Luis, hay cifra.
         b = self.corre(ruta_de(240), ana() + luis(n=3) + marta)
@@ -669,9 +700,9 @@ class Tabla(Base):
         tareas[3] = tarea("T04", "ana", "en_curso", 4, franja=(-70, -10), primera=-60)
         b = self.corre(ruta_de(600, otras_entregas=[otra]), tareas)
         self.assertEqual((len(b["resumen"]), b["resumen"][-1]), (120, "…"))
-        self.assertTrue(b["resumen"].startswith("ruta: estimación a tiempo · fin "))
-        # El corte se lleva lo de detrás, no el plazo pasado (decisión del usuario: va antes).
-        self.assertIn(" · T04: plazo pasado 09:50 · otra entrega: domingo", b["resumen"])
+        # El corte se lleva lo de detrás, no el plazo pasado (decisión del usuario: va justo detrás del veredicto).
+        self.assertTrue(b["resumen"].startswith("ruta: estimación a tiempo · T04: plazo pasado 09:50 · fin "))
+        self.assertIn(" · otra entrega: domingo", b["resumen"])
 
     def test_sin_senales_gris_nunca_lenta(self):
         con = self.corre(ruta_de(240), ana() + luis())
@@ -989,9 +1020,9 @@ class G14(Base):
                          {"persona-a": 0, "persona-b": 0, "persona-c": 0})     # hechos.json: 2, 1 y 0 (ver arriba)
         self.assertIn("T20", [x["tarea"] for x in b["sin_plazo"]])     # lleva más de H+2 en curso, pero sin plazo
         self.assertEqual((b["cadena"], b["riesgos"]), ([], []))         # ningún Hasta resuelto
-        # 24 sin plazo: el resumen se corta a 120 (M17), y lo de detrás no cabe.
-        self.assertTrue(b["resumen"].startswith("ruta: sin estimación (sin plazo: T03, T04, "))
-        self.assertEqual((len(b["resumen"]), b["resumen"][-1]), (120, "…"))
+        # 24 sin plazo: abreviado (#56, 5), ya cabe con la otra entrega detrás (antes se cortaba a 120 con los IDs).
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: 24 tareas · pocos datos: 3 personas) · "
+                                       "otra entrega: dom 20 sep 09:30 (plan.md)")
 
     def test_mitad_bien(self):
         mo, b = self.momento("mitad bien")
@@ -1002,7 +1033,7 @@ class G14(Base):
         self.assertEqual({p["persona"]: p["n"] for p in b["base"]["personas"]},
                          {p: x["n"] for p, x in mo["base"].items()})
         self.assertGreater(b["estimacion"]["margen_min"], 120)          # el extremo lento, horas antes de la entrega
-        self.assertIn(" · sin contar T28 (sin plazo)", b["resumen"])
+        self.assertIn(" · sin contar 1 tarea (sin plazo)", b["resumen"])
         self.assertTrue(b["resumen"].startswith("ruta: estimación a tiempo · fin "))
         self.assertEqual(self.hechos(b, "plazo_pasado"), [])           # T19 espera a T08, en plazo: nada en riesgo
         self.assertEqual(b["riesgos"], [])

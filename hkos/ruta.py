@@ -118,6 +118,11 @@ def _zona(ruta):
     return timezone.utc
 
 
+def _cuantas(n, cosa):
+    """«1 tarea», «3 tareas»."""
+    return f"{n} {cosa}" + "s" * (n != 1)
+
+
 def _ciclo(ids, sucesoras):
     """El primer ciclo del grafo (DFS en orden de ID), empezando por su ID menor y con él repetido al final."""
     color = {}
@@ -409,21 +414,32 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         d = fecha(x).astimezone(tz)
         return f"{DIAS[d.weekday()]} {d.strftime('%H:%M')}"
 
+    # #56, 5 (decisión del usuario): el plazo pasado (el único rojo, los primeros por hora) va justo detrás del
+    # veredicto, con estimación o sin ella, y los detalles van abreviados (los IDs, en sin_plazo[] y base.personas[]),
+    # para que el corte a 120 nunca lo quite.
+    pasados = [f"{x['tarea']}: plazo pasado {hm(x['plazo'])}" for x in hechos if x["tipo"] == "plazo_pasado"]
     if estimacion:
-        resumen = f"ruta: estimación {LEGIBLE[valor]} · fin {hm(estimacion['temprano'])}–{hm(estimacion['tarde'])} · " \
-                  f"entrega {dia_hm(objetivo['valor'])}" + (" (confirmar)" if objetivo.get("confirmar") else "")
+        cabeza = f"ruta: estimación {LEGIBLE[valor]}"
+        fin_ = f" · fin {hm(estimacion['temprano'])}–{hm(estimacion['tarde'])} · entrega {dia_hm(objetivo['valor'])}" + \
+               (" (confirmar)" if objetivo.get("confirmar") else "")
+
+        def con(k):
+            resto = len(pasados) - k
+            return cabeza + (" · " + ", ".join(pasados[:k]) if k else "") + (f" +{resto} más" if resto else "") + fin_
+        k = len(pasados)        # todos si caben con el fin y la entrega; si no, los primeros y «+<n> más»
+        while k > 1 and len(con(k)) > RESUMEN_MAX:
+            k -= 1
+        resumen = con(k)
+        if sin_plazo:
+            resumen += f" · sin contar {_cuantas(len(sin_plazo), 'tarea')} (sin plazo)"
     else:
-        texto = {"sin_entrega": "sin hora de entrega", "ciclo": "ciclo " + " → ".join(ciclo or []),
-                 "sin_plazo": "sin plazo: " + ", ".join(x["tarea"] for x in sin_plazo),
-                 "pocos_datos": "pocos datos: " + ", ".join(f"@{b['persona']} {b['n']} de {MINIMO}" for b in pocos)}
-        resumen = f"ruta: sin estimación ({texto[motivos[0]]})"
-    # Decisión del usuario: el plazo pasado (el único rojo) va antes de lo demás, para que el corte a 120 no lo quite.
-    pasados = [x for x in hechos if x["tipo"] == "plazo_pasado"]
-    if pasados:
-        resumen += f" · {pasados[0]['tarea']}: plazo pasado {hm(pasados[0]['plazo'])}" + \
-                   (f" y {len(pasados) - 1} más" if len(pasados) > 1 else "")
-    if estimacion and sin_plazo:
-        resumen += f" · sin contar {', '.join(x['tarea'] for x in sin_plazo)} (sin plazo)"
+        texto = {"sin_entrega": "sin hora de entrega", "ciclo": "ciclo",
+                 "sin_plazo": "sin plazo: " + _cuantas(len(sin_plazo), "tarea"),
+                 "pocos_datos": "pocos datos: " + _cuantas(len(pocos), "persona")}
+        cabeza = "ruta: sin estimación" + (f" · {pasados[0]}" + (f" y {len(pasados) - 1} más" if len(pasados) > 1 else "")
+                                           if pasados else "")
+        dentro = " · ".join(texto[x] for x in motivos)      # si no cabe, se recorta el paréntesis, nunca el plazo
+        resumen = f"{cabeza} ({corta(dentro, max(1, RESUMEN_MAX - len(cabeza) - 3))})"
     if otras:
         o = otras[0]
         if o["donde"] == "criterios.md":     # de una nota: su hora resuelta y la de la cita, nunca su texto (#46, 5)
