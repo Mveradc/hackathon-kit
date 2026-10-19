@@ -26,7 +26,8 @@ ZONEINFO = True                 # las pruebas lo apagan para forzar el respaldo 
 DIJO_MAX, FUERZA_MAX, TEXTO_MAX = 500, 40, 300
 CRITERIO = re.compile(r"^## (\d{4}-\d\d-\d\d \d\d:\d\d) · (.+)$")       # la de relay.py
 CITA = re.compile(r"^\d{4}-\d\d-\d\d \d\d:\d\d( · .{1,80})?$")         # $defs/cita
-CORRIGE = re.compile(r"corrige la nota del (\d{4}-\d\d-\d\d \d\d:\d\d)(?: · ([^:;,.)»\n]{1,80}))?", re.I)
+# El «· quién» puede llevar sus paréntesis («Marta (Embat)», #56): uno sin abrir lo acaba (el de una cita entre ()).
+CORRIGE = re.compile(r"corrige la nota del (\d{4}-\d\d-\d\d \d\d:\d\d)(?: · ((?:[^:;,.()»\n]|\([^()\n]*\)){1,80}))?", re.I)
 CAMPO = re.compile(r"^- ([^:]+):\s*(.*)$")
 UNA_HORA = timedelta(hours=1)
 ENTREGA = re.compile(r"\bentregas?\b", re.I)      # la palabra, no «entregables»
@@ -50,6 +51,8 @@ EN_TEXTO = re.compile(rf"\b(?:{_D}\.?,?\s+)?(?:\d{{1,2}}\s+(?:de\s+)?{_M}\.?(?:\
                       rf"(?:a\s+las\s+)?\d{{1,2}}:\d\d\b", re.I)
 IANA = re.compile(r"\b([A-Z][A-Za-z_]+(?:/[A-Z][A-Za-z_+-]+){1,2})\b")
 DESFASE = re.compile(r"(?:\b(?:UTC|GMT)\s*([+\-−])\s*(\d{1,2})(?::?([0-5]\d))?)|(?:(?<![\w:])([+\-−])(\d\d):([0-5]\d)\b)")
+# Un desfase ISO 8601 pegado a la hora (con o sin segundos): «10:00+02:00», «T10:00:00-03:00». La hora se queda.
+PEGADO = re.compile(r"(?<![\d:])(\d{1,2}:[0-5]\d)(:[0-5]\d)?([+\-−])(\d\d):?([0-5]\d)(?![\d:])")
 SOLO_UTC = re.compile(r"\b(?:UTC|GMT)\b(?!\s*[+\-−]\s*\d)")
 FECHA_ISO = re.compile(r"(?<!\d)(\d{4})-(\d\d)-(\d\d)(?!\d)")
 FECHA_BARRAS = re.compile(r"(?<!\d)(\d{1,2})/(\d{1,2})/(\d{4})(?!\d)")
@@ -156,14 +159,37 @@ def _de(dt, tz):
 
 # ------------------------------------------------------------------------------------------------ equipo.md
 def _zona_de(texto):
-    """(zona normalizada, tzinfo, texto sin la zona, aviso) de una línea de equipo.md."""
+    """(zona normalizada, tzinfo, texto sin la zona, aviso) de una línea de equipo.md. Un desfase ISO 8601 pegado a la
+    hora («10:00+02:00», «2026-09-20T10:00:00+02:00») es zona, no una segunda hora (#56); con «-», solo detrás de una
+    hora ISO con «T» (si no, «10:00-11:00» es un tramo con dos horas)."""
+    pegado = None
+    for m in PEGADO.finditer(texto):
+        if m.group(3) == "+" or texto[max(0, m.start() - 1):m.start()] in ("T", "t"):
+            pegado = _desfase(m.group(3), m.group(4), m.group(5))
+            if pegado:
+                texto = texto[:m.end(1)] + texto[m.end():]
+                break
+    zona_n, tz, resto, aviso = _zona_suelta(texto)
+    if zona_n is None and aviso is None and pegado:
+        return pegado[0], pegado[1], resto, None
+    return zona_n, tz, resto, aviso
+
+
+def _desfase(signo, h, mi):
+    """(«±HH:MM», tzinfo) de un desfase, o None si pasa de ±14:00."""
+    minutos = (int(h) * 60 + int(mi or 0)) * (-1 if signo in "-−" else 1)
+    if abs(minutos) > 14 * 60:
+        return None
+    tz = timezone(timedelta(minutes=minutos))
+    return _iso(datetime(2000, 1, 1, tzinfo=tz))[-6:], tz
+
+
+def _zona_suelta(texto):
     m = DESFASE.search(texto)
     if m:
-        signo, h, mi = (m.group(1), m.group(2), m.group(3)) if m.group(1) else (m.group(4), m.group(5), m.group(6))
-        minutos = (int(h) * 60 + int(mi or 0)) * (-1 if signo in "-−" else 1)
-        if abs(minutos) <= 14 * 60:
-            tz = timezone(timedelta(minutes=minutos))
-            return _iso(datetime(2000, 1, 1, tzinfo=tz))[-6:], tz, texto[:m.start()] + texto[m.end():], None
+        d = _desfase(*((m.group(1), m.group(2), m.group(3)) if m.group(1) else (m.group(4), m.group(5), m.group(6))))
+        if d:
+            return d[0], d[1], texto[:m.start()] + texto[m.end():], None
     m = IANA.search(texto)
     if m:
         tz = zona(m.group(1))
@@ -262,7 +288,10 @@ def leer_equipo(texto, ct, anio):
                                  "observado_en": ct, "declarado": True, "_dt": dt}
         salida["otras"] += [{"valor": _iso(o), "texto": _txt(linea), "motivo": None, "donde": "equipo.md",
                              "fuente": "git", "observado_en": ct, "declarado": True} for o in otras]
-    zona_n, salida["tz"] = next(((z, tz) for z, tz in zonas if z), (None, None))
+    # #56, 6: la zona IANA si alguna de las dos líneas la da (con ella las horas cambian bien en el cambio de hora);
+    # si no, el desfase de Inicio: (o el de Entrega:).
+    zona_n, salida["tz"] = next(((z, tz) for z, tz in zonas if z and "/" in z), None) or \
+        next(((z, tz) for z, tz in zonas if z), (None, None))
     salida["zona"] = _dato(zona_n, "git", ct)
     return salida
 
@@ -431,24 +460,21 @@ def _filas(lineas):
 
 
 def _quienes(texto, personas):
-    """Las personas de una celda o de un «- <quién>:» de Descansos: @usuario, el nombre de coordinacion.md o «Todos»
-    (todas las del equipo). None = todo el equipo: «Todos» sin equipo, o la celda vacía."""
+    """Las personas de una celda o de un «- <quién>:» de Descansos: @usuario o el nombre de coordinacion.md. None = todo
+    el equipo: «Todos» (también junto a otras: ya están todas; §11.2 y #56) o la celda vacía."""
     nombres = {p["nombre"].lower(): p["persona"] for p in personas}
     usuarios = {p["persona"].lower() for p in personas}
-    salida, todos = [], False
+    salida = []
     for x in re.split(r"\s*(?:,|/|&|\+|\by\b)\s*", (texto or "").strip()):
         x = x.strip()
         if not x:
             continue
         if _llano(x) in ("todos", "todo el equipo", "el equipo", "equipo", "todas"):
-            todos = True
-            salida += [p["persona"] for p in personas]
-        elif x.startswith("@"):
+            return None
+        if x.startswith("@"):
             salida.append(x[1:].lower() if x[1:].lower() in usuarios else x[1:])
         else:
             salida.append(nombres.get(x.lower(), x))
-    if todos and not personas:
-        return None
     return [proyeccion.corta(p, TEXTO_MAX) for p in dict.fromkeys(salida)] or None
 
 
@@ -519,8 +545,9 @@ def leer_hitos(texto, inicio, tz, anio, ct, inicio_motivo):
 
 
 def leer_plan(texto, personas, ct, inicio, tz, anio, inicio_motivo=None):
-    """plan.md (con compilar.leer_plan, las mismas 5 columnas) → {ID: {orden_plan, hasta, franja, citas,
-    comprobacion}}. Lanza compilar.PlanMalo si el plan está mal formado."""
+    """plan.md (con compilar.leer_plan, las mismas 5 columnas) → {ID: {orden_plan, titulo_plan, hasta, franja, citas,
+    comprobacion}}. titulo_plan: el título de la fila del plan vigente, para «fuera de la entrega» (#56, 4). Lanza
+    compilar.PlanMalo si el plan está mal formado."""
     filas = compilar.leer_plan(texto, personas)
     salida, por_persona = {}, {}
     for t in filas:
@@ -531,7 +558,7 @@ def leer_plan(texto, personas, ct, inicio, tz, anio, inicio_motivo=None):
             dt, motivo = resolver(t["hasta"], inicio, tz, anterior, anio, inicio_motivo)
             anterior = dt or anterior
             resueltos.append(dt)
-            salida[t["id"]] = {"orden_plan": _dato(n, "git", ct),
+            salida[t["id"]] = {"orden_plan": _dato(n, "git", ct), "titulo_plan": _dato(t["titulo"], "git", ct),
                                "hasta": {"valor": _iso(dt), "texto": _txt(t["hasta"]), "motivo": motivo, "fuente": "git",
                                          "observado_en": ct, "declarado": True},
                                "citas": etiqueta_plan(t["comprobacion"]), "comprobacion": t["comprobacion"]}
@@ -643,5 +670,5 @@ def calcular(textos, cts, personas, vista_jurado, ruta_critica):
                           if texto_plan is not None else []}
         for tid, x in (plan or {}).items():
             campos = salida["tareas"].setdefault(tid, {})
-            campos.update(hasta=x["hasta"], franja=x["franja"], orden_plan=x["orden_plan"])
+            campos.update(hasta=x["hasta"], franja=x["franja"], orden_plan=x["orden_plan"], titulo_plan=x["titulo_plan"])
     return salida

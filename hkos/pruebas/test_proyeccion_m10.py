@@ -80,12 +80,15 @@ def nota(i, obs):
 def con_m10(e, con_jurado=True, con_ruta=True, notas=15):
     """El estado con lo que deja el relay con los interruptores (api.md §11.2): las notas citadas por las primeras
     tareas del plan y, en la ruta, la entrega de equipo.md y ningún Hasta resuelto (el resumen más largo: «sin plazo:
-    T01, T02…», cortado a 120)."""
+    T01, T02…», cortado a 120). historia.ultima_senal (#56, 2): la de cada tarea de una persona con sesión es la hora de
+    su último latido (lo último que tocó su sesión); persona-e, sin sesión, nunca dio señales (null)."""
     e = copy.deepcopy(e)
     obs = e["generado_en"]
+    ultima = {x["persona"]: max((a["ultimo_latido"] for a in x["actores"]), key=fecha, default=None)
+              for x in e["personas"]}
     for t in e["tareas"]:
-        t["historia"] = {"primera_senal": None, "hecha_en": None, "trabajo_nuevo_desde": None, "fuente": "derivado",
-                         "observado_en": obs}
+        t["historia"] = {"primera_senal": None, "hecha_en": None, "trabajo_nuevo_desde": None,
+                         "ultima_senal": ultima.get(t["dueno"]), "fuente": "derivado", "observado_en": obs}
     if con_jurado:
         e["jurado"] = {"fichero": git_("ok", obs), "zona": git_("Europe/Madrid", obs),
                        "notas": [nota(i, obs) for i in range(notas)], "pitch": None}
@@ -177,6 +180,68 @@ class Vista(unittest.TestCase):
                         for tz in (timezone.utc, MADRID):
                             self.assertEqual(p.markdown(v, persona, "x", tz=tz, epoch=1),
                                              viejo.markdown(v0, persona, "x", tz=tz, epoch=1))
+
+
+class UmbralParada(unittest.TestCase):
+    """Issue #56, punto 2: `umbral_parada_min` de os.md llega como `umbral_parada_s` de proyeccion.vista a todos los que
+    calculan la vista (el relay, el demonio, `hk-os unir` y el MCP). Con un valor distinto de 20 min, todos dan lo mismo."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.repo = os.path.join(self.tmp, "repo")
+        os.makedirs(os.path.join(self.repo, ".hackathon"))
+        subprocess.run(["git", "init", "-q", self.repo], check=True)
+        self.os_md = os.path.join(self.repo, ".hackathon", "os.md")
+        with open(self.os_md, "w", encoding="utf-8") as f:
+            f.write("activa: sí\nruta_critica: sí\numbral_parada_min: 90   # minutos\n")
+        self.dir = os.path.join(self.repo, ".git", "hackathon", "os")
+        os.makedirs(self.dir)
+
+    def test_con_90_min_el_relay_el_demonio_unir_y_el_mcp_dan_la_misma_ruta(self):
+        import agente  # noqa: PLC0415
+        import cli  # noqa: PLC0415
+        import relay  # noqa: PLC0415
+        from unittest import mock  # noqa: PLC0415
+        e = con_m10(estado_5x20(), con_jurado=False)
+        e["generado_en"] = iso(fecha(e["generado_en"]) + timedelta(hours=1))   # las señales, de hace una hora
+        esperada = p.vista(e, umbral_parada_s=90 * 60)["ruta"]
+
+        def callados(b):
+            return sorted(h["persona"] for h in b["hechos"] if h["tipo"] == "sin_senales")
+        self.assertEqual(callados(esperada), ["persona-e"])                       # solo la que nunca dio señales
+        self.assertEqual(len(callados(p.vista(e)["ruta"])), 5)                   # con los 20 min, las cinco
+        with open(os.path.join(self.dir, "estado.json"), "w", encoding="utf-8") as f:
+            json.dump(e, f)
+        rutas = {}
+        # El relay: sus umbrales salen de os.md (como en servir) y su vista es la del estado que calcula.
+        parada, _ = relay.umbrales(self.os_md)
+        with mock.patch.object(relay, "calcular", lambda *a, **k: copy.deepcopy(e)):
+            r = relay.Relay(os.path.join(self.tmp, "relay"), e["personas"], ahora=lambda: e["generado_en"],
+                            umbral_parada_s=parada)
+        rutas["relay"] = r.vista["ruta"]
+        # El demonio (/v1/vista, y estado-equipo.md, que sale de la misma vista).
+        a = agente.Agente(self.repo, "persona-b", reloj=lambda: 1000.0, ahora=lambda: e["generado_en"])
+        a.estado = e
+        rutas["demonio"] = a.vista_web()["vista"]["ruta"]
+        # hk-os unir: la vista con la que escribe el primer estado-equipo.md.
+        vistas, original = [], p.vista
+        with mock.patch.object(p, "vista", lambda *x, **k: vistas.append(original(*x, **k)) or vistas[-1]), \
+                mock.patch.object(cli.agente, "ahora_iso", lambda: e["generado_en"]):
+            cli.estado_inicial(os.path.join(self.repo, ".git"), self.repo, e, "persona-b")
+        rutas["unir"] = vistas[-1]["ruta"]
+        # El MCP.
+        res = mcp.responder(mcp.Fuente(self.repo, ahora=lambda: e["generado_en"]),
+                            {"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "ruta", "arguments": {}}})
+        rutas["mcp"] = json.loads(res["result"]["content"][0]["text"])["ruta"]
+        for quien, b in rutas.items():
+            with self.subTest(quien=quien):
+                self.assertEqual(b, esperada)
+
+    def test_parada_s_como_el_relay(self):
+        for texto, s in ((None, 1200), ("", 1200), ("90", 5400), ("7.5", 450), ("noventa", 1200)):
+            with self.subTest(texto=texto):
+                self.assertEqual(p.parada_s(texto), s)
 
 
 # ===================================================================================== 2. estado-equipo.md y sus firmas

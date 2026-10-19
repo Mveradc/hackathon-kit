@@ -515,6 +515,7 @@ class Agente:
             self.umbral_viejo_s = float(conf(os_md, "umbral_viejo_s") or 300)
         except ValueError:
             self.umbral_viejo_s = 300
+        self.umbral_parada_s = proyeccion.parada_s(conf(os_md, "umbral_parada_min"))   # «sin señales» de la ruta (M10)
         self.esquema = Esquema("eventos.schema.json")
         base, cache = Contexto(), {}
 
@@ -622,7 +623,8 @@ class Agente:
             return None
         ahora = self.ahora()
         return {"servido_en": ahora, "persona": self.persona, "relay": {"conectado": caido is None, "desde": desde},
-                "vista": proyeccion.vista(estado, ahora=ahora, umbral_viejo_s=self.umbral_viejo_s)}
+                "vista": proyeccion.vista(estado, ahora=ahora, umbral_viejo_s=self.umbral_viejo_s,
+                                          umbral_parada_s=self.umbral_parada_s)}
 
     def accion(self, ruta, cuerpo):
         """Anotar y Reclamar (K-95, acciones.py), ya pasadas las comprobaciones de seguridad. Un fallo inesperado no tumba
@@ -923,7 +925,8 @@ class Agente:
         if self.estado is None or not (nuevo or self.reloj() - self.ultimo_md >= MD_S):
             return
         self.ultimo_md = self.reloj()
-        v = proyeccion.vista(self.estado, ahora=self.ahora(), umbral_viejo_s=self.umbral_viejo_s)
+        v = proyeccion.vista(self.estado, ahora=self.ahora(), umbral_viejo_s=self.umbral_viejo_s,
+                             umbral_parada_s=self.umbral_parada_s)
         relay = ("viejo", self.relay_caido_desde) if self.relay_caido_desde else None
         texto = proyeccion.markdown(v, self.persona, os.path.join(self.dir, "estado.json").replace("\\", "/"),
                                     tz=self.tz or datetime.now().astimezone().tzinfo, epoch=int(self.reloj()), relay=relay,

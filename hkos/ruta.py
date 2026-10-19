@@ -21,12 +21,14 @@ from estados import fecha, iso
 
 MINIMO = 3                                  # base.minimo: fijo en el contrato (decisión 7A), no se configura
 HECHAS = {"publicada", "cerrada"}
-# Con trabajo empezado: lo ya trabajado (desde primera_senal, sin descansos) se descuenta de lo que le queda.
+# Con trabajo empezado: lo ya trabajado (desde primera_senal, o desde trabajo_nuevo_desde si vuelve a tener trabajo
+# tras publicarse, sin descansos) se descuenta de lo que le queda.
 EMPEZADAS = {"en_curso", "parada", "no_cerrada", "en_revision", "integrada"}
 DIAS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
 GRAVEDAD = {"rojo": 0, "ambar": 1, "gris": 2}
 LEGIBLE = {"a_tiempo": "a tiempo", "justo": "justo", "no_llega": "no llega"}
 RESUMEN_MAX = 120                           # M17: la línea del md, con « (HH:MM · fuente · viejo)», cabe en 160
+TEXTO_LIBRE_MAX = 30                        # #56, 7 (§6): el texto libre de un resumen, en grafemas
 DESFASE = re.compile(r"^(?:UTC)?([+-])(\d{1,2})(?::?(\d\d))?$")
 
 
@@ -36,8 +38,9 @@ def _v(d):
 
 def fuera_de_entrega(t):
     """Decisión 8B: `condicional` si el título empieza por «Si », `si_da_tiempo` si lleva [SI DA TIEMPO] (sin
-    distinguir mayúsculas); None si cuenta para la entrega."""
-    titulo = " ".join(t.get("titulo", "").split()).casefold()
+    distinguir mayúsculas); None si cuenta para la entrega. El título, el de la fila del plan.md vigente (titulo_plan,
+    #56, 4); sin fila en el plan, el del issue."""
+    titulo = " ".join((_v(t.get("titulo_plan")) or t.get("titulo") or "").split()).casefold()
     if titulo.startswith("si "):
         return "condicional"
     if "[si da tiempo]" in titulo:
@@ -98,8 +101,14 @@ def _origen(t, ahora, *claves):
 
 
 def _zona(ruta):
-    """La zona de las horas del resumen: el desfase de la entrega (o del inicio) de equipo.md, que el relay resuelve
-    con su zona; si no, la zona si es un desfase; si no, UTC. Sin zoneinfo: sin tzdata (Windows) daría otra salida."""
+    """La zona de las horas del resumen (#56, 6): la zona IANA de equipo.md, con lecturas.zona (zoneinfo o, sin
+    tzdata, el respaldo de la UE), para que un reto que cruza un cambio de hora escriba bien las de antes y las de
+    después; si no se resuelve, el desfase de la entrega (o del inicio); si no, la zona si es un desfase; si no, UTC."""
+    from lecturas import zona          # aquí: lecturas importa proyeccion, que importa este módulo
+    nombre = str(_v(ruta.get("zona")) or "")
+    tz = zona(nombre) if "/" in nombre else None
+    if tz is not None:
+        return tz
     for d in (ruta.get("entrega"), ruta.get("inicio")):
         if d and d.get("valor"):
             return fecha(d["valor"]).tzinfo
@@ -108,6 +117,25 @@ def _zona(ruta):
         signo = 1 if m.group(1) == "+" else -1
         return timezone(signo * timedelta(hours=int(m.group(2)), minutes=int(m.group(3) or 0)))
     return timezone.utc
+
+
+def entre_comillas(texto, n=TEXTO_LIBRE_MAX):
+    """Un texto libre de un fichero del equipo para un resumen (#56, 7; §6): entre «», con las « » de dentro
+    equilibradas (una » suya no cierra la cita) y recortado a n grafemas, con «…» dentro de las comillas si no cabe. Su
+    fichero va detrás, y nunca un autor."""
+    from proyeccion import equilibra, grafemas
+    gs = list(grafemas(equilibra(texto, len(texto) + 2 * texto.count("«") + 1)))
+    if len(gs) <= n:
+        return f"«{''.join(gs)}»"
+    k = n - 1
+    while k > 0 and len(list(grafemas(equilibra("".join(gs[:k]), 10 ** 6)))) + 1 > n:
+        k -= 1
+    return f"«{equilibra(''.join(gs[:k]).rstrip(), 10 ** 6)}…»"
+
+
+def _cuantas(n, cosa):
+    """«1 tarea», «3 tareas»."""
+    return f"{n} {cosa}" + "s" * (n != 1)
 
 
 def _ciclo(ids, sucesoras):
@@ -139,13 +167,20 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     """El bloque `ruta` de la vista ($defs/vista_ruta).
 
     ruta: el bloque `ruta` de estado.json. tareas: `tareas[]` de estado.json. ahora: ISO 8601.
-    personas: `vista["personas"]` ({persona, nombre?, ultima_senal}). fuentes: `vista["fuentes"]` ({k: {valor,
-    observado_en, viejo}}). tarjetas: {ID: tarjeta de la vista (api.md §6)}; sin ella, una mínima. umbral_parada_s: el
-    `umbral_parada_min` de os.md, en segundos (para «sin señales»)."""
+    personas: `vista["personas"]` ({persona, nombre?}: el nombre, para los descansos). fuentes: `vista["fuentes"]`
+    ({k: {valor, observado_en, viejo}}). tarjetas: {ID: tarjeta de la vista (api.md §6)}; sin ella, una mínima.
+    umbral_parada_s: el `umbral_parada_min` de os.md, en segundos (para «sin señales», con historia.ultima_senal)."""
     from proyeccion import ETIQUETAS, corta     # aquí: proyeccion importa este módulo
     t_ahora, fuentes, tarjetas = fecha(ahora), fuentes or {}, tarjetas or {}
     nombres = {p["persona"]: p.get("nombre") for p in personas}
-    senales = {p["persona"]: p.get("ultima_senal") for p in personas}
+    # #56, 2: la última señal de una persona es la última atribuida a alguna de sus tareas (historia.ultima_senal: un
+    # commit con su ID o una edición sin ambigüedad), no personas[].ultima_senal, que cuenta latidos, commits sin ID y
+    # ediciones ambiguas.
+    senales = {}
+    for t in tareas:
+        u = (t.get("historia") or {}).get("ultima_senal")
+        if u and (senales.get(t["dueno"]) is None or fecha(u) > fecha(senales[t["dueno"]])):
+            senales[t["dueno"]] = u
     descansos = list(ruta.get("descansos", []))
     usables = [d for d in descansos if d.get("desde") and d.get("hasta")]
     cache_pausas = {}
@@ -155,6 +190,11 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
             cache_pausas[persona] = _junta([(fecha(d["desde"]), fecha(d["hasta"])) for d in usables
                                             if _es_de(d, persona, nombres.get(persona))])
         return cache_pausas[persona]
+
+    def libre(fr, persona):
+        """Los minutos de la franja que le tocan sin los descansos de su persona o de todos (la parte que le toca de
+        ellos), nunca menos de 1: con ellos se mide el ritmo y lo que le queda a una abierta (§11.4, #56, 1)."""
+        return max(1, fr["min"] - _solape(fecha(fr["desde"]), fecha(fr["hasta"]), pausas(persona)) / 60 / fr["compartida"])
 
     def viejo_de(fuente):
         return bool(fuentes.get(fuente if fuente in ("github", "git") else "relay", {}).get("viejo"))
@@ -172,7 +212,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     for t in tareas:
         motivo = fuera_de_entrega(t)
         if motivo:              # el título es de la fila del plan: la procedencia, la de sus datos del plan
-            fuera.append(dict({"tarea": t["id"], "motivo": motivo}, **_origen(t, ahora, "orden_plan", "hasta", "franja")))
+            fuera.append(dict({"tarea": t["id"], "motivo": motivo},
+                              **_origen(t, ahora, "titulo_plan", "orden_plan", "hasta", "franja")))
         else:
             cuentan[t["id"]] = t
     ids = sorted(cuentan)
@@ -205,8 +246,7 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
             a, b = fecha(h["primera_senal"]), fecha(h["hecha_en"])
             seg = (b - a).total_seconds() - _solape(a, b, pausas(t["dueno"]))
             # Decisión 4 (#46): los descansos tampoco cuentan en la franja (la parte que le toca de ellos).
-            libre = fr["min"] - _solape(fecha(fr["desde"]), fecha(fr["hasta"]), pausas(t["dueno"])) / 60 / fr["compartida"]
-            ritmo = max(1, math.floor(100 * seg / 60 / max(1, libre) + 0.5))
+            ritmo = max(1, math.floor(100 * seg / 60 / libre(fr, t["dueno"]) + 0.5))
             medidas.setdefault(t["dueno"], []).append((ritmo, h["hecha_en"]))
     duenos_abiertos = {cuentan[k]["dueno"] for k in abiertas}
     base_personas = []
@@ -270,13 +310,14 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
             t = cuentan[k]
             p, h, fr = t["dueno"], t.get("historia") or {}, _v(t["franja"])
             antes = [termina(a) for a in previas_estimables(k)]
-            trabajado = 0.0
-            if t["estado"]["valor"] in EMPEZADAS and h.get("primera_senal") and fecha(h["primera_senal"]) < t_ahora:
-                a = fecha(h["primera_senal"])
+            # #56, 9: tras volver a en_curso después de publicarse (6B), lo trabajado cuenta desde el trabajo nuevo.
+            desde, trabajado = h.get("trabajo_nuevo_desde") or h.get("primera_senal"), 0.0
+            if t["estado"]["valor"] in EMPEZADAS and desde and fecha(desde) < t_ahora:
+                a = fecha(desde)
                 trabajado = (t_ahora - a).total_seconds() - _solape(a, t_ahora, pausas(p))
-            par = []
+            par, minutos = [], libre(fr, p)       # #56, 1: sin descansos, que _avanza ya salta (una sola vez)
             for i, ritmo in enumerate(ritmos[p]):
-                seg = max(0, math.ceil(fr["min"] * 60 * ritmo / 100 - trabajado))
+                seg = max(0, math.ceil(minutos * 60 * ritmo / 100 - trabajado))
                 par.append(_avanza(max([t_ahora] + [x[i] for x in antes]), seg, pausas(p)))
             fin[k] = tuple(par)
         return fin[k]
@@ -388,33 +429,36 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         d = fecha(x).astimezone(tz)
         return f"{DIAS[d.weekday()]} {d.strftime('%H:%M')}"
 
-    if estimacion:
-        resumen = f"ruta: estimación {LEGIBLE[valor]} · fin {hm(estimacion['temprano'])}–{hm(estimacion['tarde'])} · " \
-                  f"entrega {dia_hm(objetivo['valor'])}" + (" (confirmar)" if objetivo.get("confirmar") else "")
-    else:
-        texto = {"sin_entrega": "sin hora de entrega", "ciclo": "ciclo " + " → ".join(ciclo or []),
-                 "sin_plazo": "sin plazo: " + ", ".join(x["tarea"] for x in sin_plazo),
-                 "pocos_datos": "pocos datos: " + ", ".join(f"@{b['persona']} {b['n']} de {MINIMO}" for b in pocos)}
-        resumen = f"ruta: sin estimación ({texto[motivos[0]]})"
-    # Decisión del usuario: el plazo pasado (el único rojo) va antes de lo demás, para que el corte a 120 no lo quite.
+    # #56, 5 (contrato del PR #59, §11.4): las partes, separadas por « · »: el veredicto; justo detrás, el plazo pasado
+    # (el único rojo, el primero por hora, «y N más»), para que el corte a 120 nunca lo quite; con estimación, el fin y
+    # la entrega; sin ella, el primer motivo, abreviado; «sin contar …»; y la primera otra entrega.
+    partes = [f"ruta: estimación {LEGIBLE[valor]}" if estimacion else "ruta: sin estimación"]
     pasados = [x for x in hechos if x["tipo"] == "plazo_pasado"]
     if pasados:
-        resumen += f" · {pasados[0]['tarea']}: plazo pasado {hm(pasados[0]['plazo'])}" + \
-                   (f" y {len(pasados) - 1} más" if len(pasados) > 1 else "")
-    if estimacion and sin_plazo:
-        resumen += f" · sin contar {', '.join(x['tarea'] for x in sin_plazo)} (sin plazo)"
+        partes.append(f"{pasados[0]['tarea']}: plazo pasado {hm(pasados[0]['plazo'])}" +
+                      (f" y {len(pasados) - 1} más" if len(pasados) > 1 else ""))
+    if estimacion:
+        partes.append(f"fin {hm(estimacion['temprano'])}–{hm(estimacion['tarde'])} · entrega {dia_hm(objetivo['valor'])}"
+                      + (" (confirmar)" if objetivo.get("confirmar") else ""))
+        if sin_plazo:
+            partes.append(f"sin contar {', '.join(x['tarea'] for x in sin_plazo)} (sin plazo)")
+    else:
+        partes.append({"sin_entrega": "sin hora de entrega", "ciclo": "ciclo " + " → ".join(ciclo or []),
+                       "sin_plazo": "sin plazo: " + _cuantas(len(sin_plazo), "tarea"),
+                       "pocos_datos": "pocos datos: " + _cuantas(len(pocos), "persona")}[motivos[0]])
     if otras:
         o = otras[0]
         if o["donde"] == "criterios.md":     # de una nota: su hora resuelta y la de la cita, nunca su texto (#46, 5)
-            vieja = re.search(r"nota de (\d\d:\d\d)\)", o.get("texto") or "")     # la forma de antes de la cita
-            de_nota = o["cita"][11:16] if o.get("cita") else vieja.group(1) if vieja else "—"
-            resumen += f" · otra entrega: {dia_hm(o['valor']) if o.get('valor') else '—'} " \
-                       f"(criterios.md, nota de {de_nota})"
-        else:
-            resumen += f" · otra entrega: {o.get('texto') or '—'} ({o['donde']})"
+            de_nota = o["cita"][11:16] if o.get("cita") else "—"     # #56: solo la cita (ya no la forma provisional)
+            partes.append(f"otra entrega: {dia_hm(o['valor']) if o.get('valor') else '—'} (criterios.md, nota de {de_nota})")
+        else:                               # #56, 7: texto libre (constitución V): entre «», recortado, con su fichero
+            partes.append(f"otra entrega: {entre_comillas(o['texto']) if o.get('texto') else '—'} ({o['donde']})")
+    resumen = " · ".join(partes)
 
     return {
         "observado_en": ahora, "fuente": "derivado", "viejo": any(d.get("viejo") for d in leidas),
+        # #56, 6: la de equipo.md, tal cual (como vista_jurado.zona): IANA si la da y, si no, el desfase.
+        "zona": dict(ruta.get("zona") or {"valor": None, "fuente": "git", "observado_en": ahora, "declarado": True}),
         "dato_mas_viejo": dato_mas_viejo, "objetivo": objetivo, "otras_entregas": otras,
         "veredicto": {"valor": valor, "motivos": motivos, "gravedad": gravedad, "fuente": "derivado",
                       "observado_en": ahora},

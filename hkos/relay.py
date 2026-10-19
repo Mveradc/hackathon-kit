@@ -402,6 +402,13 @@ class Novedades:
             return {"valor": "sin leer jurado y ruta", "fuente": "git", "observado_en": iso_us(self.m10_ok)}
         return None
 
+    def leido(self):
+        """Decisión 8 del issue #56 (M10): fuentes.git con la hora de la última lectura buena de origin/main (el fetch
+        y, con M10, sus ficheros), no la del último commit: sin commits nuevos no se envejece; sin poder leer, sí.
+        None antes de la primera vuelta."""
+        horas = [h for h in (self.ultimo_ok, self.m10_ok if self.m10_rutas else None) if h is not None]
+        return {"valor": "ok", "fuente": "git", "observado_en": iso_us(min(horas))} if horas else None
+
 
 class Relay:
     """El estado del relay, sin HTTP. `ahora` se puede inyectar en las pruebas."""
@@ -649,12 +656,16 @@ class Relay:
         if de_git:
             fuentes["git"] = {"valor": "ok", "fuente": "git", "observado_en": max(de_git, key=fecha)}
         novedades, contratos, conflictos = None, self.contratos, None
+        m10 = self.vista_jurado or self.ruta_critica
         if self.novedades:
             with self.lock:
                 novedades = list(self.novedades.lista)
                 sin_fetch = self.novedades.fuente()
+                leido = self.novedades.leido() if m10 else None
                 if contratos is None:
                     contratos = list(self.novedades.contratos)
+            if leido:                                  # M10, decisión 8: la última lectura buena, no el último commit
+                fuentes["git"] = leido
             if sin_fetch:
                 fuentes["git"] = sin_fetch
         if self.wip:
@@ -677,10 +688,12 @@ class Relay:
         sin_hora = dict(estado, generado_en=None, fuentes={k: v for k, v in estado["fuentes"].items() if k != "relay"})
         # M8h: un sondeo bueno de GitHub sin cambios solo mueve la hora de fuentes.github. No es una versión nueva
         # (ni un SSE) hasta que esa hora avanza un tercio de umbral_viejo_s: así nada se ve «viejo» sin serlo.
-        gh, pub = estado["fuentes"].get("github"), (self.estado or {}).get("fuentes", {}).get("github")
-        if gh and pub and gh["valor"] == pub["valor"] == "ok" and gh["fuente"] == pub["fuente"] and \
-                (fecha(gh["observado_en"]) - fecha(pub["observado_en"])).total_seconds() < self.umbral_viejo_s / 3:
-            sin_hora["fuentes"] = dict(sin_hora["fuentes"], github=pub)
+        # M10 (decisión 8): lo mismo con fuentes.git, que ahora se mueve con cada lectura buena de origin/main.
+        for k in ("github", "git") if m10 else ("github",):
+            nueva, pub = estado["fuentes"].get(k), (self.estado or {}).get("fuentes", {}).get(k)
+            if nueva and pub and nueva["valor"] == pub["valor"] == "ok" and nueva["fuente"] == pub["fuente"] and \
+                    (fecha(nueva["observado_en"]) - fecha(pub["observado_en"])).total_seconds() < self.umbral_viejo_s / 3:
+                sin_hora["fuentes"] = dict(sin_hora["fuentes"], **{k: pub})
         huella = hashlib.sha256(json.dumps(sin_hora, sort_keys=True).encode("utf-8")).hexdigest()
         with self.cambio:
             if huella != self._huella:
@@ -688,7 +701,8 @@ class Relay:
                 self.version += 1
                 self.estado = estado
                 self.texto = json.dumps(estado, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-                self.vista = proyeccion.vista(estado, umbral_viejo_s=self.umbral_viejo_s)
+                self.vista = proyeccion.vista(estado, umbral_viejo_s=self.umbral_viejo_s,
+                                              umbral_parada_s=self.umbral_parada_s)
                 if self.web_nueva and self._pulso_github:   # M9a: el sondeo trajo un cambio que saca versión
                     self._pulso_github = False
                     self._reciente({"id": f"github-{self.version}", "tipo": "github.sondeo", "persona": None,
@@ -1013,6 +1027,16 @@ def sondeo_de(os_md, equipo_md, personas, aviso):
     return github.Sondeo(cliente, {p["persona"] for p in personas})
 
 
+def umbrales(os_md):
+    """(umbral_parada_s, umbral_viejo_s) del os.md del relay: los de su estado y los de su vista (issue #56)."""
+    umbral = proyeccion.parada_s(conf(os_md, "umbral_parada_min")) if os_md else proyeccion.PARADA_S
+    try:
+        viejo = float(conf(os_md, "umbral_viejo_s") or 300) if os_md else 300
+    except ValueError:
+        viejo = 300
+    return umbral, viejo
+
+
 def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=True):
     if not ip_permitida(ip):
         raise SystemExit(f"hk-os relay: {ip} no es 127.0.0.1, una IP privada de LAN ni una de Tailscale; "
@@ -1024,14 +1048,7 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
         sondeo = compilar.SondeoPlan(repo, personas, aviso=aviso) if es_repo else None
     else:
         sondeo = sondeo_de(os_md, equipo_md, personas, aviso) if con_github else None
-    try:
-        umbral = 60 * float(conf(os_md, "umbral_parada_min") or 20) if os_md else 1200
-    except ValueError:
-        umbral = 1200
-    try:
-        viejo = float(conf(os_md, "umbral_viejo_s") or 300) if os_md else 300
-    except ValueError:
-        viejo = 300
+    umbral, viejo = umbrales(os_md)
     nueva = web_nueva(os_md)                        # M9a: SSE `eventos` y `servicios` (api.md §0 y §3)
     jurado, ruta = vista_jurado(os_md), ruta_critica(os_md)     # M10 (api.md §11.1)
     novedades = Novedades(repo, viejo, aviso=aviso, web_nueva=nueva, vista_jurado=jurado, ruta_critica=ruta) \
