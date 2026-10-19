@@ -117,7 +117,7 @@
         "motivo": { "anyOf": [
           { "type": "null" },
           { "enum": ["sin_dato", "sin_zona", "formato", "por_confirmar"] },
-          { "enum": ["dos_horas"], "description": "TRANSITORIO (issue #46): se quita al adaptar el código. Tras el ajuste 5 de ADR-0013, con dos horas manda la primera (valor) y la otra va a otras_entregas con donde equipo.md." }
+          { "enum": ["dos_horas"], "description": "Tras congelar, 2026-10-19, M10, ajuste 2: en Inicio:, la línea trae dos horas distintas (sin contar la zona) y valor es null: la segunda no tiene a dónde ir. TRANSITORIO (issue #46) solo en ruta.entrega (la línea Entrega:): se quita de allí al adaptar el código, porque tras el ajuste 5 de ADR-0013 manda la primera (valor) y la otra va a otras_entregas con donde equipo.md." }
         ] },
         "donde": { "enum": ["equipo.md", "plan.md", "criterios.md"] },
         "cita": { "$ref": "#/$defs/cita", "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 5): con donde criterios.md, la cita de la nota (su texto no va: texto es null, constitución V); en las demás, ausente." },
