@@ -37,8 +37,9 @@ def _v(d):
 
 def fuera_de_entrega(t):
     """Decisión 8B: `condicional` si el título empieza por «Si », `si_da_tiempo` si lleva [SI DA TIEMPO] (sin
-    distinguir mayúsculas); None si cuenta para la entrega."""
-    titulo = " ".join(t.get("titulo", "").split()).casefold()
+    distinguir mayúsculas); None si cuenta para la entrega. El título, el de la fila del plan.md vigente (titulo_plan,
+    #56, 4); sin fila en el plan, el del issue."""
+    titulo = " ".join((_v(t.get("titulo_plan")) or t.get("titulo") or "").split()).casefold()
     if titulo.startswith("si "):
         return "condicional"
     if "[si da tiempo]" in titulo:
@@ -185,7 +186,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     for t in tareas:
         motivo = fuera_de_entrega(t)
         if motivo:              # el título es de la fila del plan: la procedencia, la de sus datos del plan
-            fuera.append(dict({"tarea": t["id"], "motivo": motivo}, **_origen(t, ahora, "orden_plan", "hasta", "franja")))
+            fuera.append(dict({"tarea": t["id"], "motivo": motivo},
+                              **_origen(t, ahora, "titulo_plan", "orden_plan", "hasta", "franja")))
         else:
             cuentan[t["id"]] = t
     ids = sorted(cuentan)

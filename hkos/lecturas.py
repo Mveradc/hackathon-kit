@@ -519,8 +519,9 @@ def leer_hitos(texto, inicio, tz, anio, ct, inicio_motivo):
 
 
 def leer_plan(texto, personas, ct, inicio, tz, anio, inicio_motivo=None):
-    """plan.md (con compilar.leer_plan, las mismas 5 columnas) → {ID: {orden_plan, hasta, franja, citas,
-    comprobacion}}. Lanza compilar.PlanMalo si el plan está mal formado."""
+    """plan.md (con compilar.leer_plan, las mismas 5 columnas) → {ID: {orden_plan, titulo_plan, hasta, franja, citas,
+    comprobacion}}. titulo_plan: el título de la fila del plan vigente, para «fuera de la entrega» (#56, 4). Lanza
+    compilar.PlanMalo si el plan está mal formado."""
     filas = compilar.leer_plan(texto, personas)
     salida, por_persona = {}, {}
     for t in filas:
@@ -531,7 +532,7 @@ def leer_plan(texto, personas, ct, inicio, tz, anio, inicio_motivo=None):
             dt, motivo = resolver(t["hasta"], inicio, tz, anterior, anio, inicio_motivo)
             anterior = dt or anterior
             resueltos.append(dt)
-            salida[t["id"]] = {"orden_plan": _dato(n, "git", ct),
+            salida[t["id"]] = {"orden_plan": _dato(n, "git", ct), "titulo_plan": _dato(t["titulo"], "git", ct),
                                "hasta": {"valor": _iso(dt), "texto": _txt(t["hasta"]), "motivo": motivo, "fuente": "git",
                                          "observado_en": ct, "declarado": True},
                                "citas": etiqueta_plan(t["comprobacion"]), "comprobacion": t["comprobacion"]}
@@ -643,5 +644,5 @@ def calcular(textos, cts, personas, vista_jurado, ruta_critica):
                           if texto_plan is not None else []}
         for tid, x in (plan or {}).items():
             campos = salida["tareas"].setdefault(tid, {})
-            campos.update(hasta=x["hasta"], franja=x["franja"], orden_plan=x["orden_plan"])
+            campos.update(hasta=x["hasta"], franja=x["franja"], orden_plan=x["orden_plan"], titulo_plan=x["titulo_plan"])
     return salida

@@ -973,6 +973,23 @@ class Issue46(SinZoneinfo):
         ev = modelo.historias(tareas, issues, eventos, personas, max(e["ts"] for e in eventos))["T15"][1]
         self.assertEqual((ev["valor"], ev["tipo"]), ("a15a15a", "fusion"))
 
+    def test_56_4_titulo_plan_de_la_fila_del_plan_vigente(self):
+        """#56, punto 4: lecturas da por tarea el título de su fila del plan.md vigente (tareas[].titulo_plan, solo con
+        ruta_critica), y ruta.py decide con él «fuera de la entrega»: en G14, T18 pasa a [SI DA TIEMPO] en plan-2 y su
+        issue sigue con el título de antes."""
+        r = calcula(equipo=leer("g14/equipo-2.md"), plan=leer("g14/plan-2.md"), jurado=False)
+        self.assertEqual(r["tareas"]["T18"]["titulo_plan"], {"valor": "[SI DA TIEMPO] Cada cifra lleva su moneda o «puntos»",
+                                                             "fuente": "git", "observado_en": CT, "declarado": True})
+        self.assertNotIn("titulo_plan", calcula(equipo=leer("g14/equipo-2.md"), plan=leer("g14/plan-2.md"),
+                                                ruta=False)["tareas"]["T18"])
+        issue = next(t for t in carga(os.path.join(GUIONES, "g14", "tareas.json"))["tareas"] if t["id"] == "T18")
+        self.assertNotIn("SI DA TIEMPO", issue["titulo"])
+        t18 = dict({"id": "T18", "titulo": issue["titulo"], "dueno": "persona-b", "depende_de": [],
+                    "estado": {"valor": "lista", "fuente": "derivado", "observado_en": CT}, "declarado": None},
+                   **r["tareas"]["T18"])
+        b = ruta_mod.calcular(r["ruta"], [t18], CT, personas=PERSONAS)
+        self.assertEqual([(x["tarea"], x["motivo"]) for x in b["fuera_de_entrega"]], [("T18", "si_da_tiempo")])
+
     def test_b4_zona_en_el_bloque_jurado_y_b6_por_confirmar(self):
         r = calcula(equipo=leer("g14/equipo-2.md"), criterios=leer("g13/criterios.md"), ruta=False)
         self.assertIsNone(r["ruta"])

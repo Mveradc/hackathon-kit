@@ -509,6 +509,22 @@ class Tabla(Base):
         self.assertEqual([(e["tarjeta"]["id"], e["por"]) for e in b["cadena"]], [("T04", "inicio"), ("T05", "orden_del_plan")])
         self.assertEqual(b["base"]["personas"][0]["n"], 4)       # «Sistema…» cuenta y se mide
 
+    def test_56_4_fuera_de_la_entrega_con_el_titulo_del_plan_vigente(self):
+        """#56, punto 4 (fila 10): «fuera de la entrega» se decide con el título de la fila del plan.md vigente
+        (tareas[].titulo_plan, que da lecturas), no con el del issue, que no se reescribe enseguida. Sin fila en el plan
+        (sin titulo_plan), el del issue."""
+        tareas = ana()
+        obs_plan = "2026-09-19T07:31:00Z"
+        tareas[4]["titulo_plan"] = dato("[SI DA TIEMPO] Tarea T05", obs=obs_plan)     # el issue aún dice «Tarea T05»
+        tareas[3]["titulo"] = "[SI DA TIEMPO] Tarea T04"                               # el plan ya no lo dice
+        tareas[3]["titulo_plan"] = dato("Tarea T04", obs=obs_plan)
+        b = self.corre(ruta_de(240), tareas)
+        self.assertEqual(b["fuera_de_entrega"], [{"tarea": "T05", "motivo": "si_da_tiempo", "fuente": "git",
+                                                  "observado_en": obs_plan}])
+        self.assertEqual([e["tarjeta"]["id"] for e in b["cadena"]], ["T04"])
+        self.assertTrue(fuera_de_entrega({"titulo": "Si sobra: X"}) == "condicional" and
+                        fuera_de_entrega({"titulo": "Si sobra: X", "titulo_plan": dato("X")}) is None)
+
     def test_descansos_ni_en_el_ritmo_ni_en_el_fin_ni_sin_senales(self):
         # Ritmo: T03 (90 min) con 30 min de descanso de Ana dentro: 60 min de 60, 100 %.
         tareas = ana()
