@@ -1,0 +1,458 @@
+{
+ "v": 1,
+ "que_es": "Casos de la ruta crítica que los tres momentos de G14 no tienen (#46, A4 y M11). Cada uno parte de un momento de hechos.json (el mismo estado del motor, equipo.md y plan.md) y cambia una entrada con reemplazos de texto [de, a, veces]; «espera» es lo que tiene que salir, con las claves de los momentos de hechos.json. Lo comprueba g13_g14.py con las reglas del contrato y las decisiones del issue #46.",
+ "casos": [
+  {
+   "id": "cadena_de_cada_persona",
+   "que": "la cadena de cada persona cambia el veredicto: con el orden del plan, no llega; con solo depende_de, llegaría",
+   "base": "mitad con riesgo",
+   "espera": {
+    "veredicto": "no_llega",
+    "cifra": {
+     "hay": true,
+     "rango": {
+      "temprano": "2026-09-21T07:32:42Z",
+      "tarde": "2026-09-21T07:32:42Z",
+      "margen_min": -1413,
+      "margen_max": -1413
+     }
+    },
+    "cadena": [
+     {
+      "tarea": "T04",
+      "por": "inicio"
+     },
+     {
+      "tarea": "T05",
+      "por": "depende_de"
+     },
+     {
+      "tarea": "T06",
+      "por": "orden_del_plan"
+     },
+     {
+      "tarea": "T07",
+      "por": "orden_del_plan"
+     },
+     {
+      "tarea": "T08",
+      "por": "orden_del_plan"
+     },
+     {
+      "tarea": "T09",
+      "por": "orden_del_plan"
+     }
+    ],
+    "sin_orden_del_plan": {
+     "veredicto": "a_tiempo",
+     "cifra": {
+      "rango": {
+       "temprano": "2026-09-20T06:07:48Z",
+       "tarde": "2026-09-20T06:07:48Z",
+       "margen_min": 112,
+       "margen_max": 112
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "sin_hora_de_entrega",
+   "que": "equipo.md sin «- Entrega:»: sin estimación (sin hora de entrega); la fila de Hitos sale al lado y no se elige",
+   "base": "mitad bien",
+   "equipo.md": [
+    [
+     "- Entrega: 2026-09-20 10:00 (Europe/Madrid)\n",
+     ""
+    ]
+   ],
+   "espera": {
+    "veredicto": "sin_estimacion",
+    "cifra": {
+     "hay": false,
+     "motivos": [
+      "sin_entrega"
+     ],
+     "rango": null
+    },
+    "entrega": {
+     "valor": null,
+     "motivo": "sin_dato",
+     "discrepancias": [
+      {
+       "texto": "dom 20 sep 09:30",
+       "valor": "2026-09-20T07:30:00Z"
+      }
+     ]
+    },
+    "riesgos": [],
+    "cadena": [
+     {
+      "tarea": "T25",
+      "por": "inicio",
+      "fin_temprano": null,
+      "fin_tarde": null
+     },
+     {
+      "tarea": "T26",
+      "por": "orden_del_plan",
+      "fin_temprano": null,
+      "fin_tarde": null
+     },
+     {
+      "tarea": "T27",
+      "por": "orden_del_plan",
+      "fin_temprano": null,
+      "fin_tarde": null
+     }
+    ]
+   }
+  },
+  {
+   "id": "dos_horas",
+   "que": "«Entrega:» con dos horas: sin estimación (dos horas de entrega), aunque cada una se entienda",
+   "base": "mitad bien",
+   "equipo.md": [
+    [
+     "- Entrega: 2026-09-20 10:00 (Europe/Madrid)",
+     "- Entrega: 2026-09-20 10:00 (cierre 11:00) (Europe/Madrid)"
+    ]
+   ],
+   "espera": {
+    "veredicto": "sin_estimacion",
+    "cifra": {
+     "hay": false,
+     "motivos": [
+      "entrega_doble"
+     ],
+     "rango": null
+    },
+    "entrega": {
+     "valor": null,
+     "motivo": "dos_horas",
+     "discrepancias": [
+      {
+       "texto": "dom 20 sep 09:30",
+       "valor": "2026-09-20T07:30:00Z"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "desfase_no_es_dos_horas",
+   "que": "«20/9/2026 10:00 +02:00» trae una hora y un desfase, no dos horas: la misma entrega y el mismo veredicto",
+   "base": "mitad bien",
+   "equipo.md": [
+    [
+     "- Entrega: 2026-09-20 10:00 (Europe/Madrid)",
+     "- Entrega: 20/9/2026 10:00 +02:00"
+    ]
+   ],
+   "espera": {
+    "veredicto": "a_tiempo",
+    "cifra": {
+     "hay": true,
+     "motivos": [],
+     "rango": {
+      "temprano": "2026-09-19T13:09:36Z",
+      "tarde": "2026-09-19T16:52:18Z",
+      "margen_min": 907,
+      "margen_max": 1130
+     }
+    },
+    "entrega": {
+     "valor": "2026-09-20T08:00:00Z",
+     "motivo": null,
+     "confirmar": false
+    }
+   }
+  },
+  {
+   "id": "confirmar",
+   "que": "«(confirmar)» en «Entrega:»: hay cifra, con la entrega marcada como por confirmar (declarado)",
+   "base": "mitad bien",
+   "equipo.md": [
+    [
+     "- Entrega: 2026-09-20 10:00 (Europe/Madrid)",
+     "- Entrega: 2026-09-20 10:00 (Europe/Madrid) (confirmar)"
+    ]
+   ],
+   "espera": {
+    "veredicto": "a_tiempo",
+    "cifra": {
+     "hay": true,
+     "motivos": [],
+     "rango": {
+      "temprano": "2026-09-19T13:09:36Z",
+      "tarde": "2026-09-19T16:52:18Z",
+      "margen_min": 907,
+      "margen_max": 1130
+     }
+    },
+    "entrega": {
+     "valor": "2026-09-20T08:00:00Z",
+     "motivo": null,
+     "confirmar": true
+    }
+   }
+  },
+  {
+   "id": "ciclo",
+   "que": "T08 espera a T09, que va detrás de T08 en la sección de persona-a: un ciclo por el orden del plan, sin estimación",
+   "base": "mitad bien",
+   "relee_plan": true,
+   "plan.md": [
+    [
+     "- T27 espera a T06:",
+     "- T08 espera a T09: A quiere la URL antes de escribir las reglas.\n- T27 espera a T06:"
+    ]
+   ],
+   "espera": {
+    "veredicto": "sin_estimacion",
+    "cifra": {
+     "hay": false,
+     "motivos": [
+      "ciclo"
+     ],
+     "rango": null
+    },
+    "ciclo": [
+     "T08",
+     "T09",
+     "T08"
+    ],
+    "sin_orden_del_plan": {
+     "veredicto": "a_tiempo"
+    }
+   }
+  },
+  {
+   "id": "relay_caido",
+   "que": "el relay no lee desde las 09:20: la estimación sale a las 11:00 con el estado de esa hora (T24 aún en curso), vieja y con el dato más viejo",
+   "base": "mitad bien",
+   "estado_a": "2026-09-19T09:20:00Z",
+   "relay_leido_en": "2026-09-19T09:20:00Z",
+   "espera": {
+    "viejo": true,
+    "dato_mas_viejo": "2026-09-19T09:20:00Z",
+    "veredicto": "a_tiempo",
+    "cifra": {
+     "hay": true,
+     "rango": {
+      "temprano": "2026-09-19T13:09:36Z",
+      "tarde": "2026-09-19T18:16:48Z",
+      "margen_min": 823,
+      "margen_max": 1130
+     }
+    },
+    "tareas": {
+     "T24": "en_curso",
+     "T25": "lista"
+    },
+    "cadena": [
+     {
+      "tarea": "T24",
+      "por": "inicio",
+      "fin_temprano": "2026-09-19T11:00:00Z",
+      "fin_tarde": "2026-09-19T11:00:00Z"
+     },
+     {
+      "tarea": "T25",
+      "por": "orden_del_plan",
+      "fin_temprano": "2026-09-19T11:31:30Z",
+      "fin_tarde": "2026-09-19T13:36:00Z"
+     },
+     {
+      "tarea": "T26",
+      "por": "orden_del_plan",
+      "fin_temprano": "2026-09-19T11:56:42Z",
+      "fin_tarde": "2026-09-19T15:40:48Z"
+     },
+     {
+      "tarea": "T27",
+      "por": "orden_del_plan",
+      "fin_temprano": "2026-09-19T12:28:12Z",
+      "fin_tarde": "2026-09-19T18:16:48Z"
+     }
+    ]
+   }
+  },
+  {
+   "id": "descanso_de_todos",
+   "que": "un descanso de «Todos» (sáb 14:00–15:00) vale para las tres personas: se resta de las franjas que lo cruzan y se salta al estimar",
+   "base": "mitad bien",
+   "plan.md": [
+    [
+     "| sáb 23:30–dom 07:00 | Persona A |\n",
+     "| sáb 23:30–dom 07:00 | Persona A |\n\n- Todos: sáb 14:00–15:00\n"
+    ]
+   ],
+   "espera": {
+    "descansos": {
+     "resueltos": true,
+     "filas": [
+      {
+       "texto": "sáb 00:30–06:30",
+       "personas": [
+        "persona-c"
+       ],
+       "desde": "2026-09-18T22:30:00Z",
+       "hasta": "2026-09-19T04:30:00Z"
+      },
+      {
+       "texto": "sáb 01:00–07:00",
+       "personas": [
+        "persona-b"
+       ],
+       "desde": "2026-09-18T23:00:00Z",
+       "hasta": "2026-09-19T05:00:00Z"
+      },
+      {
+       "texto": "sáb 02:30–08:00",
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T00:30:00Z",
+       "hasta": "2026-09-19T06:00:00Z"
+      },
+      {
+       "texto": "sáb 23:00–dom 07:30",
+       "personas": [
+        "persona-b",
+        "persona-c"
+       ],
+       "desde": "2026-09-19T21:00:00Z",
+       "hasta": "2026-09-20T05:30:00Z"
+      },
+      {
+       "texto": "sáb 23:30–dom 07:00",
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T21:30:00Z",
+       "hasta": "2026-09-20T05:00:00Z"
+      },
+      {
+       "texto": "sáb 14:00–15:00",
+       "personas": [
+        "persona-a",
+        "persona-b",
+        "persona-c"
+       ],
+       "desde": "2026-09-19T12:00:00Z",
+       "hasta": "2026-09-19T13:00:00Z"
+      }
+     ]
+    },
+    "veredicto": "a_tiempo",
+    "cifra": {
+     "rango": {
+      "temprano": "2026-09-19T13:37:12Z",
+      "tarde": "2026-09-19T16:49:54Z",
+      "margen_min": 910,
+      "margen_max": 1102
+     }
+    },
+    "cadena": [
+     {
+      "tarea": "T25",
+      "por": "inicio",
+      "fin_temprano": "2026-09-19T11:00:00Z",
+      "fin_tarde": "2026-09-19T11:09:06Z"
+     },
+     {
+      "tarea": "T26",
+      "por": "orden_del_plan",
+      "fin_temprano": "2026-09-19T11:25:12Z",
+      "fin_tarde": "2026-09-19T14:13:54Z"
+     },
+     {
+      "tarea": "T27",
+      "por": "orden_del_plan",
+      "fin_temprano": "2026-09-19T11:56:42Z",
+      "fin_tarde": "2026-09-19T16:49:54Z"
+     }
+    ]
+   }
+  },
+  {
+   "id": "descanso_cruza_la_entrega",
+   "que": "un descanso de «Todos» que cruza la entrega (dom 09:00–12:00) se enseña entero y no cambia nada que acabe antes",
+   "base": "mitad bien",
+   "plan.md": [
+    [
+     "| sáb 23:30–dom 07:00 | Persona A |\n",
+     "| sáb 23:30–dom 07:00 | Persona A |\n\n- Todos: dom 09:00–12:00\n"
+    ]
+   ],
+   "espera": {
+    "descansos": {
+     "resueltos": true,
+     "filas": [
+      {
+       "texto": "sáb 00:30–06:30",
+       "personas": [
+        "persona-c"
+       ],
+       "desde": "2026-09-18T22:30:00Z",
+       "hasta": "2026-09-19T04:30:00Z"
+      },
+      {
+       "texto": "sáb 01:00–07:00",
+       "personas": [
+        "persona-b"
+       ],
+       "desde": "2026-09-18T23:00:00Z",
+       "hasta": "2026-09-19T05:00:00Z"
+      },
+      {
+       "texto": "sáb 02:30–08:00",
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T00:30:00Z",
+       "hasta": "2026-09-19T06:00:00Z"
+      },
+      {
+       "texto": "sáb 23:00–dom 07:30",
+       "personas": [
+        "persona-b",
+        "persona-c"
+       ],
+       "desde": "2026-09-19T21:00:00Z",
+       "hasta": "2026-09-20T05:30:00Z"
+      },
+      {
+       "texto": "sáb 23:30–dom 07:00",
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T21:30:00Z",
+       "hasta": "2026-09-20T05:00:00Z"
+      },
+      {
+       "texto": "dom 09:00–12:00",
+       "personas": [
+        "persona-a",
+        "persona-b",
+        "persona-c"
+       ],
+       "desde": "2026-09-20T07:00:00Z",
+       "hasta": "2026-09-20T10:00:00Z"
+      }
+     ]
+    },
+    "veredicto": "a_tiempo",
+    "cifra": {
+     "rango": {
+      "temprano": "2026-09-19T13:09:36Z",
+      "tarde": "2026-09-19T16:52:18Z",
+      "margen_min": 907,
+      "margen_max": 1130
+     }
+    }
+   }
+  }
+ ]
+}

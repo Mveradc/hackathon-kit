@@ -1,24 +1,25 @@
 {
  "v": 1,
  "guion": "G13.json",
- "que_es": "Lo que la vista de jurado tiene que decir en cada momento de G13, como hechos y sin nombres de campo de la vista. Lo comprueba g13_g14.py contra el motor de estados (simula.py) y contra las entradas.",
+ "que_es": "Lo que la vista de jurado tiene que decir en cada momento de G13, como hechos y sin nombres de campo de la vista. Lo comprueba g13_g14.py con las reglas del contrato (api.md §11.3) y las decisiones del issue #46, contra el motor de estados (simula.py) y contra las entradas. Los casos que G13 no tiene (cita ambigua, enlace roto, Prueba que falla) van en casos.json.",
  "decisiones": {
   "J1": "A: solo las notas de criterios.md",
   "J2": "A: clave derivada (hash); las personas citan «fecha hora» o «fecha hora · quién»",
   "J3": "A: etiqueta «(criterios: …)» en la fila del plan",
-  "J4": "A: cubierta = todas sus tareas publicadas o cerradas",
-  "J5": "B: «recogida en el pitch (declarado)»",
-  "J6": "B: sigue cubierta, con «trabajo nuevo desde»"
+  "J4": "A: cubierta = todas sus tareas con enlace firme están hechas: publicada, cerrada sin ⚑ o, con J6 B, publicada antes y ahora con trabajo nuevo. Una integrada que nunca se publicó no cuenta, ni un fichero en main",
+  "J5": "B: «en el pitch» (declarado): nunca cubierta; cuenta en «sin cubrir»",
+  "J6": "B: sigue cubierta, con «trabajo nuevo desde», si tiene historia.hecha_en y ahora está en curso, parada, no cerrada, en revisión o integrada (#46, M7). La evidencia es el último sha publicado, con la hora de su push (#46, M6)"
  },
  "estados": {
-  "sin_cubrir": "ninguna tarea del plan ni pitch.md la citan",
-  "recogida_en_pitch": "solo la cita pitch.md: declarado, nunca cubierta ni sin cubrir",
-  "planificada": "la citan tareas del plan y ninguna ha empezado (lista, pendiente o reclamada; una cerrada a mano cuenta como declarada, con ⚑)",
-  "en_curso": "la citan tareas del plan, alguna ha empezado o está publicada, y no todas están publicadas o cerradas",
-  "cubierta": "todas las tareas que la citan han llegado a publicada (o cerrada derivada); evidencia: el commit que las publicó, con la hora del push. Con J6 B, una que vuelve a en curso sigue contando, con «trabajo nuevo desde» la primera señal nueva",
-  "corregida": "una nota posterior en main dice «corrige la nota del <fecha hora>»: cuenta la nueva; la corregida enseña aún sus tareas y su evidencia"
+  "sin_tarea": "ninguna tarea del plan ni pitch.md la citan",
+  "en_pitch": "solo la cita pitch.md: declarado, nunca cubierta; cuenta en «sin cubrir»",
+  "ambigua": "solo la citan etiquetas sin «· quién» que casan con más de una nota (casos.json)",
+  "planificada": "declarada (la citan tareas del plan y no todas están hechas) y ninguna ha empezado: lista, pendiente o reclamada; una cerrada a mano (⚑) no está hecha",
+  "en_curso": "declarada y alguna ha empezado o está hecha",
+  "cubierta": "todas las tareas que la citan con enlace firme están hechas (J4 A, J6 B); evidencia: el último commit que las publicó, con la hora de su push",
+  "corregida": "una nota posterior en main dice «corrige la nota del <fecha hora>» y casa solo con esta: cuenta la nueva; la corregida enseña aún sus tareas y su evidencia y va al final"
  },
- "zona": "Europe/Madrid (CEST, +02:00): la hora de las cabeceras se lee con la del plan",
+ "zona": "Europe/Madrid (CEST, +02:00): la hora de las cabeceras se lee con la de equipo.md",
  "entradas": {
   "criterios.md": {
    "fichero": "guiones/g13/criterios.md",
@@ -208,14 +209,14 @@
    },
    "notas": {
     "N1": {
-     "estado": "recogida_en_pitch",
+     "estado": "en_pitch",
      "tareas": {},
      "evidencia": [],
      "trabajo_nuevo_desde": null,
      "cerradas_a_mano": [],
      "corregida_por": null,
      "tambien_en_pitch": true,
-     "motivo": "solo la cita pitch.md (declarado, J5 B); ninguna tarea del plan"
+     "motivo": "solo la cita pitch.md (declarado, J5 B): sin cubrir, aunque el equipo la dé por recogida"
     },
     "N2": {
      "estado": "cubierta",
@@ -293,7 +294,41 @@
      "tambien_en_pitch": false,
      "motivo": "ninguna empezada (T09 espera a T17; T23 solo reclamada)"
     }
-   }
+   },
+   "orden": [
+    "N1",
+    "N4",
+    "N6",
+    "N3",
+    "N2",
+    "N5"
+   ],
+   "cuenta": {
+    "notas": 6,
+    "sin_cubrir": 4,
+    "sin_tarea": 0,
+    "planificadas": 2,
+    "en_curso": 1,
+    "en_pitch": 1,
+    "ambiguas": 0,
+    "cubiertas": 2,
+    "corregidas": 0,
+    "sin_cubrir_por_fuerza": [
+     {
+      "texto": "dato",
+      "n": 1
+     },
+     {
+      "texto": "obligatorio",
+      "n": 2
+     },
+     {
+      "texto": "se valora",
+      "n": 1
+     }
+    ]
+   },
+   "sin_nota": []
   },
   {
    "nombre": "M2 · sáb 14:30",
@@ -311,14 +346,14 @@
    },
    "notas": {
     "N1": {
-     "estado": "recogida_en_pitch",
+     "estado": "en_pitch",
      "tareas": {},
      "evidencia": [],
      "trabajo_nuevo_desde": null,
      "cerradas_a_mano": [],
      "corregida_por": null,
      "tambien_en_pitch": true,
-     "motivo": "solo la cita pitch.md (declarado, J5 B); ninguna tarea del plan"
+     "motivo": "solo la cita pitch.md (declarado, J5 B): sin cubrir, aunque el equipo la dé por recogida"
     },
     "N2": {
      "estado": "cubierta",
@@ -403,17 +438,17 @@
      "motivo": "ninguna empezada"
     },
     "N7": {
-     "estado": "sin_cubrir",
+     "estado": "sin_tarea",
      "tareas": {},
      "evidencia": [],
      "trabajo_nuevo_desde": null,
      "cerradas_a_mano": [],
      "corregida_por": null,
      "tambien_en_pitch": false,
-     "motivo": "ninguna tarea ni el pitch la citan (las etiquetas son de antes de la nota)"
+     "motivo": "ninguna tarea ni el pitch la citan: sin cubrir (las etiquetas son de antes de la nota)"
     },
     "N8": {
-     "estado": "sin_cubrir",
+     "estado": "sin_tarea",
      "tareas": {},
      "evidencia": [],
      "trabajo_nuevo_desde": null,
@@ -422,7 +457,47 @@
      "tambien_en_pitch": false,
      "motivo": "ninguna etiqueta la cita; su texto imperativo es dato (V): no crea ni cambia tareas"
     }
-   }
+   },
+   "orden": [
+    "N1",
+    "N4",
+    "N6",
+    "N3",
+    "N7",
+    "N8",
+    "N2",
+    "N5"
+   ],
+   "cuenta": {
+    "notas": 8,
+    "sin_cubrir": 6,
+    "sin_tarea": 2,
+    "planificadas": 2,
+    "en_curso": 1,
+    "en_pitch": 1,
+    "ambiguas": 0,
+    "cubiertas": 1,
+    "corregidas": 1,
+    "sin_cubrir_por_fuerza": [
+     {
+      "texto": "dato",
+      "n": 1
+     },
+     {
+      "texto": "obligatorio",
+      "n": 2
+     },
+     {
+      "texto": "se valora",
+      "n": 2
+     },
+     {
+      "texto": "comentario suelto",
+      "n": 1
+     }
+    ]
+   },
+   "sin_nota": []
   },
   {
    "nombre": "M3 · sáb 20:30",
@@ -440,14 +515,14 @@
    },
    "notas": {
     "N1": {
-     "estado": "recogida_en_pitch",
+     "estado": "en_pitch",
      "tareas": {},
      "evidencia": [],
      "trabajo_nuevo_desde": null,
      "cerradas_a_mano": [],
      "corregida_por": null,
      "tambien_en_pitch": true,
-     "motivo": "solo la cita pitch.md (declarado, J5 B); ninguna tarea del plan"
+     "motivo": "solo la cita pitch.md (declarado, J5 B): sin cubrir, aunque el equipo la dé por recogida"
     },
     "N2": {
      "estado": "cubierta",
@@ -543,17 +618,17 @@
      "motivo": "T09 publicada; T23 solo reclamada (persona-c sin señales desde sáb 11:50): nunca cubierta"
     },
     "N7": {
-     "estado": "sin_cubrir",
+     "estado": "sin_tarea",
      "tareas": {},
      "evidencia": [],
      "trabajo_nuevo_desde": null,
      "cerradas_a_mano": [],
      "corregida_por": null,
      "tambien_en_pitch": false,
-     "motivo": "ninguna tarea ni el pitch la citan"
+     "motivo": "ninguna tarea ni el pitch la citan: sin cubrir"
     },
     "N8": {
-     "estado": "sin_cubrir",
+     "estado": "sin_tarea",
      "tareas": {},
      "evidencia": [],
      "trabajo_nuevo_desde": null,
@@ -562,7 +637,217 @@
      "tambien_en_pitch": false,
      "motivo": "ninguna etiqueta la cita; texto imperativo, solo dato"
     }
-   }
+   },
+   "orden": [
+    "N1",
+    "N4",
+    "N6",
+    "N7",
+    "N8",
+    "N3",
+    "N2",
+    "N5"
+   ],
+   "cuenta": {
+    "notas": 8,
+    "sin_cubrir": 5,
+    "sin_tarea": 2,
+    "planificadas": 1,
+    "en_curso": 1,
+    "en_pitch": 1,
+    "ambiguas": 0,
+    "cubiertas": 2,
+    "corregidas": 1,
+    "sin_cubrir_por_fuerza": [
+     {
+      "texto": "dato",
+      "n": 1
+     },
+     {
+      "texto": "obligatorio",
+      "n": 2
+     },
+     {
+      "texto": "se valora",
+      "n": 1
+     },
+     {
+      "texto": "comentario suelto",
+      "n": 1
+     }
+    ]
+   },
+   "sin_nota": []
+  },
+  {
+   "nombre": "M2b · sáb 14:50",
+   "ahora": "2026-09-19T12:50:00Z",
+   "t": 71400,
+   "tareas": {
+    "T06": "publicada",
+    "T08": "publicada",
+    "T09": "pendiente",
+    "T11": "parada",
+    "T13": "parada",
+    "T20": "lista",
+    "T23": "reclamada"
+   },
+   "notas": {
+    "N1": {
+     "estado": "en_pitch",
+     "tareas": {},
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": true,
+     "motivo": "solo la cita pitch.md (declarado, J5 B): sin cubrir, aunque el equipo la dé por recogida"
+    },
+    "N2": {
+     "estado": "cubierta",
+     "tareas": {
+      "T11": "parada"
+     },
+     "evidencia": [
+      {
+       "tarea": "T11",
+       "sha": "111c0de",
+       "observado_en": "2026-09-18T21:20:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": "2026-09-19T12:15:00Z",
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": true,
+     "motivo": "J6 B con T11 parada: lleva 35 min sin señales tras el commit nuevo (12:15) y sigue cubierta, con «trabajo nuevo desde» (#46, M7); la evidencia sigue siendo 111c0de, el último sha publicado"
+    },
+    "N3": {
+     "estado": "en_curso",
+     "tareas": {
+      "T08": "publicada",
+      "T13": "parada"
+     },
+     "evidencia": [
+      {
+       "tarea": "T08",
+       "sha": "081c0de",
+       "observado_en": "2026-09-19T10:12:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "T08 publicada; T13 parada: no está hecha, así que la nota sigue en curso"
+    },
+    "N4": {
+     "estado": "planificada",
+     "tareas": {
+      "T20": "lista"
+     },
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [
+      "T20"
+     ],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "T20 cerrada a mano (⚑, declarado): no es evidencia; no ha empezado"
+    },
+    "N5": {
+     "estado": "corregida",
+     "tareas": {
+      "T06": "publicada"
+     },
+     "evidencia": [
+      {
+       "tarea": "T06",
+       "sha": "061c0de",
+       "observado_en": "2026-09-19T09:10:00Z"
+      }
+     ],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": "N7",
+     "tambien_en_pitch": false,
+     "motivo": "la corrige N7 (cuenta N7); su evidencia se enseña"
+    },
+    "N6": {
+     "estado": "planificada",
+     "tareas": {
+      "T09": "pendiente",
+      "T23": "reclamada"
+     },
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "ninguna empezada"
+    },
+    "N7": {
+     "estado": "sin_tarea",
+     "tareas": {},
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "ninguna tarea ni el pitch la citan: sin cubrir (las etiquetas son de antes de la nota)"
+    },
+    "N8": {
+     "estado": "sin_tarea",
+     "tareas": {},
+     "evidencia": [],
+     "trabajo_nuevo_desde": null,
+     "cerradas_a_mano": [],
+     "corregida_por": null,
+     "tambien_en_pitch": false,
+     "motivo": "ninguna etiqueta la cita; su texto imperativo es dato (V): no crea ni cambia tareas"
+    }
+   },
+   "orden": [
+    "N1",
+    "N4",
+    "N6",
+    "N3",
+    "N7",
+    "N8",
+    "N2",
+    "N5"
+   ],
+   "cuenta": {
+    "notas": 8,
+    "sin_cubrir": 6,
+    "sin_tarea": 2,
+    "planificadas": 2,
+    "en_curso": 1,
+    "en_pitch": 1,
+    "ambiguas": 0,
+    "cubiertas": 1,
+    "corregidas": 1,
+    "sin_cubrir_por_fuerza": [
+     {
+      "texto": "dato",
+      "n": 1
+     },
+     {
+      "texto": "obligatorio",
+      "n": 2
+     },
+     {
+      "texto": "se valora",
+      "n": 2
+     },
+     {
+      "texto": "comentario suelto",
+      "n": 1
+     }
+    ]
+   },
+   "sin_nota": []
   }
- ]
+ ],
+ "sin_cubrir": "todas las notas en main que no están cubiertas ni corregidas (sin_tarea, en_pitch, ambigua, planificada y en_curso), con ese desglose y el de su fuerza; «cuenta» lo dice en cada momento (#46, A2 y M8)",
+ "orden": "primero las sin cubrir, por fuerza (dato, «obligatorio», «se valora», «nos gustaría ver», otra palabra, comentario suelto, sin precisar) y luego por hora, la más antigua primero; después las cubiertas y al final las corregidas, por hora (§11.3)"
 }

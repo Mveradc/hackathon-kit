@@ -159,17 +159,27 @@
   }
 
   /* CriterioRow: una nota de criterios.md y lo que la cubre. La cobertura y el orden llegan hechos en la vista;
-     aquí solo se pintan. Nunca sale «cubierta» porque algo lo declare: lo declarado va en violeta, con su autor. */
+     aquí solo se pintan. Nunca sale «cubierta» porque algo lo declare: lo declarado va en violeta, con su fuente.
+     Todo lo que no es «cubierta» ni «corregida» está sin cubrir: sin tarea, planificada, en curso, ambigua o en el pitch. */
   var COVER = {
-    sin_cubrir: ["wait", "Sin cubrir"], planificada: ["idle", "Planificada"], en_curso: ["live", "En curso"],
-    cubierta: ["ok", "Cubierta"], pitch: ["idle", "Recogida en el pitch (declarado)"], corregida: ["idle", "Corregida"]
+    sin_tarea: ["wait", "Sin tarea"], planificada: ["idle", "Planificada"], en_curso: ["live", "En curso"],
+    ambigua: ["wait", "Ambigua: la cita casa con varias notas"], en_pitch: ["idle", "En el pitch (declarado)"],
+    cubierta: ["ok", "Cubierta"], corregida: ["idle", "Corregida"]
   };
   function CriterioItem(it) {
     var foot;
     if (it.kind === "evidencia") {
-      return h("div", { className: "hk-crit__item" },
-        h("span", { className: "hk-crit__line" }, h("span", { className: "hk-crit__path" }, it.path), h("span", { className: "hk-crit__muted" }, "en main · commit " + it.sha)),
-        h("span", { className: "hk-crit__foot" }, h(StatusPulse, { state: "ok", label: "En main" }), h(ProvenanceTag, { source: "git", age: it.age })));
+      return h("div", { className: cx("hk-crit__item", it.stale && "is-stale") },
+        h("span", { className: "hk-crit__line" }, h("span", { className: "hk-crit__id" }, it.task),
+          h("span", { className: "hk-crit__muted" }, (it.tipo === "fusion" ? "fusión " : "commit ") + it.sha + " · el último publicado")),
+        h("span", { className: "hk-crit__foot" }, h(StatusPulse, { state: it.stale ? "stale" : "ok", label: "En main" }), h(ProvenanceTag, { source: "git", age: it.age, stale: it.stale })));
+    }
+    if (it.kind === "prueba") {
+      return h("div", { className: cx("hk-crit__item", it.stale && "is-stale") },
+        h("span", { className: "hk-crit__line" }, h("span", { className: "hk-crit__muted" }, "Prueba"), h("span", { className: "hk-crit__path" }, it.conexion)),
+        h("span", { className: "hk-crit__foot" },
+          h(StatusPulse, { state: it.stale ? "stale" : it.result === "falla" ? "fail" : "ok", label: it.result === "falla" ? "Falla" : "Pasa" }),
+          h(ProvenanceTag, { source: "relay", age: it.age, stale: it.stale })));
     }
     var st = TASK_STATE[it.state] || TASK_STATE.pendiente;
     foot = h("span", { className: "hk-crit__foot" },
@@ -182,10 +192,10 @@
       it.note ? h("span", { className: "hk-crit__note" }, it.note) : null,
       it.since ? h("span", { className: "hk-crit__note" }, "trabajo nuevo desde " + it.since) : null,
       it.link ? h("span", { className: "hk-crit__link" }, h("span", { className: "hk-crit__tag" }, "(criterios: " + it.link.cita + ")"),
-        h("span", null, "en " + (it.link.where || "plan.md")), h(ProvenanceTag, { source: "declarado", by: it.link.by, age: it.link.age })) : null);
+        h("span", null, (it.link.ambiguous ? "ambigua, " : "") + "en " + (it.link.where || "plan.md")), h(ProvenanceTag, { source: "declarado", age: it.link.age })) : null);
   }
   function CriterioRow(p) {
-    var cov = COVER[p.coverage] ? p.coverage : "sin_cubrir", c = COVER[cov];
+    var cov = COVER[p.coverage] ? p.coverage : "sin_tarea", c = COVER[cov];
     return h("article", { className: cx("hk-crit", "hk-crit--" + cov, p.coverageStale && "is-stale", p.className) },
       h("div", { className: "hk-crit__when" },
         h("span", { className: "hk-crit__time" }, p.time),
@@ -201,17 +211,18 @@
       h("div", { className: "hk-crit__cover" },
         h(StatusPulse, { state: p.coverageStale ? "stale" : c[0], label: p.coverageLabel || c[1] }),
         (p.items || []).map(function (it, i) { return h(CriterioItem, Object.assign({ key: i }, it)); }),
-        p.pitch ? h("span", { className: "hk-crit__link" }, h("span", null, "recogida en " + (p.pitch.where || "el pitch")),
-          h(ProvenanceTag, { source: "declarado", by: p.pitch.by, age: p.pitch.age })) : null,
+        p.pitch ? h("span", { className: "hk-crit__link" }, h("span", null, "citada en pitch.md"),
+          h(ProvenanceTag, { source: "declarado", age: p.pitch.age })) : null,
         p.hint ? h("span", { className: "hk-crit__hint" }, p.hint) : null,
         p.children));
   }
 
-  /* Cadena: la ruta crítica en una línea de tiempo. Las posiciones llegan en la vista, en la escala que diga `min`–`max`
-     (por ejemplo, horas desde el inicio); el componente solo las coloca. Con layout="cajas" no hay barras: cada tarea
-     sale con su franja declarada, para que lo que dice el plan no parezca una previsión. */
+  /* Cadena: la ruta crítica en una línea de tiempo, solo con tareas abiertas (lo hecho no está en la cadena). Las
+     posiciones llegan en la vista, en la escala que diga `min`–`max` (por ejemplo, horas desde el inicio); el componente
+     solo las coloca. El fin es un rango, nunca una sola hora. Con layout="cajas" no hay barras: cada tarea sale con su
+     franja declarada, para que lo que dice el plan no parezca una previsión. */
   var CHAIN = {
-    hecha: ["ok", "Hecha", "hecha"], curso: ["live", "En curso", "en curso"], prevista: ["idle", "Pendiente", "prevista (estimación)"],
+    curso: ["live", "En curso", "en curso"], prevista: ["idle", "Pendiente", "prevista (estimación)"],
     plazo_pasado: ["fail", "Plazo pasado", "su plazo ya pasó (hecho)"], no_llega: ["wait", "No llega", "acaba después de la entrega (estimación)"],
     vieja: ["stale", "Dato viejo", "espera a un dato viejo"]
   };
@@ -264,10 +275,9 @@
         }),
         p.end ? h(React.Fragment, null,
           h("div", { className: "hk-chain__who" }, h("span", { className: "hk-chain__line" }, p.end.title || "Fin previsto"),
-            h("span", { className: "hk-chain__sub" }, p.end.sub || "estimación, con el ritmo real")),
+            h("span", { className: "hk-chain__sub" }, p.end.sub || "un rango, con el ritmo real; nunca una sola hora")),
           lane([
-            h("span", { key: "r", className: "hk-chain__range", style: span(p.end.from, p.end.to) }),
-            h("span", { key: "c", className: "hk-chain__central hk-chain__central--" + (p.end.tone || "idle"), style: { left: pct(p.end.at) } })
+            h("span", { key: "r", className: "hk-chain__range hk-chain__range--" + (p.end.tone || "idle"), style: span(p.end.from, p.end.to) })
           ]),
           h("div", { className: "hk-chain__state" },
             h("span", { className: "hk-chain__end hk-chain__end--" + (p.end.tone || "idle") }, p.end.label),

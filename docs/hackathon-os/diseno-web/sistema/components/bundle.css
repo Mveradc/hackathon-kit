@@ -173,7 +173,7 @@ body {
   padding: 14px var(--space-4); border-radius: var(--radius-md);
   background: var(--surface-200); border: 1px solid var(--line);
 }
-.hk-crit--sin_cubrir { border-color: var(--state-wait); }
+.hk-crit--sin_tarea, .hk-crit--ambigua { border-color: var(--state-wait); }
 .hk-crit--corregida { border-style: dashed; border-color: var(--line-strong); color: var(--ink-muted); padding-block: var(--space-3); }
 .hk-crit--corregida .hk-crit__quote { font-size: 14px; line-height: 20px; text-decoration: line-through; text-decoration-color: var(--line-strong); }
 .hk-crit--corregida .hk-crit__time, .hk-crit--corregida .hk-crit__who { font-weight: 400; }
@@ -220,23 +220,20 @@ body {
 .hk-chain__deadline { position: absolute; top: 2px; bottom: 2px; width: 0; border-left: 2px solid var(--ink-faint); z-index: 1; }
 .hk-chain__deadline.is-past { border-left-color: var(--state-fail); }
 .hk-chain__bar { position: absolute; top: 7px; height: 16px; box-sizing: border-box; border-radius: 3px; border: 1px solid var(--line-strong); background: var(--surface-100); }
-.hk-chain__bar--hecha { top: 11px; height: 8px; border-color: var(--state-ok); background: var(--state-ok); }
 .hk-chain__bar--curso { border-color: var(--relay); background: var(--relay-soft); }
 .hk-chain__lane .hk-chain__bar--prevista { border-style: dashed; }
 .hk-chain__bar--plazo_pasado { border-color: var(--state-fail); background: var(--fail-soft); }
 .hk-chain__bar--no_llega { border-color: var(--state-wait); background: var(--wait-soft); }
 .hk-chain__bar--vieja { border-style: dashed; border-color: var(--state-stale); background: transparent; }
 .hk-chain__range { position: absolute; top: 7px; height: 16px; box-sizing: border-box; border-radius: 3px; border: 1px dashed var(--line-strong); background: var(--surface-100); }
-.hk-chain__central { position: absolute; top: 3px; height: 24px; width: 0; border-left: 3px solid var(--ink-muted); }
-.hk-chain__central--ok { border-left-color: var(--state-ok); }
-.hk-chain__central--wait { border-left-color: var(--state-wait); }
+.hk-chain__range--ok { border-color: var(--state-ok); }
+.hk-chain__range--wait { border-color: var(--state-wait); background: var(--wait-soft); }
 .hk-chain__end { font-family: var(--font-mono); font-size: 13px; line-height: 18px; color: var(--ink-muted); }
 .hk-chain__end--ok { color: var(--state-ok); }
 .hk-chain__end--wait { color: var(--state-wait); }
 .hk-chain__legend { display: flex; flex-wrap: wrap; gap: var(--space-2) 20px; font-size: 12px; line-height: 16px; color: var(--ink-muted); }
 .hk-chain__key { display: inline-flex; align-items: center; gap: 6px; }
 .hk-chain__swatch { position: static; display: inline-block; width: 18px; height: 10px; box-sizing: border-box; border-radius: 2px; border: 1px solid var(--line-strong); }
-.hk-chain__swatch.hk-chain__bar--hecha { height: 6px; }
 .hk-chain__swatch.hk-chain__bar--prevista { border-style: dashed; }
 .hk-chain__swatch--deadline, .hk-chain__swatch.hk-chain__mark--ahora, .hk-chain__swatch.hk-chain__mark--hito, .hk-chain__swatch.hk-chain__mark--entrega { width: 0; height: 12px; border-width: 0; border-radius: 0; }
 .hk-chain__swatch--deadline { border-left: 2px solid var(--ink-faint); }

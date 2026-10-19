@@ -4,17 +4,17 @@
   "bien": "G14.json",
   "riesgo": "G14r.json"
  },
- "que_es": "Lo que la ruta crítica tiene que decir en cada momento de G14 (rama «bien») y G14r (rama «riesgo»), como hechos y sin nombres de campo de la vista. Lo comprueba g13_g14.py contra el motor de estados y las entradas.",
+ "que_es": "Lo que la ruta crítica tiene que decir en cada momento de G14 (rama «bien») y G14r (rama «riesgo»), como hechos y sin nombres de campo de la vista. Lo comprueba g13_g14.py con las reglas del contrato (api.md §11.2 y §11.4) y las decisiones del issue #46, contra el motor de estados y las entradas. Los casos que G14 no tiene (sin hora de entrega, dos horas, «(confirmar)», un ciclo, el relay caído, descansos de «Todos» o que cruzan la entrega) van en casos.json. Horas en UTC; ritmo en % de la franja.",
  "decisiones": {
-  "R1": "A: manda «Entrega:» de equipo.md; la fila Entrega de Hitos se enseña como discrepancia y no bloquea. Sin estimación solo si equipo.md no tiene Entrega, no se lee, trae dos horas o no se resuelve; con «(confirmar)» hay cifra, marcada",
-  "R2": "A: Hasta con Inicio y la zona de equipo.md; sin Inicio, todo Hasta sale «sin plazo (sin Inicio)»; lo que no se resuelve, «sin plazo (plazo sin resolver)»; una celda vacía hereda la de arriba",
-  "R3": "sin decidir: los hechos de dependencias usan solo depende_de; nada de lo de aquí depende de la cadena de cada persona",
-  "R4": "A: franja derivada del plan",
-  "R5": "A: por persona, N = 3",
-  "R6": "A: rango, veredicto de 4 valores y base",
+  "R1": "A: manda «Entrega:» de equipo.md; la fila Entrega de Hitos se enseña como discrepancia y no quita la estimación. Sin estimación solo si equipo.md no tiene Entrega, no se lee, no se resuelve o trae dos horas; con «(confirmar)» hay cifra, marcada",
+  "R2": "A: Hasta con Inicio y la zona de equipo.md; sin Inicio, todo H+N sale «sin plazo (sin Inicio)»; una celda vacía hereda la de arriba. Una tarea abierta sin plazo sale aparte y se estima el resto (#46, decisión 1); solo si ninguna abierta tiene plazo no hay cifra",
+  "R3": "B: el grafo, con depende_de y la cadena de cada persona (su orden en el plan, inferido). Un plazo pasado arrastra a sus sucesoras abiertas, directas o no, por los dos caminos (#46, A4)",
+  "R4": "A: franja derivada del plan: del Hasta anterior de la persona (o del Inicio) al suyo, menos sus descansos dentro (#46, M12), repartida entre las filas seguidas con ese Hasta, aunque alguna no cuente (T18)",
+  "R5": "A: por persona, N = 3; ritmo = (publicada − primer paso a en curso − descansos) ÷ franja, en %",
+  "R6": "A: rango (temprano–tarde contra la entrega), veredicto de 4 valores y base; sin cifra central, sin previsión por hito y sin «fiabilidad»",
   "R7": "A: con n < 3, solo hechos y «n de 3»",
   "R8": "B: no cuentan «Si …» ni [SI DA TIEMPO]",
-  "R9": "A: «## Descansos» del plan"
+  "R9": "A: «## Descansos» del plan: turnos de una o varias personas (o «Todos»), restados de la franja y saltados al estimar"
  },
  "veredictos": [
   "a_tiempo",
@@ -70,46 +70,39 @@
       "valor": "2026-09-20T07:30:00Z"
      }
     ],
-    "bloquea_estimacion": false
+    "bloquea_estimacion": false,
+    "motivo": null,
+    "confirmar": false
    },
    "veredicto": "sin_estimacion",
    "cifra": {
     "hay": false,
-    "motivo": "pocos datos: persona-a 2 de 3, persona-b 1 de 3, persona-c 0 de 3 (sin ritmo todavía); además, sin Inicio no hay ningún plazo",
+    "motivos": [
+     "sin_plazo",
+     "pocos_datos"
+    ],
+    "rango": null,
+    "motivo": "sin plazo: sin Inicio, ninguna tarea abierta tiene franja; y pocos datos: las tres personas 0 de 3, porque sin franja no hay medida (T01, T02 y T11 están publicadas, pero no se pueden medir)",
     "rango_frente_a_entrega": null
    },
    "base": {
     "persona-a": {
-     "n": 2,
+     "n": 0,
      "de": 3,
-     "hechas": [
-      {
-       "tarea": "T01",
-       "primera_senal": "2026-09-18T17:05:00Z",
-       "publicada_en": "2026-09-18T17:50:00Z"
-      },
-      {
-       "tarea": "T02",
-       "primera_senal": "2026-09-18T17:55:00Z",
-       "publicada_en": "2026-09-18T18:40:00Z"
-      }
-     ]
+     "hechas": [],
+     "ritmo": null
     },
     "persona-b": {
-     "n": 1,
+     "n": 0,
      "de": 3,
-     "hechas": [
-      {
-       "tarea": "T11",
-       "primera_senal": "2026-09-18T17:30:00Z",
-       "publicada_en": "2026-09-18T18:40:00Z"
-      }
-     ]
+     "hechas": [],
+     "ritmo": null
     },
     "persona-c": {
      "n": 0,
      "de": 3,
-     "hechas": []
+     "hechas": [],
+     "ritmo": null
     }
    },
    "plazos": {
@@ -118,196 +111,224 @@
      "efectivo": "H+1",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T02": {
      "hasta": "H+2",
      "efectivo": "H+2",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T03": {
      "hasta": "H+4",
      "efectivo": "H+4",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T04": {
      "hasta": "",
      "efectivo": "H+4",
      "heredado_de": "T03",
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T05": {
      "hasta": "H+8",
      "efectivo": "H+8",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T06": {
      "hasta": "H+16",
      "efectivo": "H+16",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T07": {
      "hasta": "",
      "efectivo": "H+16",
      "heredado_de": "T06",
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T08": {
      "hasta": "H+18",
      "efectivo": "H+18",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T09": {
      "hasta": "H+21",
      "efectivo": "H+21",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T10": {
      "hasta": "H+24",
      "efectivo": "H+24",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T11": {
      "hasta": "H+4",
      "efectivo": "H+4",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T12": {
      "hasta": "",
      "efectivo": "H+4",
      "heredado_de": "T11",
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T13": {
      "hasta": "",
      "efectivo": "H+4",
      "heredado_de": "T11",
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T14": {
      "hasta": "H+6",
      "efectivo": "H+6",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T15": {
      "hasta": "H+14",
      "efectivo": "H+14",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T16": {
      "hasta": "H+16",
      "efectivo": "H+16",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T17": {
      "hasta": "H+20",
      "efectivo": "H+20",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T18": {
      "hasta": "",
      "efectivo": "H+20",
      "heredado_de": "T17",
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T19": {
      "hasta": "H+23",
      "efectivo": "H+23",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T20": {
      "hasta": "H+2",
      "efectivo": "H+2",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T21": {
      "hasta": "H+4",
      "efectivo": "H+4",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T22": {
      "hasta": "H+17",
      "efectivo": "H+17",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T23": {
      "hasta": "",
      "efectivo": "H+17",
      "heredado_de": "T22",
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T24": {
      "hasta": "H+19",
      "efectivo": "H+19",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T25": {
      "hasta": "H+21",
      "efectivo": "H+21",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T26": {
      "hasta": "H+23",
      "efectivo": "H+23",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T27": {
      "hasta": "H+26",
      "efectivo": "H+26",
      "heredado_de": null,
      "valor": null,
-     "motivo": "sin Inicio"
+     "motivo": "sin Inicio",
+     "motivo_contrato": "relativo_sin_inicio"
     },
     "T28": {
      "hasta": "hora por confirmar",
      "efectivo": "hora por confirmar",
      "heredado_de": null,
      "valor": null,
-     "motivo": "plazo sin resolver"
+     "motivo": "plazo sin resolver",
+     "motivo_contrato": "por_confirmar"
     }
    },
    "sin_plazo": {
@@ -421,8 +442,11 @@
    },
    "notas": [
     "T20 lleva más de H+2 en curso, pero sin Inicio no tiene plazo: sale «sin plazo», ni a tiempo ni atrasada",
-    "Hay entrega (equipo.md); la discrepancia con Hitos se enseña igual"
-   ]
+    "Hay entrega (equipo.md); la discrepancia con Hitos se enseña igual y no es un motivo",
+    "La base es 0 de 3 para todos (#46, M1): sin franja, una tarea hecha no es una medida"
+   ],
+   "riesgos": [],
+   "cadena": []
   },
   {
    "nombre": "mitad bien",
@@ -448,12 +472,21 @@
       "valor": "2026-09-20T07:30:00Z"
      }
     ],
-    "bloquea_estimacion": false
+    "bloquea_estimacion": false,
+    "motivo": null,
+    "confirmar": false
    },
    "veredicto": "a_tiempo",
    "cifra": {
     "hay": true,
-    "motivo": "las tres personas con 3 o más tareas medidas (7, 6 y 5), todas por delante del plan",
+    "motivos": [],
+    "rango": {
+     "temprano": "2026-09-19T13:09:36Z",
+     "tarde": "2026-09-19T16:52:18Z",
+     "margen_min": 907,
+     "margen_max": 1130
+    },
+    "motivo": "las tres personas con 3 o más tareas medidas (7, 6 y 5); T28, sin plazo, sale aparte y no quita la estimación del resto (#46, decisión 1)",
     "rango_frente_a_entrega": "los dos extremos, horas antes de la entrega"
    },
    "base": {
@@ -496,7 +529,11 @@
        "primera_senal": "2026-09-19T07:45:00Z",
        "publicada_en": "2026-09-19T08:50:00Z"
       }
-     ]
+     ],
+     "ritmo": {
+      "min": 72,
+      "max": 105
+     }
     },
     "persona-b": {
      "n": 6,
@@ -532,7 +569,11 @@
        "primera_senal": "2026-09-19T06:45:00Z",
        "publicada_en": "2026-09-19T07:50:00Z"
       }
-     ]
+     ],
+     "ritmo": {
+      "min": 54,
+      "max": 91
+     }
     },
     "persona-c": {
      "n": 5,
@@ -563,7 +604,11 @@
        "primera_senal": "2026-09-19T07:45:00Z",
        "publicada_en": "2026-09-19T09:30:00Z"
       }
-     ]
+     ],
+     "ritmo": {
+      "min": 21,
+      "max": 104
+     }
     }
    },
    "plazos": {
@@ -572,196 +617,224 @@
      "efectivo": "H+1",
      "heredado_de": null,
      "valor": "2026-09-18T18:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T02": {
      "hasta": "H+2",
      "efectivo": "H+2",
      "heredado_de": null,
      "valor": "2026-09-18T19:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T03": {
      "hasta": "H+4",
      "efectivo": "H+4",
      "heredado_de": null,
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T04": {
      "hasta": "",
      "efectivo": "H+4",
      "heredado_de": "T03",
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T05": {
      "hasta": "H+8",
      "efectivo": "H+8",
      "heredado_de": null,
      "valor": "2026-09-19T01:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T06": {
      "hasta": "H+16",
      "efectivo": "H+16",
      "heredado_de": null,
      "valor": "2026-09-19T09:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T07": {
      "hasta": "",
      "efectivo": "H+16",
      "heredado_de": "T06",
      "valor": "2026-09-19T09:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T08": {
      "hasta": "sáb 13:30",
      "efectivo": "sáb 13:30",
      "heredado_de": null,
      "valor": "2026-09-19T11:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T09": {
      "hasta": "sáb 16:30",
      "efectivo": "sáb 16:30",
      "heredado_de": null,
      "valor": "2026-09-19T14:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T10": {
      "hasta": "H+24",
      "efectivo": "H+24",
      "heredado_de": null,
      "valor": "2026-09-19T17:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T11": {
      "hasta": "H+4",
      "efectivo": "H+4",
      "heredado_de": null,
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T12": {
      "hasta": "",
      "efectivo": "H+4",
      "heredado_de": "T11",
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T13": {
      "hasta": "",
      "efectivo": "H+4",
      "heredado_de": "T11",
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T14": {
      "hasta": "H+6",
      "efectivo": "H+6",
      "heredado_de": null,
      "valor": "2026-09-18T23:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T15": {
      "hasta": "H+14",
      "efectivo": "H+14",
      "heredado_de": null,
      "valor": "2026-09-19T07:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T16": {
      "hasta": "H+16",
      "efectivo": "H+16",
      "heredado_de": null,
      "valor": "2026-09-19T09:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T17": {
      "hasta": "sáb 15:30",
      "efectivo": "sáb 15:30",
      "heredado_de": null,
      "valor": "2026-09-19T13:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T18": {
      "hasta": "",
      "efectivo": "sáb 15:30",
      "heredado_de": "T17",
      "valor": "2026-09-19T13:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T19": {
      "hasta": "sáb 18:30",
      "efectivo": "sáb 18:30",
      "heredado_de": null,
      "valor": "2026-09-19T16:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T20": {
      "hasta": "H+2",
      "efectivo": "H+2",
      "heredado_de": null,
      "valor": "2026-09-18T19:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T21": {
      "hasta": "H+4",
      "efectivo": "H+4",
      "heredado_de": null,
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T22": {
      "hasta": "H+17",
      "efectivo": "H+17",
      "heredado_de": null,
      "valor": "2026-09-19T10:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T23": {
      "hasta": "",
      "efectivo": "H+17",
      "heredado_de": "T22",
      "valor": "2026-09-19T10:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T24": {
      "hasta": "H+19",
      "efectivo": "H+19",
      "heredado_de": null,
      "valor": "2026-09-19T12:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T25": {
      "hasta": "sáb 16:30",
      "efectivo": "sáb 16:30",
      "heredado_de": null,
      "valor": "2026-09-19T14:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T26": {
      "hasta": "sáb 18:30",
      "efectivo": "sáb 18:30",
      "heredado_de": null,
      "valor": "2026-09-19T16:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T27": {
      "hasta": "sáb 21:00",
      "efectivo": "sáb 21:00",
      "heredado_de": null,
      "valor": "2026-09-19T19:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T28": {
      "hasta": "hora por confirmar",
      "efectivo": "hora por confirmar",
      "heredado_de": null,
      "valor": null,
-     "motivo": "plazo sin resolver"
+     "motivo": "plazo sin resolver",
+     "motivo_contrato": "por_confirmar"
     }
    },
    "sin_plazo": {
@@ -853,8 +926,30 @@
    },
    "notas": [
     "Los H+N se resuelven desde el ajuste con el Inicio de equipo.md",
-    "Solo T28 queda sin plazo",
+    "Solo T28 queda sin plazo: sale aparte, ni a tiempo ni atrasada",
+    "La cadena más larga es la de persona-c (T25 → T26 → T27), por su orden en el plan",
     "T19 espera a T08, que va en plazo: no está en riesgo"
+   ],
+   "riesgos": [],
+   "cadena": [
+    {
+     "tarea": "T25",
+     "por": "inicio",
+     "fin_temprano": "2026-09-19T11:00:00Z",
+     "fin_tarde": "2026-09-19T12:11:30Z"
+    },
+    {
+     "tarea": "T26",
+     "por": "orden_del_plan",
+     "fin_temprano": "2026-09-19T11:25:12Z",
+     "fin_tarde": "2026-09-19T14:16:18Z"
+    },
+    {
+     "tarea": "T27",
+     "por": "orden_del_plan",
+     "fin_temprano": "2026-09-19T11:56:42Z",
+     "fin_tarde": "2026-09-19T16:52:18Z"
+    }
    ]
   },
   {
@@ -881,12 +976,21 @@
       "valor": "2026-09-20T07:30:00Z"
      }
     ],
-    "bloquea_estimacion": false
+    "bloquea_estimacion": false,
+    "motivo": null,
+    "confirmar": false
    },
    "veredicto": "no_llega",
    "cifra": {
     "hay": true,
-    "motivo": "las tres personas con 3 o más tareas medidas (3, 6 y 4); persona-a va a un tercio del ritmo del plan en las tres",
+    "motivos": [],
+    "rango": {
+     "temprano": "2026-09-21T07:32:42Z",
+     "tarde": "2026-09-21T07:32:42Z",
+     "margen_min": -1413,
+     "margen_max": -1413
+    },
+    "motivo": "las tres personas con 3 o más tareas medidas (3, 6 y 4); persona-a tarda el triple de su franja, y T04 → T05 → T06 → T07 → T08 → T09 van una detrás de otra",
     "rango_frente_a_entrega": "los dos extremos, después de la entrega"
    },
    "base": {
@@ -909,7 +1013,11 @@
        "primera_senal": "2026-09-19T06:05:00Z",
        "publicada_en": "2026-09-19T09:05:00Z"
       }
-     ]
+     ],
+     "ritmo": {
+      "min": 299,
+      "max": 299
+     }
     },
     "persona-b": {
      "n": 6,
@@ -945,7 +1053,11 @@
        "primera_senal": "2026-09-19T06:45:00Z",
        "publicada_en": "2026-09-19T07:50:00Z"
       }
-     ]
+     ],
+     "ritmo": {
+      "min": 54,
+      "max": 91
+     }
     },
     "persona-c": {
      "n": 4,
@@ -971,7 +1083,11 @@
        "primera_senal": "2026-09-19T06:35:00Z",
        "publicada_en": "2026-09-19T08:30:30Z"
       }
-     ]
+     ],
+     "ritmo": {
+      "min": 52,
+      "max": 104
+     }
     }
    },
    "plazos": {
@@ -980,196 +1096,224 @@
      "efectivo": "H+1",
      "heredado_de": null,
      "valor": "2026-09-18T18:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T02": {
      "hasta": "H+2",
      "efectivo": "H+2",
      "heredado_de": null,
      "valor": "2026-09-18T19:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T03": {
      "hasta": "H+4",
      "efectivo": "H+4",
      "heredado_de": null,
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T04": {
      "hasta": "",
      "efectivo": "H+4",
      "heredado_de": "T03",
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T05": {
      "hasta": "H+8",
      "efectivo": "H+8",
      "heredado_de": null,
      "valor": "2026-09-19T01:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T06": {
      "hasta": "H+16",
      "efectivo": "H+16",
      "heredado_de": null,
      "valor": "2026-09-19T09:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T07": {
      "hasta": "",
      "efectivo": "H+16",
      "heredado_de": "T06",
      "valor": "2026-09-19T09:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T08": {
      "hasta": "sáb 13:30",
      "efectivo": "sáb 13:30",
      "heredado_de": null,
      "valor": "2026-09-19T11:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T09": {
      "hasta": "sáb 16:30",
      "efectivo": "sáb 16:30",
      "heredado_de": null,
      "valor": "2026-09-19T14:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T10": {
      "hasta": "H+24",
      "efectivo": "H+24",
      "heredado_de": null,
      "valor": "2026-09-19T17:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T11": {
      "hasta": "H+4",
      "efectivo": "H+4",
      "heredado_de": null,
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T12": {
      "hasta": "",
      "efectivo": "H+4",
      "heredado_de": "T11",
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T13": {
      "hasta": "",
      "efectivo": "H+4",
      "heredado_de": "T11",
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T14": {
      "hasta": "H+6",
      "efectivo": "H+6",
      "heredado_de": null,
      "valor": "2026-09-18T23:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T15": {
      "hasta": "H+14",
      "efectivo": "H+14",
      "heredado_de": null,
      "valor": "2026-09-19T07:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T16": {
      "hasta": "H+16",
      "efectivo": "H+16",
      "heredado_de": null,
      "valor": "2026-09-19T09:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T17": {
      "hasta": "sáb 15:30",
      "efectivo": "sáb 15:30",
      "heredado_de": null,
      "valor": "2026-09-19T13:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T18": {
      "hasta": "",
      "efectivo": "sáb 15:30",
      "heredado_de": "T17",
      "valor": "2026-09-19T13:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T19": {
      "hasta": "sáb 18:30",
      "efectivo": "sáb 18:30",
      "heredado_de": null,
      "valor": "2026-09-19T16:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T20": {
      "hasta": "H+2",
      "efectivo": "H+2",
      "heredado_de": null,
      "valor": "2026-09-18T19:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T21": {
      "hasta": "H+4",
      "efectivo": "H+4",
      "heredado_de": null,
      "valor": "2026-09-18T21:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T22": {
      "hasta": "H+17",
      "efectivo": "H+17",
      "heredado_de": null,
      "valor": "2026-09-19T10:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T23": {
      "hasta": "",
      "efectivo": "H+17",
      "heredado_de": "T22",
      "valor": "2026-09-19T10:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T24": {
      "hasta": "H+19",
      "efectivo": "H+19",
      "heredado_de": null,
      "valor": "2026-09-19T12:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T25": {
      "hasta": "sáb 16:30",
      "efectivo": "sáb 16:30",
      "heredado_de": null,
      "valor": "2026-09-19T14:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T26": {
      "hasta": "sáb 18:30",
      "efectivo": "sáb 18:30",
      "heredado_de": null,
      "valor": "2026-09-19T16:30:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T27": {
      "hasta": "sáb 21:00",
      "efectivo": "sáb 21:00",
      "heredado_de": null,
      "valor": "2026-09-19T19:00:00Z",
-     "motivo": null
+     "motivo": null,
+     "motivo_contrato": null
     },
     "T28": {
      "hasta": "hora por confirmar",
      "efectivo": "hora por confirmar",
      "heredado_de": null,
      "valor": null,
-     "motivo": "plazo sin resolver"
+     "motivo": "plazo sin resolver",
+     "motivo_contrato": "por_confirmar"
     }
    },
    "sin_plazo": {
@@ -1182,19 +1326,51 @@
    "plazos_vencidos": {
     "T04": {
      "plazo": "2026-09-18T21:00:00Z",
-     "estado": "en_curso"
+     "estado": "en_curso",
+     "arrastra": [
+      "T05",
+      "T06",
+      "T07",
+      "T08",
+      "T09",
+      "T19",
+      "T27",
+      "T28"
+     ]
     },
     "T05": {
      "plazo": "2026-09-19T01:00:00Z",
-     "estado": "pendiente"
+     "estado": "pendiente",
+     "arrastra": [
+      "T06",
+      "T07",
+      "T08",
+      "T09",
+      "T19",
+      "T27",
+      "T28"
+     ]
     },
     "T06": {
      "plazo": "2026-09-19T09:00:00Z",
-     "estado": "lista"
+     "estado": "lista",
+     "arrastra": [
+      "T07",
+      "T08",
+      "T09",
+      "T19",
+      "T27",
+      "T28"
+     ]
     },
     "T07": {
      "plazo": "2026-09-19T09:00:00Z",
-     "estado": "lista"
+     "estado": "lista",
+     "arrastra": [
+      "T08",
+      "T09",
+      "T19"
+     ]
     }
    },
    "en_riesgo": {
@@ -1203,27 +1379,52 @@
     ],
     "T05": [
      "plazo_vencido",
-     "espera_a T04"
+     "arrastrada_por T04"
     ],
     "T06": [
-     "plazo_vencido"
+     "plazo_vencido",
+     "arrastrada_por T04",
+     "arrastrada_por T05",
+     "estimacion"
     ],
     "T07": [
-     "plazo_vencido"
+     "plazo_vencido",
+     "arrastrada_por T04",
+     "arrastrada_por T05",
+     "arrastrada_por T06",
+     "estimacion"
     ],
     "T08": [
+     "arrastrada_por T04",
+     "arrastrada_por T05",
+     "arrastrada_por T06",
+     "arrastrada_por T07",
      "estimacion"
     ],
     "T09": [
+     "arrastrada_por T04",
+     "arrastrada_por T05",
+     "arrastrada_por T06",
+     "arrastrada_por T07",
      "estimacion"
     ],
     "T19": [
-     "espera_a T06",
-     "espera_a T07",
-     "espera_a T08"
+     "arrastrada_por T04",
+     "arrastrada_por T05",
+     "arrastrada_por T06",
+     "arrastrada_por T07",
+     "estimacion"
     ],
     "T27": [
-     "espera_a T06"
+     "arrastrada_por T04",
+     "arrastrada_por T05",
+     "arrastrada_por T06",
+     "estimacion"
+    ],
+    "T28": [
+     "arrastrada_por T04",
+     "arrastrada_por T05",
+     "arrastrada_por T06"
     ]
    },
    "sin_senales": {
@@ -1318,10 +1519,100 @@
     "T28": "lista"
    },
    "notas": [
-    "En riesgo por estimación solo T08 y T09 (con cualquier ritmo medido de persona-a acaban después de la entrega); T04–T07 ya tienen el plazo vencido",
-    "T17 (persona-b) y T24–T26 (persona-c) no están en riesgo",
+    "T04 (en curso) tiene el plazo pasado y arrastra, por depende_de y por el orden del plan, a T05–T09, T19, T27 y T28",
+    "En riesgo por estimación T06–T09, T19 y T27: acaban después de la entrega con cualquier ritmo medido",
+    "T17 (persona-b) y T24–T26 (persona-c) no están en riesgo; persona-c no da señales, y eso no es ir lenta",
+    "T28, sin plazo, sale aparte y no quita la estimación (#46, decisión 1)",
     "El commit del ajuste («Ajuste del plan: T08…») no es de T08: el ID no va al principio"
-   ]
+   ],
+   "riesgos": [
+    {
+     "tarea": "T06",
+     "nivel": "no_llega",
+     "fin_temprano": "2026-09-20T10:36:54Z",
+     "fin_tarde": "2026-09-20T10:36:54Z"
+    },
+    {
+     "tarea": "T07",
+     "nivel": "no_llega",
+     "fin_temprano": "2026-09-20T15:06:00Z",
+     "fin_tarde": "2026-09-20T15:06:00Z"
+    },
+    {
+     "tarea": "T08",
+     "nivel": "no_llega",
+     "fin_temprano": "2026-09-20T22:34:30Z",
+     "fin_tarde": "2026-09-20T22:34:30Z"
+    },
+    {
+     "tarea": "T09",
+     "nivel": "no_llega",
+     "fin_temprano": "2026-09-21T07:32:42Z",
+     "fin_tarde": "2026-09-21T07:32:42Z"
+    },
+    {
+     "tarea": "T19",
+     "nivel": "no_llega",
+     "fin_temprano": "2026-09-21T00:11:42Z",
+     "fin_tarde": "2026-09-21T01:18:18Z"
+    },
+    {
+     "tarea": "T27",
+     "nivel": "no_llega",
+     "fin_temprano": "2026-09-20T11:54:54Z",
+     "fin_tarde": "2026-09-20T13:12:54Z"
+    }
+   ],
+   "cadena": [
+    {
+     "tarea": "T04",
+     "por": "inicio",
+     "fin_temprano": "2026-09-19T12:09:54Z",
+     "fin_tarde": "2026-09-19T12:09:54Z"
+    },
+    {
+     "tarea": "T05",
+     "por": "depende_de",
+     "fin_temprano": "2026-09-20T06:07:48Z",
+     "fin_tarde": "2026-09-20T06:07:48Z"
+    },
+    {
+     "tarea": "T06",
+     "por": "orden_del_plan",
+     "fin_temprano": "2026-09-20T10:36:54Z",
+     "fin_tarde": "2026-09-20T10:36:54Z"
+    },
+    {
+     "tarea": "T07",
+     "por": "orden_del_plan",
+     "fin_temprano": "2026-09-20T15:06:00Z",
+     "fin_tarde": "2026-09-20T15:06:00Z"
+    },
+    {
+     "tarea": "T08",
+     "por": "orden_del_plan",
+     "fin_temprano": "2026-09-20T22:34:30Z",
+     "fin_tarde": "2026-09-20T22:34:30Z"
+    },
+    {
+     "tarea": "T09",
+     "por": "orden_del_plan",
+     "fin_temprano": "2026-09-21T07:32:42Z",
+     "fin_tarde": "2026-09-21T07:32:42Z"
+    }
+   ],
+   "sin_orden_del_plan": {
+    "veredicto": "a_tiempo",
+    "rango": {
+     "temprano": "2026-09-20T06:07:48Z",
+     "tarde": "2026-09-20T06:07:48Z",
+     "margen_min": 112,
+     "margen_max": 112
+    },
+    "que": "con solo depende_de, T06–T09 empezarían ya, en paralelo, y la entrega llegaría: la cadena de cada persona (R3 B) cambia el veredicto"
+   }
   }
- ]
+ ],
+ "riesgos": "por estimación: las tareas abiertas con plazo que acaban después de la entrega; «no_llega» si también con el ritmo más rápido medido, «justo» si solo con el más lento. Nunca las de quien no da señales por ir lenta, ni las «sin plazo»",
+ "cadena": "solo tareas abiertas que cuentan (#46, M16): la que lleva al fin más tardío (sin estimación, al Hasta resuelto más tardío), con por qué va detrás de la anterior (depende_de u orden del plan)"
 }
