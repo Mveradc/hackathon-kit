@@ -265,7 +265,16 @@ HECHAS = {"publicada", "cerrada"}          # una `cerrada` derivada; la cerrada 
 SIN_FASE = {None, "lista", "pendiente", "reclamada"}
 
 
-def _historia_tarea(t, issue, lista, equipo, umbral_parada_s):
+def _ultima_senal(lista, con_id):
+    """La hora del último evento de la tarea que cuenta como trabajo suyo (#56, punto 2): un commit con su ID (`con_id`:
+    los ids de los eventos que ya traían tarea antes de la regla 9) o una edición atribuida a ella sin ambigüedad (las
+    ambiguas no llevan tarea, así que no están en su lista). Ni latidos, ni push, ni acciones del issue, ni commits sin
+    ID. None si no hay ninguno."""
+    horas = [e["ts"] for e in lista if e["tipo"] == "edicion" or (e["tipo"] == "commit" and e["id"] in con_id)]
+    return max(horas, key=fecha) if horas else None
+
+
+def _historia_tarea(t, issue, lista, equipo, umbral_parada_s, con_id=frozenset()):
     """La historia de una tarea (api.md §11.2): el motor de estados (derivar, el de calcular) en cada evento que puede
     cambiar su estado, con los eventos ya atribuidos hasta ese evento. Solo se recalcula en los eventos que pueden
     llevarla a en_curso o a hecha: la primera actividad, los de CAMBIAN_FASE y los push que incluyen por primera vez un
@@ -315,7 +324,7 @@ def _historia_tarea(t, issue, lista, equipo, umbral_parada_s):
         hecha_ahora, previo = valor in HECHAS, valor
     ultimo = max([e["ts"] for e in lista] + [a["ts"] for a in acciones] + [issue["creado_en"]], key=fecha)
     return ({"primera_senal": primera, "hecha_en": hecha, "trabajo_nuevo_desde": None if hecha_ahora else nuevo,
-             "fuente": "derivado", "observado_en": ultimo}, evidencia)
+             "ultima_senal": _ultima_senal(lista, con_id), "fuente": "derivado", "observado_en": ultimo}, evidencia)
 
 
 def historias(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, cache=None):
@@ -327,6 +336,7 @@ def historias(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, ca
     equipo = {p["persona"] for p in personas}
     eventos = [e for e in eventos if e["tipo"] != "latido" and fecha(e["ts"]) <= t_ahora]
     issues = _hasta(issues, ahora)
+    con_id = {e["id"] for e in eventos if e.get("tarea")}         # antes de la regla 9: para historia.ultima_senal
     eventos, _, _ = atribuir(tareas, issues, eventos, equipo)
     indice = _Indice([t["id"] for t in tareas])
     for e in eventos:
@@ -339,7 +349,7 @@ def historias(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, ca
         lista = [e for _, e in heapq.merge(propios, [(n, e) for n, e, inc in pushes if inc & shas], key=lambda x: x[0])]
         clave = (t["id"], t["dueno"], tuple(e["id"] for e in lista), issue["creado_en"],
                  tuple((a["accion"], a["ts"], a["por"], a.get("a")) for a in issue["acciones"]))
-        nueva[clave] = (cache or {}).get(clave) or _historia_tarea(t, issue, lista, equipo, umbral_parada_s)
+        nueva[clave] = (cache or {}).get(clave) or _historia_tarea(t, issue, lista, equipo, umbral_parada_s, con_id)
         salida[t["id"]] = nueva[clave]
     if cache is not None:
         cache.clear()
