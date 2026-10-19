@@ -85,6 +85,13 @@ Decididos por el usuario sobre la revisión independiente del issue #56 y el PR 
 | **8. `fuentes.git` sin commits nuevos** | Como en ADR-0012, punto 8: con un interruptor encendido, `fuentes.git.observado_en` es la hora del último fetch bueno, no la del último commit, así que el bloque `ruta` (que sale viejo si lo está alguna de `vista.fuentes`) y su `dato_mas_viejo` solo envejecen si el remoto deja de leerse | Un repo sin commits nuevos no está viejo: con la hora del commit, la ruta salía vieja casi siempre (PR #58) |
 | **9. Trabajo nuevo tras publicar** (decisión 6B de ADR-0012) | En una tarea que vuelve a `en_curso` después de publicarse, lo trabajado se mide desde `historia.trabajo_nuevo_desde`, no desde la `primera_senal` de antes de publicar | Desde la primera señal, lo trabajado era casi siempre mayor que la franja y lo que le quedaba salía 0: el fin temprano y el tarde eran «ahora» y ese trabajo nuevo no se estimaba (issue #56) |
 
+## Ajuste 4 tras congelar (2026-10-20, M10)
+Decididos por el usuario sobre la revisión independiente del issue #63. Mandan sobre lo de arriba donde lo contradigan. La numeración es la del usuario; el punto 1 va también en ADR-0012. Detalle en `api.md` (registro de cambios, §6 y §11) y en `estado.schema.json`, marcado «tras congelar, 2026-10-20, M10, ajuste 4».
+
+| Punto | Elegido | Por qué |
+|---|---|---|
+| **1. Recorte del resumen** | **Nunca se corta dentro de una parte.** Si no cabe en 120, se quitan partes enteras desde el final y lo quitado se resume como « · y más en la vista». **El veredicto y el plazo pasado no se quitan nunca** (en el jurado, la cifra sin cubrir: ADR-0012) | El resumen se montaba entero y se cortaba a 120: la «otra entrega», la última, perdía la `»` de cierre y su fichero, y llegaba al md un texto de `equipo.md` o `plan.md` con la comilla abierta y sin procedencia, en contra de V y del punto 7 del ajuste 3 (issue #63). Una parte entera o nada: lo que sale dice siempre de dónde viene, y « · y más en la vista» dice que hay más |
+
 ## Alternativas descartadas
 - **Que un modelo estime las duraciones o el riesgo:** no es una señal (constitución II) y no se puede probar sin modelo.
 - **Que la persona declare cuánto le falta** (acción en la web): sería declarado y caro; una acción nueva necesita ADR-0010 y queda fuera de M10.

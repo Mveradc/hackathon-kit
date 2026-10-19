@@ -357,7 +357,7 @@
           }
         },
         "resumen": {
-          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 3, punto 7: la Fuerza va entre «», recortada a 30 grafemas, con «(criterios.md)» y sin autor.",
+          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 3, punto 7: la Fuerza va entre «», recortada a 30 grafemas, con «(criterios.md)» y sin autor. Tras congelar, 2026-10-20, M10, ajuste 4, punto 1: nunca se corta dentro de una parte; si no cabe en 120, se quitan partes enteras desde el final y se añade « · y más en la vista». La cifra sin cubrir no se quita nunca.",
           "type": "string",
           "maxLength": 120
         }
@@ -532,7 +532,7 @@
         },
         "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso" } },
         "resumen": {
-          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 2: «plazo pasado» va antes que «sin contar…» y «otra entrega…», para que el corte no quite el único dato rojo. Tras congelar, 2026-10-19, M10, ajuste 3, punto 5: va justo detrás del veredicto, antes de los motivos y sus detalles, y los motivos van abreviados («pocos datos: <n> personas», «sin plazo: <n> tareas»); el detalle, en sin_plazo y base.personas. Punto 7: el texto de «otra entrega» de plan.md o equipo.md va entre «», recortado a 30 grafemas, con su fichero y sin autor.",
+          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 2: «plazo pasado» va antes que «sin contar…» y «otra entrega…», para que el corte no quite el único dato rojo. Tras congelar, 2026-10-19, M10, ajuste 3, punto 5: va justo detrás del veredicto, antes de los motivos y sus detalles, y los motivos van abreviados («pocos datos: <n> personas», «sin plazo: <n> tareas»); el detalle, en sin_plazo y base.personas. Punto 7: el texto de «otra entrega» de plan.md o equipo.md va entre «», recortado a 30 grafemas, con su fichero y sin autor. Tras congelar, 2026-10-20, M10, ajuste 4, punto 1: nunca se corta dentro de una parte; si no cabe en 120, se quitan partes enteras desde el final y se añade « · y más en la vista». El veredicto y el plazo pasado no se quitan nunca.",
           "type": "string",
           "maxLength": 120
         }
