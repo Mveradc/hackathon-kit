@@ -43,6 +43,15 @@ def _edad(ts, ahora):
     return max(0, int((fecha(ahora) - fecha(ts)).total_seconds()))
 
 
+def parada_s(minutos):
+    """`umbral_parada_min` de os.md (su texto, o None si no está) en segundos, para `umbral_parada_s` de vista(): lo
+    leen igual el relay, el demonio, `hk-os unir` y el MCP (issue #56). Sin él o si no es un número, 20 min."""
+    try:
+        return 60 * float(minutos or PARADA_S / 60)
+    except ValueError:
+        return float(PARADA_S)
+
+
 def vista(estado, ahora=None, umbral_viejo_s=FUENTE_VIEJA_S, umbral_parada_s=PARADA_S):
     """La vista del equipo, sin persona. `ahora` (por defecto, generado_en) decide qué está «viejo» y, con los bloques
     de M10, es la hora del cálculo; `umbral_parada_s`, solo para «sin señales» de la ruta."""

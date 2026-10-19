@@ -1,5 +1,6 @@
 # Pruebas sin modelo del kit en Windows con Git Bash (evals/coordinacion/README.md): hkos/pruebas, prueba_hooks.py,
-# simulador G1–G6 e igualdad de vistas, robustez.py y colisiones_vivo.py. Sin Claude Code, sin red ni GitHub, sin jq.
+# simulador G1–G6 e igualdad de vistas, G13 y G14 (g13_g14.py), robustez.py y colisiones_vivo.py. Sin Claude Code,
+# sin red ni GitHub, sin jq.
 # Cada paso corre aunque falle el anterior. El checkout deja core.autocrlf como en un Windows de verdad: los .sh, .md
 # y .json van en LF por .gitattributes.
 name: Windows (pruebas sin modelo)
@@ -57,6 +58,10 @@ jobs:
         if: always()
         timeout-minutes: 10
         run: uv run --no-project evals/coordinacion/simulador/igualdad.py
+      - name: G13 y G14 (g13_g14.py, con el código de verdad)
+        if: always()
+        timeout-minutes: 15         # unos 4 min en un portátil
+        run: uv run --no-project evals/coordinacion/simulador/g13_g14.py
       - name: Robustez G7–G10 (robustez.py)
         if: always()
         timeout-minutes: 25

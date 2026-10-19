@@ -164,13 +164,14 @@ def estado_inicial(comun, principal, estado, persona):
     from datetime import datetime  # noqa: PLC0415
     import proyeccion  # noqa: PLC0415
     from red import conf  # noqa: PLC0415
-    carpeta = os.path.join(comun, "hackathon", "os")
+    carpeta, os_md = os.path.join(comun, "hackathon", "os"), os.path.join(principal, ".hackathon", "os.md")
     try:
-        viejo = float(conf(os.path.join(principal, ".hackathon", "os.md"), "umbral_viejo_s") or 300)
+        viejo = float(conf(os_md, "umbral_viejo_s") or 300)
     except ValueError:
         viejo = 300
     tz = datetime.now().astimezone().tzinfo
-    v = proyeccion.vista(estado, ahora=agente.ahora_iso(), umbral_viejo_s=viejo)
+    v = proyeccion.vista(estado, ahora=agente.ahora_iso(), umbral_viejo_s=viejo,
+                         umbral_parada_s=proyeccion.parada_s(conf(os_md, "umbral_parada_min")))
     textos = {"estado.json": json.dumps(estado, ensure_ascii=False),
               "estado-equipo.md": proyeccion.markdown(v, persona, os.path.join(carpeta, "estado.json").replace("\\", "/"),
                                                       tz=tz, epoch=int(time.time())),

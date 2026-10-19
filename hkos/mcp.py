@@ -96,6 +96,10 @@ class Fuente:
         except ValueError:
             return float(proyeccion.FUENTE_VIEJA_S)
 
+    def umbral_parada_s(self):
+        """`umbral_parada_min` de os.md, como el relay y el demonio: «sin señales» de la ruta (M10)."""
+        return proyeccion.parada_s(red.conf(self.os_md, "umbral_parada_min"))
+
     def relay(self):
         """(url, token) que dejó `hk-os unir`, o (None, None)."""
         url, token = (self._leer("relay.url") or "").strip(), (self._leer("token") or "").strip()
@@ -215,7 +219,8 @@ def llamar(fuente, nombre, args):
     estado = fuente.estado()
     if estado is None:
         return SIN_ESTADO, False
-    v = proyeccion.vista(estado, ahora=fuente.ahora(), umbral_viejo_s=fuente.umbral_viejo_s())
+    v = proyeccion.vista(estado, ahora=fuente.ahora(), umbral_viejo_s=fuente.umbral_viejo_s(),
+                         umbral_parada_s=fuente.umbral_parada_s())
     if m10:                                    # api.md §11.5: el bloque entero, o una línea sin error
         if nombre not in v:
             return SIN_BLOQUE[nombre], False
