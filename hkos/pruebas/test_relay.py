@@ -483,6 +483,17 @@ class Novedades(unittest.TestCase):
         vuelta(self.T + 3600 + 360)
         self.assertFalse(r.vista["fuentes"]["git"]["viejo"])
 
+    def test_m10_relay_caido_dato_mas_viejo_es_la_ultima_lectura(self):
+        """Punto 3 (G14, caso relay_caido): el relay deja de leer a las 10:00 (el último commit, a las 09:30) y la vista
+        se calcula a las 11:40 con ese estado. dato_mas_viejo es la última lectura (10:00), no el último commit."""
+        import proyeccion  # noqa: PLC0415
+        _, repo, _ = self.repos()
+        r, _ = self.relay_m10(repo)
+        v = proyeccion.vista(r.estado, ahora=relay_mod.iso_us(self.T + 6000))
+        self.assertEqual((v["ruta"]["dato_mas_viejo"], v["ruta"]["viejo"]), (relay_mod.iso_us(self.T), True))
+        # Con el relay al día, nada viejo: el commit de hace 30 min no envejece la ruta.
+        self.assertEqual((r.vista["ruta"]["dato_mas_viejo"], r.vista["ruta"]["viejo"]), (relay_mod.iso_us(self.T), False))
+
 
 if __name__ == "__main__":
     unittest.main()
