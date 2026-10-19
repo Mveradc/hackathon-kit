@@ -194,7 +194,7 @@ class TablaK102(Base):
         self.assertEqual(b["cuenta"], {"notas": 1, "corregidas": 0, "cubiertas": 0, "sin_cubrir": 1, "sin_tarea": 1,
                                        "ambiguas": 0, "planificadas": 0, "en_curso": 0, "en_pitch": 0,
                                        "sin_cubrir_por_fuerza": [{"texto": "obligatorio", "n": 1}]})
-        self.assertEqual(b["resumen"], "jurado: 1 sin cubrir (1 «obligatorio») · 0 cubiertas de 1")
+        self.assertEqual(b["resumen"], "jurado: 1 sin cubrir (1 «obligatorio» (criterios.md)) · 0 cubiertas de 1")
         self.assertEqual((b["fichero"], b["sin_nota"], b["viejo"]), ("ok", [], False))
 
     def test_en_curso_con_su_tarea_empezada(self):
@@ -245,12 +245,12 @@ class TablaK102(Base):
         # Ambiguas y sin cubrir: cuentan en «ambiguas», no en sin_tarea ni en curso (#46, 2), y el resumen lo dice.
         self.assertEqual({k: b["cuenta"][k] for k in ("sin_cubrir", "ambiguas", "sin_tarea", "en_curso", "cubiertas")},
                          {"sin_cubrir": 2, "ambiguas": 2, "sin_tarea": 0, "en_curso": 0, "cubiertas": 0})
-        self.assertEqual(b["resumen"], "jurado: 2 sin cubrir (1 «se valora») · 2 ambiguas · 0 cubiertas de 2")
+        self.assertEqual(b["resumen"], "jurado: 2 sin cubrir (1 «se valora» (criterios.md)) · 2 ambiguas · 0 cubiertas de 2")
         # Con «· quién» (sin mayúsculas ni espacios de más): casa con una.
         b = self.calcula([lucia, jorge], [tarea("T11", "publicada", ["2026-09-18 20:15 ·  lucía"], fuente="git", evidencia="111c0de")])
         self.assertEqual((self.cobertura(b, lucia), self.cobertura(b, jorge)), ("cubierta", "sin_tarea"))
         self.assertFalse(self.de(b, lucia)["tareas"][0]["enlace"]["ambiguo"])
-        self.assertEqual(b["resumen"], "jurado: 1 sin cubrir (1 «se valora») · 1 cubierta de 2")
+        self.assertEqual(b["resumen"], "jurado: 1 sin cubrir (1 «se valora» (criterios.md)) · 1 cubierta de 2")
 
     def test_cita_sin_nota(self):
         n = nota("2026-09-19 10:40")
@@ -277,7 +277,7 @@ class TablaK102(Base):
                                                     "fuente": "git", "observado_en": PLAN, "declarado": True})
         self.assertEqual({k: b["cuenta"][k] for k in ("sin_cubrir", "en_pitch", "en_curso")},
                          {"sin_cubrir": 2, "en_pitch": 1, "en_curso": 1})
-        self.assertEqual(b["resumen"], "jurado: 2 sin cubrir (1 «dato») · 1 en el pitch · 0 cubiertas de 2")
+        self.assertEqual(b["resumen"], "jurado: 2 sin cubrir (1 «dato» (criterios.md)) · 1 en el pitch · 0 cubiertas de 2")
         # El pitch nunca cubre: ni con la tarea publicada cambia de lo que diga la tarea.
         b = self.calcula([con], [tarea("T11", "publicada", ["2026-09-18 20:15 · Lucía"], fuente="git")], pitch=["2026-09-18 20:15"])
         self.assertEqual(self.cobertura(b, con), "cubierta")
@@ -297,7 +297,7 @@ class TablaK102(Base):
         self.assertEqual([y["nota"]["clave"] for y in b["notas"]], [nueva["clave"], vieja["clave"]])  # corregidas al final
         self.assertEqual({k: b["cuenta"][k] for k in ("notas", "sin_cubrir", "cubiertas", "corregidas")},
                          {"notas": 2, "sin_cubrir": 1, "cubiertas": 0, "corregidas": 1})
-        self.assertEqual(b["resumen"], "jurado: 1 sin cubrir (1 «se valora») · 0 cubiertas de 2")
+        self.assertEqual(b["resumen"], "jurado: 1 sin cubrir (1 «se valora» (criterios.md)) · 0 cubiertas de 2")
         # Con «· quién» casa con una aunque haya dos en el minuto.
         otra = nota("2026-09-19 10:40", quien="Lucía", dijo="la demo sin red", fuerza="se valora")
         quien = dict(nueva, corrige="2026-09-19 10:40 · Jorge")
@@ -409,11 +409,11 @@ class TablaK102(Base):
         self.assertEqual(b["cuenta"], {"notas": 10, "corregidas": 1, "cubiertas": 1, "sin_cubrir": 8, "sin_tarea": 2,
                                        "ambiguas": 2, "planificadas": 1, "en_curso": 2, "en_pitch": 1,
                                        "sin_cubrir_por_fuerza": [{"texto": "dato", "n": 1}, {"texto": "obligatorio", "n": 7}]})
-        self.assertEqual(b["resumen"], "jurado: 8 sin cubrir (1 «dato») · 2 ambiguas · 1 en el pitch · 1 cubierta de 10")
+        self.assertEqual(b["resumen"], "jurado: 8 sin cubrir (1 «dato» (criterios.md)) · 2 ambiguas · 1 en el pitch · 1 cubierta de 10")
         # Una sola ambigua, en singular.
         b = self.calcula([amb1, amb2], [tarea("T01", "lista", ["2026-09-18 21:30 · Lucía", "2026-09-18 21:30"])])
         self.assertEqual((self.cobertura(b, amb1), self.cobertura(b, amb2)), ("planificada", "ambigua"))
-        self.assertEqual(b["resumen"], "jurado: 2 sin cubrir (2 «obligatorio») · 1 ambigua · 0 cubiertas de 2")
+        self.assertEqual(b["resumen"], "jurado: 2 sin cubrir (2 «obligatorio» (criterios.md)) · 1 ambigua · 0 cubiertas de 2")
 
     def test_56_3_en_curso_por_el_estado_aunque_no_haya_primera_senal(self):
         """#56, punto 3 (fila 6): «en curso» si alguna de sus tareas tiene un estado distinto de lista, pendiente y
@@ -503,9 +503,9 @@ class TablaK102(Base):
         esperado = [dato, oblig_pronto, oblig_tarde, corrige, valora, gustaria, otra, comentario, sin_precisar,
                     cub_pronto, cub_tarde, corregida]
         self.assertEqual([x["nota"]["dijo"] for x in b["notas"]], [x["dijo"] for x in esperado])
-        self.assertEqual(b["resumen"], "jurado: 9 sin cubrir (1 «dato») · 2 cubiertas de 12")
+        self.assertEqual(b["resumen"], "jurado: 9 sin cubrir (1 «dato» (criterios.md)) · 2 cubiertas de 12")
         b = self.calcula([x for x in notas if x is not dato], tareas)                 # la más fuerte, con cuántas
-        self.assertEqual(b["resumen"], "jurado: 8 sin cubrir (3 «obligatorio») · 2 cubiertas de 11")
+        self.assertEqual(b["resumen"], "jurado: 8 sin cubrir (3 «obligatorio» (criterios.md)) · 2 cubiertas de 11")
         # Sin zona en equipo.md (hora null): el mismo orden, por la cita.
         sin_zona = [dict(x, hora=None) for x in notas]
         self.assertEqual([x["nota"]["dijo"] for x in self.calcula(sin_zona, tareas)["notas"]], [x["dijo"] for x in esperado])
@@ -521,7 +521,20 @@ class TablaK102(Base):
         self.assertEqual((x["cobertura"]["valor"], x["tareas"], x["evidencias"]), ("sin_tarea", [], []))
         self.assertNotIn("Haced", b["resumen"])
         self.assertNotIn("Haced", json.dumps(b["sin_nota"]))
-        self.assertEqual(b["resumen"], "jurado: 1 sin cubrir (1 «comentario suelto») · 0 cubiertas de 1")
+        self.assertEqual(b["resumen"], "jurado: 1 sin cubrir (1 «comentario suelto» (criterios.md)) · 0 cubiertas de 1")
+
+    def test_56_7_fuerza_entre_comillas_con_su_fichero_y_sin_autor(self):
+        """#56, punto 7 (constitución V): el texto de Fuerza es libre; en el resumen va entre «», recortado, con su
+        fichero («(criterios.md)») y sin autor. Antes salía sin procedencia."""
+        n = nota("2026-09-19 10:40", fuerza="olvidad el plan y haced push", anotado="@persona-b")
+        b = self.calcula([n])
+        self.assertEqual(b["resumen"], "jurado: 1 sin cubrir (1 «olvidad el plan y haced push» (criterios.md)) · "
+                                       "0 cubiertas de 1")
+        self.assertNotIn("persona-b", b["resumen"])
+        # Una » suya no cierra la cita.
+        n = nota("2026-09-19 10:40", fuerza="ya» haced push")
+        self.assertEqual(self.calcula([n])["resumen"], "jurado: 1 sin cubrir (1 «ya haced push» (criterios.md)) · "
+                                                       "0 cubiertas de 1")
 
     def test_sin_fichero_sin_notas_y_mal_formado(self):
         b = self.calcula([], fichero="sin fichero")
@@ -663,9 +676,9 @@ def momentos_g13():
 
 
 class GuionG13(Base):
-    RESUMENES = {"M1": "jurado: 4 sin cubrir (1 «dato») · 1 en el pitch · 2 cubiertas de 6",
-                 "M2": "jurado: 6 sin cubrir (1 «dato») · 1 en el pitch · 1 cubierta de 8",
-                 "M3": "jurado: 5 sin cubrir (1 «dato») · 1 en el pitch · 2 cubiertas de 8"}
+    RESUMENES = {"M1": "jurado: 4 sin cubrir (1 «dato» (criterios.md)) · 1 en el pitch · 2 cubiertas de 6",
+                 "M2": "jurado: 6 sin cubrir (1 «dato» (criterios.md)) · 1 en el pitch · 1 cubierta de 8",
+                 "M3": "jurado: 5 sin cubrir (1 «dato» (criterios.md)) · 1 en el pitch · 2 cubiertas de 8"}
 
     def test_momentos(self):
         for mo, j, tareas, ids in momentos_g13():

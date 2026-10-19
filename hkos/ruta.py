@@ -28,6 +28,7 @@ DIAS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
 GRAVEDAD = {"rojo": 0, "ambar": 1, "gris": 2}
 LEGIBLE = {"a_tiempo": "a tiempo", "justo": "justo", "no_llega": "no llega"}
 RESUMEN_MAX = 120                           # M17: la línea del md, con « (HH:MM · fuente · viejo)», cabe en 160
+TEXTO_LIBRE_MAX = 40                        # #56, 7: el texto libre de otra entrega, recortado (como la Fuerza)
 DESFASE = re.compile(r"^(?:UTC)?([+-])(\d{1,2})(?::?(\d\d))?$")
 
 
@@ -116,6 +117,15 @@ def _zona(ruta):
         signo = 1 if m.group(1) == "+" else -1
         return timezone(signo * timedelta(hours=int(m.group(2)), minutes=int(m.group(3) or 0)))
     return timezone.utc
+
+
+def entre_comillas(texto, n=TEXTO_LIBRE_MAX):
+    """Un texto libre de un fichero del equipo para un resumen (#56, 7; constitución V): entre «», con las « » de dentro
+    equilibradas (una » suya no cierra la cita) y recortado a n con «…». Su fichero va detrás, y nunca un autor."""
+    from proyeccion import equilibra
+    llano = " ".join(texto.split())
+    corto = equilibra(llano, n - 1 if len(llano) > n else n)
+    return f"«{corto}{'…' if len(llano) > n else ''}»"
 
 
 def _cuantas(n, cosa):
@@ -447,8 +457,12 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
             de_nota = o["cita"][11:16] if o.get("cita") else vieja.group(1) if vieja else "—"
             resumen += f" · otra entrega: {dia_hm(o['valor']) if o.get('valor') else '—'} " \
                        f"(criterios.md, nota de {de_nota})"
-        else:
-            resumen += f" · otra entrega: {o.get('texto') or '—'} ({o['donde']})"
+        elif not o.get("texto"):
+            resumen += f" · otra entrega: — ({o['donde']})"
+        else:                               # #56, 7: texto libre (constitución V): entre «», recortado, con su fichero
+            cabe = min(TEXTO_LIBRE_MAX, RESUMEN_MAX - len(f"{resumen} · otra entrega: «» ({o['donde']})"))
+            if cabe >= 4:                   # recortado para que quepa con su fichero; si no cabe ni así, no va
+                resumen += f" · otra entrega: {entre_comillas(o['texto'], cabe)} ({o['donde']})"
 
     return {
         "observado_en": ahora, "fuente": "derivado", "viejo": any(d.get("viejo") for d in leidas),

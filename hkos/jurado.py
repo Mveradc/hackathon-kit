@@ -115,11 +115,14 @@ def _evidencias(t, conexiones, viejas, ahora, umbral):
 def _resumen(fichero, cuenta, fuerte):
     """fuerte: la fuerza más alta entre las sin cubrir, {texto, n}, o None."""
     from proyeccion import corta
+    from ruta import entre_comillas
     if fichero == "sin fichero":
         return "jurado: sin criterios.md en main"
     if not cuenta["notas"]:
         return "jurado: sin notas en criterios.md"
-    partes = [f"{cuenta['sin_cubrir']} sin cubrir" + (f" ({fuerte['n']} «{fuerte['texto']}»)" if fuerte else "")]
+    # #56, 7: el texto de Fuerza es libre (constitución V): entre «», recortado, con su fichero y sin autor.
+    partes = [f"{cuenta['sin_cubrir']} sin cubrir" +
+              (f" ({fuerte['n']} {entre_comillas(fuerte['texto'])} (criterios.md))" if fuerte else "")]
     if cuenta["ambiguas"]:
         partes.append(f"{cuenta['ambiguas']} ambigua" + "s" * (cuenta["ambiguas"] != 1))
     if cuenta["en_pitch"]:
