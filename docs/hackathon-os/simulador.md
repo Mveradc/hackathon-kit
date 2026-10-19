@@ -48,6 +48,23 @@ En M8b (`evals/coordinacion/simulador/`) el simulador trabaja con eventos ya nor
 | G9 | Abandono: tarea `en_curso` sin actividad 20 min → `parada` (una `reclamada` no cambia); rama sin ID → `sin_tarea` | R-14, R-15 |
 | G10 | Silencio: 30 min sin cambios → ningún turno inducido, ninguna inyección | R-25, constitución X |
 | G11 | Carga: 5 personas, 3 actores cada una, 50 eventos/s durante 2 min | R-26, M8d |
+| G13 | Vista de jurado (M10, criterio 2): notas de `criterios.md` y etiquetas `(criterios: …)` del plan y del pitch, con las tareas avanzando hasta `publicada` | R-35, R-28 |
+| G14 | Ruta crítica (M10, criterio 3): el plan del reto 03 en sus 39 h, con commits, descansos y un ajuste del plan, en dos ramas (bien y con riesgo) | R-36, R-28 |
+
+### G13 y G14 (M10, K-105)
+Ficheros en `evals/coordinacion/simulador/guiones/` (`G13.json`, `G14.json`, `G14r.json` y las carpetas `g13/` y `g14/`, con las entradas, `hechos.json` y `casos.json`). Lo que tiene que salir son **hechos** por momento (la hora del reloj simulado) y **casos**: cada caso parte de un momento y cambia una entrada con reemplazos de texto `[de, a, veces]`.
+- **G13** (jurado): 8 notas de `/hack-note` y de Anotar, cada una en `main` desde su `en_main_desde`: dos en el mismo minuto (el plan las cita con «· quién»), una que corrige a otra, una de fuerza `dato` recogida solo en `pitch.md` y una con texto imperativo. Momentos M1, M2, M2b y M3 del sábado, con T11 publicada que vuelve a `en_curso` y se para (sigue `cubierta`, con «trabajo nuevo desde»), T20 cerrada a mano (⚑: `planificada`, nunca `cubierta`) y persona-c sin señales. Casos: una cita ambigua, un enlace roto (`sin_nota`), una Prueba que falla (se enseña y no cambia la cobertura) y el orden por fuerza.
+- **G14** (ruta): `equipo.md` y `plan.md` en dos versiones (el ajuste del sábado a las 09:31 pone el Inicio, cambia plazos y deja T18 con `[SI DA TIEMPO]`). Momentos «inicio» (sin Inicio: «sin plazo» y pocos datos), «mitad bien» (`a_tiempo`) y, en la otra rama, «mitad con riesgo» (`no_llega`: plazos pasados que arrastran por `depende_de` y por el orden del plan, riesgos por estimación, persona-c sin señales). Casos: sin `Entrega:`, dos horas, un desfase que no es una segunda hora, «(confirmar)», un ciclo, el relay caído (estimación vieja, con su dato más viejo), un descanso de «Todos» y otro que cruza la entrega, y la cadena de cada persona.
+
+`evals/coordinacion/simulador/g13_g14.py` los comprueba dos veces:
+1. **Con las reglas del contrato escritas otra vez** (sin `hkos/jurado.py` ni `hkos/ruta.py`): que los hechos son lo que dicen `api.md` §11.2–§11.4 y las decisiones del issue #46.
+2. **Con el código de verdad** (`m10.py`): los ficheros de cada momento en un repo de git con su historia (un remoto `bare` temporal y el clon del relay), `hkos/relay.py` con `vista_jurado` y `ruta_critica` (lee `origin/main` con `hkos/lecturas.py` y reconstruye la historia de cada tarea desde los eventos) y `proyeccion.vista`. Cada bloque valida contra `$defs/vista_jurado` o `$defs/vista_ruta` y, con la forma de los hechos, coincide con ellos en cada momento y caso: cobertura, tareas, evidencia (sha y hora), orden y cuenta; veredicto, rango, base, plazos pasados y lo que arrastran, sin plazo, fuera de la entrega, riesgos, cadena, descansos y resumen. Lo que el código da distinto por el contrato o por `hkos/ruta.py` va en `CONOCIDAS`, con su porqué: se enseña una a una y falla si deja de salir.
+
+Cada parte tiene sus controles: con un hecho cambiado, el script tiene que fallar.
+
+`igualdad.py` (criterio 4) corre G13 y G14 con los dos interruptores por el mismo camino: los bloques `jurado` y `ruta` enteros, iguales en la vista del relay, en la del demonio y en el MCP (con la misma hora), y la línea de `## Jurado y ruta` de `estado-equipo.md` de cada persona, el `resumen` de cada bloque con su hora, su fuente y «viejo». En G1–G6 y G12, sin los bloques: ni la sección ni las firmas, y `tools/list` del MCP es el de la 0.4.0.
+
+G10 ampliado (criterio 6 de M10) está en `hkos/pruebas/test_proyeccion_m10.py`: 30 minutos con el reloj corriendo, la hora estimada y el margen moviéndose y ni la cobertura ni el veredicto cambiando, `delta.sh` no inyecta nada.
 
 ## Qué mide cada pasada
 - Estados correctos frente a los esperados (% y lista de discrepancias).
