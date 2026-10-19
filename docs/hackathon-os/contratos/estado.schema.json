@@ -25,9 +25,9 @@
     "texto_o_nada": { "anyOf": [{ "type": "null" }, { "type": "string", "maxLength": 300 }] },
     "texto_ruta": {
       "type": "string",
-      "maxLength": 60,
+      "maxLength": 240,
       "pattern": "^[^\\u202A-\\u202E\\u2066-\\u2069]*$",
-      "description": "Tras congelar, 2026-10-20, M10, ajuste 4, punto 2 (api.md §11.5): texto libre de equipo.md o plan.md en el bloque ruta de la vista (lo que devuelven el MCP y la web), recortado a 60 grafemas con «…» y sin controles bidi (U+202A–U+202E, U+2066–U+2069). En estado.json va tal cual."
+      "description": "Tras congelar, 2026-10-20, M10, ajuste 4, punto 2 (api.md §11.5): texto libre de equipo.md o plan.md en el bloque ruta de la vista (lo que devuelven el MCP y la web), recortado a 60 grafemas con «…» y sin controles bidi (U+202A–U+202E, U+2066–U+2069). En estado.json va tal cual. El límite es de 60 grafemas y lo garantiza el código; maxLength cuenta puntos de código, no grafemas, así que va en 240 para no rechazar un texto bien recortado (59 «é» compuestas y «…» son 60 grafemas y 119 puntos de código)."
     },
     "texto_ruta_o_nada": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/texto_ruta" }] },
     "dato": {
