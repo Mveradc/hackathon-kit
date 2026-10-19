@@ -110,7 +110,7 @@
   },
   {
    "id": "dos_horas",
-   "que": "«Entrega:» con dos horas: sin estimación (dos horas de entrega), aunque cada una se entienda",
+   "que": "«Entrega:» con dos horas (decisión 5 del #46): manda la primera (10:00), la otra (11:00) va a otras entregas con donde equipo.md y la estimación sigue, la misma que con una hora; no hay «entrega_doble»",
    "base": "mitad bien",
    "equipo.md": [
     [
@@ -119,24 +119,35 @@
     ]
    ],
    "espera": {
-    "veredicto": "sin_estimacion",
+    "veredicto": "a_tiempo",
     "cifra": {
-     "hay": false,
-     "motivos": [
-      "entrega_doble"
-     ],
-     "rango": null
+     "hay": true,
+     "motivos": [],
+     "rango": {
+      "temprano": "2026-09-19T13:09:36Z",
+      "tarde": "2026-09-19T16:52:18Z",
+      "margen_min": 907,
+      "margen_max": 1130
+     }
     },
     "entrega": {
-     "valor": null,
-     "motivo": "dos_horas",
+     "valor": "2026-09-20T08:00:00Z",
+     "motivo": null,
+     "confirmar": false,
      "discrepancias": [
       {
+       "texto": "2026-09-20 10:00 (cierre 11:00) (Europe/Madrid)",
+       "valor": "2026-09-20T09:00:00Z",
+       "donde": "equipo.md"
+      },
+      {
        "texto": "dom 20 sep 09:30",
-       "valor": "2026-09-20T07:30:00Z"
+       "valor": "2026-09-20T07:30:00Z",
+       "donde": "plan.md"
       }
      ]
-    }
+    },
+    "resumen": "ruta: estimación a tiempo · fin 15:09–18:52 · entrega dom 10:00 · sin contar T28 (sin plazo) · otra entrega: 2026-09-20…"
    }
   },
   {

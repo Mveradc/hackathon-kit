@@ -8,15 +8,15 @@
   "J3": "A: etiqueta «(criterios: …)» en la fila del plan",
   "J4": "A: cubierta = todas sus tareas con enlace firme están hechas: publicada, cerrada sin ⚑ o, con J6 B, publicada antes y ahora con trabajo nuevo. Una integrada que nunca se publicó no cuenta, ni un fichero en main",
   "J5": "B: «en el pitch» (declarado): nunca cubierta; cuenta en «sin cubrir»",
-  "J6": "B: sigue cubierta, con «trabajo nuevo desde», si tiene historia.hecha_en y ahora está en curso, parada, no cerrada, en revisión o integrada (#46, M7). La evidencia es el último sha publicado, con la hora de su push (#46, M6)"
+  "J6": "B: sigue cubierta, con «trabajo nuevo desde», si tiene historia.hecha_en y ahora está en curso, parada, no cerrada, en revisión o integrada (#46, M7). La evidencia sale de tareas[].evidencia, {valor, tipo, fuente, observado_en} (api.md §11.2): el último sha publicado (aquí «sha», un commit de git), con la hora de esa publicación (#46, M6)"
  },
  "estados": {
   "sin_tarea": "ninguna tarea del plan ni pitch.md la citan",
   "en_pitch": "solo la cita pitch.md: declarado, nunca cubierta; cuenta en «sin cubrir»",
-  "ambigua": "solo la citan etiquetas sin «· quién» que casan con más de una nota (casos.json)",
+  "ambigua": "solo la citan etiquetas sin «· quién» que casan con más de una nota (casos.json); en la cuenta es un grupo aparte («ambiguas», api.md §11.3): no cuenta en «sin tarea», sí en «sin cubrir» y en su desglose por fuerza",
   "planificada": "declarada (la citan tareas del plan y no todas están hechas) y ninguna ha empezado: lista, pendiente o reclamada; una cerrada a mano (⚑) no está hecha",
   "en_curso": "declarada y alguna ha empezado o está hecha",
-  "cubierta": "todas las tareas que la citan con enlace firme están hechas (J4 A, J6 B); evidencia: el último commit que las publicó, con la hora de su push",
+  "cubierta": "todas las tareas que la citan con enlace firme están hechas (J4 A, J6 B); evidencia: el último commit que las publicó (tipo, valor, fuente), con la hora de esa publicación",
   "corregida": "una nota posterior en main dice «corrige la nota del <fecha hora>» y casa solo con esta: cuenta la nueva; la corregida enseña aún sus tareas y su evidencia y va al final"
  },
  "zona": "Europe/Madrid (CEST, +02:00): la hora de las cabeceras se lee con la de equipo.md",

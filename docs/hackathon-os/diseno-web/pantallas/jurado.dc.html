@@ -107,9 +107,9 @@ a{color:#22d3ee}a:hover{color:#67e8f9}
 <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 18px;">
 <span style="color: var(--ink-muted);">«Sin cubrir» es todo lo que no está cubierto ni corregido. Va primero, por fuerza (dato, «obligatorio», «se valora», «nos gustaría ver», otra palabra, comentario suelto, sin precisar) y luego por hora.</span>
 <div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-wait);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-wait);"></span>Sin tarea</span><span style="color: var(--ink-muted);">Ninguna tarea de plan.md ni pitch.md la cita.</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-wait);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-wait);"></span>Ambigua</span><span style="color: var(--ink-muted);">La etiqueta no dice «· quién» y casa con varias notas del mismo minuto. En la cuenta va aparte («ambiguas»): no es «sin tarea», pero sí cuenta en «Sin cubrir» y en su desglose por fuerza.</span></div>
 <div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; border: 1.5px solid var(--ink-muted);"></span>Planificada</span><span style="color: var(--ink-muted);">La citan tareas, pero ninguna ha empezado.</span></div>
 <div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--relay);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--relay);"></span>En curso</span><span style="color: var(--ink-muted);">Alguna de sus tareas ha empezado o está publicada, pero no todas.</span></div>
-<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-wait);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-wait);"></span>Ambigua</span><span style="color: var(--ink-muted);">La etiqueta no dice «· quién» y casa con varias notas del mismo minuto.</span></div>
 <div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; border: 1.5px solid var(--ink-muted);"></span>En el pitch (declarado)</span><span style="color: var(--ink-muted);">Solo la cita pitch.md. Es declarado: sigue sin cubrir.</span></div>
 <div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-ok);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-ok);"></span>Cubierta</span><span style="color: var(--ink-muted);">Todas las tareas que la citan están publicadas (o cerradas sin ⚑). Una integrada que no se ha publicado, una cerrada a mano o un fichero en main no la cubren. Si una tarea publicada vuelve a tener trabajo, la nota sigue cubierta y dice «trabajo nuevo desde…».</span></div>
 </div>
@@ -198,7 +198,7 @@ class Component extends DCLogic {
         con: [],
         corregidas: [],
         c: { notas: "3", notasSub: "la última, hace 5 min", sin: "3", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait",
-          sinSub: "1 sin tarea · 2 planificadas", fuerza: fz([["1", "dato"], ["1", "«queremos ver»"], ["1", "comentario suelto"]]), fuerzaSub: "de la más fuerte a la más floja",
+          sinSub: "1 sin tarea · 0 ambiguas · 2 planificadas · 0 en curso · 0 en el pitch", fuerza: fz([["1", "dato"], ["1", "«queremos ver»"], ["1", "comentario suelto"]]), fuerzaSub: "de la más fuerte a la más floja",
           cub: "0", cubColor: "var(--ink)", cubSub: "aún no hay ninguna tarea publicada que cite una nota" }
       };
     } else {
@@ -225,7 +225,7 @@ class Component extends DCLogic {
           con: [porqueMitad, empresa],
           corregidas: [grupo],
           c: { notas: "7", notasSub: "1 corregida · la última, hace 5 min", sin: "4", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait",
-            sinSub: "2 planificadas · 1 en curso · 1 en el pitch", fuerza: fz([["2", "dato"], ["1", "«imprescindible»"], ["1", "comentario suelto"]]), fuerzaSub: "de la más fuerte a la más floja",
+            sinSub: "0 sin tarea · 0 ambiguas · 2 planificadas · 1 en curso · 1 en el pitch", fuerza: fz([["2", "dato"], ["1", "«imprescindible»"], ["1", "comentario suelto"]]), fuerzaSub: "de la más fuerte a la más floja",
             cub: "2", cubColor: "var(--state-ok)", cubSub: "todas sus tareas publicadas, con el último commit de cada una" }
         };
       } else {
@@ -237,7 +237,7 @@ class Component extends DCLogic {
           con: [empresa],
           corregidas: [grupo],
           c: { notas: "9", notasSub: "1 corregida · la última, hace 5 min", sin: "7", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait",
-            sinSub: "3 sin tarea · 1 planificada · 2 en curso · 1 en el pitch",
+            sinSub: "3 sin tarea · 0 ambiguas · 1 planificada · 2 en curso · 1 en el pitch",
             fuerza: fz([["2", "dato"], ["1", "«nos gustaría ver»"], ["1", "«queremos ver»"], ["1", "«imprescindible»"], ["2", "comentario suelto"]]), fuerzaSub: "de la más fuerte a la más floja",
             cub: "1", cubColor: "var(--state-ok)", cubSub: "todas sus tareas publicadas, con el último commit de cada una" }
         };

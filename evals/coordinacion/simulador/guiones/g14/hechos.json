@@ -6,7 +6,7 @@
  },
  "que_es": "Lo que la ruta crítica tiene que decir en cada momento de G14 (rama «bien») y G14r (rama «riesgo»), como hechos y sin nombres de campo de la vista. Lo comprueba g13_g14.py con las reglas del contrato (api.md §11.2 y §11.4) y las decisiones del issue #46, contra el motor de estados y las entradas. Los casos que G14 no tiene (sin hora de entrega, dos horas, «(confirmar)», un ciclo, el relay caído, descansos de «Todos» o que cruzan la entrega) van en casos.json. Horas en UTC; ritmo en % de la franja.",
  "decisiones": {
-  "R1": "A: manda «Entrega:» de equipo.md; la fila Entrega de Hitos se enseña como discrepancia y no quita la estimación. Sin estimación solo si equipo.md no tiene Entrega, no se lee, no se resuelve o trae dos horas; con «(confirmar)» hay cifra, marcada",
+  "R1": "A: manda «Entrega:» de equipo.md; la fila Entrega de Hitos se enseña como discrepancia y no quita la estimación. Sin estimación solo si equipo.md no tiene Entrega, no se lee o no se resuelve. Con dos horas en «Entrega:», manda la primera, la otra va al lado (otras entregas, equipo.md) y la estimación sigue (#46, decisión 5: no hay «entrega_doble»); con «(confirmar)» hay cifra, marcada",
   "R2": "A: Hasta con Inicio y la zona de equipo.md; sin Inicio, todo H+N sale «sin plazo (sin Inicio)»; una celda vacía hereda la de arriba. Una tarea abierta sin plazo sale aparte y se estima el resto (#46, decisión 1); solo si ninguna abierta tiene plazo no hay cifra",
   "R3": "B: el grafo, con depende_de y la cadena de cada persona (su orden en el plan, inferido). Un plazo pasado arrastra a sus sucesoras abiertas, directas o no, por los dos caminos (#46, A4)",
   "R4": "A: franja derivada del plan: del Hasta anterior de la persona (o del Inicio) al suyo, menos sus descansos dentro (#46, M12), repartida entre las filas seguidas con ese Hasta, aunque alguna no cuente (T18)",
@@ -67,7 +67,8 @@
      {
       "fuente": "plan.md · Hitos del equipo · «Entrega final»",
       "texto": "dom 20 sep 09:30",
-      "valor": "2026-09-20T07:30:00Z"
+      "valor": "2026-09-20T07:30:00Z",
+      "donde": "plan.md"
      }
     ],
     "bloquea_estimacion": false,
@@ -446,7 +447,8 @@
     "La base es 0 de 3 para todos (#46, M1): sin franja, una tarea hecha no es una medida"
    ],
    "riesgos": [],
-   "cadena": []
+   "cadena": [],
+   "resumen": "ruta: sin estimación (sin plazo: T03, T04, T05, T06, T07, T08, T09, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T…"
   },
   {
    "nombre": "mitad bien",
@@ -469,7 +471,8 @@
      {
       "fuente": "plan.md · Hitos del equipo · «Entrega final»",
       "texto": "dom 20 sep 09:30",
-      "valor": "2026-09-20T07:30:00Z"
+      "valor": "2026-09-20T07:30:00Z",
+      "donde": "plan.md"
      }
     ],
     "bloquea_estimacion": false,
@@ -950,7 +953,8 @@
      "fin_temprano": "2026-09-19T11:56:42Z",
      "fin_tarde": "2026-09-19T16:52:18Z"
     }
-   ]
+   ],
+   "resumen": "ruta: estimación a tiempo · fin 15:09–18:52 · entrega dom 10:00 · sin contar T28 (sin plazo) · otra entrega: dom 20 sep…"
   },
   {
    "nombre": "mitad con riesgo",
@@ -973,7 +977,8 @@
      {
       "fuente": "plan.md · Hitos del equipo · «Entrega final»",
       "texto": "dom 20 sep 09:30",
-      "valor": "2026-09-20T07:30:00Z"
+      "valor": "2026-09-20T07:30:00Z",
+      "donde": "plan.md"
      }
     ],
     "bloquea_estimacion": false,
@@ -1527,40 +1532,52 @@
    ],
    "riesgos": [
     {
-     "tarea": "T06",
-     "nivel": "no_llega",
-     "fin_temprano": "2026-09-20T10:36:54Z",
-     "fin_tarde": "2026-09-20T10:36:54Z"
-    },
-    {
-     "tarea": "T07",
-     "nivel": "no_llega",
-     "fin_temprano": "2026-09-20T15:06:00Z",
-     "fin_tarde": "2026-09-20T15:06:00Z"
-    },
-    {
-     "tarea": "T08",
-     "nivel": "no_llega",
-     "fin_temprano": "2026-09-20T22:34:30Z",
-     "fin_tarde": "2026-09-20T22:34:30Z"
-    },
-    {
      "tarea": "T09",
-     "nivel": "no_llega",
-     "fin_temprano": "2026-09-21T07:32:42Z",
-     "fin_tarde": "2026-09-21T07:32:42Z"
+     "tipo": "estimacion",
+     "fin_tarde": "2026-09-21T07:32:42Z",
+     "dueno": "persona-a",
+     "en_cadena": true,
+     "viejo": false
     },
     {
      "tarea": "T19",
-     "nivel": "no_llega",
-     "fin_temprano": "2026-09-21T00:11:42Z",
-     "fin_tarde": "2026-09-21T01:18:18Z"
+     "tipo": "estimacion",
+     "fin_tarde": "2026-09-21T01:18:18Z",
+     "dueno": "persona-b",
+     "en_cadena": false,
+     "viejo": false
+    },
+    {
+     "tarea": "T08",
+     "tipo": "estimacion",
+     "fin_tarde": "2026-09-20T22:34:30Z",
+     "dueno": "persona-a",
+     "en_cadena": true,
+     "viejo": false
+    },
+    {
+     "tarea": "T07",
+     "tipo": "estimacion",
+     "fin_tarde": "2026-09-20T15:06:00Z",
+     "dueno": "persona-a",
+     "en_cadena": true,
+     "viejo": false
     },
     {
      "tarea": "T27",
-     "nivel": "no_llega",
-     "fin_temprano": "2026-09-20T11:54:54Z",
-     "fin_tarde": "2026-09-20T13:12:54Z"
+     "tipo": "estimacion",
+     "fin_tarde": "2026-09-20T13:12:54Z",
+     "dueno": "persona-c",
+     "en_cadena": false,
+     "viejo": false
+    },
+    {
+     "tarea": "T06",
+     "tipo": "estimacion",
+     "fin_tarde": "2026-09-20T10:36:54Z",
+     "dueno": "persona-a",
+     "en_cadena": true,
+     "viejo": false
     }
    ],
    "cadena": [
@@ -1610,9 +1627,11 @@
      "margen_max": 112
     },
     "que": "con solo depende_de, T06–T09 empezarían ya, en paralelo, y la entrega llegaría: la cadena de cada persona (R3 B) cambia el veredicto"
-   }
+   },
+   "resumen": "ruta: estimación no llega · fin 09:32–09:32 · entrega dom 10:00 · T04: plazo pasado 23:00 y 3 más · sin contar T28 (sin…"
   }
  ],
- "riesgos": "por estimación: las tareas abiertas con plazo que acaban después de la entrega; «no_llega» si también con el ritmo más rápido medido, «justo» si solo con el más lento. Nunca las de quien no da señales por ir lenta, ni las «sin plazo»",
+ "riesgos": "por estimación (api.md §11.4, ajuste 3): las tareas abiertas con plazo cuyo fin_tarde (con el ritmo más lento medido) es posterior a la entrega, estén o no en la cadena, con {tarea, tipo: estimacion, fin_tarde, dueno, en_cadena, viejo} y sin fin_temprano; la más tardía primero y, a igual hora, por tarea. Nunca las de quien no da señales por ir lenta, ni las «sin plazo»",
+ "resumen": "la línea de estado-equipo.md (api.md §11.4), cortada a 120; con el orden que decidió el usuario: «plazo pasado» va antes que «sin contar…» y «otra entrega…»",
  "cadena": "solo tareas abiertas que cuentan (#46, M16): la que lleva al fin más tardío (sin estimación, al Hasta resuelto más tardío), con por qué va detrás de la anterior (depende_de u orden del plan)"
 }

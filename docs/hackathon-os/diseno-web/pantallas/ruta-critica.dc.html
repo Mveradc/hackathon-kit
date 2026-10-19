@@ -122,6 +122,7 @@ a{color:#22d3ee}a:hover{color:#67e8f9}
 <span style="font-size: 13px; line-height: 18px; color: var(--ink-muted);">{{vacio.texto}}</span>
 </div>
 </sc-if>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-faint);">Primero los hechos (plazo pasado en rojo; parada o no cerrada en ámbar; sin señales en gris). Después, ESTIMACIÓN: cada tarea abierta cuyo fin tarde (con el ritmo más lento medido de su dueño) pasa de la entrega, esté o no en la cadena, de la más tardía a la más temprana. Es una previsión: nunca en rojo, y solo con su fin tarde.</span>
 </x-import>
 </div>
 <aside style="flex: 1 1 400px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
@@ -134,7 +135,7 @@ a{color:#22d3ee}a:hover{color:#67e8f9}
 <span style="color: var(--ink-faint);">Entrega</span>
 <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;"><span>{{fuentes.entrega}}</span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" age="equipo.md"></x-import></div>
 <span style="color: var(--ink-faint);">Sin plazo</span>
-<span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">Ninguna tarea. Una tarea abierta sin plazo saldría aquí, aparte, ni a tiempo ni tarde, y no quitaría la estimación del resto. El hito «Sesión formativa» dice «sáb mañana (hora por confirmar)».</span>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">Ninguna tarea. Una tarea abierta sin plazo saldría aquí, aparte, ni a tiempo ni tarde, y no quitaría la estimación del resto: solo si ninguna tarea abierta tiene plazo no hay cifra («sin plazo»). El hito «Sesión formativa» dice «sáb mañana (hora por confirmar)».</span>
 <span style="color: var(--ink-faint);">No cuentan</span>
 <span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">T10 («Si Embat pide validación propia…»): lo que empieza por «Si …» o lleva [SI DA TIEMPO] no cuenta para la entrega.</span>
 <span style="color: var(--ink-faint);">Sin señales</span>
@@ -232,14 +233,14 @@ class Component extends DCLogic {
         fin: { from: 39.67, to: 43.17, tone: "wait", label: "entre dom 10:40 y 14:10", range: "después de la entrega, con el ritmo más rápido y con el más lento" },
         riesgos: [
           { id: "T05", titulo: "«Calcular caja, cobros y deuda mensuales por company_id»", dueno: "ana", estado: "en_curso", fuente: "relay", edad: "hace 3 min", viejo: false,
-            raya: "var(--state-fail)", tipo: "HECHO", tipoColor: "var(--state-fail)",
+            raya: "var(--state-fail)", tipo: "HECHO · PLAZO PASADO", tipoColor: "var(--state-fail)",
             motivo: "Su plazo, sáb 02:30 (plan.md), pasó hace 8 h 30 y sigue en curso.", donde: "En la cadena · arrastra a T06, T07, T08 y T09 (van detrás en la sección de @ana) y a T16 y T24, que esperan a T06" },
+          { id: "T17", titulo: "«npm run build --prefix web limpio para el despliegue»", dueno: "luis", estado: "en_curso", fuente: "relay", edad: "hace 25 min", viejo: true,
+            raya: "var(--state-stale)", tipo: "HECHO · SIN SEÑALES", tipoColor: "var(--state-stale)",
+            motivo: "Sin señales de @luis desde 10:35: su parte va con el último dato. No quiere decir que vaya lenta.", donde: "Fuera de la cadena · T09 (en la cadena) espera a T17" },
           { id: "T09", titulo: "«Publicar motor y web en una URL pública»", dueno: "ana", estado: "pendiente", fuente: "github", edad: "hace 14 h", viejo: false,
             raya: "var(--state-wait)", tipo: "ESTIMACIÓN", tipoColor: "var(--state-wait)",
-            motivo: "Acaba entre dom 10:40 y 14:10: después de la entrega (dom 10:00), con cualquier ritmo medido de @ana.", donde: "Última de la cadena" },
-          { id: "T17", titulo: "«npm run build --prefix web limpio para el despliegue»", dueno: "luis", estado: "en_curso", fuente: "relay", edad: "hace 25 min", viejo: true,
-            raya: "var(--state-stale)", tipo: "SIN SEÑALES", tipoColor: "var(--state-stale)",
-            motivo: "Sin señales de @luis desde 10:35: su parte va con el último dato. No quiere decir que vaya lenta.", donde: "Fuera de la cadena · T09 (en la cadena) espera a T17" }
+            motivo: "Con el ritmo más lento medido de @ana, acaba dom 14:10 (fin tarde): después de la entrega (dom 10:00).", donde: "En la cadena · la última" }
         ],
         fuentes: { ritmo: "@ana 4 medidas, 120–160 % · @luis 3, 90–110 % · @marta 3, 90–130 %", ritmoEdad: "último cierre hace 1 h 10",
           entrega: "dom 10:00. Los Hitos de plan.md dicen lo mismo.", viejoPulso: "stale", viejo: "@luis · desde 10:35",

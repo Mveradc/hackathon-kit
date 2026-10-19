@@ -12,14 +12,19 @@ escritas aquí otra vez, sin importar hkos/jurado.py ni hkos/ruta.py (que es lo 
     ninguna, sin_nota. Hecha = publicada, cerrada sin ⚑, o con historia.hecha_en y ahora en curso, parada, no cerrada,
     en revisión o integrada (J6 B; también parada y no cerrada). Cobertura: cubierta (todas sus tareas firmes hechas,
     J4 A), declarada (planificada si ninguna ha empezado; si no, en curso), ambigua, en_pitch o sin_tarea. «Sin
-    cubrir» = todo lo que no es cubierta ni está corregido, con su desglose. La evidencia es el último sha publicado, con
-    la hora de su push. Orden: sin cubrir por fuerza (dato, «obligatorio», «se valora», «nos gustaría ver», otra palabra,
-    comentario, sin precisar) y hora; después las cubiertas y al final las corregidas, por hora;
-  - ruta: manda «Entrega:» de equipo.md (las otras, al lado, no quitan la estimación; «dos horas» sí); el grafo, con
-    depende_de y el orden del plan de cada persona (R3 B); la franja, del Hasta anterior al suyo, menos los descansos de
-    esa persona dentro, repartida entre las filas que comparten el Hasta; el ritmo, por persona con 3 medidas; una tarea
-    sin plazo sale aparte y se estima el resto (decisión 1); riesgos por estimación = las que acaban después de la
-    entrega; la cadena, solo con tareas abiertas; un plazo pasado arrastra a sus sucesoras abiertas, directas o no.
+    cubrir» = todo lo que no es cubierta ni está corregido, con su desglose; en `cuenta`, «ambiguas» es un grupo aparte
+    (no cuenta en «sin tarea») y entra en sin_cubrir_por_fuerza. La evidencia es tareas[].evidencia, {valor, tipo,
+    fuente, observado_en}: el último sha publicado, con la hora de esa publicación. Orden: sin cubrir por fuerza (dato,
+    «obligatorio», «se valora», «nos gustaría ver», otra palabra, comentario, sin precisar) y hora; después las cubiertas
+    y al final las corregidas, por hora;
+  - ruta: manda «Entrega:» de equipo.md (las otras, al lado, no quitan la estimación; con dos horas, manda la primera y
+    la otra va al lado, decisión 5); el grafo, con depende_de y el orden del plan de cada persona (R3 B); la franja, del
+    Hasta anterior al suyo, menos los descansos de esa persona dentro, repartida entre las filas que comparten el Hasta;
+    el ritmo, por persona con 3 medidas; una tarea sin plazo sale aparte y se estima el resto (decisión 1), y
+    `sin_plazo` solo es motivo si ninguna abierta que cuenta tiene franja; riesgos por estimación = las que acaban
+    (fin_tarde) después de la entrega, {tarea, tipo, fin_tarde, dueno, en_cadena, viejo}, la más tardía primero; la
+    cadena, solo con tareas abiertas; un plazo pasado arrastra a sus sucesoras abiertas, directas o no; en el resumen,
+    «plazo pasado» va antes que «sin contar…» y «otra entrega…».
 Del motor de verdad solo se toman los estados (modelo.calcular, con cada evento y estado validados contra los esquemas de
 docs/hackathon-os/contratos/) y la historia de cada tarea (modelo.historias, la de §11.2).
 G14 tiene dos ramas con las mismas entradas: G14.json («inicio» y «mitad bien») y G14r.json («mitad con riesgo»).
@@ -42,6 +47,7 @@ from compilar import leer_plan  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from estados import ATRIBUIBLES, fecha  # noqa: E402
 from modelo import atribuir, calcular, historias  # noqa: E402
+from proyeccion import corta  # noqa: E402
 from simula import carga, ejecutar, montar  # noqa: E402
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -56,6 +62,13 @@ SIGUE_HECHA = ("en_curso", "parada", "no_cerrada", "en_revision", "integrada")
 SIN_EMPEZAR = ("lista", "pendiente", "reclamada")
 FUERZAS = ("obligatorio", "se valora", "nos gustaría ver")
 DIAS = ("lun", "mar", "mie", "jue", "vie", "sab", "dom")
+DIAS_R = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")   # los del resumen
+LEGIBLE = {"a_tiempo": "a tiempo", "justo": "justo", "no_llega": "no llega"}
+RESUMEN_MAX = 120                          # §11.3 y §11.4 (M17), por grafemas
+MOTIVOS = ("sin_entrega", "ciclo", "sin_plazo", "pocos_datos")   # sin entrega_doble (decisión 5 del #46)
+CAMPOS_RIESGO = {"tarea", "tipo", "fin_tarde", "dueno", "en_cadena", "viejo"}
+CAMPOS_CUENTA = {"notas", "corregidas", "cubiertas", "sin_cubrir", "sin_tarea", "ambiguas", "planificadas", "en_curso",
+                 "en_pitch", "sin_cubrir_por_fuerza"}
 MESES = ("ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic")
 # Los motivos de un plazo en las palabras de g14/hechos.json (los del contrato van en motivo_contrato).
 TEXTO_MOTIVO = {"relativo_sin_inicio": "sin Inicio", "sin_inicio": "sin Inicio", "por_confirmar": "plazo sin resolver",
@@ -132,7 +145,7 @@ def correr(nombre, rel):
 
 def foto(guion, ahora):
     """Lo que el relay tendría a `ahora`: estado.json, los eventos atribuidos, todos los eventos, las tareas y la
-    historia de cada tarea ({ID: (historia, evidencia)})."""
+    historia de cada tarea ({ID: (historia, evidencia)}; evidencia = {valor, tipo, fuente, observado_en} o None)."""
     tareas, personas, issues, eventos, _ = montar(guion, AQUI)
     estado = calcular(tareas, issues, eventos, personas, ahora, guion.get("umbral_parada_s", 1200))
     t = fecha(ahora)
@@ -241,11 +254,15 @@ def jurado(notas, ids, presentes, plan, pitch_citas, f, ahora, pruebas=None):
             bool(hist[t]["hecha_en"]) and estados[t] in SIGUE_HECHA)
 
     def evidencia(t):
-        pubs = publicaciones(f["eventos"], t, ahora)
-        if not pubs:
+        """§11.2 y §11.3: el último sha publicado y la hora de esa publicación ({tarea, sha, observado_en}, como en los
+        hechos), cruzado con tareas[].evidencia de modelo.historias, que es un objeto {valor, tipo, fuente,
+        observado_en}: aquí, un commit con ID publicado por un push de git."""
+        pubs, ev = publicaciones(f["eventos"], t, ahora), f["historias"][t][1]
+        if not pubs and not ev:
             return None
-        ts, sha = pubs[-1]
-        bien = sha == f["historias"][t][1] and (estados[t] != "publicada" or tareas[t]["estado"]["observado_en"] == ts)
+        ts, sha = pubs[-1] if pubs else (None, None)
+        bien = isinstance(ev, dict) and (ev["valor"], ev["tipo"], ev["fuente"], ev["observado_en"]) == (
+            sha, "commit", "git", ts) and (estados[t] != "publicada" or tareas[t]["estado"]["observado_en"] == ts)
         return {"tarea": t, "sha": sha, "observado_en": ts if bien else None}   # si no casan con el motor, que falle
 
     enlaces, sin_nota = {i: {} for i in presentes}, []
@@ -386,11 +403,7 @@ def g13(cambia=None):
         for k in ("orden", "cuenta", "sin_nota"):
             dif = difiere(real[k], mo[k])
             comprueba(f"G13 {mo['nombre']}: {k} {real[k] if k == 'orden' else ''}".rstrip(), not dif, dif)
-        cuenta = mo["cuenta"]
-        comprueba(f"G13 {mo['nombre']}: «sin cubrir» ({cuenta['sin_cubrir']}) es todo lo no cubierto ni corregido, con "
-                  "su desglose", cuenta["sin_cubrir"] == sum(cuenta[k] for k in ("sin_tarea", "planificadas", "en_curso",
-                                                                                 "en_pitch", "ambiguas"))
-                  == cuenta["notas"] - cuenta["cubiertas"] - cuenta["corregidas"])
+        cuenta_g13(f"G13 {mo['nombre']}", mo["cuenta"])
     c = hechos["sin_senales"]["persona-c"]
     f = momentos[hechos["momentos"][-1]["nombre"]][1]
     ultimo = max(e["ts"] for e in f["atribuidos"] if e["actor"]["persona"] == "persona-c" and e.get("tarea"))
@@ -415,6 +428,19 @@ def g13(cambia=None):
         real = jurado(n2, ids2, presentes, plan2, pitch_citas, f, mo["ahora"], pruebas)
         dif = difiere(caso["espera"], real)
         comprueba(f"{nombre}: {caso['que']}", not dif, dif)
+        if "cuenta" in caso["espera"]:
+            cuenta_g13(nombre, caso["espera"]["cuenta"])
+
+
+def cuenta_g13(nombre, cuenta):
+    """§11.3 (ajuste 2): las claves de `cuenta` son las del contrato, con «ambiguas» como grupo aparte (una ambigua no
+    cuenta en «sin tarea»), y «sin cubrir» es la suma de los cinco grupos y la de su desglose por fuerza."""
+    comprueba(f"{nombre}: cuenta con las claves del contrato y «ambiguas» aparte; «sin cubrir» ({cuenta.get('sin_cubrir')})"
+              " = sin tarea + ambiguas + planificadas + en curso + en el pitch = su desglose por fuerza",
+              set(cuenta) == CAMPOS_CUENTA and cuenta["sin_cubrir"] == sum(
+                  cuenta[k] for k in ("sin_tarea", "ambiguas", "planificadas", "en_curso", "en_pitch"))
+              == cuenta["notas"] - cuenta["cubiertas"] - cuenta["corregidas"]
+              == sum(x["n"] for x in cuenta["sin_cubrir_por_fuerza"]), cuenta)
 
 
 # =========================================================================================================== G14
@@ -441,15 +467,17 @@ def fecha_de(t, anio):
     return None
 
 
-def hora_declarada(linea, anio=2026):
-    """§11.2, `- Inicio:` y `- Entrega:`: (valor, motivo, confirmar, zona). «Dos horas» son dos HH:MM que no son el
-    desfase de una zona («10:00 (cierre 11:00)»); «2026-09-20 10:00 (UTC+02:00)» es una sola."""
+def hora_declarada(linea, anio=2026, varias=False):
+    """§11.2, `- Inicio:` y `- Entrega:`: (valor, motivo, confirmar, zona, [otras horas]). «Dos horas» son dos HH:MM
+    distintas que no son el desfase de una zona («10:00 (cierre 11:00)»); «2026-09-20 10:00 (UTC+02:00)» es una sola.
+    En `Entrega:` (`varias`), manda la primera y las demás van a la lista, el mismo día o el siguiente (decisión 5 del
+    #46, ajuste 5 de ADR-0013: no hay `entrega_doble`); en `Inicio:`, `dos_horas` (como hkos/lecturas.py)."""
     if linea is None or linea.strip() in ("", "—") or "<" in linea:
-        return None, "sin_dato", False, None
+        return None, "sin_dato", False, None, []
     confirmar = "(confirmar)" in linea
     t = linea.replace("(confirmar)", " ")
     if plano(t) == "por confirmar":
-        return None, "por_confirmar", confirmar, None
+        return None, "por_confirmar", confirmar, None, []
     zona = None
     m = IANA.search(t)
     if m:
@@ -459,14 +487,16 @@ def hora_declarada(linea, anio=2026):
     if m:
         zona = timezone((1 if m[1] == "+" else -1) * timedelta(hours=int(m[2]), minutes=int(m[3] or 0)))
         t = t[:m.start()] + " " + t[m.end():]
-    horas, dia = HHMM.findall(t), fecha_de(t, anio)
-    if len(horas) > 1:
-        return None, "dos_horas", confirmar, zona
+    horas, dia = list(dict.fromkeys((int(h), int(m)) for h, m in HHMM.findall(t))), fecha_de(t, anio)
+    if len(horas) > 1 and not varias:
+        return None, "dos_horas", confirmar, zona, []
     if not horas or dia is None:
-        return None, "formato", confirmar, zona
+        return None, "formato", confirmar, zona, []
     if zona is None:
-        return None, "sin_zona", confirmar, None
-    return datetime(*dia, int(horas[0][0]), int(horas[0][1]), tzinfo=zona), None, confirmar, zona
+        return None, "sin_zona", confirmar, None, []
+    valor = datetime(*dia, *horas[0], tzinfo=zona)
+    otras = [datetime(*dia, *h, tzinfo=zona) for h in horas[1:]]
+    return valor, None, confirmar, zona, [o if o >= valor else o + timedelta(days=1) for o in otras]
 
 
 def resolver(hasta, inicio, zona, anterior, anio=2026):
@@ -588,8 +618,8 @@ def avanza(t, segundos, pausas):
 def leer_entradas(md_eq, md_plan, personas):
     """Lo que el relay leería de equipo.md y plan.md (§11.2), con los descansos restados de la franja."""
     ini_txt, ent_txt = campo(md_eq, "Inicio"), campo(md_eq, "Entrega")
-    inicio, ini_motivo, _, z1 = hora_declarada(ini_txt)
-    entrega, ent_motivo, confirmar, z2 = hora_declarada(ent_txt)
+    inicio, ini_motivo, _, z1, _ = hora_declarada(ini_txt)
+    entrega, ent_motivo, confirmar, z2, segundas = hora_declarada(ent_txt, varias=True)
     zona = z1 or z2
     fs = filas(md_plan)
     ds = descansos(md_plan, inicio, zona, personas)
@@ -626,11 +656,11 @@ def leer_entradas(md_eq, md_plan, personas):
             franjas[f[0]] = fr
         desde = v or desde
         i = j
-    otras = []
+    otras = [{"texto": ent_txt, "valor": o, "donde": "equipo.md"} for o in segundas]
     for linea in seccion(md_plan, "Hitos del equipo").split("\n"):
         c = celdas(linea) if linea.startswith("|") else []
         if len(c) > 1 and re.search(r"\bentrega\b", plano(c[1])):        # «entregables» no
-            otras.append({"texto": c[0], "valor": resolver(c[0], inicio, zona, None)[0]})
+            otras.append({"texto": c[0], "valor": resolver(c[0], inicio, zona, None)[0], "donde": "plan.md"})
     return {"inicio": {"texto": ini_txt, "valor": inicio, "motivo": ini_motivo},
             "entrega": {"texto": ent_txt, "valor": entrega, "motivo": ent_motivo, "confirmar": confirmar},
             "otras": otras, "filas": fs, "plazos": plazos, "franjas": franjas, "descansos": ds, "pausas": pausas}
@@ -700,12 +730,12 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True):
                  for t in abiertas if franjas[t][0] is None}
     con_franja = [t for t in abiertas if t not in sin_plazo]
     motivos = []
-    if entrega is None:
-        motivos.append("entrega_doble" if lr["entrega"]["motivo"] == "dos_horas" else "sin_entrega")
+    if entrega is None:                        # dos horas en «Entrega:» no llegan aquí: manda la primera
+        motivos.append("sin_entrega")
     c = ciclo(cuentan, sucesoras)
     if c:
         motivos.append("ciclo")
-    if abiertas and not con_franja:            # nada que estimar: «sin plazo» nunca es «a tiempo»
+    if abiertas and not con_franja:            # solo si ninguna abierta que cuenta tiene franja («inicio»)
         motivos.append("sin_plazo")
     pocos = [p for p in personas if p not in ritmos and any(duenos[t] == p for t in abiertas)]
     if pocos:
@@ -734,8 +764,7 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True):
                  "margen_min": math.floor((entrega - tarde).total_seconds() / 60),
                  "margen_max": math.floor((entrega - temprano).total_seconds() / 60)}
         veredicto = "a_tiempo" if tarde <= entrega else "justo" if temprano <= entrega else "no_llega"
-        riesgos = [{"tarea": t, "nivel": "no_llega" if fin[t][0] > entrega else "justo",
-                    "fin_temprano": z(fin[t][0]), "fin_tarde": z(fin[t][1])} for t in sorted(con_franja) if fin[t][1] > entrega]
+        riesgos = sorted((t for t in con_franja if fin[t][1] > entrega), key=lambda t: (-fin[t][1].timestamp(), t))
     else:
         veredicto = "sin_estimacion"
 
@@ -755,8 +784,8 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True):
     for t in sorted(vencidos):
         for m in vencidos[t]["arrastra"]:
             en_riesgo.setdefault(m, []).append(f"arrastrada_por {t}")
-    for r in riesgos:
-        en_riesgo.setdefault(r["tarea"], []).append("estimacion")
+    for t in sorted(riesgos):
+        en_riesgo.setdefault(t, []).append("estimacion")
 
     if rango:
         clave, cand = (lambda t: fin[t][1]), con_franja
@@ -770,6 +799,10 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True):
     cadena = [{"tarea": t, "por": "inicio" if i == 0 else previas[t][eslabones[i - 1]],
                "fin_temprano": z(fin[t][0]) if rango else None, "fin_tarde": z(fin[t][1]) if rango else None}
               for i, t in enumerate(eslabones)]
+    # §11.4 (ajuste 3): {tarea, tipo, fin_tarde, dueno, en_cadena, viejo}, la más tardía primero; sin fin_temprano.
+    # `viejo` es el de su tarjeta: con las fuentes frescas de los momentos, false (caso_g14 lo pone con el relay caído).
+    riesgos = [{"tarea": t, "tipo": "estimacion", "fin_tarde": z(fin[t][1]), "dueno": duenos[t],
+                "en_cadena": t in eslabones, "viejo": False} for t in riesgos]
 
     base = {}
     for p in personas:
@@ -791,7 +824,31 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True):
                       "tareas_abiertas": {t: est[t] for t in est if duenos[t] == p and est[t] in ATRIBUIBLES}}
 
     ent = lr["entrega"]
-    otras = [{"texto": o["texto"], "valor": z(o["valor"])} for o in lr["otras"] if not o["valor"] or o["valor"] != entrega]
+    otras = [{"texto": o["texto"], "valor": z(o["valor"]), "donde": o["donde"]} for o in lr["otras"]
+             if not o["valor"] or o["valor"] != entrega]
+
+    # §11.4, resumen (decisión 7B), con el orden que decidió el usuario: «plazo pasado» va antes que «sin contar…» y
+    # «otra entrega…». Horas con la zona de la entrega (o del inicio).
+    tz = (entrega or lr["inicio"]["valor"] or ahora).tzinfo
+
+    def hm(d):
+        return d.astimezone(tz).strftime("%H:%M")
+    if rango:
+        resumen = f"ruta: estimación {LEGIBLE[veredicto]} · fin {hm(temprano)}–{hm(tarde)} · entrega " \
+                  f"{DIAS_R[entrega.astimezone(tz).weekday()]} {hm(entrega)}" + (" (confirmar)" if ent["confirmar"] else "")
+    else:
+        por = {"sin_entrega": "sin hora de entrega", "ciclo": "ciclo " + " → ".join(c or []),
+               "sin_plazo": "sin plazo: " + ", ".join(sorted(sin_plazo)),
+               "pocos_datos": "pocos datos: " + ", ".join(f"@{p} {len(medidas.get(p, []))} de {MINIMO}" for p in pocos)}
+        resumen = f"ruta: sin estimación ({por[motivos[0]]})"
+    pasados = sorted(vencidos, key=lambda t: (plazos[t]["valor"], t))
+    if pasados:
+        resumen += f" · {pasados[0]}: plazo pasado {hm(plazos[pasados[0]]['valor'])}" + \
+                   (f" y {len(pasados) - 1} más" if len(pasados) > 1 else "")
+    if rango and sin_plazo:
+        resumen += f" · sin contar {', '.join(sorted(sin_plazo))} (sin plazo)"
+    if otras:
+        resumen += f" · otra entrega: {otras[0]['texto']} ({otras[0]['donde']})"
     return {
         "inicio": {"texto": lr["inicio"]["texto"], "valor": z(lr["inicio"]["valor"])},
         "entrega": {"texto": ent["texto"], "valor": z(entrega), "motivo": ent["motivo"], "confirmar": ent["confirmar"],
@@ -809,7 +866,7 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True):
         "descansos": {"resueltos": all(d["desde"] for d in lr["descansos"]),
                       "filas": [{"texto": d["texto"], "personas": d["personas"], "desde": z(d["desde"]),
                                  "hasta": z(d["hasta"])} for d in lr["descansos"]]},
-        "tareas": est, "cadena": cadena}
+        "tareas": est, "cadena": cadena, "resumen": corta(" ".join(resumen.split()), RESUMEN_MAX)}
 
 
 def g14(cambia=None):
@@ -855,6 +912,28 @@ def g14(cambia=None):
                  duenos, personas)
 
 
+def reglas(nombre, esperado, real):
+    """Lo que los hechos (o la espera de un caso) tienen que cumplir por forma, además de casar con `real`: así un hecho
+    con un campo de más o con un motivo que ya no existe también falla."""
+    cifra = esperado.get("cifra") or {}
+    if "motivos" in cifra:
+        comprueba(f"{nombre}: los motivos son del contrato y de las decisiones (sin «entrega_doble»; «sin_plazo» solo si "
+                  "ninguna tarea abierta que cuenta tiene franja)",
+                  set(cifra["motivos"]) <= set(MOTIVOS) and ("sin_plazo" in cifra["motivos"]) == (
+                      "sin_plazo" in real["cifra"]["motivos"]), cifra["motivos"])
+    if "riesgos" in esperado:
+        fin = [r.get("fin_tarde") for r in esperado["riesgos"]]
+        comprueba(f"{nombre}: riesgos con {{tarea, tipo, fin_tarde, dueno, en_cadena, viejo}} (sin fin_temprano), la más "
+                  "tardía primero", all(set(r) == CAMPOS_RIESGO for r in esperado["riesgos"])
+                  and all(fecha(a) >= fecha(b) for a, b in zip(fin, fin[1:])), esperado["riesgos"][:2])
+    if "resumen" in esperado:
+        r = esperado["resumen"]
+        pos = {k: r.find(k) for k in ("plazo pasado", "sin contar", "otra entrega")}
+        comprueba(f"{nombre}: en el resumen, «plazo pasado» va antes que «sin contar…» y «otra entrega…» "
+                  f"({len(r)} de {RESUMEN_MAX})", len(r) <= RESUMEN_MAX and (pos["plazo pasado"] < 0 or all(
+                      v < 0 or pos["plazo pasado"] < v for v in (pos["sin contar"], pos["otra entrega"]))), r)
+
+
 def vigente(versiones, ahora):
     return [v["fichero"] for v in versiones if fecha(v["en_main_desde"]) <= fecha(ahora)][-1]
 
@@ -880,12 +959,14 @@ def momento_g14(mo, guion, hechos, deps, duenos, personas):
                    ("riesgos", "lo que pone la entrega en riesgo por estimación"),
                    ("en_riesgo", "en riesgo, con su motivo"),
                    ("sin_senales", "sin señales"),
-                   ("cadena", "la cadena, solo con tareas abiertas")):
+                   ("cadena", "la cadena, solo con tareas abiertas"),
+                   ("resumen", f"resumen «{mo.get('resumen')}»")):
         esperado = mo.get(k)
         if k == "sin_senales":
             esperado = {p: {c: v for c, v in x.items() if c != "no_es"} for p, x in esperado.items()}
         dif = difiere(real[k], esperado)
         comprueba(f"{nombre}: {que}", not dif, dif[:6])
+    reglas(nombre, mo, real)
     if "sin_orden_del_plan" in mo:
         otra = ruta(lr, f, deps, duenos, ahora_s, con_orden=False)
         esperado = mo["sin_orden_del_plan"]
@@ -915,21 +996,24 @@ def caso_g14(caso, mo, guiones, fotos, deps, duenos, personas):
     leidas = {"relay": caso.get("relay_leido_en", ahora), "git": ahora, "github": ahora}
     real["dato_mas_viejo"] = min(leidas.values(), key=fecha)
     real["viejo"] = fecha(ahora) - fecha(real["dato_mas_viejo"]) > timedelta(seconds=300)
+    for r in real["riesgos"]:
+        r["viejo"] = real["viejo"]                   # el de su tarjeta: todas vienen del relay
     dif = difiere(caso["espera"], real)
     comprueba(f"{nombre}: {caso['que']}", not dif, dif[:6])
+    reglas(nombre, caso["espera"], real)
 
 
 # ===================================================================================================== controles
 def pon(ruta_, valor):
     """Un cambio en los hechos o los casos: `ruta_` es una lista de claves e índices; el último recibe `valor` (None:
-    se borra)."""
+    se borra; una función: se le aplica al valor que había)."""
     def cambia(h):
         for k in ruta_[:-1]:
             h = h[k]
         if valor is None:
             del h[ruta_[-1]]
         else:
-            h[ruta_[-1]] = valor
+            h[ruta_[-1]] = valor(h[ruta_[-1]]) if callable(valor) else valor
     return cambia
 
 
@@ -942,6 +1026,17 @@ CONTROLES = [
     ("G13 M1: N1 (solo en el pitch) como «sin tarea» (A2)", g13, M + [0, "notas", "N1", "estado"], "sin_tarea"),
     ("G13 M1: «sin cubrir» sin las declaradas ni la del pitch (A2)", g13, M + [0, "cuenta", "sin_cubrir"], 0),
     ("G13 M3: la evidencia de T11, el primer sha (M6)", g13, M + [2, "notas", "N2", "evidencia", 0, "sha"], "111c0de"),
+    ("G13 M3: la evidencia de T11 con la hora de la primera publicación, no la de la última (punto 1)", g13,
+     M + [2, "notas", "N2", "evidencia", 0, "observado_en"], "2026-09-18T21:20:00Z"),
+    ("G13 M3: la evidencia de T11 como sha suelto, sin su hora (punto 1)", g13,
+     M + [2, "notas", "N2", "evidencia", 0], "112c0de"),
+    ("G13 M2b: T11 parada pierde la evidencia de su última publicación (punto 1)", g13,
+     M + [3, "notas", "N2", "evidencia"], []),
+    ("G13 caso ambigua: la ambigua contada como «sin tarea» (punto 5)", g13, ["casos", "casos", 0, "espera", "cuenta"],
+     lambda c: dict(c, ambiguas=0, sin_tarea=c["sin_tarea"] + 1)),
+    ("G13 caso ambigua: la ambigua fuera del desglose por fuerza (punto 5)", g13,
+     ["casos", "casos", 0, "espera", "cuenta", "sin_cubrir_por_fuerza", 2, "n"], 1),
+    ("G13 M1: cuenta sin el grupo «ambiguas» (punto 5)", g13, M + [0, "cuenta", "ambiguas"], None),
     ("G13 T11 parada: N2 deja de estar cubierta (M7)", g13, M + [3, "notas", "N2", "estado"], "en_curso"),
     ("G13 M2: orden con N3 antes que N6", g13, M + [1, "orden"], ["N1", "N4", "N3", "N6", "N7", "N8", "N2", "N5"]),
     ("G13 caso ambigua: N3 «en curso»", g13, ["casos", "casos", 0, "espera", "notas", "N3", "estado"], "en_curso"),
@@ -956,7 +1051,25 @@ CONTROLES = [
     ("G14 mitad con riesgo: persona-c con señales", g14, M + [2, "sin_senales", "persona-c"], None),
     ("G14 mitad con riesgo: la discrepancia de la entrega bloquea", g14, M + [2, "entrega", "bloquea_estimacion"], True),
     ("G14 mitad con riesgo: la cadena empieza en T03, ya hecha (M16)", g14, M + [2, "cadena", 0, "tarea"], "T03"),
-    ("G14 caso dos horas: con estimación", g14, ["casos", "casos", 2, "espera", "veredicto"], "a_tiempo"),
+    ("G14 caso dos horas: sin estimación (punto 2)", g14, ["casos", "casos", 2, "espera", "veredicto"], "sin_estimacion"),
+    ("G14 caso dos horas: con el motivo «entrega_doble» (punto 2)", g14, ["casos", "casos", 2, "espera", "cifra", "motivos"],
+     ["entrega_doble"]),
+    ("G14 caso dos horas: manda la segunda (11:00) (punto 2)", g14, ["casos", "casos", 2, "espera", "entrega", "valor"],
+     "2026-09-20T09:00:00Z"),
+    ("G14 caso dos horas: la segunda no va a otras entregas (punto 2)", g14,
+     ["casos", "casos", 2, "espera", "entrega", "discrepancias"], lambda d: d[1:]),
+    ("G14 inicio: sin «sin_plazo» aunque ninguna abierta tenga franja (punto 3)", g14, M + [0, "cifra", "motivos"],
+     ["pocos_datos"]),
+    ("G14 mitad bien: «sin_plazo» como motivo con T28 (punto 3)", g14, M + [1, "cifra", "motivos"], ["sin_plazo"]),
+    ("G14 mitad con riesgo: resumen con «plazo pasado» al final (punto 3)", g14, M + [2, "resumen"],
+     "ruta: estimación no llega · fin 09:32–09:32 · entrega dom 10:00 · sin contar T28 (sin plazo) · T04: plazo pasado "
+     "23:00 y 3 más"),
+    ("G14 mitad con riesgo: riesgos de la más temprana a la más tardía (punto 4)", g14, M + [2, "riesgos"],
+     lambda r: r[::-1]),
+    ("G14 mitad con riesgo: riesgos con fin_temprano (punto 4)", g14, M + [2, "riesgos", 0],
+     lambda r: dict(r, fin_temprano=r["fin_tarde"])),
+    ("G14 mitad con riesgo: T09 fuera de la cadena (punto 4)", g14, M + [2, "riesgos", 0, "en_cadena"], False),
+    ("G14 mitad con riesgo: T19 de otra persona (punto 4)", g14, M + [2, "riesgos", 1, "dueno"], "persona-a"),
     ("G14 caso descanso de Todos: sin efecto en el rango", g14, ["casos", "casos", 7, "espera", "cifra", "rango", "tarde"],
      "2026-09-19T16:52:18Z"),
 ]
