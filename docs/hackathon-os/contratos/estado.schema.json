@@ -513,9 +513,9 @@
             "additionalProperties": false,
             "properties": {
               "tarea": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
-              "motivo": { "enum": ["condicional", "si_da_tiempo"], "description": "Decisión 8B: el título empieza por «Si …» o lleva [SI DA TIEMPO]." },
-              "fuente": { "$ref": "#/$defs/fuente", "description": "Tras congelar, 2026-10-19, M10, issue #46 (B2): la del título de la tarea (git con github: no; github si no)." },
-              "observado_en": { "type": "string", "format": "date-time", "description": "La de ese título (la hora del commit de plan.md o del sondeo de GitHub)." }
+              "motivo": { "enum": ["condicional", "si_da_tiempo"], "description": "Decisión 8B: el título empieza por «Si …» o lleva [SI DA TIEMPO]. Tras congelar, 2026-10-19, M10, ajuste 3, punto 4: el título de la fila del plan.md vigente (tareas[].titulo_plan), no el del issue." },
+              "fuente": { "$ref": "#/$defs/fuente", "description": "Tras congelar, 2026-10-19, M10, issue #46 (B2): la del título de la tarea. Desde el ajuste 3, punto 4, la de titulo_plan (git); solo una tarea sin fila en el plan vigente usa la de su titulo." },
+              "observado_en": { "type": "string", "format": "date-time", "description": "La de ese título (la hora del commit de plan.md)." }
             }
           }
         },
@@ -615,6 +615,7 @@
           "hasta": { "$ref": "#/$defs/plazo", "description": "Tras congelar, 2026-10-19, M10: solo con ruta_critica: sí." },
           "franja": { "$ref": "#/$defs/franja", "description": "Tras congelar, 2026-10-19, M10: solo con ruta_critica: sí." },
           "orden_plan": { "$ref": "#/$defs/dato", "description": "Tras congelar, 2026-10-19, M10 (ADR-0013, decisión 3B): valor = posición (1, 2…) de la fila en la sección de su persona de plan.md; fuente git, declarado. Solo con ruta_critica: sí." },
+          "titulo_plan": { "$ref": "#/$defs/dato", "description": "Tras congelar, 2026-10-19, M10, ajuste 3, punto 4 (api.md §11.2): valor = el titulo de su fila del plan.md vigente (compilar.leer_plan, sin el ID); fuente git, declarado, observado_en = hora del commit de plan.md. Con él se decide «fuera de la entrega» (decisión 8B), no con el titulo del issue. Solo con ruta_critica: sí y si la tarea tiene fila en el plan." },
           "historia": { "$ref": "#/$defs/historia", "description": "Tras congelar, 2026-10-19, M10: con vista_jurado: sí o ruta_critica: sí." },
           "criterios": { "$ref": "#/$defs/dato", "description": "Tras congelar, 2026-10-19, M10 (ADR-0012, decisión 3A): valor = lista de citas de la etiqueta (criterios: …) de su fila de plan.md; fuente git, declarado. Solo con vista_jurado: sí." },
           "conexiones": { "$ref": "#/$defs/dato", "description": "Tras congelar, 2026-10-19, M10 (ADR-0012, decisión 4A): valor = claves de las conexiones de servicios.md cuya Prueba aparece tal cual en «Cómo se comprueba»; fuente git, declarado. Solo con vista_jurado: sí." }

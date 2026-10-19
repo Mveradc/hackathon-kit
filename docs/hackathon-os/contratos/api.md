@@ -109,6 +109,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§11.4 (punto 1):** lo que le queda a una tarea abierta = su **franja neta** (la franja sin descansos, la misma con la que se mide el ritmo) × ritmo, menos lo trabajado. La estimación salta los descansos una sola vez, al avanzar. Se quita la contradicción entre «Medidas y ritmo» y «Estimación»;
   - **§11.2, §11.4 y el esquema (punto 2):** «sin señales desde» cuenta solo las señales atribuidas a una tarea (ni commits sin ID, ni ediciones con `atribucion_ambigua`, ni latidos), como dice ADR-0013, de `ruta.senales` (nuevo, obligatorio en `ruta`); una persona con tareas abiertas y ninguna señal también sale. `personas[].ultima_senal` de la vista deja de usarse para esto;
   - **§11.3 y el esquema (punto 3):** una nota con tareas sin hacer está `en_curso` si alguna tiene el estado de la tarjeta distinto de `lista`, `pendiente` y `reclamada`, o tiene `historia.primera_senal`; si no, `planificada`;
+  - **§11.1, §11.2, §11.4, §11.6 y el esquema (punto 4):** «fuera de la entrega» se decide con el título de la fila del `plan.md` vigente (`tareas[].titulo_plan`, nuevo), no con el del issue; `fuera_de_entrega[]` lleva su `fuente` (`git`) y su `observado_en`;
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -724,7 +725,7 @@ ruta_critica: no          # sí = ruta crítica (R-36, ADR-0013)
 - Son independientes entre sí y de `web_nueva:`: el md y el MCP no dependen de la web.
 - Las lee **el relay**, de su copia, con el mismo lector que `web_nueva:` (`hkos/red.py`). El demonio y la web siguen lo que traiga `estado.json`: si trae `jurado` o `ruta`, la vista lleva el bloque; si no, no. Ninguno de los dos lee los interruptores.
 - **El MCP** los lee solo para `tools/list` (tras congelar, 2026-10-19, M10, issue #46, ajuste 7 de ADR-0012), de la copia principal de su clon, como los hooks (§0), con el mismo lector: lista `jurado` solo con `vista_jurado: sí` y `ruta` solo con `ruta_critica: sí`. Con los dos apagados, `tools/list` es el de la 0.4.0 (§11.5). Lo que devuelven sigue saliendo de `estado.json`.
-- Con `vista_jurado: no` no hay `jurado`, `tareas[].criterios` ni `tareas[].conexiones`. Con `ruta_critica: no` no hay `ruta` (ni, dentro, `senales`), `tareas[].hasta`, `franja` ni `orden_plan`. `tareas[].historia` y `tareas[].evidencia` van con cualquiera de los dos.
+- Con `vista_jurado: no` no hay `jurado`, `tareas[].criterios` ni `tareas[].conexiones`. Con `ruta_critica: no` no hay `ruta` (ni, dentro, `senales`), `tareas[].hasta`, `franja`, `orden_plan` ni `titulo_plan`. `tareas[].historia` y `tareas[].evidencia` van con cualquiera de los dos.
 
 ### 11.2 Lo que lee el relay
 Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§3). Lo que sale de un fichero lleva `fuente: git`, `declarado: true` y, como `observado_en`, la hora del último commit de ese fichero en `origin/main` (como `servicios.fichero`). Si una lectura de git falla, se conserva el último bueno y lo dice `fuentes.git`, como con `servicios`. Los ficheros se leen en UTF-8 o UTF-16 y con LF o CRLF, como Anotar.
@@ -751,8 +752,9 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - `zona` es la de `Inicio:` (o, si no tiene, la de `Entrega:`); `null` si ninguna se entiende.
 - `equipo`: `ok`, `sin fichero` o `mal formado` (sin «## Hackathon»).
 
-**`.hackathon/plan.md` → `tareas[].hasta`, `franja` y `orden_plan`, `ruta.hitos`, `ruta.otras_entregas` y `ruta.descansos`** (con `ruta_critica: sí`; ADR-0013, decisiones 1A, 2A, 3B, 4A y 9A):
+**`.hackathon/plan.md` → `tareas[].hasta`, `franja`, `orden_plan` y `titulo_plan`, `ruta.hitos`, `ruta.otras_entregas` y `ruta.descansos`** (con `ruta_critica: sí`; ADR-0013, decisiones 1A, 2A, 3B, 4A y 9A):
 - **`orden_plan`**: la posición de la fila (1, 2…) en la sección de su persona de «## Por persona».
+- **`titulo_plan`** (tras congelar, 2026-10-19, M10, ajuste 3, punto 4): el `titulo` que da `compilar.leer_plan` para la fila (la celda de la tarea, sin el ID), como `{valor, fuente: git, observado_en: <hora del commit de plan.md>, declarado: true}`. Es el título del `plan.md` vigente, también con GitHub: el del issue puede ir por detrás hasta que se reescribe. Una tarea sin fila en el plan vigente no lo lleva.
 - **`hasta`** (decisión 2A): el `Hasta` de la fila (heredado si la celda va vacía, como en `leer_plan`) resuelto con `ruta.inicio` y `ruta.zona`:
   - `<día> HH:MM` (`vie 19:45`, `SÁB 02:30`; el día en cualquier caja, con o sin tilde, abreviado o entero): el primer día de la semana igual que no sea anterior a la fecha del inicio;
   - `HH:MM` sin día: la fecha del `Hasta` resuelto de la fila anterior de la persona (o la del inicio) y, si la hora queda antes, el día siguiente;
@@ -802,7 +804,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 ### 11.4 Bloque `ruta` de la vista (ADR-0013)
 `proyeccion.vista` lo añade (clave `ruta`, `$defs/vista_ruta`) si `estado.json` trae `ruta`. Lo calcula `hkos/ruta.py`, con `ahora` como parámetro.
 - **Objetivo** (decisión 1A): manda `ruta.entrega`, la de `- Entrega:` de `equipo.md`. Las `otras_entregas` cuyo `valor` no coincide con el del objetivo (o que no se resuelven) van en `otras_entregas` de la vista, al lado, como discrepancia, sin elegir, y **no quitan la estimación**. La congelación y los demás hitos van en `hitos`, con `pasado`, sin previsión.
-- **Qué cuenta** (decisión 8B): todas las tareas menos las de título que empieza por «Si » o que lleva `[SI DA TIEMPO]` (sin distinguir mayúsculas), que van a `fuera_de_entrega` con `motivo` `condicional` o `si_da_tiempo`. **Hecha** = `publicada` o `cerrada` (una `cerrada` a mano cuenta, con su ⚑, pero no se mide). **Abierta** = que cuenta y no está hecha.
+- **Qué cuenta** (decisión 8B): todas las tareas menos las de título que empieza por «Si » o que lleva `[SI DA TIEMPO]` (sin distinguir mayúsculas), que van a `fuera_de_entrega` con `motivo` `condicional` o `si_da_tiempo`. El título es **el de la fila del `plan.md` vigente** (`tareas[].titulo_plan`), no el del issue; solo una tarea sin fila en el plan usa su `titulo` (tras congelar, 2026-10-19, M10, ajuste 3, punto 4). **Hecha** = `publicada` o `cerrada` (una `cerrada` a mano cuenta, con su ⚑, pero no se mide). **Abierta** = que cuenta y no está hecha.
 - **Grafo** (decisión 3B): entre las tareas que cuentan, A → B si B `depende_de` A (`por: depende_de`) o si A es la fila anterior de B en el `orden_plan` de la misma persona (`por: orden_del_plan`, inferido).
 - **Franja neta** de una tarea con franja: `franja.min` − los minutos de los descansos de su persona o de todos que caen dentro de la franja ÷ `compartida`, y nunca menos de 1. Es **la misma** para medir el ritmo y para estimar lo que le queda a una tarea abierta (tras congelar, 2026-10-19, M10, ajuste 3, punto 1).
 - **Medidas y ritmo** (decisión 5A): para cada tarea hecha, no declarada, con `primera_senal`, `hecha_en` y franja: ritmo = (hecha_en − primera_senal − los descansos de su persona o de todos en medio) ÷ su franja neta, en %, redondeado: los descansos se restan **también de la franja** (tras congelar, 2026-10-19, M10, issue #46, ajuste 4 de ADR-0013). Por persona: `n` (las medidas), `ritmo_min` y `ritmo_max` (o `null` con `n < 3`). `base.minimo` es **3**, fijo; `base.desde`, el `hecha_en` más antiguo medido.
@@ -827,7 +829,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **Cadena**: con estimación, la que lleva al fin `tarde` más tardío; sin ella, la que lleva al `Hasta` resuelto más tardío, siguiendo hacia atrás la predecesora abierta de `Hasta` más tardío. Cada eslabón, con su tarjeta, `por` (`inicio` en el primero), `hasta`, `franja` y su `fin_temprano` y `fin_tarde` (`null` sin estimación).
 - **`riesgos`** (tras congelar, 2026-10-19, M10, issue #46, ajuste 3 de ADR-0013; R-36): con estimación, cada tarea abierta cuyo `fin_tarde` es posterior a la entrega, esté o no en la cadena: `{tarea, tipo: "estimacion", fin_tarde, dueno, en_cadena, viejo}` (`viejo`, el de su tarjeta). Orden: por `fin_tarde`, la más tardía primero, y por tarea. Sin estimación, `[]`. Es una previsión: ámbar, nunca rojo. La cadena sigue siendo solo de tareas abiertas (las hechas no salen). La vista **no** da una hora central, ni previsión por hito, ni «fiabilidad»: el rango y la `base` lo dicen.
 - **`sin_plazo`**: las tareas abiertas sin franja, con el motivo de `hasta` o, si `hasta` se resolvió, el de la franja, y la `fuente` y el `observado_en` de ese dato (tras congelar, 2026-10-19, M10, issue #46, B2).
-- **`fuera_de_entrega`**: las que no cuentan, con su `motivo` y la `fuente` y el `observado_en` de su título (B2).
+- **`fuera_de_entrega`**: las que no cuentan, con su `motivo` y la `fuente` y el `observado_en` de su título (B2): los de `titulo_plan` (`git`, la hora del commit de `plan.md`; ajuste 3, punto 4).
 - **`viejo`**: alguna de `vista.fuentes` está vieja; `dato_mas_viejo`, el `observado_en` más antiguo de esas fuentes. `observado_en`: la hora del cálculo.
 - **`resumen`** (decisión 7B), cortado a **120** por grafemas (tras congelar, 2026-10-19, M10, issue #46, M17, como el del jurado):
   - con estimación: `ruta: estimación <a tiempo | justo | no llega> · fin <HH:MM>–<HH:MM> · entrega <día HH:MM>[ (confirmar)]`;
@@ -918,7 +920,7 @@ Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-1
        "fin_temprano": null, "fin_tarde": null}],
     "riesgos": [],
     "sin_plazo": [{"tarea": "T21", "motivo": "por_confirmar", "fuente": "git", "observado_en": "2026-09-19T07:30:00Z"}],
-    "fuera_de_entrega": [{"tarea": "T09", "motivo": "condicional", "fuente": "github", "observado_en": "2026-09-19T07:31:00Z"}],
+    "fuera_de_entrega": [{"tarea": "T09", "motivo": "condicional", "fuente": "git", "observado_en": "2026-09-19T07:30:00Z"}],
     "hitos": [{"hito": {"nombre": "Congelación", "valor": "2026-09-19T22:00:00+02:00", "texto": "sáb 22:00", "motivo": null, "donde": "plan.md",
                         "fuente": "git", "observado_en": "2026-09-19T07:30:00Z", "declarado": true}, "pasado": false}],
     "descansos": [{"personas": null, "desde": "2026-09-19T03:00:00+02:00", "hasta": "2026-09-19T07:00:00+02:00", "texto": "- Todos: sáb 03:00–07:00",
