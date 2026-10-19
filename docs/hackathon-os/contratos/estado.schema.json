@@ -87,7 +87,7 @@
             "properties": {
               "desde": { "type": "string", "format": "date-time" },
               "hasta": { "type": "string", "format": "date-time" },
-              "min": { "type": "integer", "minimum": 1, "description": "Minutos de la franja que le tocan: (hasta − desde) / compartida, redondeado hacia arriba." },
+              "min": { "type": "integer", "minimum": 1, "description": "Minutos de la franja que le tocan: (hasta − desde) / compartida, redondeado hacia arriba. Tras congelar, 2026-10-20, M10, ajuste 4, punto 4: minutos transcurridos, medidos en UTC, también si la franja cruza el cambio de hora (de sáb 22:00 CEST a dom 06:00 CET, 540)." },
               "compartida": { "type": "integer", "minimum": 1, "description": "Filas que se reparten el bloque (las que heredan el mismo Hasta)." }
             }
           }]
