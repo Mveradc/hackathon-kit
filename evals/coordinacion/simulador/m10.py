@@ -208,8 +208,16 @@ def jurado_esperado(esperado):
     return salida
 
 
-def ruta_hechos(b, v, personas):
-    """El bloque `ruta` con la forma de g14/hechos.json (horas en UTC; motivos, en las palabras de los hechos)."""
+def textos_libres(b):
+    """Los textos libres del bloque `ruta` (#63): objetivo.texto, otras_entregas[].texto, descansos[].texto y
+    hitos[].nombre."""
+    return [(b["objetivo"] or {}).get("texto")] + [x["texto"] for x in b["otras_entregas"]] + \
+        [d["texto"] for d in b["descansos"]] + [h["hito"].get("nombre") for h in b["hitos"]]
+
+
+def ruta_hechos(b, v, personas, estado=None):
+    """El bloque `ruta` con la forma de g14/hechos.json (horas en UTC; motivos, en las palabras de los hechos).
+    estado: el estado.json del relay, para la franja de cada tarea (tareas[].franja, que la vista no lleva)."""
     e, o = b["estimacion"], b["objetivo"]
     hechos = b["hechos"]
     ciclo = next((h["ciclo"] for h in hechos if h["tipo"] == "ciclo"), None)
@@ -236,13 +244,18 @@ def ruta_hechos(b, v, personas):
                     "fin_tarde": z(x["fin_tarde"])} for x in b["cadena"]],
         "ciclo": ciclo,
         "descansos": {"resueltos": all(d["desde"] for d in b["descansos"]),
-                      "filas": [{"personas": d["personas"] or list(personas), "desde": z(d["desde"]),
-                                 "hasta": z(d["hasta"])} for d in b["descansos"]]},
+                      "filas": [{"texto": d["texto"], "personas": d["personas"] or list(personas),
+                                 "desde": z(d["desde"]), "hasta": z(d["hasta"])} for d in b["descansos"]]},
+        "franjas": {t["id"]: (t.get("franja") or {}).get("valor") and {
+            k: z(x) if k in ("desde", "hasta") else x for k, x in t["franja"]["valor"].items()}
+            for t in (estado or {}).get("tareas", [])},
+        "hitos": [h["hito"].get("nombre") for h in b["hitos"]],
         "resumen": b["resumen"], "viejo": b["viejo"], "dato_mas_viejo": z(b["dato_mas_viejo"])}
 
 
 RUTA_CLAVES = ("tareas", "zona", "veredicto", "cifra", "base", "sin_plazo", "no_cuentan", "plazos_vencidos",
-               "sin_senales", "riesgos", "cadena", "ciclo", "descansos", "resumen", "viejo", "dato_mas_viejo")
+               "sin_senales", "riesgos", "cadena", "ciclo", "descansos", "franjas", "hitos", "resumen", "viejo",
+               "dato_mas_viejo")
 
 
 def ruta_esperada(esperado):
@@ -250,7 +263,7 @@ def ruta_esperada(esperado):
     salida = {k: esperado[k] for k in RUTA_CLAVES if k in esperado}
     if "entrega" in esperado:
         ent = esperado["entrega"]
-        salida["entrega"] = {k: ent[k] for k in ("valor", "motivo", "confirmar") if k in ent}
+        salida["entrega"] = {k: ent[k] for k in ("texto", "valor", "motivo", "confirmar") if k in ent}
         if "discrepancias" in ent:
             salida["entrega"]["discrepancias"] = [{k: d[k] for k in ("texto", "valor", "donde") if k in d}
                                                   for d in ent["discrepancias"]]
@@ -265,7 +278,10 @@ def ruta_esperada(esperado):
     if "descansos" in salida:
         d = salida["descansos"]
         salida["descansos"] = {k: d[k] for k in ("resueltos",) if k in d}
-        salida["descansos"]["filas"] = [{k: f[k] for k in ("personas", "desde", "hasta")} for f in d.get("filas", [])]
+        salida["descansos"]["filas"] = [{k: f[k] for k in ("texto", "personas", "desde", "hasta")}
+                                        for f in d.get("filas", [])]
+    if "franjas" in salida:     # neta (min sin los descansos) no está en la vista: solo la comprueba g13_g14.py
+        salida["franjas"] = {t: f and {k: x for k, x in f.items() if k != "neta"} for t, f in salida["franjas"].items()}
     return salida
 
 
