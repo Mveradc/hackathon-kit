@@ -8,7 +8,7 @@ from bisect import bisect_right
 from datetime import timedelta
 
 import colisiones
-from estados import ATRIBUIBLES, derivar, fecha, iso, ordenar
+from estados import ACTIVIDAD, ATRIBUIBLES, derivar, fecha, iso, ordenar
 
 TTL_PRESENCIA_S = 90                       # R-18
 SIN_TAREA_ATRIBUIBLE = {"edicion", "arbol", "commit"}   # commit desde M8e (diseno.md §5.1, regla 9)
@@ -256,3 +256,87 @@ def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, fue
     if novedades is not None:
         estado["novedades"] = [n for n in novedades if fecha(n["observado_en"]) <= t_ahora]
     return estado
+
+
+# Eventos que pueden cambiar la fase de una tarea que ya la tiene (estados.derivar, reglas 2 a 7); con la fase vacía
+# (lista, pendiente, reclamada), cualquier actividad la pone en curso (regla 1).
+CAMBIAN_FASE = {"encargo.lanzado", "fusion.creada", "revision.veredicto", "fusion.descartada", "fusion.aprobada", "commit"}
+HECHAS = {"publicada", "cerrada"}          # una `cerrada` derivada; la cerrada a mano va en `declarado`, no aquí
+SIN_FASE = {None, "lista", "pendiente", "reclamada"}
+
+
+def _historia_tarea(t, issue, lista, equipo, umbral_parada_s):
+    """La historia de una tarea (api.md §11.2): el motor de estados (derivar, el de calcular) en cada evento que puede
+    cambiar su estado, con los eventos ya atribuidos hasta ese evento. Solo se recalcula en los eventos que pueden
+    llevarla a en_curso o a hecha: la primera actividad, los de CAMBIAN_FASE y los push que incluyen por primera vez un
+    sha suyo (regla 8). Las dependencias no cambian ninguno de esos pasos (solo lista frente a pendiente).
+    `lista`: sus eventos y los push de git que incluyen algún sha suyo (los demás no la mueven), en orden.
+
+    Devuelve (historia, evidencia): evidencia es el sha del commit con ID o de la fusión que la publicó la última vez."""
+    t = dict(t, depende_de=[])
+    acciones = sorted(issue.get("acciones", []), key=lambda a: fecha(a["ts"]))
+    primera = hecha = nuevo = evidencia = None
+    previo, hecha_ahora, shas, incluidos, commits = None, False, set(), set(), []
+    for k, e in enumerate(lista):
+        d = e.get("datos") or {}
+        if e["tipo"] == "push":
+            nuevos = set(d.get("incluye", [])) & (shas - incluidos)
+            incluidos |= set(d.get("incluye", [])) & shas
+            if not nuevos or hecha_ahora:
+                continue
+        else:
+            if d.get("sha"):
+                shas.add(d["sha"])
+                if e["tipo"] == "commit":
+                    commits.append(d["sha"])
+            if e["tipo"] not in ACTIVIDAD or (previo not in SIN_FASE and e["tipo"] not in CAMBIAN_FASE):
+                continue
+        vigente = dict(issue, acciones=[a for a in acciones if fecha(a["ts"]) <= fecha(e["ts"])])
+        r = derivar(t, vigente, lista[:k + 1], {}, equipo, e["ts"], umbral_parada_s)
+        valor = r["estado"]["valor"]
+        if valor == "en_curso":
+            primera = primera or e["ts"]
+            if hecha and nuevo is None:                  # trabajo nuevo desde la última vez que estuvo hecha
+                nuevo = e["ts"]
+        if valor in HECHAS and not hecha_ahora:
+            hecha, nuevo = hecha or e["ts"], None
+            incluye = set(d.get("incluye", []))
+            if e["tipo"] == "commit":
+                evidencia = d.get("sha")
+            elif r["fusion"] and r["fusion"] in incluye:
+                evidencia = r["fusion"]
+            else:
+                evidencia = next((s for s in reversed(commits) if s in incluye), None) or r["fusion"] or evidencia
+        hecha_ahora, previo = valor in HECHAS, valor
+    ultimo = max([e["ts"] for e in lista] + [a["ts"] for a in acciones] + [issue["creado_en"]], key=fecha)
+    return ({"primera_senal": primera, "hecha_en": hecha, "trabajo_nuevo_desde": None if hecha_ahora else nuevo,
+             "fuente": "derivado", "observado_en": ultimo}, evidencia)
+
+
+def historias(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, cache=None):
+    """M10 (api.md §11.2; ADR-0012, decisión 6B; ADR-0013, decisión 5A): {ID: (historia, evidencia)} de cada tarea, con
+    los eventos del registro (sin latidos: no se guardan) y las acciones de GitHub hasta `ahora`. La atribución es la
+    de calcular (regla 9, que solo mira el pasado de cada evento), así que cada paso es el que daría calcular a esa
+    hora. `cache` (un dict que guarda quien llama) evita volver a derivar las tareas cuyos eventos no han cambiado."""
+    t_ahora = fecha(ahora)
+    equipo = {p["persona"] for p in personas}
+    eventos = [e for e in eventos if e["tipo"] != "latido" and fecha(e["ts"]) <= t_ahora]
+    issues = _hasta(issues, ahora)
+    eventos, _, _ = atribuir(tareas, issues, eventos, equipo)
+    indice = _Indice([t["id"] for t in tareas])
+    for e in eventos:
+        indice.anade(e)
+    pushes = [(n, e, set((e.get("datos") or {}).get("incluye", []))) for n, e in indice.pushes if e["fuente"] == "git"]
+    salida, nueva = {}, {}
+    for t in tareas:
+        propios, issue = indice.propios[t["id"]], issues[t["id"]]
+        shas = {(e.get("datos") or {}).get("sha") for _, e in propios} - {None}
+        lista = [e for _, e in heapq.merge(propios, [(n, e) for n, e, inc in pushes if inc & shas], key=lambda x: x[0])]
+        clave = (t["id"], t["dueno"], tuple(e["id"] for e in lista), issue["creado_en"],
+                 tuple((a["accion"], a["ts"], a["por"], a.get("a")) for a in issue["acciones"]))
+        nueva[clave] = (cache or {}).get(clave) or _historia_tarea(t, issue, lista, equipo, umbral_parada_s)
+        salida[t["id"]] = nueva[clave]
+    if cache is not None:
+        cache.clear()
+        cache.update(nueva)
+    return salida
