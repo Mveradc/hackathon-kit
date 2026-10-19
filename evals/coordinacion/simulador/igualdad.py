@@ -11,6 +11,10 @@ sintético de 5 personas y 20 tareas con colisiones puestas a mano (fixture.py, 
   - estado-equipo.md: lo escribe el demonio de verdad (hkos/agente.py), que pide GET /v1/estado al relay, una vez por
     persona del equipo;
   - MCP: hkos/mcp.py por stdio sobre lo que deja el demonio (`tarea` de cada ID y `colisiones` sin filtrar).
+Desde M10 (K-105, criterio 4; nota de ADR-0009), también G13 (jurado) y G14 (ruta), con el relay de verdad y sus
+interruptores (m10.py): los bloques `jurado` y `ruta` enteros son los mismos en la vista del relay, en la del demonio
+(/v1/vista) y en el MCP (`jurado`, `ruta`, con la misma hora), y la línea de «Jurado y ruta» de estado-equipo.md es el
+`resumen` del bloque, con su hora, su fuente y «viejo». En G1–G6 y G12 (sin los bloques), ni la sección ni las firmas.
 
 Uso: uv run --no-project evals/coordinacion/simulador/igualdad.py   (0 OK · 1 falla)
 """
@@ -29,6 +33,8 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 KIT = os.path.dirname(os.path.dirname(os.path.dirname(AQUI)))
 sys.path[:0] = [os.path.join(KIT, "hkos"), AQUI]
 import agente as agente_mod  # noqa: E402
+import m10  # noqa: E402
+import mcp as mcp_mod  # noqa: E402
 import proyeccion  # noqa: E402
 import relay as relay_mod  # noqa: E402
 from esquema import Esquema  # noqa: E402
@@ -132,6 +138,39 @@ def servicios_esperados(web, persona):
     return no_cuadra + sin + fuera
 
 
+def lineas_jr(web):
+    """Lo que la sección «Jurado y ruta» del md tiene que decir, sacado de los bloques de la web (api.md §6, M10): el
+    `resumen` de cada bloque, con su hora, su fuente y «viejo»."""
+    return [f"- {b['resumen']} ({hhmm(b['observado_en'])} · {b['fuente']}" + (" · viejo" if b["viejo"] else "") + ")"
+            for b in (web.get("jurado"), web.get("ruta")) if b]
+
+
+def herramientas(repo):
+    """Los nombres de tools/list del MCP de verdad, por stdio."""
+    m = {"jsonrpc": "2.0", "id": 1, "method": "tools/list"}
+    r = subprocess.run([sys.executable, os.path.join(KIT, "hkos", "mcp.py"), "--repo", repo],
+                       input=(json.dumps(m) + "\n").encode(), capture_output=True, timeout=60)
+    return [t["name"] for t in json.loads(r.stdout.decode().splitlines()[0])["result"]["tools"]]
+
+
+def comparar_m10(nombre, web, repo, persona):
+    """M10 (criterio 4): los bloques enteros en la vista del relay (la web), la del demonio (/v1/vista) y el MCP, con la
+    misma hora (la de la web)."""
+    a = agente_mod.Agente(repo, persona, 30, ahora=lambda: web["ahora"])
+    a.recibir_estado()
+    demonio = json.loads(json.dumps(a.vista_web()["vista"]))
+    fuente = mcp_mod.Fuente(repo, ahora=lambda: web["ahora"])
+    for k in ("jurado", "ruta"):
+        if k not in web:
+            continue
+        r = mcp_mod.responder(fuente, {"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+                                       "params": {"name": k, "arguments": {}}})["result"]
+        del_mcp = json.loads(r["content"][0]["text"]) if not r["isError"] else {}
+        comprueba(f"{nombre}: el bloque «{k}» entero, igual en la vista del relay, en la del demonio y en el MCP",
+                  web[k] == demonio.get(k) == del_mcp.get(k) and del_mcp.get("generado_en") == web["generado_en"],
+                  r["content"][0]["text"][:200])
+
+
 def comparar(nombre, url, token, repo, personas, estado=None):
     web = de_la_web(url, token)
     if estado is not None and estado.get("servicios"):
@@ -163,7 +202,18 @@ def comparar(nombre, url, token, repo, personas, estado=None):
         a.recibir_estado()
         a.escribir_md(True)
         with open(os.path.join(a.dir, "estado-equipo.md"), encoding="utf-8") as f:
-            sec = secciones(f.read())
+            md = f.read()
+        sec = secciones(md)
+        jr, cabecera = lineas_jr(web), md.splitlines()[0]
+        if jr:                                         # M10 (K-105): una línea por bloque, el `resumen`
+            firmas = proyeccion.firmas(web, persona)
+            comprueba(f"{nombre}, md de @{persona}: «Jurado y ruta» = el resumen de cada bloque de la web ({len(jr)}), "
+                      "y sus firmas en la cabecera", sec.get("Jurado y ruta") == jr and all(
+                          f",{k}:{firmas[k]}" in cabecera for k in ("jurado", "ruta") if k in web),
+                      f"{sec.get('Jurado y ruta')} / {jr}")
+        else:
+            comprueba(f"{nombre}, md de @{persona}: sin bloques en la vista, ni «Jurado y ruta» ni las firmas jurado: y "
+                      "ruta:", "Jurado y ruta" not in sec and not re.search(r",(jurado|ruta):", cabecera))
         mias = sorted((t for t in tarjetas.values() if t["dueno"] == persona and t["estado"] in proyeccion.TRABAJO),
                       key=lambda t: (proyeccion.TRABAJO.index(t["estado"]), t["id"]))
         esperado = [(t["id"], t["estado"], hhmm(t["observado_en"]), t["fuente"], bool(t.get("estado_declarado")))
@@ -209,6 +259,11 @@ def comparar(nombre, url, token, repo, personas, estado=None):
                       secciones(texto).get("Servicios") == sec.get("Servicios"))
         elif "Servicios" in sec:
             comprueba(f"{nombre}, md de @{persona}: sin servicios en el estado, sin sección «Servicios»", False)
+        if jr:
+            comprueba(f"{nombre}, MCP de @{persona}: `estado` trae la misma sección «Jurado y ruta»",
+                      secciones(mcp_estado(repo)).get("Jurado y ruta") == sec.get("Jurado y ruta"))
+    if web.get("jurado") or web.get("ruta"):
+        comparar_m10(nombre, web, repo, personas[0])
 
 
 def main():
@@ -252,6 +307,27 @@ def main():
                   "servicios" in r.estado and Esquema("estado.schema.json").error(r.estado) is None,
                   str(Esquema("estado.schema.json").error(r.estado)))
         servir_y_comparar("G12 (servicios)", r, repo, [p["persona"] for p in g12.PERSONAS], estado=r.estado)
+        # M10 (K-105): G13 y G14 con los dos interruptores, por el relay de verdad (m10.py). El MCP solo lista jurado y
+        # ruta con su interruptor en el os.md de la copia principal (issue #46, ajuste 7).
+        base = ["estado", "tarea", "colisiones", "reservar", "liberar"]
+        comprueba("MCP sin vista_jurado ni ruta_critica: tools/list, el de la 0.4.0", herramientas(repo) == base)
+        os.makedirs(os.path.join(repo, ".hackathon"), exist_ok=True)
+        with open(os.path.join(repo, ".hackathon", "os.md"), "w", encoding="utf-8") as f:
+            f.write("activa: sí\nvista_jurado: sí\nruta_critica: sí\n")
+        comprueba("MCP con vista_jurado: sí y ruta_critica: sí: tools/list, más jurado y ruta",
+                  herramientas(repo) == base + ["jurado", "ruta"])
+        g13 = carga(os.path.join(AQUI, "guiones", "G13.json"))
+        h13 = carga(os.path.join(AQUI, g13["hechos"]))
+        for mo in h13["momentos"]:
+            r = m10.relay(tmp, g13, m10.versiones_g13(g13, h13, mo["ahora"]), mo["ahora"])
+            servir_y_comparar(f"G13 ({mo['nombre']})", r, repo, [p["persona"] for p in r.personas])
+        h14 = carga(os.path.join(AQUI, "guiones", "g14", "hechos.json"))
+        for mo in h14["momentos"]:
+            g14 = carga(os.path.join(AQUI, "guiones", mo["guion"]))
+            versiones = m10.versiones_g14(h14, mo["ahora"])
+            plan = [f["plan.md"] for _, f in versiones if "plan.md" in f][-1]
+            r = m10.relay(tmp, g14, versiones, mo["ahora"], tareas=m10.tareas_del_plan(g14, plan))
+            servir_y_comparar(f"G14 ({mo['nombre']})", r, repo, [p["persona"] for p in r.personas])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print(f"\n{fallos} fallos")
