@@ -4,7 +4,7 @@
   "bien": "G14.json",
   "riesgo": "G14r.json"
  },
- "que_es": "Lo que la ruta crítica tiene que decir en cada momento de G14 (rama «bien») y G14r (rama «riesgo»), como hechos y sin nombres de campo de la vista. Lo comprueba g13_g14.py con las reglas del contrato (api.md §11.2 y §11.4) y las decisiones de los issues #46 y #56, contra el motor de estados y las entradas. Los casos que G14 no tiene (sin hora de entrega, dos horas, «(confirmar)», un ciclo, el relay caído, descansos de «Todos» o que cruzan la entrega) van en casos.json. Horas en UTC; ritmo en % de la franja.",
+ "que_es": "Lo que la ruta crítica tiene que decir en cada momento de G14 (rama «bien») y G14r (rama «riesgo»), como hechos y sin nombres de campo de la vista. Lo comprueba g13_g14.py con las reglas del contrato (api.md §11.2 y §11.4) y las decisiones de los issues #46 y #56, contra el motor de estados y las entradas. Los casos que G14 no tiene (sin hora de entrega, dos horas, «(confirmar)», un ciclo, el relay caído, descansos de «Todos» o que cruzan la entrega) van en casos.json, y también los del issue #63 (una franja que cruza el cambio de hora, un resumen largo, la otra entrega con valor y los textos libres con controles bidi). Horas en UTC; ritmo en % de la franja.",
  "decisiones": {
   "R1": "A: manda «Entrega:» de equipo.md; la fila Entrega de Hitos se enseña como discrepancia y no quita la estimación. Sin estimación solo si equipo.md no tiene Entrega, no se lee o no se resuelve. Con dos horas en «Entrega:», manda la primera, la otra va al lado (otras entregas, equipo.md) y la estimación sigue (#46, decisión 5: no hay «entrega_doble»); con «(confirmar)» hay cifra, marcada",
   "R2": "A: Hasta con Inicio y la zona de equipo.md; sin Inicio, todo H+N sale «sin plazo (sin Inicio)»; una celda vacía hereda la de arriba. Una tarea abierta sin plazo sale aparte y se estima el resto (#46, decisión 1); solo si ninguna abierta tiene plazo no hay cifra",
@@ -15,7 +15,8 @@
   "R7": "A: con n < 3, solo hechos y «n de 3»",
   "R8": "B: no cuentan «Si …» ni [SI DA TIEMPO]",
   "R9": "A: «## Descansos» del plan: turnos de una o varias personas (o «Todos»), restados de la franja y saltados al estimar",
-  "#56": "Decisiones del usuario sobre el issue #56: lo que le queda a una tarea abierta = su franja sin descansos × el ritmo (los descansos se saltan una vez); tras 6B, lo trabajado desde trabajo_nuevo_desde; «sin señales» solo con señales atribuidas a una tarea, y quien no ha dado ninguna también sale, con desde null; «fuera de la entrega» por el título del plan.md vigente; una cerrada a mano (⚑) está hecha; una sin plazo cuenta 0 min y no rompe la cadena; pocos_datos solo de quien tiene abiertas con franja (si ninguna tiene franja, sin_plazo y pocos_datos); resumen con «plazo pasado» detrás del veredicto, detalles abreviados («pocos datos: <n> personas», «sin plazo: <n> tareas», en singular con 1), el texto libre entre «» recortado a 40 y con su fichero, 120 como mucho; horas con la zona IANA (H+N, horas transcurridas) y la zona como {valor, fuente, observado_en, declarado}"
+  "#56": "Decisiones del usuario sobre el issue #56: lo que le queda a una tarea abierta = su franja sin descansos × el ritmo (los descansos se saltan una vez); tras 6B, lo trabajado desde trabajo_nuevo_desde; «sin señales» solo con señales atribuidas a una tarea, y quien no ha dado ninguna también sale, con desde null; «fuera de la entrega» por el título del plan.md vigente; una cerrada a mano (⚑) está hecha; una sin plazo cuenta 0 min y no rompe la cadena; pocos_datos solo de quien tiene abiertas con franja (si ninguna tiene franja, sin_plazo y pocos_datos); resumen con «plazo pasado» detrás del veredicto, detalles abreviados («pocos datos: <n> personas», «sin plazo: <n> tareas», en singular con 1), el texto libre entre «» recortado a 40 y con su fichero, 120 como mucho; horas con la zona IANA (H+N, horas transcurridas) y la zona como {valor, fuente, observado_en, declarado}",
+  "#63": "Decisiones del usuario sobre el issue #63: la franja, en minutos transcurridos también si cruza el cambio de hora (y la neta, sin los descansos en tiempo real); el resumen nunca se corta dentro de una parte: si no cabe en 120, se quitan partes enteras desde el final (nunca el veredicto ni el plazo pasado) y se añade « · y más en la vista», sin ninguna «» abierta; «otra entrega» con valor sale como «otra entrega: <día HH:MM en la zona del equipo> (<fichero>)», sin texto libre, y sin valor, su texto entre «», a 30 y con su fichero; los textos libres del bloque ruta (objetivo.texto, otras_entregas[].texto, descansos[].texto, que es la fila o la línea, y hitos[].nombre), a 60 grafemas con «…» y sin controles bidi"
  },
  "veredictos": [
   "a_tiempo",
@@ -376,7 +377,7 @@
     "motivo": "sin Inicio",
     "filas": [
      {
-      "texto": "sáb 00:30–06:30",
+      "texto": "| sáb 00:30–06:30 | Persona C |",
       "personas": [
        "persona-c"
       ],
@@ -384,7 +385,7 @@
       "hasta": null
      },
      {
-      "texto": "sáb 01:00–07:00",
+      "texto": "| sáb 01:00–07:00 | Persona B |",
       "personas": [
        "persona-b"
       ],
@@ -392,7 +393,7 @@
       "hasta": null
      },
      {
-      "texto": "sáb 02:30–08:00",
+      "texto": "| sáb 02:30–08:00 | Persona A |",
       "personas": [
        "persona-a"
       ],
@@ -400,7 +401,7 @@
       "hasta": null
      },
      {
-      "texto": "sáb 23:00–dom 07:30",
+      "texto": "| sáb 23:00–dom 07:30 | Persona B y Persona C |",
       "personas": [
        "persona-b",
        "persona-c"
@@ -409,7 +410,7 @@
       "hasta": null
      },
      {
-      "texto": "sáb 23:30–dom 07:00",
+      "texto": "| sáb 23:30–dom 07:00 | Persona A |",
       "personas": [
        "persona-a"
       ],
@@ -455,7 +456,7 @@
    ],
    "riesgos": [],
    "cadena": [],
-   "resumen": "ruta: sin estimación · sin plazo: 24 tareas · otra entrega: «dom 20 sep 09:30» (plan.md)"
+   "resumen": "ruta: sin estimación · sin plazo: 24 tareas · otra entrega: dom 09:30 (plan.md)"
   },
   {
    "nombre": "mitad bien",
@@ -868,7 +869,7 @@
     "motivo": null,
     "filas": [
      {
-      "texto": "sáb 00:30–06:30",
+      "texto": "| sáb 00:30–06:30 | Persona C |",
       "personas": [
        "persona-c"
       ],
@@ -876,7 +877,7 @@
       "hasta": "2026-09-19T04:30:00Z"
      },
      {
-      "texto": "sáb 01:00–07:00",
+      "texto": "| sáb 01:00–07:00 | Persona B |",
       "personas": [
        "persona-b"
       ],
@@ -884,7 +885,7 @@
       "hasta": "2026-09-19T05:00:00Z"
      },
      {
-      "texto": "sáb 02:30–08:00",
+      "texto": "| sáb 02:30–08:00 | Persona A |",
       "personas": [
        "persona-a"
       ],
@@ -892,7 +893,7 @@
       "hasta": "2026-09-19T06:00:00Z"
      },
      {
-      "texto": "sáb 23:00–dom 07:30",
+      "texto": "| sáb 23:00–dom 07:30 | Persona B y Persona C |",
       "personas": [
        "persona-b",
        "persona-c"
@@ -901,7 +902,7 @@
       "hasta": "2026-09-20T05:30:00Z"
      },
      {
-      "texto": "sáb 23:30–dom 07:00",
+      "texto": "| sáb 23:30–dom 07:00 | Persona A |",
       "personas": [
        "persona-a"
       ],
@@ -967,7 +968,7 @@
      "fin_tarde": "2026-09-19T16:52:18Z"
     }
    ],
-   "resumen": "ruta: estimación a tiempo · fin 15:09–18:52 · entrega dom 10:00 · sin contar T28 (sin plazo) · otra entrega: «dom 20 se…"
+   "resumen": "ruta: estimación a tiempo · fin 15:09–18:52 · entrega dom 10:00 · sin contar T28 (sin plazo) · y más en la vista"
   },
   {
    "nombre": "mitad con riesgo",
@@ -1470,7 +1471,7 @@
     "motivo": null,
     "filas": [
      {
-      "texto": "sáb 00:30–06:30",
+      "texto": "| sáb 00:30–06:30 | Persona C |",
       "personas": [
        "persona-c"
       ],
@@ -1478,7 +1479,7 @@
       "hasta": "2026-09-19T04:30:00Z"
      },
      {
-      "texto": "sáb 01:00–07:00",
+      "texto": "| sáb 01:00–07:00 | Persona B |",
       "personas": [
        "persona-b"
       ],
@@ -1486,7 +1487,7 @@
       "hasta": "2026-09-19T05:00:00Z"
      },
      {
-      "texto": "sáb 02:30–08:00",
+      "texto": "| sáb 02:30–08:00 | Persona A |",
       "personas": [
        "persona-a"
       ],
@@ -1494,7 +1495,7 @@
       "hasta": "2026-09-19T06:00:00Z"
      },
      {
-      "texto": "sáb 23:00–dom 07:30",
+      "texto": "| sáb 23:00–dom 07:30 | Persona B y Persona C |",
       "personas": [
        "persona-b",
        "persona-c"
@@ -1503,7 +1504,7 @@
       "hasta": "2026-09-20T05:30:00Z"
      },
      {
-      "texto": "sáb 23:30–dom 07:00",
+      "texto": "| sáb 23:30–dom 07:00 | Persona A |",
       "personas": [
        "persona-a"
       ],
@@ -1647,7 +1648,7 @@
     },
     "que": "con solo depende_de, T06–T09 empezarían ya, en paralelo, y la entrega llegaría: la cadena de cada persona (R3 B) cambia el veredicto"
    },
-   "resumen": "ruta: estimación no llega · T04: plazo pasado 23:00 y 3 más · fin 09:32–09:32 · entrega dom 10:00 · sin contar T28 (sin…"
+   "resumen": "ruta: estimación no llega · T04: plazo pasado 23:00 y 3 más · fin 09:32–09:32 · entrega dom 10:00 · y más en la vista"
   }
  ],
  "riesgos": "por estimación (api.md §11.4, ajuste 3): las tareas abiertas con plazo cuyo fin_tarde (con el ritmo más lento medido) es posterior a la entrega, estén o no en la cadena, con {tarea, tipo: estimacion, fin_tarde, dueno, en_cadena, viejo} y sin fin_temprano; la más tardía primero y, a igual hora, por tarea. Nunca las de quien no da señales por ir lenta, ni las «sin plazo»",
