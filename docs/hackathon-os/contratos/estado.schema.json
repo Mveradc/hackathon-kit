@@ -576,7 +576,23 @@
             "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/dato_estado" }]
           },
           "fusion": { "type": "string" },
-          "evidencia": { "type": "string", "description": "Comprobación del revisor o commit que la publica. Tras congelar, 2026-10-19, M10 (ADR-0012): con vista_jurado: sí o ruta_critica: sí, el relay la rellena con el sha del commit con ID o de la fusión aprobada que la llevó a publicada." },
+          "evidencia": {
+            "description": "Comprobación del revisor o commit que la publica. Tras congelar, 2026-10-19, M10 (ADR-0012; issue #46, ajuste 6): con vista_jurado: sí o ruta_critica: sí, el relay la rellena con el ÚLTIMO sha publicado (commit con ID o fusión aprobada que la llevó a publicada) y su hora.",
+            "anyOf": [
+              {
+                "type": "object",
+                "required": ["valor", "tipo", "fuente", "observado_en"],
+                "additionalProperties": false,
+                "properties": {
+                  "valor": { "type": "string", "pattern": "^[0-9a-f]{7,40}$", "description": "El sha." },
+                  "tipo": { "enum": ["commit", "fusion"] },
+                  "fuente": { "$ref": "#/$defs/fuente" },
+                  "observado_en": { "type": "string", "format": "date-time", "description": "La hora del paso a publicada que dejó ese sha (la última, si se publicó más de una vez)." }
+                }
+              },
+              { "type": "string", "description": "TRANSITORIO (issue #46): se quita al adaptar el código. La forma anterior, el sha (o la comprobación) suelto, sin tipo ni hora." }
+            ]
+          },
           "hasta": { "$ref": "#/$defs/plazo", "description": "Tras congelar, 2026-10-19, M10: solo con ruta_critica: sí." },
           "franja": { "$ref": "#/$defs/franja", "description": "Tras congelar, 2026-10-19, M10: solo con ruta_critica: sí." },
           "orden_plan": { "$ref": "#/$defs/dato", "description": "Tras congelar, 2026-10-19, M10 (ADR-0013, decisión 3B): valor = posición (1, 2…) de la fila en la sección de su persona de plan.md; fuente git, declarado. Solo con ruta_critica: sí." },
