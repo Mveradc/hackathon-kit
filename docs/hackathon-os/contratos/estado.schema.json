@@ -266,7 +266,23 @@
                   "viejo": { "type": "boolean" }
                 }
               },
-              "corregida_por": { "anyOf": [{ "type": "null" }, { "type": "string", "pattern": "^[0-9a-f]{12}$" }] },
+              "corregida_por": {
+                "description": "Tras congelar, 2026-10-19, M10, issue #46 (M20): la relación la escribe una persona («corrige la nota del …»), así que es declarada: valor = la clave de la nota que corrige a esta, fuente «declarado», observado_en = la hora del commit de criterios.md de esa nota. null si ninguna.",
+                "anyOf": [
+                  { "type": "null" },
+                  {
+                    "type": "object",
+                    "required": ["valor", "fuente", "observado_en"],
+                    "additionalProperties": false,
+                    "properties": {
+                      "valor": { "type": "string", "pattern": "^[0-9a-f]{12}$" },
+                      "fuente": { "const": "declarado" },
+                      "observado_en": { "type": "string", "format": "date-time" }
+                    }
+                  },
+                  { "type": "string", "pattern": "^[0-9a-f]{12}$", "description": "TRANSITORIO (issue #46): se quita al adaptar el código. La forma anterior, la clave suelta." }
+                ]
+              },
               "trabajo_nuevo_desde": { "$ref": "#/$defs/hora_o_nada", "description": "Decisión 6B: sigue cubierta, con el trabajo nuevo desde esta hora." },
               "tareas": {
                 "type": "array",
