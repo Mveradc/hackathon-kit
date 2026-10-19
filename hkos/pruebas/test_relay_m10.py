@@ -9,6 +9,7 @@
 
 Uso: uv run --no-project --with "jsonschema[format-nongpl]" -m unittest discover -s hkos/pruebas -v
 """
+import copy
 import hashlib
 import json
 import os
@@ -1065,6 +1066,49 @@ class Issue46(SinZoneinfo):
                                                "declarado": True})
         r = calcula(equipo=self.equipo(inicio="por confirmar", entrega="domingo, hora por confirmar (Europe/Madrid)"))["ruta"]
         self.assertEqual((r["inicio"]["motivo"], r["entrega"]["motivo"]), ("por_confirmar", "por_confirmar"))
+
+
+# =============================================================================================== issue #63
+class Issue63(SinZoneinfo):
+    """Los puntos del issue #63 que tocan lecturas.py."""
+
+    def test_2_franja_en_minutos_transcurridos_a_traves_del_cambio_de_hora(self):
+        """#63, punto 2 (alta): franja.min son minutos transcurridos (resta en UTC), también si la franja cruza el cambio
+        de hora: del sáb 24 oct 2026 22:00 (CEST) al dom 25 06:00 (CET) van 540 min, no 480. Antes, las dos horas con
+        el mismo tzinfo se restaban como horas de reloj. Con y sin tzdata (el respaldo de la UE)."""
+        equipo = "# Equipo\n\n## Hackathon\n- Inicio: 2026-10-24 18:00 (Europe/Madrid)\n- Entrega: 2026-10-25 12:00 (Europe/Madrid)\n"
+        plan = ("# Plan\n\n## Por persona\n\n### Persona A · todo\n| ID | Hasta | Bloque | Tarea | Cómo se comprueba |\n"
+                "|---|---|---|---|---|\n| T01 | sáb 22:00 | x | Antes del cambio | Se ve |\n"
+                "| T02 | dom 06:00 | x | Cruza el cambio | Se ve |\n\n## Descansos\n- Todos: dom 01:00–dom 05:00\n")
+        try:
+            import zoneinfo
+            zoneinfo.ZoneInfo("Europe/Madrid")
+            modos = (False, True)
+        except Exception:
+            modos = (False,)                                  # sin tzdata (Windows): solo el respaldo
+        for zi in modos:
+            with self.subTest(zoneinfo=zi):
+                lecturas.ZONEINFO = zi
+                r = calcula(equipo=equipo, plan=plan, jurado=False)
+                f1, f2 = (r["tareas"][t]["franja"]["valor"] for t in ("T01", "T02"))
+                self.assertEqual((f1["desde"], f1["hasta"], f1["min"]),
+                                 ("2026-10-24T18:00:00+02:00", "2026-10-24T22:00:00+02:00", 240))
+                self.assertEqual((f2["desde"], f2["hasta"], f2["min"]),
+                                 ("2026-10-24T22:00:00+02:00", "2026-10-25T06:00:00+01:00", 540))
+                d = r["ruta"]["descansos"][0]
+                self.assertEqual((d["desde"], d["hasta"]), ("2026-10-25T01:00:00+02:00", "2026-10-25T05:00:00+01:00"))
+                self.assertEqual((fecha(d["hasta"]) - fecha(d["desde"])).total_seconds() / 60, 300)
+                # La franja neta de T02 (sin el descanso de todos) es 540 − 300 = 240: T02 hecha en toda su franja
+                # va al 100 % (antes, 480 − 300 = 180 y un 133 %).
+                t02 = dict({"id": "T02", "titulo": "T02", "dueno": "persona-a", "depende_de": [], "declarado": None,
+                            "estado": {"valor": "publicada", "fuente": "git", "observado_en": CT},
+                            "historia": {"primera_senal": f2["desde"], "hecha_en": f2["hasta"], "trabajo_nuevo_desde": None,
+                                         "ultima_senal": f2["hasta"], "fuente": "derivado", "observado_en": CT}},
+                           **r["tareas"]["T02"])
+                medidas = [dict(copy.deepcopy(t02), id=f"T0{i}") for i in (3, 4)] + [t02]
+                b = ruta_mod.calcular(r["ruta"], medidas, "2026-10-25T08:00:00Z", personas=PERSONAS)
+                self.assertEqual([(p["persona"], p["ritmo_min"], p["ritmo_max"]) for p in b["base"]["personas"]],
+                                 [("persona-a", 100, 100)])
 
 
 # =============================================================================================== arranque
