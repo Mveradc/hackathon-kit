@@ -568,8 +568,8 @@ def es_entrega(que):
 
 def entregas_de_notas(notas, inicio, tz, anio):
     """Las notas de fuerza `dato` que afectan a la entrega y traen una hora que se resuelve como un Hasta (con día de la
-    semana o fecha), para otras_entregas (ADR-0013, decisión 1A). Sin el texto de la nota (api.md §6, V): solo
-    «(criterios.md, nota de HH:MM)»."""
+    semana o fecha), para otras_entregas (ADR-0013, decisión 1A). Sin el texto de la nota (api.md §6 y §11.2, V):
+    `texto` null y `cita`, la de la nota (su «AAAA-MM-DD HH:MM»)."""
     salida = []
     for n in notas:
         if n["fuerza"]["tipo"] != "dato" or not ENTREGA.search(n["afecta_a"] or ""):
@@ -580,8 +580,8 @@ def entregas_de_notas(notas, inicio, tz, anio):
                 continue
             dt, motivo = resolver(texto, inicio, tz, None, anio)
             if dt is not None:
-                salida.append({"valor": _iso(dt), "texto": f"(criterios.md, nota de {n['cita'][11:16]})", "motivo": None,
-                               "donde": "criterios.md", "fuente": "git", "observado_en": n["observado_en"],
+                salida.append({"valor": _iso(dt), "texto": None, "motivo": None, "donde": "criterios.md",
+                               "cita": n["cita"], "fuente": "git", "observado_en": n["observado_en"],
                                "declarado": True})
                 break
     return salida

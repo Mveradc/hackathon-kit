@@ -30,6 +30,7 @@ import lecturas  # noqa: E402
 import modelo  # noqa: E402
 import red  # noqa: E402
 import relay as relay_mod  # noqa: E402
+import ruta as ruta_mod  # noqa: E402
 import servicios  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from estados import fecha  # noqa: E402
@@ -450,8 +451,8 @@ class Plan(SinZoneinfo):
                 "## 2026-09-19 11:25 · Marta (organización)\n- Qué dijo: «El pitch, a las 10:00»\n- Fuerza: dato\n"
                 "- Afecta a: entrega\n- Anotado por: @persona-c\n")
         r = calcula(equipo=EQUIPO_03, criterios=crit, jurado=False)["ruta"]
-        self.assertEqual([(o["valor"], o["texto"], o["donde"]) for o in r["otras_entregas"]],
-                         [("2026-09-20T09:00:00+02:00", "(criterios.md, nota de 11:20)", "criterios.md")])   # una hora suelta, no
+        self.assertEqual([(o["valor"], o["texto"], o["cita"], o["donde"]) for o in r["otras_entregas"]],
+                         [("2026-09-20T09:00:00+02:00", None, "2026-09-19 11:20", "criterios.md")])   # una hora suelta, no
 
     def test_descansos_de_g14_como_dicen_los_hechos(self):
         for mo in self.hechos["momentos"]:
@@ -915,10 +916,15 @@ class Issue46(SinZoneinfo):
                 "- Fuerza: dato\n- Afecta a: entrega\n- Anotado por: @persona-c\n")
         r = calcula(equipo=EQUIPO_03, criterios=crit, cts=dict(CTS, criterios="2026-09-19T09:25:00Z"))
         o = r["ruta"]["otras_entregas"]
-        self.assertEqual(o, [{"valor": "2026-09-20T09:00:00+02:00", "texto": "(criterios.md, nota de 11:20)", "motivo": None,
-                              "donde": "criterios.md", "fuente": "git", "observado_en": "2026-09-19T09:25:00Z",
+        # §11.4: la cita de la nota (su hora), como pide $defs/hora_declarada con donde criterios.md; el texto, null.
+        self.assertEqual(o, [{"valor": "2026-09-20T09:00:00+02:00", "texto": None, "motivo": None, "donde": "criterios.md",
+                              "cita": "2026-09-19 11:20", "fuente": "git", "observado_en": "2026-09-19T09:25:00Z",
                               "declarado": True}])
         self.assertNotIn("prórroga", json.dumps(r["ruta"], ensure_ascii=False))
+        con_jsonschema(self, estado_minimo(ruta=r["ruta"]))
+        # ruta.py ya saca de la cita la hora de la nota: no le hace falta el texto.
+        resumen = ruta_mod.calcular(r["ruta"], [], CT, personas=[])["resumen"]
+        self.assertTrue(resumen.endswith(" · otra entrega: dom 09:00 (criterios.md, nota de 11:20)"), resumen)
 
     def test_6_evidencia_ultima_publicacion_con_su_hora_y_tipo(self):
         g = carga(os.path.join(GUIONES, "G13.json"))
