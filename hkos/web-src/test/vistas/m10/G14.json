@@ -12,8 +12,14 @@
     "ruta": {
      "observado_en": "2026-09-18T19:30:00Z",
      "fuente": "derivado",
-     "viejo": true,
-     "dato_mas_viejo": "2026-09-18T18:40:00Z",
+     "viejo": false,
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-18T17:00:00Z",
+      "declarado": true
+     },
+     "dato_mas_viejo": "2026-09-18T19:30:00Z",
      "objetivo": {
       "valor": "2026-09-20T10:00:00+02:00",
       "texto": "2026-09-20 10:00 (Europe/Madrid)",
@@ -338,12 +344,11 @@
        "declarado": true
       }
      ],
-     "resumen": "ruta: sin estimación (sin plazo: T03, T04, T05, T06, T07, T08, T09, T12, T13, T14, T15, T16, T17, T18, T19, T20, T21, T…"
+     "resumen": "ruta: sin estimación · sin plazo: 24 tareas · otra entrega: «dom 20 sep 09:30» (plan.md)"
     }
    },
    "antiguedades": {
     "2026-09-18T17:00:00Z": 9000,
-    "2026-09-18T18:40:00Z": 3000,
     "2026-09-18T19:30:00Z": 0
    },
    "horas": {
@@ -352,11 +357,6 @@
       "hm": "19:00",
       "dia": "vie 19:00",
       "fecha": "vie 18 · 19:00"
-     },
-     "2026-09-18T18:40:00Z": {
-      "hm": "20:40",
-      "dia": "vie 20:40",
-      "fecha": "vie 18 · 20:40"
      },
      "2026-09-18T19:30:00Z": {
       "hm": "21:30",
@@ -388,8 +388,14 @@
     "ruta": {
      "observado_en": "2026-09-19T11:00:00Z",
      "fuente": "derivado",
-     "viejo": true,
-     "dato_mas_viejo": "2026-09-19T10:50:00Z",
+     "viejo": false,
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "dato_mas_viejo": "2026-09-19T11:00:00Z",
      "objetivo": {
       "valor": "2026-09-20T10:00:00+02:00",
       "texto": "2026-09-20 10:00 (Europe/Madrid)",
@@ -707,7 +713,7 @@
        "declarado": true
       }
      ],
-     "resumen": "ruta: estimación a tiempo · fin 15:09–18:52 · entrega dom 10:00 · sin contar T28 (sin plazo) · otra entrega: dom 20 sep…"
+     "resumen": "ruta: estimación a tiempo · fin 15:09–18:52 · entrega dom 10:00 · sin contar T28 (sin plazo) · otra entrega: «dom 20 se…"
     }
    },
    "antiguedades": {
@@ -889,8 +895,14 @@
     "ruta": {
      "observado_en": "2026-09-19T11:00:00Z",
      "fuente": "derivado",
-     "viejo": true,
-     "dato_mas_viejo": "2026-09-19T10:50:00Z",
+     "viejo": false,
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "dato_mas_viejo": "2026-09-19T11:00:00Z",
      "objetivo": {
       "valor": "2026-09-20T10:00:00+02:00",
       "texto": "2026-09-20 10:00 (Europe/Madrid)",
@@ -921,10 +933,10 @@
       "observado_en": "2026-09-19T11:00:00Z"
      },
      "estimacion": {
-      "temprano": "2026-09-21T23:59:24Z",
-      "tarde": "2026-09-21T23:59:24Z",
-      "margen_min": -2400,
-      "margen_max": -2400
+      "temprano": "2026-09-21T07:32:42Z",
+      "tarde": "2026-09-21T07:32:42Z",
+      "margen_min": -1413,
+      "margen_max": -1413
      },
      "base": {
       "minimo": 3,
@@ -1033,7 +1045,7 @@
        "tipo": "sin_senales",
        "gravedad": "gris",
        "persona": "persona-c",
-       "desde": "2026-09-19T10:05:00Z",
+       "desde": "2026-09-19T08:30:00Z",
        "fuente": "derivado",
        "observado_en": "2026-09-19T11:00:00Z",
        "viejo": false
@@ -1128,8 +1140,8 @@
         "observado_en": "2026-09-19T07:31:00Z",
         "declarado": true
        },
-       "fin_temprano": "2026-09-20T07:37:30Z",
-       "fin_tarde": "2026-09-20T07:37:30Z"
+       "fin_temprano": "2026-09-20T06:07:48Z",
+       "fin_tarde": "2026-09-20T06:07:48Z"
       },
       {
        "tarjeta": {
@@ -1171,8 +1183,8 @@
         "observado_en": "2026-09-19T07:31:00Z",
         "declarado": true
        },
-       "fin_temprano": "2026-09-20T19:35:06Z",
-       "fin_tarde": "2026-09-20T19:35:06Z"
+       "fin_temprano": "2026-09-20T10:36:54Z",
+       "fin_tarde": "2026-09-20T10:36:54Z"
       },
       {
        "tarjeta": {
@@ -1213,8 +1225,8 @@
         "observado_en": "2026-09-19T07:31:00Z",
         "declarado": true
        },
-       "fin_temprano": "2026-09-21T07:32:42Z",
-       "fin_tarde": "2026-09-21T07:32:42Z"
+       "fin_temprano": "2026-09-20T15:06:00Z",
+       "fin_tarde": "2026-09-20T15:06:00Z"
       },
       {
        "tarjeta": {
@@ -1255,8 +1267,8 @@
         "observado_en": "2026-09-19T07:31:00Z",
         "declarado": true
        },
-       "fin_temprano": "2026-09-21T15:01:12Z",
-       "fin_tarde": "2026-09-21T15:01:12Z"
+       "fin_temprano": "2026-09-20T22:34:30Z",
+       "fin_tarde": "2026-09-20T22:34:30Z"
       },
       {
        "tarjeta": {
@@ -1297,37 +1309,13 @@
         "observado_en": "2026-09-19T07:31:00Z",
         "declarado": true
        },
-       "fin_temprano": "2026-09-21T23:59:24Z",
-       "fin_tarde": "2026-09-21T23:59:24Z"
+       "fin_temprano": "2026-09-21T07:32:42Z",
+       "fin_tarde": "2026-09-21T07:32:42Z"
       }
      ],
      "riesgos": [
       {
        "tarea": "T09",
-       "tipo": "estimacion",
-       "fin_tarde": "2026-09-21T23:59:24Z",
-       "dueno": "persona-a",
-       "en_cadena": true,
-       "viejo": false
-      },
-      {
-       "tarea": "T19",
-       "tipo": "estimacion",
-       "fin_tarde": "2026-09-21T17:45:00Z",
-       "dueno": "persona-b",
-       "en_cadena": false,
-       "viejo": false
-      },
-      {
-       "tarea": "T08",
-       "tipo": "estimacion",
-       "fin_tarde": "2026-09-21T15:01:12Z",
-       "dueno": "persona-a",
-       "en_cadena": true,
-       "viejo": false
-      },
-      {
-       "tarea": "T07",
        "tipo": "estimacion",
        "fin_tarde": "2026-09-21T07:32:42Z",
        "dueno": "persona-a",
@@ -1335,9 +1323,33 @@
        "viejo": false
       },
       {
+       "tarea": "T19",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-21T01:18:18Z",
+       "dueno": "persona-b",
+       "en_cadena": false,
+       "viejo": false
+      },
+      {
+       "tarea": "T08",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-20T22:34:30Z",
+       "dueno": "persona-a",
+       "en_cadena": true,
+       "viejo": false
+      },
+      {
+       "tarea": "T07",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-20T15:06:00Z",
+       "dueno": "persona-a",
+       "en_cadena": true,
+       "viejo": false
+      },
+      {
        "tarea": "T27",
        "tipo": "estimacion",
-       "fin_tarde": "2026-09-20T22:11:06Z",
+       "fin_tarde": "2026-09-20T13:12:54Z",
        "dueno": "persona-c",
        "en_cadena": false,
        "viejo": false
@@ -1345,7 +1357,7 @@
       {
        "tarea": "T06",
        "tipo": "estimacion",
-       "fin_tarde": "2026-09-20T19:35:06Z",
+       "fin_tarde": "2026-09-20T10:36:54Z",
        "dueno": "persona-a",
        "en_cadena": true,
        "viejo": false
@@ -1477,14 +1489,13 @@
        "declarado": true
       }
      ],
-     "resumen": "ruta: estimación no llega · fin 01:59–01:59 · entrega dom 10:00 · T04: plazo pasado 23:00 y 3 más · sin contar T28 (sin…"
+     "resumen": "ruta: estimación no llega · T04: plazo pasado 23:00 y 3 más · fin 09:32–09:32 · entrega dom 10:00 · sin contar T28 (sin…"
     }
    },
    "antiguedades": {
     "2026-09-18T17:00:00Z": 64800,
     "2026-09-19T07:31:00Z": 12540,
     "2026-09-19T07:50:00Z": 11400,
-    "2026-09-19T10:50:00Z": 600,
     "2026-09-19T10:55:00Z": 300,
     "2026-09-19T11:00:00Z": 0
    },
@@ -1560,15 +1571,10 @@
       "dia": "sáb 08:00",
       "fecha": "sáb 19 · 08:00"
      },
-     "2026-09-19T10:05:00Z": {
-      "hm": "12:05",
-      "dia": "sáb 12:05",
-      "fecha": "sáb 19 · 12:05"
-     },
-     "2026-09-19T10:50:00Z": {
-      "hm": "12:50",
-      "dia": "sáb 12:50",
-      "fecha": "sáb 19 · 12:50"
+     "2026-09-19T08:30:00Z": {
+      "hm": "10:30",
+      "dia": "sáb 10:30",
+      "fecha": "sáb 19 · 10:30"
      },
      "2026-09-19T10:55:00Z": {
       "hm": "12:55",
@@ -1615,6 +1621,11 @@
       "dia": "sáb 23:30",
       "fecha": "sáb 19 · 23:30"
      },
+     "2026-09-20T06:07:48Z": {
+      "hm": "08:07",
+      "dia": "dom 08:07",
+      "fecha": "dom 20 · 08:07"
+     },
      "2026-09-20T07:00:00+02:00": {
       "hm": "07:00",
       "dia": "dom 07:00",
@@ -1624,11 +1635,6 @@
       "hm": "07:30",
       "dia": "dom 07:30",
       "fecha": "dom 20 · 07:30"
-     },
-     "2026-09-20T07:37:30Z": {
-      "hm": "09:37",
-      "dia": "dom 09:37",
-      "fecha": "dom 20 · 09:37"
      },
      "2026-09-20T09:30:00+02:00": {
       "hm": "09:30",
@@ -1640,35 +1646,35 @@
       "dia": "dom 10:00",
       "fecha": "dom 20 · 10:00"
      },
-     "2026-09-20T19:35:06Z": {
-      "hm": "21:35",
-      "dia": "dom 21:35",
-      "fecha": "dom 20 · 21:35"
+     "2026-09-20T10:36:54Z": {
+      "hm": "12:36",
+      "dia": "dom 12:36",
+      "fecha": "dom 20 · 12:36"
      },
-     "2026-09-20T22:11:06Z": {
-      "hm": "00:11",
-      "dia": "lun 00:11",
-      "fecha": "lun 21 · 00:11"
+     "2026-09-20T13:12:54Z": {
+      "hm": "15:12",
+      "dia": "dom 15:12",
+      "fecha": "dom 20 · 15:12"
+     },
+     "2026-09-20T15:06:00Z": {
+      "hm": "17:06",
+      "dia": "dom 17:06",
+      "fecha": "dom 20 · 17:06"
+     },
+     "2026-09-20T22:34:30Z": {
+      "hm": "00:34",
+      "dia": "lun 00:34",
+      "fecha": "lun 21 · 00:34"
+     },
+     "2026-09-21T01:18:18Z": {
+      "hm": "03:18",
+      "dia": "lun 03:18",
+      "fecha": "lun 21 · 03:18"
      },
      "2026-09-21T07:32:42Z": {
       "hm": "09:32",
       "dia": "lun 09:32",
       "fecha": "lun 21 · 09:32"
-     },
-     "2026-09-21T15:01:12Z": {
-      "hm": "17:01",
-      "dia": "lun 17:01",
-      "fecha": "lun 21 · 17:01"
-     },
-     "2026-09-21T17:45:00Z": {
-      "hm": "19:45",
-      "dia": "lun 19:45",
-      "fecha": "lun 21 · 19:45"
-     },
-     "2026-09-21T23:59:24Z": {
-      "hm": "01:59",
-      "dia": "mar 01:59",
-      "fecha": "mar 22 · 01:59"
      }
     }
    },

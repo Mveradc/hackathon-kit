@@ -12,7 +12,7 @@
     "jurado": {
      "observado_en": "2026-09-19T10:00:00Z",
      "fuente": "derivado",
-     "viejo": true,
+     "viejo": false,
      "fichero": "ok",
      "zona": {
       "valor": "Europe/Madrid",
@@ -348,7 +348,7 @@
         "valor": "cubierta",
         "fuente": "derivado",
         "observado_en": "2026-09-18T21:20:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": null,
        "trabajo_nuevo_desde": null,
@@ -367,7 +367,7 @@
           "espera": [],
           "bloque": "Ficha",
           "issue": 110,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-18 20:15 · Lucía",
@@ -386,7 +386,7 @@
          "valor": "111c0de",
          "fuente": "git",
          "observado_en": "2026-09-18T21:20:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": {
@@ -421,7 +421,7 @@
         "valor": "cubierta",
         "fuente": "derivado",
         "observado_en": "2026-09-19T09:10:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": null,
        "trabajo_nuevo_desde": null,
@@ -443,7 +443,7 @@
           "espera": [],
           "bloque": "Score",
           "issue": 105,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-19 10:40",
@@ -462,14 +462,14 @@
          "valor": "061c0de",
          "fuente": "git",
          "observado_en": "2026-09-19T09:10:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": null
       }
      ],
      "sin_nota": [],
-     "resumen": "jurado: 4 sin cubrir (1 «dato») · 1 en el pitch · 2 cubiertas de 6"
+     "resumen": "jurado: 4 sin cubrir · 1 «dato» (criterios.md) · 1 en el pitch · 2 cubiertas de 6"
     }
    },
    "antiguedades": {
@@ -564,7 +564,7 @@
     "jurado": {
      "observado_en": "2026-09-19T12:30:00Z",
      "fuente": "derivado",
-     "viejo": true,
+     "viejo": false,
      "fichero": "ok",
      "zona": {
       "valor": "Europe/Madrid",
@@ -818,7 +818,7 @@
         "valor": "en_curso",
         "fuente": "derivado",
         "observado_en": "2026-09-19T12:20:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": null,
        "trabajo_nuevo_desde": null,
@@ -839,7 +839,7 @@
           "espera": [],
           "bloque": "Acciones",
           "issue": 107,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-18 20:15 · Jorge",
@@ -864,7 +864,7 @@
           "espera": [],
           "bloque": "Ficha",
           "issue": 112,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-18 20:15 · Jorge",
@@ -883,7 +883,7 @@
          "valor": "081c0de",
          "fuente": "git",
          "observado_en": "2026-09-19T10:12:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": null
@@ -979,7 +979,7 @@
         "valor": "cubierta",
         "fuente": "derivado",
         "observado_en": "2026-09-19T12:15:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": null,
        "trabajo_nuevo_desde": "2026-09-19T12:15:00Z",
@@ -998,7 +998,7 @@
           "espera": [],
           "bloque": "Ficha",
           "issue": 110,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-18 20:15 · Lucía",
@@ -1017,7 +1017,7 @@
          "valor": "111c0de",
          "fuente": "git",
          "observado_en": "2026-09-18T21:20:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": {
@@ -1052,7 +1052,7 @@
         "valor": "cubierta",
         "fuente": "derivado",
         "observado_en": "2026-09-19T09:10:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": {
         "valor": "0483fc13aa16",
@@ -1078,7 +1078,7 @@
           "espera": [],
           "bloque": "Score",
           "issue": 105,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-19 10:40",
@@ -1097,14 +1097,14 @@
          "valor": "061c0de",
          "fuente": "git",
          "observado_en": "2026-09-19T09:10:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": null
       }
      ],
      "sin_nota": [],
-     "resumen": "jurado: 6 sin cubrir (1 «dato») · 1 en el pitch · 1 cubierta de 8"
+     "resumen": "jurado: 6 sin cubrir · 1 «dato» (criterios.md) · 1 en el pitch · 1 cubierta de 8"
     }
    },
    "antiguedades": {
@@ -1227,7 +1227,7 @@
     "jurado": {
      "observado_en": "2026-09-19T18:30:00Z",
      "fuente": "derivado",
-     "viejo": true,
+     "viejo": false,
      "fichero": "ok",
      "zona": {
       "valor": "Europe/Madrid",
@@ -1388,7 +1388,7 @@
         "valor": "en_curso",
         "fuente": "derivado",
         "observado_en": "2026-09-19T17:40:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": null,
        "trabajo_nuevo_desde": null,
@@ -1409,7 +1409,7 @@
           "espera": [],
           "bloque": "Despliegue",
           "issue": 108,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-19 11:20",
@@ -1454,7 +1454,7 @@
          "valor": "091c0de",
          "fuente": "git",
          "observado_en": "2026-09-19T17:40:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": null
@@ -1550,7 +1550,7 @@
         "valor": "cubierta",
         "fuente": "derivado",
         "observado_en": "2026-09-19T13:00:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": null,
        "trabajo_nuevo_desde": null,
@@ -1571,7 +1571,7 @@
           "espera": [],
           "bloque": "Acciones",
           "issue": 107,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-18 20:15 · Jorge",
@@ -1596,7 +1596,7 @@
           "espera": [],
           "bloque": "Ficha",
           "issue": 112,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-18 20:15 · Jorge",
@@ -1615,7 +1615,7 @@
          "valor": "081c0de",
          "fuente": "git",
          "observado_en": "2026-09-19T10:12:00Z",
-         "viejo": true
+         "viejo": false
         },
         {
          "tipo": "commit",
@@ -1623,7 +1623,7 @@
          "valor": "131c0de",
          "fuente": "git",
          "observado_en": "2026-09-19T13:00:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": null
@@ -1653,7 +1653,7 @@
         "valor": "cubierta",
         "fuente": "derivado",
         "observado_en": "2026-09-19T13:00:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": null,
        "trabajo_nuevo_desde": null,
@@ -1672,7 +1672,7 @@
           "espera": [],
           "bloque": "Ficha",
           "issue": 110,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-18 20:15 · Lucía",
@@ -1691,7 +1691,7 @@
          "valor": "112c0de",
          "fuente": "git",
          "observado_en": "2026-09-19T13:00:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": {
@@ -1726,7 +1726,7 @@
         "valor": "cubierta",
         "fuente": "derivado",
         "observado_en": "2026-09-19T09:10:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": {
         "valor": "0483fc13aa16",
@@ -1752,7 +1752,7 @@
           "espera": [],
           "bloque": "Score",
           "issue": 105,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-19 10:40",
@@ -1771,14 +1771,14 @@
          "valor": "061c0de",
          "fuente": "git",
          "observado_en": "2026-09-19T09:10:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": null
       }
      ],
      "sin_nota": [],
-     "resumen": "jurado: 5 sin cubrir (1 «dato») · 1 en el pitch · 2 cubiertas de 8"
+     "resumen": "jurado: 5 sin cubrir · 1 «dato» (criterios.md) · 1 en el pitch · 2 cubiertas de 8"
     }
    },
    "antiguedades": {
@@ -1895,7 +1895,7 @@
     "jurado": {
      "observado_en": "2026-09-19T12:50:00Z",
      "fuente": "derivado",
-     "viejo": true,
+     "viejo": false,
      "fichero": "ok",
      "zona": {
       "valor": "Europe/Madrid",
@@ -2149,7 +2149,7 @@
         "valor": "en_curso",
         "fuente": "derivado",
         "observado_en": "2026-09-19T12:40:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": null,
        "trabajo_nuevo_desde": null,
@@ -2170,7 +2170,7 @@
           "espera": [],
           "bloque": "Acciones",
           "issue": 107,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-18 20:15 · Jorge",
@@ -2214,7 +2214,7 @@
          "valor": "081c0de",
          "fuente": "git",
          "observado_en": "2026-09-19T10:12:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": null
@@ -2310,7 +2310,7 @@
         "valor": "cubierta",
         "fuente": "derivado",
         "observado_en": "2026-09-19T12:35:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": null,
        "trabajo_nuevo_desde": "2026-09-19T12:15:00Z",
@@ -2348,7 +2348,7 @@
          "valor": "111c0de",
          "fuente": "git",
          "observado_en": "2026-09-18T21:20:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": {
@@ -2383,7 +2383,7 @@
         "valor": "cubierta",
         "fuente": "derivado",
         "observado_en": "2026-09-19T09:10:00Z",
-        "viejo": true
+        "viejo": false
        },
        "corregida_por": {
         "valor": "0483fc13aa16",
@@ -2409,7 +2409,7 @@
           "espera": [],
           "bloque": "Score",
           "issue": 105,
-          "viejo": true
+          "viejo": false
          },
          "enlace": {
           "cita": "2026-09-19 10:40",
@@ -2428,14 +2428,14 @@
          "valor": "061c0de",
          "fuente": "git",
          "observado_en": "2026-09-19T09:10:00Z",
-         "viejo": true
+         "viejo": false
         }
        ],
        "pitch": null
       }
      ],
      "sin_nota": [],
-     "resumen": "jurado: 6 sin cubrir (1 «dato») · 1 en el pitch · 1 cubierta de 8"
+     "resumen": "jurado: 6 sin cubrir · 1 «dato» (criterios.md) · 1 en el pitch · 1 cubierta de 8"
     }
    },
    "antiguedades": {

@@ -194,13 +194,19 @@
       }
      ],
      "sin_nota": [],
-     "resumen": "jurado: 2 sin cubrir (1 «obligatorio») · 1 cubierta de 3"
+     "resumen": "jurado: 2 sin cubrir · 1 «obligatorio» (criterios.md) · 1 cubierta de 3"
     },
     "ruta": {
      "observado_en": "2026-09-19T09:00:00Z",
      "fuente": "derivado",
      "viejo": false,
      "dato_mas_viejo": "2026-09-19T08:58:30Z",
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-18T18:05:00Z",
+      "declarado": true
+     },
      "objetivo": {
       "valor": "2026-09-20T10:00:00+02:00",
       "texto": "2026-09-20 10:00, Europe/Madrid",
@@ -373,8 +379,8 @@
       {
        "tarea": "T09",
        "motivo": "condicional",
-       "fuente": "github",
-       "observado_en": "2026-09-19T07:31:00Z"
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:30:00Z"
       }
      ],
      "hitos": [
@@ -417,7 +423,7 @@
        "declarado": true
       }
      ],
-     "resumen": "ruta: sin estimación (pocos datos: @ana 2 de 3, @marta 1 de 3) · T05: plazo pasado 02:30 · otra entrega: dom 11:00 (pla…"
+     "resumen": "ruta: sin estimación · T05: plazo pasado 02:30 · pocos datos: 2 personas · otra entrega: «dom 11:00» (plan.md)"
     }
    },
    "antiguedades": {
