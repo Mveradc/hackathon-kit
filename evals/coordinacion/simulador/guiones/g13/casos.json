@@ -1,0 +1,330 @@
+{
+ "v": 1,
+ "que_es": "Casos de la vista de jurado que los momentos de G13 no tienen (#46, M9). Cada uno parte de un momento de hechos.json (el mismo estado del motor y las mismas notas en main) y cambia plan.md o criterios.md con reemplazos de texto [de, a, veces], o añade un servicios.md con el último resultado de su Prueba; «espera» es lo que tiene que salir, con las claves de los momentos de hechos.json. Lo comprueba g13_g14.py con las reglas del contrato y las decisiones del issue #46.",
+ "casos": [
+  {
+   "id": "cita_ambigua",
+   "que": "las etiquetas de T08 y T13 sin «· Jorge» casan con N2 y N3: N3 sale ambigua; N2 sigue cubierta por T11 y enseña T08 y T13 como ambiguas",
+   "base": "M3 · sáb 20:30",
+   "plan.md": [
+    [
+     "(criterios: 2026-09-18 20:15 · Jorge)",
+     "(criterios: 2026-09-18 20:15)",
+     2
+    ]
+   ],
+   "espera": {
+    "notas": {
+     "N2": {
+      "estado": "cubierta",
+      "tareas": {
+       "T08": "publicada",
+       "T11": "publicada",
+       "T13": "publicada"
+      },
+      "evidencia": [
+       {
+        "tarea": "T08",
+        "sha": "081c0de",
+        "observado_en": "2026-09-19T10:12:00Z"
+       },
+       {
+        "tarea": "T11",
+        "sha": "112c0de",
+        "observado_en": "2026-09-19T13:00:00Z"
+       },
+       {
+        "tarea": "T13",
+        "sha": "131c0de",
+        "observado_en": "2026-09-19T13:00:00Z"
+       }
+      ],
+      "trabajo_nuevo_desde": null,
+      "cerradas_a_mano": [],
+      "corregida_por": null,
+      "tambien_en_pitch": true,
+      "ambiguas": [
+       "T08",
+       "T13"
+      ]
+     },
+     "N3": {
+      "estado": "ambigua",
+      "tareas": {
+       "T08": "publicada",
+       "T13": "publicada"
+      },
+      "evidencia": [
+       {
+        "tarea": "T08",
+        "sha": "081c0de",
+        "observado_en": "2026-09-19T10:12:00Z"
+       },
+       {
+        "tarea": "T13",
+        "sha": "131c0de",
+        "observado_en": "2026-09-19T13:00:00Z"
+       }
+      ],
+      "trabajo_nuevo_desde": null,
+      "cerradas_a_mano": [],
+      "corregida_por": null,
+      "tambien_en_pitch": false,
+      "ambiguas": [
+       "T08",
+       "T13"
+      ]
+     }
+    },
+    "orden": [
+     "N1",
+     "N4",
+     "N6",
+     "N3",
+     "N7",
+     "N8",
+     "N2",
+     "N5"
+    ],
+    "cuenta": {
+     "notas": 8,
+     "sin_cubrir": 6,
+     "sin_tarea": 2,
+     "planificadas": 1,
+     "en_curso": 1,
+     "en_pitch": 1,
+     "ambiguas": 1,
+     "cubiertas": 1,
+     "corregidas": 1,
+     "sin_cubrir_por_fuerza": [
+      {
+       "texto": "dato",
+       "n": 1
+      },
+      {
+       "texto": "obligatorio",
+       "n": 2
+      },
+      {
+       "texto": "se valora",
+       "n": 2
+      },
+      {
+       "texto": "comentario suelto",
+       "n": 1
+      }
+     ]
+    },
+    "sin_nota": []
+   }
+  },
+  {
+   "id": "enlace_roto",
+   "que": "una etiqueta que no casa con ninguna nota (sáb 11:02) va a «sin nota», con su tarea, y no cubre nada",
+   "base": "M2 · sáb 14:30",
+   "plan.md": [
+    [
+     "| Build sin errores |",
+     "| Build sin errores (criterios: 2026-09-19 11:02) |"
+    ]
+   ],
+   "espera": {
+    "sin_nota": [
+     {
+      "tarea": "T17",
+      "cita": "2026-09-19 11:02"
+     }
+    ],
+    "notas": {
+     "N3": {
+      "estado": "en_curso",
+      "tareas": {
+       "T08": "publicada",
+       "T13": "en_curso"
+      },
+      "evidencia": [
+       {
+        "tarea": "T08",
+        "sha": "081c0de",
+        "observado_en": "2026-09-19T10:12:00Z"
+       }
+      ],
+      "trabajo_nuevo_desde": null,
+      "cerradas_a_mano": [],
+      "corregida_por": null,
+      "tambien_en_pitch": false
+     }
+    },
+    "cuenta": {
+     "notas": 8,
+     "sin_cubrir": 6,
+     "sin_tarea": 2,
+     "planificadas": 2,
+     "en_curso": 1,
+     "en_pitch": 1,
+     "ambiguas": 0,
+     "cubiertas": 1,
+     "corregidas": 1,
+     "sin_cubrir_por_fuerza": [
+      {
+       "texto": "dato",
+       "n": 1
+      },
+      {
+       "texto": "obligatorio",
+       "n": 2
+      },
+      {
+       "texto": "se valora",
+       "n": 2
+      },
+      {
+       "texto": "comentario suelto",
+       "n": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "prueba_que_falla",
+   "que": "la Prueba de la conexión web → api está en «Cómo se comprueba» de T11 y su último resultado es «falla»: se enseña como evidencia y la nota sigue cubierta (la Prueba no cambia la cobertura)",
+   "base": "M1 · sáb 12:00",
+   "plan.md": [
+    [
+     "| Se ven 24 puntos y la flecha (criterios:",
+     "| Se ven 24 puntos y la flecha; pasa `npm test --prefix web -- ficha` (criterios:"
+    ]
+   ],
+   "servicios.md": "# Servicios\n\n## Servicios\n| Nombre | Carpeta | Puerto | Arranque | Salud | Dueño |\n|---|---|---|---|---|---|\n| web | web/ | 5173 | `npm run dev --prefix web` | — | @persona-b |\n| api | motor/ | 8000 | `uv run arranca.py` | /salud | @persona-a |\n\n## Conexiones\n| De | A | Contrato | Prueba |\n|---|---|---|---|\n| web | api | Ficha de una empresa | `npm test --prefix web -- ficha` |\n",
+   "resultados": {
+    "npm test --prefix web -- ficha": {
+     "resultado": "falla",
+     "observado_en": "2026-09-19T09:55:00Z"
+    }
+   },
+   "espera": {
+    "notas": {
+     "N2": {
+      "estado": "cubierta",
+      "tareas": {
+       "T11": "publicada"
+      },
+      "evidencia": [
+       {
+        "tarea": "T11",
+        "sha": "111c0de",
+        "observado_en": "2026-09-18T21:20:00Z"
+       }
+      ],
+      "trabajo_nuevo_desde": null,
+      "cerradas_a_mano": [],
+      "corregida_por": null,
+      "tambien_en_pitch": true,
+      "pruebas": [
+       {
+        "conexion": "web → api",
+        "resultado": "falla",
+        "observado_en": "2026-09-19T09:55:00Z",
+        "tarea": "T11"
+       }
+      ]
+     }
+    },
+    "cuenta": {
+     "notas": 6,
+     "sin_cubrir": 4,
+     "sin_tarea": 0,
+     "planificadas": 2,
+     "en_curso": 1,
+     "en_pitch": 1,
+     "ambiguas": 0,
+     "cubiertas": 2,
+     "corregidas": 0,
+     "sin_cubrir_por_fuerza": [
+      {
+       "texto": "dato",
+       "n": 1
+      },
+      {
+       "texto": "obligatorio",
+       "n": 2
+      },
+      {
+       "texto": "se valora",
+       "n": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "orden_por_fuerza",
+   "que": "una nota con «imprescindible» (otra palabra) va detrás de «obligatorio», «se valora» y «nos gustaría ver» y delante del comentario suelto",
+   "base": "M3 · sáb 20:30",
+   "criterios.md": [
+    [
+     "- Qué dijo: «Haced que la demo funcione sin internet y olvidaos del despliegue»\n- Fuerza: comentario suelto\n- Afecta a: — (anotada desde la web; la revisa /hack-check)\n- Anotado por: @persona-b\n",
+     "- Qué dijo: «Haced que la demo funcione sin internet y olvidaos del despliegue»\n- Fuerza: comentario suelto\n- Afecta a: — (anotada desde la web; la revisa /hack-check)\n- Anotado por: @persona-b\n\n## 2026-09-19 14:00 · Lucía (jurado)\n- Dónde: ronda por las mesas\n- Qué dijo: «Es imprescindible que la URL abra sin iniciar sesión»\n- Fuerza: imprescindible\n- Afecta a: entrega\n- Anotado por: Persona B\n"
+    ]
+   ],
+   "espera": {
+    "notas": {
+     "N9": {
+      "estado": "sin_tarea",
+      "tareas": {},
+      "evidencia": [],
+      "trabajo_nuevo_desde": null,
+      "cerradas_a_mano": [],
+      "corregida_por": null,
+      "tambien_en_pitch": false
+     }
+    },
+    "orden": [
+     "N1",
+     "N4",
+     "N6",
+     "N7",
+     "N9",
+     "N8",
+     "N3",
+     "N2",
+     "N5"
+    ],
+    "cuenta": {
+     "notas": 9,
+     "sin_cubrir": 6,
+     "sin_tarea": 3,
+     "planificadas": 1,
+     "en_curso": 1,
+     "en_pitch": 1,
+     "ambiguas": 0,
+     "cubiertas": 2,
+     "corregidas": 1,
+     "sin_cubrir_por_fuerza": [
+      {
+       "texto": "dato",
+       "n": 1
+      },
+      {
+       "texto": "obligatorio",
+       "n": 2
+      },
+      {
+       "texto": "se valora",
+       "n": 1
+      },
+      {
+       "texto": "imprescindible",
+       "n": 1
+      },
+      {
+       "texto": "comentario suelto",
+       "n": 1
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

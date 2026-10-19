@@ -57,9 +57,9 @@ a{color:#22d3ee}a:hover{color:#67e8f9}
 <x-import component-from-global-scope="HkOS.StatusPulse" state="{{c.sinPulso}}" label="{{c.sinSub}}"></x-import>
 </div>
 <div style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px;">
-<span class="hk-label">En marcha</span>
-<span style="font-family: var(--font-mono); font-size: 32px; line-height: 36px; font-weight: 500;">{{c.marcha}}</span>
-<span style="font-size: 12px; color: var(--ink-muted);">{{c.marchaSub}}</span>
+<span class="hk-label">Sin cubrir, por fuerza</span>
+<sc-for list="{{c.fuerza}}" as="f" hint-placeholder-count="3"><span style="font-size: 13px; line-height: 18px;"><span style="font-family: var(--font-mono); font-weight: 500;">{{f.n}}</span> {{f.texto}}</span></sc-for>
+<span style="font-size: 12px; color: var(--ink-muted);">{{c.fuerzaSub}}</span>
 </div>
 <div style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px;">
 <span class="hk-label">Cubiertas</span>
@@ -78,12 +78,12 @@ a{color:#22d3ee}a:hover{color:#67e8f9}
 <sc-if value="{{ninguna}}" hint-placeholder-val="{{no}}">
 <div style="display: flex; flex-direction: column; gap: 4px;">
 <x-import component-from-global-scope="HkOS.StatusPulse" state="ok" label="Ninguna"></x-import>
-<span style="font-size: 13px; line-height: 18px; color: var(--ink-muted);">Cada nota de criterios.md tiene al menos una tarea o una evidencia que la cita, o el equipo la da por recogida en el pitch.</span>
+<span style="font-size: 13px; line-height: 18px; color: var(--ink-muted);">Todas las notas de criterios.md están cubiertas: cada tarea que las cita está publicada.</span>
 </div>
 </sc-if>
 </x-import>
 
-<x-import component-from-global-scope="HkOS.Panel" title="Con algo que las cubre" meta="{{conMeta}}">
+<x-import component-from-global-scope="HkOS.Panel" title="Cubiertas" meta="{{conMeta}}">
 <sc-for list="{{con}}" as="n" hint-placeholder-count="4">
 <x-import component-from-global-scope="HkOS.CriterioRow" time="{{n.time}}" who="{{n.who}}" where="{{n.where}}" strength="{{n.strength}}" strength-kind="{{n.strengthKind}}" said="{{n.said}}" affects="{{n.affects}}" corrects="{{n.corrects}}" by="{{n.by}}" age="{{n.age}}" coverage="{{n.coverage}}" coverage-label="{{n.coverageLabel}}" coverage-stale="{{n.coverageStale}}" items="{{n.items}}" pitch="{{n.pitch}}" hint="{{n.hint}}"></x-import>
 </sc-for>
@@ -105,14 +105,17 @@ a{color:#22d3ee}a:hover{color:#67e8f9}
 <aside style="flex: 1 1 320px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
 <x-import component-from-global-scope="HkOS.Panel" title="Cómo se lee">
 <div style="display: flex; flex-direction: column; gap: 10px; font-size: 13px; line-height: 18px;">
-<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-wait);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-wait);"></span>Sin cubrir</span><span style="color: var(--ink-muted);">Ninguna tarea ni evidencia la cita. Van primero, por fuerza (dato, palabra, comentario, sin precisar) y luego por hora.</span></div>
+<span style="color: var(--ink-muted);">«Sin cubrir» es todo lo que no está cubierto ni corregido. Va primero, por fuerza (dato, «obligatorio», «se valora», «nos gustaría ver», otra palabra, comentario suelto, sin precisar) y luego por hora.</span>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-wait);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-wait);"></span>Sin tarea</span><span style="color: var(--ink-muted);">Ninguna tarea de plan.md ni pitch.md la cita.</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-wait);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-wait);"></span>Ambigua</span><span style="color: var(--ink-muted);">La etiqueta no dice «· quién» y casa con varias notas del mismo minuto. En la cuenta va aparte («ambiguas»): no es «sin tarea», pero sí cuenta en «Sin cubrir» y en su desglose por fuerza.</span></div>
 <div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; border: 1.5px solid var(--ink-muted);"></span>Planificada</span><span style="color: var(--ink-muted);">La citan tareas, pero ninguna ha empezado.</span></div>
-<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--relay);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--relay);"></span>En curso</span><span style="color: var(--ink-muted);">Alguna de sus tareas está en curso.</span></div>
-<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-ok);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-ok);"></span>Cubierta</span><span style="color: var(--ink-muted);">Una tarea suya está integrada o publicada, o hay una evidencia en main. Si la tarea vuelve a en curso, la nota sigue cubierta y dice «trabajo nuevo desde…».</span></div>
-<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; border: 1.5px solid var(--ink-muted);"></span>Recogida en el pitch (declarado)</span><span style="color: var(--ink-muted);">El equipo dice que la recoge el pitch. Es declarado: no cuenta como cubierta.</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--relay);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--relay);"></span>En curso</span><span style="color: var(--ink-muted);">Alguna de sus tareas ha empezado o está publicada, pero no todas.</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-muted);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; border: 1.5px solid var(--ink-muted);"></span>En el pitch (declarado)</span><span style="color: var(--ink-muted);">Solo la cita pitch.md. Es declarado: sigue sin cubrir.</span></div>
+<div style="display: flex; flex-direction: column; gap: 2px;"><span style="display: inline-flex; align-items: center; gap: 4px; font-size: 12px; line-height: 16px; font-weight: 600; color: var(--state-ok);"><span style="width: 8px; height: 8px; border-radius: 999px; box-sizing: border-box; background: var(--state-ok);"></span>Cubierta</span><span style="color: var(--ink-muted);">Todas las tareas que la citan están publicadas (o cerradas sin ⚑). Una integrada que no se ha publicado, una cerrada a mano o un fichero en main no la cubren. Si una tarea publicada vuelve a tener trabajo, la nota sigue cubierta y dice «trabajo nuevo desde…».</span></div>
 </div>
 <div style="display: flex; flex-direction: column; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 13px; line-height: 18px; color: var(--ink-muted);">
-<span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="@marta"></x-import> la nota, la etiqueta «(criterios: …)» de plan.md y lo recogido en el pitch: lo escribió alguien del equipo.</span>
+<span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado"></x-import> la nota (con quién la anotó), la etiqueta «(criterios: …)» de plan.md y la cita en pitch.md: lo escribió el equipo, con la hora del commit de cada fichero.</span>
+<span>La evidencia es el último commit que publicó cada tarea, y el último resultado de su Prueba si tiene una. La Prueba se enseña, pero no cambia la cobertura.</span>
 <span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="git"></x-import> el estado de la tarea y la evidencia en main: lo deriva el OS.</span>
 <span>La fuerza es la palabra que anotó el equipo («obligatorio», «se valora»…), no una nota del OS.</span>
 <span>Si una persona no deja señales, sus tareas salen grises con «sin señales de @… desde HH:MM». No quiere decir nada de su trabajo.</span>
@@ -139,11 +142,11 @@ class Component extends DCLogic {
     function t(id, titulo, dueno, estado, fuente, edad, extra) {
       return Object.assign({ id: id, title: "«" + titulo + "»", owner: dueno, state: estado, source: fuente, age: edad }, extra || {});
     }
-    function ev(ruta, sha, edad) { return { kind: "evidencia", path: ruta, sha: sha, age: edad }; }
-    function cita(c, por, edad) { return { cita: c, by: por, age: edad }; }
-    function n(o) { return Object.assign({ coverage: "sin_cubrir", items: [] }, o); }
-    function sinCubrir(o, c) {
-      return Object.assign({}, o, { coverage: "sin_cubrir", items: [],
+    function ev(tarea, sha, edad) { return { kind: "evidencia", tipo: "commit", task: tarea, sha: sha, age: edad }; }
+    function cita(c, edad) { return { cita: c, age: "plan.md · " + edad }; }
+    function n(o) { return Object.assign({ coverage: "sin_tarea", items: [] }, o); }
+    function sinTarea(o, c) {
+      return Object.assign({}, o, { coverage: "sin_tarea", items: [],
         hint: "Para cubrirla, desde la terminal: /hack-plan y «(criterios: " + c + ")» en la fila de la tarea en plan.md." });
     }
 
@@ -159,8 +162,8 @@ class Component extends DCLogic {
       coverageLabel: "Corregida por la de sáb 09:30", hint: "Ya no cuenta: lo que vale es la nota nueva. No se borra (criterios.md solo añade)." });
     var empresa = n({ time: "sáb 19 · 09:30", who: "Jurado (Embat)", where: "sesión formativa", strength: "dato", strengthKind: "dato",
       said: "«El score va por empresa, no por grupo»", affects: "contratos", corrects: "vie 18 · 21:10", by: "@ana", age: "criterios.md · hace 1 h 30", coverage: "cubierta",
-      items: [ev("docs/contratos.md", "4be21c0", "hace 1 h 10"),
-        t("T04", "Copiar las columnas reales de data_dictionary.md a docs/contratos.md", "ana", "integrada", "git", "hace 1 h 10", { link: cita(C_EMPRESA, "@ana", "hace 1 h 20") })] });
+      items: [t("T04", "Copiar las columnas reales de data_dictionary.md a docs/contratos.md", "ana", "publicada", "git", "hace 1 h 10", { link: cita(C_EMPRESA, "hace 1 h 20") }),
+        ev("T04", "4be21c0", "hace 1 h 10")] });
     var demo = n({ time: "sáb 19 · 09:50", who: "Mentor de Embat", where: "mesa del equipo", strength: "comentario suelto", strengthKind: "comentario",
       said: "(paráfrasis) Mejor la demo en vivo que capturas", affects: "pitch", by: "@marta", age: "criterios.md · hace 1 h 05" });
     var validacion = n({ time: "sáb 19 · 10:40", who: "Jurado (Embat)", where: "ronda por las mesas", strength: "«imprescindible»", strengthKind: "palabra",
@@ -168,64 +171,75 @@ class Component extends DCLogic {
     var monitor = n({ time: "sáb 19 · 10:50", who: "Jurado (Embat)", where: "ronda por las mesas", strength: "«nos gustaría ver»", strengthKind: "palabra",
       said: "«Nos gustaría ver algo que avise cuando una empresa se mueve de verdad»", affects: "plan, pitch", by: "@luis", age: "criterios.md · hace 10 min" });
     var pitch = n({ time: "sáb 19 · 10:55", who: "Organización", where: "Discord del evento", strength: "dato · 5 min", strengthKind: "dato",
-      said: "(paráfrasis) El pitch dura 5 minutos y después hay 3 de preguntas", affects: "pitch", by: "@marta", age: "criterios.md · hace 5 min", coverage: "cubierta" });
+      said: "(paráfrasis) El pitch dura 5 minutos y después hay 3 de preguntas", affects: "pitch", by: "@marta", age: "criterios.md · hace 5 min", coverage: "en_curso",
+      coverageLabel: "En curso: falta T27" });
     function pitchCon(t21) {
-      return Object.assign({}, pitch, { items: [t21, t("T27", "Diapositivas en pitch/ con capturas de las dos fichas", "marta", "pendiente", "github", "hace 12 h", { link: cita(C_PITCH, "@marta", "hace 3 min") })] });
+      return Object.assign({}, pitch, { items: [t21, ev("T21", "21a7c3e", "hace 12 h"),
+        t("T27", "Diapositivas en pitch/ con capturas de las dos fichas", "marta", "pendiente", "github", "hace 12 h", { link: cita(C_PITCH, "hace 3 min") })] });
     }
     function entregaCon(edad, enlace) {
       return Object.assign({}, entrega, { items: [
-        t("T09", "Publicar motor y web en una URL pública", "ana", "pendiente", "github", edad, { link: cita(C_ENTREGA, "@ana", enlace) }),
-        t("T26", "README.md con la URL de la demo y el arranque local", "marta", "pendiente", "github", edad, { link: cita(C_ENTREGA, "@ana", enlace) })] });
+        t("T09", "Publicar motor y web en una URL pública", "ana", "pendiente", "github", edad, { link: cita(C_ENTREGA, enlace) }),
+        t("T26", "README.md con la URL de la demo y el arranque local", "marta", "pendiente", "github", edad, { link: cita(C_ENTREGA, enlace) })] });
     }
+    function fz(lista) { return lista.map(function (x) { return { n: x[0], texto: x[1] }; }); }
 
     var d;
     if (E === "inicio") {
       d = {
         ahora: "vie 18 · 20:10", gitEdad: "hace 40 s",
-        sin: [sinCubrir(Object.assign({}, comprador, { age: "criterios.md · hace 5 min" }), "2026-09-18 20:05")],
-        con: [
+        sin: [
+          Object.assign(entregaCon("hace 25 min", "hace 25 min"), { age: "criterios.md · hace 50 min" }),
           Object.assign({}, porque, { age: "criterios.md · hace 30 min", coverage: "planificada",
-            items: [t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "pendiente", "github", "hace 25 min", { link: cita(C_PORQUE, "@ana", "hace 25 min") }),
-              t("T12", "Desglose «qué lo movió» con signo", "luis", "pendiente", "github", "hace 25 min", { link: cita(C_PORQUE, "@ana", "hace 25 min") })] }),
-          Object.assign(entregaCon("hace 25 min", "hace 25 min"), { age: "criterios.md · hace 50 min" })
+            items: [t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "pendiente", "github", "hace 25 min", { link: cita(C_PORQUE, "hace 25 min") }),
+              t("T12", "Desglose «qué lo movió» con signo", "luis", "pendiente", "github", "hace 25 min", { link: cita(C_PORQUE, "hace 25 min") })] }),
+          sinTarea(Object.assign({}, comprador, { age: "criterios.md · hace 5 min" }), "2026-09-18 20:05")
         ],
+        con: [],
         corregidas: [],
-        c: { notas: "3", notasSub: "la última, hace 5 min", sin: "1", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait", sinSub: "1 comentario suelto",
-          marcha: "2", marchaSub: "planificadas, sin empezar", cub: "0", cubColor: "var(--ink)", cubSub: "aún nada integrado ni en main" }
+        c: { notas: "3", notasSub: "la última, hace 5 min", sin: "3", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait",
+          sinSub: "1 sin tarea · 0 ambiguas · 2 planificadas · 0 en curso · 0 en el pitch", fuerza: fz([["1", "dato"], ["1", "«queremos ver»"], ["1", "comentario suelto"]]), fuerzaSub: "de la más fuerte a la más floja",
+          cub: "0", cubColor: "var(--ink)", cubSub: "aún no hay ninguna tarea publicada que cite una nota" }
       };
     } else {
       var t12 = E === "riesgo"
-        ? t("T12", "Desglose «qué lo movió» con signo", "luis", "en_curso", "relay", "hace 25 min", { stale: true, note: "sin señales de @luis desde 10:35", link: cita(C_PORQUE, "@ana", "hace 14 h") })
-        : t("T12", "Desglose «qué lo movió» con signo", "luis", "en_curso", "relay", "hace 30 s", { link: cita(C_PORQUE, "@ana", "hace 14 h") });
+        ? t("T12", "Desglose «qué lo movió» con signo", "luis", "en_curso", "relay", "hace 25 min", { stale: true, note: "sin señales de @luis desde 10:35", link: cita(C_PORQUE, "hace 14 h") })
+        : t("T12", "Desglose «qué lo movió» con signo", "luis", "publicada", "git", "hace 40 min", { link: cita(C_PORQUE, "hace 14 h") });
       var porqueMitad = Object.assign({}, porque, { age: "criterios.md · hace 15 h", coverage: E === "riesgo" ? "en_curso" : "cubierta",
         coverageStale: E === "riesgo", coverageLabel: E === "riesgo" ? "En curso, según un dato viejo (T12)" : "",
-        items: [E === "riesgo"
-          ? t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "pendiente", "github", "hace 14 h", { link: cita(C_PORQUE, "@ana", "hace 14 h") })
-          : t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "integrada", "git", "hace 30 min", { link: cita(C_PORQUE, "@ana", "hace 14 h") }), t12] });
-      var compradorPitch = Object.assign({}, comprador, { age: "criterios.md · hace 15 h", coverage: "pitch", pitch: { by: "@marta", age: "hace 14 h", where: "el guion del pitch" } });
+        items: E === "riesgo"
+          ? [t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "pendiente", "github", "hace 14 h", { link: cita(C_PORQUE, "hace 14 h") }), t12]
+          : [t("T07", "Desglose caja/cobros/deuda en puntos de score", "ana", "publicada", "git", "hace 30 min", { link: cita(C_PORQUE, "hace 14 h") }), ev("T07", "07d1e5a", "hace 30 min"),
+            t12, ev("T12", "12f0b9c", "hace 40 min")] });
+      var compradorPitch = Object.assign({}, comprador, { age: "criterios.md · hace 15 h", coverage: "en_pitch", pitch: { age: "pitch.md · hace 14 h" } });
       var entregaMitad = Object.assign(entregaCon("hace 14 h", "hace 14 h"), { age: "criterios.md · hace 15 h 40" });
       if (E === "mitad") {
         var validacionBien = Object.assign({}, validacion, { coverage: "planificada",
-          items: [t("T10", "Apartar empresas y medir la estabilidad del score", "ana", "pendiente", "github", "hace 15 min", { link: cita(C_VALIDA, "@ana", "hace 15 min") }),
-            t("T28", "Respuesta a «¿cómo sabéis que acierta?» con la cifra de T10", "marta", "pendiente", "github", "hace 15 min", { link: cita(C_VALIDA, "@ana", "hace 15 min") })] });
+          items: [t("T10", "Apartar empresas y medir la estabilidad del score", "ana", "pendiente", "github", "hace 15 min", { link: cita(C_VALIDA, "hace 15 min") }),
+            t("T28", "Respuesta a «¿cómo sabéis que acierta?» con la cifra de T10", "marta", "pendiente", "github", "hace 15 min", { link: cita(C_VALIDA, "hace 15 min") })] });
         d = {
           ahora: "sáb 19 · 11:00", gitEdad: "hace 40 s",
-          sin: [],
-          con: [pitchCon(t("T21", "pitch/guion.md: CFO, comprador Embat y por qué lo compra", "marta", "publicada", "git", "hace 12 h", { link: cita(C_PITCH, "@marta", "hace 3 min") })),
-            validacionBien, empresa, porqueMitad, compradorPitch, entregaMitad],
+          sin: [entregaMitad,
+            pitchCon(t("T21", "pitch/guion.md: CFO, comprador Embat y por qué lo compra", "marta", "publicada", "git", "hace 12 h", { link: cita(C_PITCH, "hace 3 min") })),
+            validacionBien, compradorPitch],
+          con: [porqueMitad, empresa],
           corregidas: [grupo],
-          c: { notas: "7", notasSub: "1 corregida · la última, hace 5 min", sin: "0", sinColor: "var(--ink)", sinBorde: "transparent", sinPulso: "ok", sinSub: "Todas tienen algo",
-            marcha: "2", marchaSub: "planificadas, sin empezar", cub: "3", cubColor: "var(--state-ok)", cubSub: "1 con evidencia en main · aparte, 1 recogida en el pitch (declarado)" }
+          c: { notas: "7", notasSub: "1 corregida · la última, hace 5 min", sin: "4", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait",
+            sinSub: "0 sin tarea · 0 ambiguas · 2 planificadas · 1 en curso · 1 en el pitch", fuerza: fz([["2", "dato"], ["1", "«imprescindible»"], ["1", "comentario suelto"]]), fuerzaSub: "de la más fuerte a la más floja",
+            cub: "2", cubColor: "var(--state-ok)", cubSub: "todas sus tareas publicadas, con el último commit de cada una" }
         };
       } else {
         d = {
           ahora: "sáb 19 · 11:00", gitEdad: "hace 40 s",
-          sin: [sinCubrir(validacion, C_VALIDA), sinCubrir(monitor, "2026-09-19 10:50"), sinCubrir(demo, "2026-09-19 09:50")],
-          con: [pitchCon(t("T21", "pitch/guion.md: CFO, comprador Embat y por qué lo compra", "marta", "en_curso", "relay", "hace 1 min", { since: "sáb 10:50", link: cita(C_PITCH, "@marta", "hace 3 min") })),
-            empresa, porqueMitad, compradorPitch, entregaMitad],
+          sin: [entregaMitad,
+            pitchCon(t("T21", "pitch/guion.md: CFO, comprador Embat y por qué lo compra", "marta", "en_curso", "relay", "hace 1 min", { since: "sáb 10:50", link: cita(C_PITCH, "hace 3 min") })),
+            sinTarea(monitor, "2026-09-19 10:50"), porqueMitad, sinTarea(validacion, C_VALIDA), compradorPitch, sinTarea(demo, "2026-09-19 09:50")],
+          con: [empresa],
           corregidas: [grupo],
-          c: { notas: "9", notasSub: "1 corregida · la última, hace 5 min", sin: "3", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait", sinSub: "1 «imprescindible» · 1 «nos gustaría ver» · 1 comentario suelto",
-            marcha: "2", marchaSub: "1 en curso · 1 planificada", cub: "2", cubColor: "var(--state-ok)", cubSub: "1 con evidencia en main · aparte, 1 recogida en el pitch (declarado)" }
+          c: { notas: "9", notasSub: "1 corregida · la última, hace 5 min", sin: "7", sinColor: "var(--state-wait)", sinBorde: "var(--state-wait)", sinPulso: "wait",
+            sinSub: "3 sin tarea · 0 ambiguas · 1 planificada · 2 en curso · 1 en el pitch",
+            fuerza: fz([["2", "dato"], ["1", "«nos gustaría ver»"], ["1", "«queremos ver»"], ["1", "«imprescindible»"], ["2", "comentario suelto"]]), fuerzaSub: "de la más fuerte a la más floja",
+            cub: "1", cubColor: "var(--state-ok)", cubSub: "todas sus tareas publicadas, con el último commit de cada una" }
         };
       }
     }
@@ -234,7 +248,7 @@ class Component extends DCLogic {
     d.ninguna = d.sin.length === 0;
     d.sinMeta = d.sin.length ? d.sin.length + " · por fuerza y luego por hora" : "0";
     d.sinTono = d.sin.length ? "wait" : "normal";
-    d.conMeta = String(d.con.length);
+    d.conMeta = d.con.length ? d.con.length + " · por hora" : "0";
     d.sinCon = d.con.length === 0;
     d.hayCorregidas = d.corregidas.length > 0;
     d.corrMeta = String(d.corregidas.length);

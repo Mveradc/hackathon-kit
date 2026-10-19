@@ -42,33 +42,31 @@ a{color:#22d3ee}a:hover{color:#67e8f9}
 
 <div style="display: flex; flex-direction: column; gap: 6px;">
 <span style="font-family: var(--font-display); font-size: 22px; line-height: 28px; font-weight: 600; letter-spacing: -0.01em;">Ruta crítica</span>
-<span style="font-size: 14px; color: var(--ink-muted);">Si la cadena de tareas más larga acaba antes de la entrega y con qué margen. Lo calcula el OS con las dependencias y las franjas de plan.md y el ritmo real de cada persona en git; aquí solo se pinta. Hora del relay: <span style="font-family: var(--font-mono); color: var(--ink);">{{ahora}}</span>.</span>
+<span style="font-size: 14px; color: var(--ink-muted);">Si la cadena de tareas abiertas más larga acaba antes de la entrega y con qué margen, siempre como un rango. Lo calcula el OS con las dependencias, el orden de cada persona y las franjas de plan.md y el ritmo real de cada persona en git; aquí solo se pinta. Hora del relay: <span style="font-family: var(--font-mono); color: var(--ink);">{{ahora}}</span>.</span>
 </div>
 
 <section aria-label="Veredicto" style="display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 0.8fr); gap: 0; background: var(--surface-100); border-radius: var(--radius-lg); box-shadow: {{v.sombra}}; border: 1px solid {{v.borde}};">
 <div style="display: flex; flex-direction: column; gap: 8px; padding: 20px 24px;">
 <span class="hk-label">¿Llega a la entrega?</span>
 <x-import component-from-global-scope="HkOS.StatusPulse" state="{{v.pulso}}" label="{{v.palabra}}"></x-import>
-<span style="font-family: var(--font-mono); font-size: 40px; line-height: 44px; font-weight: 500; color: {{v.color}};">{{v.cifra}}</span>
+<span style="font-family: var(--font-mono); font-size: 32px; line-height: 40px; font-weight: 500; color: {{v.color}};">{{v.cifra}}</span>
 <span style="font-size: 13px; line-height: 18px; color: var(--ink-muted);">{{v.rango}}</span>
 <span style="font-size: 14px; line-height: 20px;">{{v.frase}}</span>
 </div>
 <div style="display: flex; flex-direction: column; gap: 8px; padding: 20px 24px; border-left: 1px solid var(--line);">
-<span class="hk-label">Fiabilidad</span>
-<div style="display: flex; align-items: center; gap: 10px;">
-<span style="display: inline-flex; gap: 3px;" aria-hidden="true"><span style="width: 22px; height: 6px; border-radius: 2px; background: {{f.s1}};"></span><span style="width: 22px; height: 6px; border-radius: 2px; background: {{f.s2}};"></span><span style="width: 22px; height: 6px; border-radius: 2px; background: {{f.s3}};"></span></span>
-<span style="font-size: 15px; font-weight: 600;">{{f.nivel}}</span>
-</div>
-<ul style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 18px; color: var(--ink-muted);">
-<sc-for list="{{f.motivos}}" as="m" hint-placeholder-count="3"><li>{{m}}</li></sc-for>
+<span class="hk-label">Con qué ritmo</span>
+<ul style="margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; line-height: 18px;">
+<sc-for list="{{base}}" as="b" hint-placeholder-count="3"><li>{{b}}</li></sc-for>
 </ul>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-faint);">Por persona: lo que tardó de verdad ÷ su franja del plan, en las tareas ya publicadas. Hacen falta 3; con menos, «n de 3» y sin cifra.</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="git" age="{{fuentes.ritmoEdad}}"></x-import>
 </div>
 <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 8px; padding: 20px 24px; border-left: 1px solid var(--line);">
 <span class="hk-label">Contra qué</span>
 <sc-for list="{{entregas}}" as="e" hint-placeholder-count="1">
 <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
-<span style="font-size: 14px; line-height: 20px;"><span style="font-weight: 600;">Entrega</span> <span style="font-family: var(--font-mono);">{{e.hora}}</span></span>
-<x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="{{e.por}}" age="{{e.donde}}"></x-import>
+<span style="font-size: 14px; line-height: 20px;"><span style="font-weight: 600;">{{e.etiqueta}}</span> <span style="font-family: var(--font-mono);">{{e.hora}}</span></span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" age="{{e.donde}}"></x-import>
 </div>
 </sc-for>
 <span style="font-size: 13px; line-height: 18px; color: {{contra.color}};">{{contra.texto}}</span>
@@ -76,17 +74,18 @@ a{color:#22d3ee}a:hover{color:#67e8f9}
 </div>
 </section>
 
-<section aria-label="Hitos del plan" style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px 24px;">
+<section aria-label="Hitos del plan" style="background: var(--surface-100); box-shadow: var(--panel); border-radius: var(--radius-lg); padding: 16px 24px; display: flex; flex-direction: column; gap: 10px;">
 <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px;">
 <sc-for list="{{hitos}}" as="h" hint-placeholder-count="5">
 <div style="display: flex; flex-direction: column; gap: 6px;">
 <div style="height: 0; border-top: 3px {{h.raya}};"></div>
 <span style="font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint);">{{h.hora}}</span>
 <span style="font-size: 13px; font-weight: 600;">{{h.nombre}}</span>
-<span style="font-size: 12px; line-height: 16px; font-weight: 600; color: {{h.color}};">{{h.prevision}}</span>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">{{h.estado}}</span>
 </div>
 </sc-for>
 </div>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-faint);">Los hitos son los de plan.md, con su hora y si ya pasó. Sin previsión: el plan no dice qué tareas lleva cada hito.</span>
 </section>
 
 <x-import component-from-global-scope="HkOS.Panel" title="La cadena más larga" meta="{{cadenaMeta}}">
@@ -96,10 +95,10 @@ a{color:#22d3ee}a:hover{color:#67e8f9}
 <sc-if value="{{sinLinea}}" hint-placeholder-val="{{no}}">
 <x-import component-from-global-scope="HkOS.Cadena" layout="cajas" rows="{{cadena}}">
 <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 14px; border-radius: var(--radius-md); background: var(--declared-soft);">
-<span style="font-size: 13px; line-height: 18px;">Según plan.md, la cadena va de <span style="font-family: var(--font-mono); font-weight: 500;">vie 20:30</span> a <span style="font-family: var(--font-mono); font-weight: 500;">sáb 19:00</span>: <span style="font-family: var(--font-mono); font-weight: 500;">22 h 30</span> en franjas. Hasta la entrega quedan <span style="font-family: var(--font-mono); font-weight: 500;">37 h 50</span> (dom 10:00, plan.md) o <span style="font-family: var(--font-mono); font-weight: 500;">38 h 50</span> (dom 11:00, equipo.md). No es una previsión: es lo que dice plan.md.</span>
-<x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="@ana" age="plan.md · hace 40 min"></x-import>
+<span style="font-size: 13px; line-height: 18px;">Según plan.md, la cadena va de <span style="font-family: var(--font-mono); font-weight: 500;">vie 20:30</span> a <span style="font-family: var(--font-mono); font-weight: 500;">sáb 16:00</span>: <span style="font-family: var(--font-mono); font-weight: 500;">19 h 30</span> en franjas. Hasta la entrega de equipo.md (<span style="font-family: var(--font-mono); font-weight: 500;">dom 11:00</span>) quedan <span style="font-family: var(--font-mono); font-weight: 500;">38 h 50</span>; los Hitos de plan.md dicen dom 10:00, y se enseña al lado. No es una previsión: es lo que dice plan.md.</span>
+<x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" age="plan.md · hace 40 min"></x-import>
 </div>
-<span style="font-size: 13px; line-height: 18px; color: var(--ink-muted);">Sin línea de tiempo hasta que cada persona de la cadena tenga 3 tareas hechas: las barras saldrían de las franjas del plan y parecerían una previsión.</span>
+<span style="font-size: 13px; line-height: 18px; color: var(--ink-muted);">Sin línea de tiempo hasta que cada persona con tareas abiertas tenga 3 tareas medidas: las barras saldrían de las franjas del plan y parecerían una previsión. T10 empieza por «Si …»: no cuenta para la entrega y no está en la cadena.</span>
 </x-import>
 </sc-if>
 </x-import>
@@ -123,19 +122,22 @@ a{color:#22d3ee}a:hover{color:#67e8f9}
 <span style="font-size: 13px; line-height: 18px; color: var(--ink-muted);">{{vacio.texto}}</span>
 </div>
 </sc-if>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-faint);">Primero los hechos (plazo pasado en rojo; parada o no cerrada en ámbar; sin señales en gris). Después, ESTIMACIÓN: cada tarea abierta cuyo fin tarde (con el ritmo más lento medido de su dueño) pasa de la entrega, esté o no en la cadena, de la más tardía a la más temprana. Es una previsión: nunca en rojo, y solo con su fin tarde.</span>
 </x-import>
 </div>
 <aside style="flex: 1 1 400px; min-width: 0; display: flex; flex-direction: column; gap: 24px;">
 <x-import component-from-global-scope="HkOS.Panel" title="De dónde sale la cifra">
 <div style="display: grid; grid-template-columns: 108px minmax(0, 1fr); gap: 12px 12px; font-size: 13px; line-height: 18px;">
 <span style="color: var(--ink-faint);">Ritmo real</span>
-<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;"><span>{{fuentes.ritmo}}</span><span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">Por persona: lo que tarda de verdad ÷ su franja del plan. Hacen falta 3 tareas hechas.</span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="git" age="{{fuentes.ritmoEdad}}"></x-import></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;"><span>{{fuentes.ritmo}}</span><span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">Por persona, en % de su franja: el más rápido da el principio del rango y el más lento, el final. Hacen falta 3 tareas medidas.</span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="git" age="{{fuentes.ritmoEdad}}"></x-import></div>
 <span style="color: var(--ink-faint);">Franjas</span>
-<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;"><span>Del «Hasta» anterior de la misma persona (o del inicio, vie 19:00) a su «Hasta». 8 filas heredan el de arriba y comparten su franja.</span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="@ana" age="plan.md"></x-import></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;"><span>Del «Hasta» anterior de la misma persona (o del inicio, vie 19:00) a su «Hasta», menos sus descansos de «## Descansos». 8 filas heredan el de arriba y comparten su franja. Cada persona hace sus tareas en el orden del plan.</span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" age="plan.md"></x-import></div>
 <span style="color: var(--ink-faint);">Entrega</span>
-<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;"><span>{{fuentes.entrega}}</span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" by="@marta" age="equipo.md"></x-import></div>
+<div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;"><span>{{fuentes.entrega}}</span><x-import component-from-global-scope="HkOS.ProvenanceTag" source="declarado" age="equipo.md"></x-import></div>
 <span style="color: var(--ink-faint);">Sin plazo</span>
-<span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">Ninguna tarea. El hito «Sesión formativa» dice «sáb mañana (hora por confirmar)»: no cuenta ni como a tiempo ni como tarde.</span>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">Ninguna tarea. Una tarea abierta sin plazo saldría aquí, aparte, ni a tiempo ni tarde, y no quitaría la estimación del resto: solo si ninguna tarea abierta tiene plazo no hay cifra («sin plazo»). El hito «Sesión formativa» dice «sáb mañana (hora por confirmar)».</span>
+<span style="color: var(--ink-faint);">No cuentan</span>
+<span style="font-size: 12px; line-height: 16px; color: var(--ink-muted);">T10 («Si Embat pide validación propia…»): lo que empieza por «Si …» o lleva [SI DA TIEMPO] no cuenta para la entrega.</span>
 <span style="color: var(--ink-faint);">Sin señales</span>
 <div style="display: flex; flex-direction: column; align-items: flex-start; gap: 4px;">
 <x-import component-from-global-scope="HkOS.StatusPulse" state="{{fuentes.viejoPulso}}" label="{{fuentes.viejo}}"></x-import>
@@ -164,97 +166,83 @@ class Component extends DCLogic {
     function r(id, titulo, franja, kind, from, to, deadline, note, extra) {
       return Object.assign({ id: id, title: "«" + titulo + "»", owner: "ana", franja: franja, kind: kind, from: from, to: to, deadline: deadline, note: note }, extra || {});
     }
-    function hito(hora, nombre, prev) {
-      var P = { cumplido: ["solid var(--state-ok)", "var(--state-ok)"], tiempo: ["solid var(--line-strong)", "var(--ink-muted)"],
-        nollega: ["solid var(--state-wait)", "var(--state-wait)"], sin: ["dashed var(--line-strong)", "var(--ink-faint)"] }[prev[0]];
-      return { hora: hora, nombre: nombre, raya: P[0], color: P[1], prevision: prev[1] };
+    function hito(hora, nombre, estado) {
+      var raya = { pasado: "solid var(--ink-muted)", viene: "solid var(--line-strong)", sin: "dashed var(--line-strong)" }[estado[0]];
+      return { hora: hora, nombre: nombre, raya: raya, estado: estado[1] };
     }
-    function nivel(n) { var on = "var(--ink)", off = "var(--line)"; return { s1: on, s2: n >= 2 ? on : off, s3: n >= 3 ? on : off }; }
     var F = { t03: "vie 20:30 → 23:00 · con T04", t05: "vie 23:00 → sáb 02:30", t06: "sáb 02:30 → 11:00 · con T07", t07: "sáb 02:30 → 11:00 · con T06",
-      t08: "sáb 11:00 → 12:30", t09: "sáb 12:30 → 16:00", t10: "sáb 16:00 → 19:00" };
+      t08: "sáb 11:00 → 12:30", t09: "sáb 12:30 → 16:00" };
     var TIT = { t03: "Cargar los CSV de datos/ en UTF-8", t05: "Caja, cobros y deuda mensuales", t06: "Score 0–100 suavizado con tendencia", t07: "Desglose caja/cobros/deuda en puntos",
-      t08: "2–3 reglas de acción con su cifra", t09: "Publicar motor y web en una URL", t10: "Apartar empresas y medir la estabilidad" };
+      t08: "2–3 reglas de acción con su cifra", t09: "Publicar motor y web en una URL" };
     var normal = "var(--panel)";
-    var sesion = hito("sáb mañana", "Sesión formativa", ["sin", "Sin plazo · hora por confirmar"]);
-    var unaEntrega = [{ hora: "dom 10:00", por: "@marta", donde: "equipo.md" }];
+    var hitos = [hito("vie 20:00", "Contratos acordados", ["pasado", "Ya pasó"]), hito("sáb mañana", "Sesión formativa", ["sin", "Sin hora · por confirmar"]),
+      hito("sáb 12:30", "Demo mínima", ["viene", "Por venir"]), hito("sáb 20:00", "Demo abierta por URL", ["viene", "Por venir"]), hito("sáb 22:00", "Congelación", ["viene", "Por venir"])];
+    var unaEntrega = [{ etiqueta: "Entrega", hora: "dom 10:00", donde: "equipo.md" }];
 
     var d;
     if (E === "inicio") {
       d = {
-        ahora: "vie 18 · 20:10", linea: false, cadenaMeta: "7 tareas · según plan.md",
-        v: { pulso: "idle", palabra: "Sin estimación", cifra: "Sin cifra", color: "var(--ink-muted)", rango: "Ni margen ni hora de llegada: todavía no se pueden calcular.",
-          frase: "@ana, dueña de la cadena, lleva 1 de 3 tareas hechas: sin ritmo todavía. Y hay dos horas de entrega que no coinciden. Una hora de llegada ahora sería inventada.",
+        ahora: "vie 18 · 20:10", linea: false, cadenaMeta: "6 tareas abiertas · según plan.md",
+        v: { pulso: "idle", palabra: "Sin estimación", cifra: "Sin cifra", color: "var(--ink-muted)", rango: "Ni margen ni hora de llegada: con menos de 3 tareas medidas por persona no se calculan.",
+          frase: "@ana, dueña de la cadena, lleva 1 de 3 tareas medidas (T01): sin ritmo todavía. Una hora de llegada ahora sería inventada.",
           sombra: normal, borde: "transparent" },
-        entregas: [{ hora: "dom 11:00", por: "@marta", donde: "equipo.md" }, { hora: "dom 10:00", por: "@ana", donde: "plan.md · Hitos" }],
-        contra: { texto: "No coinciden: se enseñan las dos y no se elige ninguna. Sin una sola hora de entrega no hay margen.", color: "var(--ink)" },
-        f: Object.assign(nivel(1), { nivel: "Baja", motivos: ["@ana: 1 de 3 tareas hechas (T01)", "@luis: 0 de 3 · @marta: 1 de 3", "dos horas de entrega: dom 11:00 (equipo.md) y dom 10:00 (plan.md)", "ningún dato viejo"] }),
-        hitos: [hito("vie 20:00", "Contratos acordados", ["cumplido", "Cumplido vie 19:55"]), sesion, hito("sáb 12:30", "Demo mínima", ["sin", "Sin estimación"]),
-          hito("sáb 20:00", "Demo abierta por URL", ["sin", "Sin estimación"]), hito("sáb 22:00", "Congelación", ["sin", "Sin estimación"])],
-        cadena: ["t03", "t05", "t06", "t07", "t08", "t09", "t10"].map(function (k) {
+        base: ["@ana: 1 de 3", "@luis: 0 de 3", "@marta: 1 de 3"],
+        entregas: [{ etiqueta: "Entrega", hora: "dom 11:00", donde: "equipo.md" }, { etiqueta: "Otra entrega", hora: "dom 10:00", donde: "plan.md · Hitos" }],
+        contra: { texto: "Manda equipo.md. Los Hitos de plan.md dicen otra hora: se enseña al lado, sin elegir, y no quita la estimación. Aquí falta por los pocos datos, no por esto.", color: "var(--ink)" },
+        hitos: hitos,
+        cadena: ["t03", "t05", "t06", "t07", "t08", "t09"].map(function (k) {
           return { id: k.toUpperCase(), title: "«" + TIT[k] + "»", owner: "ana", state: "Pendiente", franja: F[k] };
         }),
         riesgos: [],
         vacio: { pulso: "idle", palabra: "Nada todavía", texto: "Ningún plazo de plan.md ha pasado sin cumplirse. Con tan pocos datos, que no salga nada no quiere decir que no haya riesgo." },
         fuentes: { ritmo: "@ana 1 de 3 · @luis 0 de 3 · @marta 1 de 3: sin ritmo todavía", ritmoEdad: "hace 40 s",
-          entrega: "dom 11:00 en equipo.md y dom 10:00 en los Hitos de plan.md: no coinciden.", viejoPulso: "ok", viejo: "Nadie", viejoDetalle: "Todas las personas con señales recientes." }
+          entrega: "dom 11:00 en equipo.md, que manda. Los Hitos de plan.md dicen dom 10:00: se enseña al lado.", viejoPulso: "ok", viejo: "Nadie", viejoDetalle: "Todas las personas con señales recientes." }
       };
     } else if (E === "mitad") {
       d = {
-        ahora: "sáb 19 · 11:00", linea: true, cadenaMeta: "7 tareas · T03 → T05 → T06 → T07 → T08 → T09 → T10",
-        v: { pulso: "ok", palabra: "A tiempo", cifra: "+17 h 10", color: "var(--state-ok)", rango: "de margen sobre la entrega · estimación entre +15 h 30 y +18 h 20",
-          frase: "Con el ritmo de @ana, la cadena acaba hacia el sábado a las 16:50, también antes de la congelación (sáb 22:00).", sombra: normal, borde: "transparent" },
-        entregas: unaEntrega, contra: { texto: "faltan 23 h", color: "var(--ink-muted)" },
-        f: Object.assign(nivel(3), { nivel: "Alta", motivos: ["@ana: 7 tareas hechas; tarda 0,5× sus franjas", "contra el plan: las franjas de la noche son largas", "T09 espera a T17 (@luis, 5 hechas)", "ningún dato viejo"] }),
-        hitos: [hito("vie 20:00", "Contratos acordados", ["cumplido", "Cumplido vie 19:55"]), sesion, hito("sáb 12:30", "Demo mínima", ["tiempo", "A tiempo · prevista sáb 11:15"]),
-          hito("sáb 20:00", "Demo abierta por URL", ["tiempo", "A tiempo · prevista sáb 15:15"]), hito("sáb 22:00", "Congelación", ["tiempo", "A tiempo · prevista sáb 16:50"])],
+        ahora: "sáb 19 · 11:00", linea: true, cadenaMeta: "2 tareas abiertas · T08 → T09",
+        v: { pulso: "ok", palabra: "A tiempo", cifra: "+15 h 30 a +18 h 20", color: "var(--state-ok)", rango: "de margen sobre la entrega (dom 10:00) · fin entre sáb 15:40 y 18:30",
+          frase: "Con el ritmo medido de @ana, la cadena acaba entre el sábado a las 15:40 y las 18:30: los dos extremos, antes de la entrega.", sombra: normal, borde: "transparent" },
+        base: ["@ana: 7 medidas · entre el 40 % y el 70 % de su franja", "@luis: 5 · entre el 80 % y el 110 %", "@marta: 3 · entre el 90 % y el 130 %"],
+        entregas: unaEntrega, contra: { texto: "faltan 23 h · los Hitos de plan.md dicen lo mismo", color: "var(--ink-muted)" },
+        hitos: hitos,
         cadena: [
-          r("T03", TIT.t03, F.t03, "hecha", 1.5, 3.92, 4, "hecha vie 22:55"),
-          r("T05", TIT.t05, F.t05, "hecha", 3.92, 6.0, 7.5, "hecha sáb 01:00"),
-          r("T06", TIT.t06, F.t06, "hecha", 13.17, 14.83, 16, "hecha sáb 09:50"),
-          r("T07", TIT.t07, F.t07, "hecha", 14.83, 15.5, 16, "hecha sáb 10:30"),
-          r("T08", TIT.t08, F.t08, "curso", 15.5, 16, 17.5, "acaba ≈ sáb 11:15", { est: [16, 16.25] }),
-          r("T09", TIT.t09, F.t09, "prevista", 18.5, 20.25, 21, "espera a T17 (@luis) · ≈ sáb 13:30 → 15:15"),
-          r("T10", TIT.t10, F.t10, "prevista", 20.25, 21.83, 24, "≈ sáb 15:15 → 16:50")],
-        fin: { from: 20.67, to: 23.5, at: 21.83, tone: "ok", label: "≈ sáb 16:50", range: "entre sáb 15:40 y 18:30" },
+          r("T08", TIT.t08, F.t08, "curso", 15.5, 16.08, 17.5, "acaba entre sáb 11:05 y 11:25", { est: [16.08, 16.42] }),
+          r("T09", TIT.t09, F.t09, "prevista", 18.5, 20.67, 21, "va detrás de T08 (orden de @ana) y espera a T17 (@luis) · acaba entre sáb 15:40 y 18:30", { est: [20.67, 23.5] })],
+        fin: { from: 20.67, to: 23.5, tone: "ok", label: "entre sáb 15:40 y 18:30", range: "antes de la entrega, con el ritmo más rápido y con el más lento" },
         riesgos: [],
-        vacio: { pulso: "ok", palabra: "Nada", texto: "Ningún plazo ha pasado sin cumplirse, nada acaba después de la entrega y todas las personas de la cadena tienen señales recientes." },
-        fuentes: { ritmo: "@ana 7 hechas, 0,5× · @luis 5, 0,9× · @marta 3, 1,1×", ritmoEdad: "último cierre hace 30 min",
+        vacio: { pulso: "ok", palabra: "Nada", texto: "Ningún plazo ha pasado sin cumplirse, nada acaba después de la entrega ni con el ritmo más lento medido y todas las personas de la cadena tienen señales recientes." },
+        fuentes: { ritmo: "@ana 7 medidas, 40–70 % · @luis 5, 80–110 % · @marta 3, 90–130 %", ritmoEdad: "último cierre hace 30 min",
           entrega: "dom 10:00. Los Hitos de plan.md dicen lo mismo.", viejoPulso: "ok", viejo: "Nadie", viejoDetalle: "Todas las personas con señales recientes." }
       };
     } else {
       d = {
-        ahora: "sáb 19 · 11:00", linea: true, cadenaMeta: "7 tareas · T03 → T05 → T06 → T07 → T08 → T09 → T10",
-        v: { pulso: "wait", palabra: "No llega", cifra: "−1 h 40", color: "var(--state-wait)", rango: "de margen sobre la entrega · estimación entre −0 h 40 y −4 h 10",
-          frase: "Con el ritmo de @ana, la cadena acaba hacia el domingo a las 11:40, después de la entrega. La retrasa sobre todo T05: su plazo ya pasó.",
+        ahora: "sáb 19 · 11:00", linea: true, cadenaMeta: "5 tareas abiertas · T05 → T06 → T07 → T08 → T09",
+        v: { pulso: "wait", palabra: "No llega", cifra: "−4 h 10 a −0 h 40", color: "var(--state-wait)", rango: "de margen sobre la entrega (dom 10:00) · fin entre dom 10:40 y 14:10",
+          frase: "Con el ritmo medido de @ana, la cadena acaba entre el domingo a las 10:40 y las 14:10: los dos extremos, después de la entrega. La retrasa sobre todo T05: su plazo ya pasó.",
           sombra: "var(--glow-wait)", borde: "var(--state-wait)" },
-        entregas: unaEntrega, contra: { texto: "faltan 23 h", color: "var(--ink-muted)" },
-        f: Object.assign(nivel(2), { nivel: "Media", motivos: ["@ana: 4 tareas hechas; tarda 1,4× sus franjas (contra el plan)", "T09 espera a T17: sin señales de @luis desde 10:35", "todo el rango cae después de la entrega"] }),
-        hitos: [hito("vie 20:00", "Contratos acordados", ["cumplido", "Cumplido vie 19:55"]), sesion, hito("sáb 12:30", "Demo mínima", ["nollega", "No llega · prevista dom 02:40"]),
-          hito("sáb 20:00", "Demo abierta por URL", ["nollega", "No llega · prevista dom 07:30"]), hito("sáb 22:00", "Congelación", ["nollega", "No llega · prevista dom 11:40"])],
+        base: ["@ana: 4 medidas · entre el 120 % y el 160 % de su franja", "@luis: 3 · entre el 90 % y el 110 %", "@marta: 3 · entre el 90 % y el 130 %"],
+        entregas: unaEntrega, contra: { texto: "faltan 23 h · los Hitos de plan.md dicen lo mismo", color: "var(--ink-muted)" },
+        hitos: hitos,
         cadena: [
-          r("T03", TIT.t03, F.t03, "hecha", 1.5, 4.92, 4, "hecha vie 23:55"),
-          r("T05", TIT.t05, F.t05, "plazo_pasado", 4.92, 16, 7.5, "su «Hasta», sáb 02:30, pasó hace 8 h 30 · acaba ≈ sáb 12:30", { est: [16, 17.5] }),
-          r("T06", TIT.t06, F.t06, "prevista", 17.5, 23.5, 16, "≈ sáb 12:30 → 18:30 (4 h 15 × 1,4)"),
-          r("T07", TIT.t07, F.t07, "prevista", 23.5, 29.5, 16, "≈ sáb 18:30 → dom 00:30"),
-          r("T08", TIT.t08, F.t08, "prevista", 29.5, 31.67, 17.5, "≈ dom 00:30 → 02:40"),
-          r("T09", TIT.t09, F.t09, "vieja", 31.67, 36.5, 21, "espera a T17: sin señales de @luis desde 10:35 · ≈ dom 02:40 → 07:30"),
-          r("T10", TIT.t10, F.t10, "no_llega", 36.5, 40.67, 24, "≈ dom 07:30 → 11:40, después de la entrega")],
-        fin: { from: 39.67, to: 43.17, at: 40.67, tone: "wait", label: "≈ dom 11:40", range: "entre dom 10:40 y 14:10" },
+          r("T05", TIT.t05, F.t05, "plazo_pasado", 4.92, 16, 7.5, "su «Hasta», sáb 02:30, pasó hace 8 h 30 · acaba entre sáb 12:15 y 12:45", { est: [16, 17.75] }),
+          r("T06", TIT.t06, F.t06, "prevista", 17.75, 23, 16, "va detrás de T05 · acaba entre sáb 18:00 y 19:00", { est: [23, 24] }),
+          r("T07", TIT.t07, F.t07, "prevista", 23, 29, 16, "acaba entre dom 00:00 y 01:30", { est: [29, 30.5] }),
+          r("T08", TIT.t08, F.t08, "prevista", 29, 32.5, 17.5, "acaba entre dom 03:30 y 05:00", { est: [32.5, 34] }),
+          r("T09", TIT.t09, F.t09, "no_llega", 32.5, 39.67, 21, "espera a T17: sin señales de @luis desde 10:35 · acaba entre dom 10:40 y 14:10, después de la entrega", { est: [39.67, 43.17] })],
+        fin: { from: 39.67, to: 43.17, tone: "wait", label: "entre dom 10:40 y 14:10", range: "después de la entrega, con el ritmo más rápido y con el más lento" },
         riesgos: [
           { id: "T05", titulo: "«Calcular caja, cobros y deuda mensuales por company_id»", dueno: "ana", estado: "en_curso", fuente: "relay", edad: "hace 3 min", viejo: false,
-            raya: "var(--state-fail)", tipo: "HECHO", tipoColor: "var(--state-fail)",
-            motivo: "Su plazo, sáb 02:30 (plan.md), pasó hace 8 h 30 y sigue en curso.", donde: "En la cadena · arrastra a T06, T07, T08, T09 y T10" },
-          { id: "T10", titulo: "«Apartar empresas y medir la estabilidad del score»", dueno: "ana", estado: "pendiente", fuente: "github", edad: "hace 14 h", viejo: false,
-            raya: "var(--state-wait)", tipo: "ESTIMACIÓN", tipoColor: "var(--state-wait)",
-            motivo: "Acaba ≈ dom 11:40, después de la entrega (dom 10:00).", donde: "Última de la cadena · T28 (@marta) espera a T10" },
-          { id: "T24", titulo: "«Elegir una empresa que mejora y otra que cae»", dueno: "marta", estado: "pendiente", fuente: "github", edad: "hace 14 h", viejo: false,
-            raya: "var(--state-wait)", tipo: "ESTIMACIÓN", tipoColor: "var(--state-wait)",
-            motivo: "Espera a T06 (@ana, pendiente): su «Hasta» es sáb 14:00 y T06 acaba ≈ sáb 18:30.", donde: "Fuera de la cadena · pitch" },
+            raya: "var(--state-fail)", tipo: "HECHO · PLAZO PASADO", tipoColor: "var(--state-fail)",
+            motivo: "Su plazo, sáb 02:30 (plan.md), pasó hace 8 h 30 y sigue en curso.", donde: "En la cadena · arrastra a T06, T07, T08 y T09 (van detrás en la sección de @ana) y a T16 y T24, que esperan a T06" },
           { id: "T17", titulo: "«npm run build --prefix web limpio para el despliegue»", dueno: "luis", estado: "en_curso", fuente: "relay", edad: "hace 25 min", viejo: true,
-            raya: "var(--state-stale)", tipo: "SIN SEÑALES", tipoColor: "var(--state-stale)",
-            motivo: "Sin señales de @luis desde 10:35: su parte va con el último dato.", donde: "Fuera de la cadena · T09 (en la cadena) espera a T17" }
+            raya: "var(--state-stale)", tipo: "HECHO · SIN SEÑALES", tipoColor: "var(--state-stale)",
+            motivo: "Sin señales de @luis desde 10:35: su parte va con el último dato. No quiere decir que vaya lenta.", donde: "Fuera de la cadena · T09 (en la cadena) espera a T17" },
+          { id: "T09", titulo: "«Publicar motor y web en una URL pública»", dueno: "ana", estado: "pendiente", fuente: "github", edad: "hace 14 h", viejo: false,
+            raya: "var(--state-wait)", tipo: "ESTIMACIÓN", tipoColor: "var(--state-wait)",
+            motivo: "Con el ritmo más lento medido de @ana, acaba dom 14:10 (fin tarde): después de la entrega (dom 10:00).", donde: "En la cadena · la última" }
         ],
-        fuentes: { ritmo: "@ana 4 hechas, 1,4× · @luis 3, 1,0× · @marta 3, 1,1×", ritmoEdad: "último cierre hace 1 h 10",
+        fuentes: { ritmo: "@ana 4 medidas, 120–160 % · @luis 3, 90–110 % · @marta 3, 90–130 %", ritmoEdad: "último cierre hace 1 h 10",
           entrega: "dom 10:00. Los Hitos de plan.md dicen lo mismo.", viejoPulso: "stale", viejo: "@luis · desde 10:35",
           viejoDetalle: "Sin señales de @luis desde 10:35: T16 y T17 van con su último dato. Sin señales no es retraso; puede estar trabajando sin commits con ID." }
       };

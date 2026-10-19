@@ -1,4 +1,4 @@
-<!-- @dsCard group="Datos" height=560 -->
+<!-- @dsCard group="Datos" height=640 -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>CriterioRow</title></head>
@@ -8,17 +8,22 @@
   var K = window.HkOS, h = React.createElement;
   ReactDOM.createRoot(document.getElementById('root')).render(h('div',{style:{display:'grid',gap:'10px',padding:'16px'}},
   h(K.CriterioRow,{time:'sáb 19 · 10:40',who:'Jurado (Embat)',where:'ronda por las mesas',strength:'«imprescindible»',strengthKind:'palabra',
-    said:'«Traed vuestra propia validación: ¿cómo sabéis que acierta?»',affects:'plan, pitch',by:'@luis',age:'hace 20 min',coverage:'sin_cubrir',
+    said:'«Traed vuestra propia validación: ¿cómo sabéis que acierta?»',affects:'plan, pitch',by:'@luis',age:'hace 20 min',coverage:'sin_tarea',
     hint:'Para cubrirla: /hack-plan y «(criterios: 2026-09-19 10:40)» en la fila de la tarea.'}),
-  h(K.CriterioRow,{time:'sáb 19 · 10:55',who:'Organización',where:'Discord del evento',strength:'dato · 5 min',strengthKind:'dato',
-    said:'(paráfrasis) El pitch dura 5 minutos',affects:'pitch',by:'@marta',age:'hace 5 min',coverage:'cubierta',
-    items:[{id:'T21',title:'«pitch/guion.md»',owner:'marta',state:'en_curso',source:'relay',age:'hace 1 min',since:'sáb 10:50',link:{cita:'2026-09-19 10:55',by:'@marta',age:'hace 3 min'}},
-      {kind:'evidencia',path:'docs/contratos.md',sha:'4be21c0',age:'hace 1 h 10'}]}),
+  h(K.CriterioRow,{time:'sáb 19 · 09:30',who:'Jurado (Embat)',where:'sesión formativa',strength:'dato',strengthKind:'dato',
+    said:'«El score va por empresa, no por grupo»',affects:'contratos',by:'@ana',age:'hace 1 h 30',coverage:'cubierta',
+    items:[{id:'T04',title:'«Copiar las columnas reales a docs/contratos.md»',owner:'ana',state:'publicada',source:'git',age:'hace 1 h 10',link:{cita:'2026-09-19 09:30',age:'plan.md · hace 1 h 20'}},
+      {kind:'evidencia',tipo:'commit',task:'T04',sha:'4be21c0',age:'hace 1 h 10'},
+      {kind:'prueba',conexion:'web → api',result:'falla',age:'hace 5 min'}]}),
   h(K.CriterioRow,{time:'vie 18 · 19:40',who:'Jurado (Embat)',strength:'«queremos ver»',strengthKind:'palabra',
     said:'«Por qué sale ese número»',by:'@luis',age:'hace 15 h',coverage:'en_curso',coverageStale:true,coverageLabel:'En curso, según un dato viejo (T12)',
-    items:[{id:'T12',title:'«Desglose con signo»',owner:'luis',state:'en_curso',source:'relay',age:'hace 25 min',stale:true,note:'sin señales de @luis desde 10:35',link:{cita:'2026-09-18 19:40',by:'@ana',age:'hace 14 h'}}]}),
+    items:[{id:'T12',title:'«Desglose con signo»',owner:'luis',state:'en_curso',source:'relay',age:'hace 25 min',stale:true,note:'sin señales de @luis desde 10:35',link:{cita:'2026-09-18 19:40',age:'plan.md · hace 14 h'}}]}),
+  h(K.CriterioRow,{time:'vie 18 · 20:15',who:'Mentor de Embat',strength:'se valora',strengthKind:'palabra',
+    said:'«Que cada acción cite su cifra»',by:'@ana',age:'hace 14 h',coverage:'ambigua',
+    items:[{id:'T08',title:'«Reglas de acción con su cifra»',owner:'ana',state:'pendiente',source:'github',age:'hace 14 h',link:{cita:'2026-09-18 20:15',ambiguous:true,age:'plan.md · hace 14 h'}}],
+    hint:'La cita casa con dos notas del mismo minuto: añade «· quién» a la etiqueta.'}),
   h(K.CriterioRow,{time:'vie 18 · 20:05',who:'Mentor de Embat',strength:'comentario suelto',strengthKind:'comentario',
-    said:'(paráfrasis) Que se vea a quién se le vende',by:'@marta',age:'hace 15 h',coverage:'pitch',pitch:{by:'@marta',age:'hace 14 h'}}),
+    said:'(paráfrasis) Que se vea a quién se le vende',by:'@marta',age:'hace 15 h',coverage:'en_pitch',pitch:{age:'pitch.md · hace 14 h'}}),
   h(K.CriterioRow,{time:'vie 18 · 21:10',who:'Mentor de Embat',said:'(paráfrasis) Por grupo también vale',by:'@ana',age:'vie 21:12',
     coverage:'corregida',coverageLabel:'Corregida por la de sáb 09:30',hint:'Ya no cuenta. No se borra.'})));
 </script>
