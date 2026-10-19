@@ -140,13 +140,20 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     """El bloque `ruta` de la vista ($defs/vista_ruta).
 
     ruta: el bloque `ruta` de estado.json. tareas: `tareas[]` de estado.json. ahora: ISO 8601.
-    personas: `vista["personas"]` ({persona, nombre?, ultima_senal}). fuentes: `vista["fuentes"]` ({k: {valor,
-    observado_en, viejo}}). tarjetas: {ID: tarjeta de la vista (api.md §6)}; sin ella, una mínima. umbral_parada_s: el
-    `umbral_parada_min` de os.md, en segundos (para «sin señales»)."""
+    personas: `vista["personas"]` ({persona, nombre?}: el nombre, para los descansos). fuentes: `vista["fuentes"]`
+    ({k: {valor, observado_en, viejo}}). tarjetas: {ID: tarjeta de la vista (api.md §6)}; sin ella, una mínima.
+    umbral_parada_s: el `umbral_parada_min` de os.md, en segundos (para «sin señales», con historia.ultima_senal)."""
     from proyeccion import ETIQUETAS, corta     # aquí: proyeccion importa este módulo
     t_ahora, fuentes, tarjetas = fecha(ahora), fuentes or {}, tarjetas or {}
     nombres = {p["persona"]: p.get("nombre") for p in personas}
-    senales = {p["persona"]: p.get("ultima_senal") for p in personas}
+    # #56, 2: la última señal de una persona es la última atribuida a alguna de sus tareas (historia.ultima_senal: un
+    # commit con su ID o una edición sin ambigüedad), no personas[].ultima_senal, que cuenta latidos, commits sin ID y
+    # ediciones ambiguas.
+    senales = {}
+    for t in tareas:
+        u = (t.get("historia") or {}).get("ultima_senal")
+        if u and (senales.get(t["dueno"]) is None or fecha(u) > fecha(senales[t["dueno"]])):
+            senales[t["dueno"]] = u
     descansos = list(ruta.get("descansos", []))
     usables = [d for d in descansos if d.get("desde") and d.get("hasta")]
     cache_pausas = {}

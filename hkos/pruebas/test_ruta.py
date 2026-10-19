@@ -102,9 +102,10 @@ def ruta_de(entrega=240, **kw):
 
 
 def tarea(tid, dueno, estado, orden, franja=None, primera=None, hecha=None, deps=(), titulo=None, fuente=None,
-          motivo=None, declarado=None, motivo_franja="sin_plazo"):
+          motivo=None, declarado=None, motivo_franja="sin_plazo", ultima=-1):
     """Una tarea de estado.json con lo de K-104. franja = (desde, hasta[, compartida]) en minutos desde T0; su Hasta
-    es el final de la franja. Sin franja, el Hasta va sin resolver con `motivo`."""
+    es el final de la franja. Sin franja, el Hasta va sin resolver con `motivo`. ultima: historia.ultima_senal, en
+    minutos desde T0 (None: ninguna señal atribuida a la tarea)."""
     fuente = fuente or {"publicada": "git", "lista": "derivado", "pendiente": "github", "reclamada": "mcp",
                         "cerrada": "github"}.get(estado, "hook")
     hasta_v = m(franja[1]) if franja else None
@@ -118,6 +119,7 @@ def tarea(tid, dueno, estado, orden, franja=None, primera=None, hecha=None, deps
          "orden_plan": dato(orden) if orden is not None else None,
          "historia": {"primera_senal": m(primera) if primera is not None else None,
                       "hecha_en": m(hecha) if hecha is not None else None, "trabajo_nuevo_desde": None,
+                      "ultima_senal": m(ultima) if ultima is not None else None,
                       "fuente": "derivado", "observado_en": m(-1)}}
     if t["orden_plan"] is None:
         del t["orden_plan"]
@@ -141,15 +143,16 @@ def ana(ritmos=(30, 60, 90)):
     return salida + [tarea("T04", "ana", "lista", 4, franja=(0, 60)), tarea("T05", "ana", "lista", 5, franja=(60, 120))]
 
 
-def luis(n=3, abiertas=True):
-    """Luis: n hechas al 100 % y, si `abiertas`, T12 (60 min de franja)."""
+def luis(n=3, abiertas=True, ultima=-1):
+    """Luis: n hechas al 100 % y, si `abiertas`, T12 (60 min de franja); ultima: la última señal de sus tareas."""
     salida = [tarea(f"T2{i}", "luis", "publicada", i + 1, franja=(-300 + 60 * i, -240 + 60 * i), primera=-300 + 60 * i,
-                    hecha=-240 + 60 * i) for i in range(n)]
+                    hecha=-240 + 60 * i, ultima=ultima) for i in range(n)]
     if abiertas:
-        salida.append(tarea("T12", "luis", "lista", n + 1, franja=(0, 60)))
+        salida.append(tarea("T12", "luis", "lista", n + 1, franja=(0, 60), ultima=ultima))
     return salida
 
 
+# personas[].ultima_senal ya no cuenta para «sin señales» (#56, 2): la última señal sale de historia.ultima_senal.
 PERSONAS = [{"persona": "ana", "nombre": "Ana", "ultima_senal": m(-1)},
             {"persona": "luis", "nombre": "Luis", "ultima_senal": m(-1)}]
 
@@ -527,10 +530,12 @@ class Tabla(Base):
         self.assertEqual(b["estimacion"]["tarde"], iso(T0 + timedelta(minutes=180)))
         self.assertIn(malo, b["descansos"])
         # Sin señales desde hace 2 h, pero en su descanso (por su nombre): no sale «sin señales».
-        personas = [{"persona": "ana", "nombre": "Ana", "ultima_senal": m(-120)}]
-        b = self.corre(ruta_de(600, descansos=[descanso(["Ana"], m(-100), m(30))]), tareas, personas=personas)
+        callada = copy.deepcopy(tareas)
+        for t in callada:
+            t["historia"]["ultima_senal"] = m(-120)
+        b = self.corre(ruta_de(600, descansos=[descanso(["Ana"], m(-100), m(30))]), callada)
         self.assertEqual(self.hechos(b, "sin_senales"), [])
-        b = self.corre(ruta_de(600), tareas, personas=personas)
+        b = self.corre(ruta_de(600), callada)
         self.assertEqual(len(self.hechos(b, "sin_senales")), 1)
 
     def test_descansos_de_varias_personas_y_restados_de_la_franja(self):
@@ -621,10 +626,8 @@ class Tabla(Base):
         self.assertIn(" · T04: plazo pasado 09:50 · otra entrega: domingo", b["resumen"])
 
     def test_sin_senales_gris_nunca_lenta(self):
-        personas = [{"persona": "ana", "nombre": "Ana", "ultima_senal": m(-1)},
-                    {"persona": "luis", "nombre": "Luis", "ultima_senal": m(-120)}]
         con = self.corre(ruta_de(240), ana() + luis())
-        sin = self.corre(ruta_de(240), ana() + luis(), personas=personas)
+        sin = self.corre(ruta_de(240), ana() + luis(ultima=-120))
         self.assertEqual(self.hechos(sin, "sin_senales"), [{
             "tipo": "sin_senales", "gravedad": "gris", "persona": "luis", "desde": m(-120), "fuente": "derivado",
             "observado_en": iso(T0), "viejo": False}])
@@ -632,12 +635,29 @@ class Tabla(Base):
         self.assertTrue({h["tipo"] for h in sin["hechos"]} <= TIPOS_DE_HECHO)
         # No cambia ni la estimación ni el veredicto: no es lentitud.
         self.assertEqual((sin["veredicto"], sin["estimacion"]), (con["veredicto"], con["estimacion"]))
-        # Sin ninguna señal (no está en personas): sin señales, sin hora.
-        b = self.corre(ruta_de(240), ana() + luis(), personas=PERSONAS[:1])
+        # Sin ninguna señal atribuida a sus tareas: sin señales, sin hora.
+        b = self.corre(ruta_de(240), ana() + luis(ultima=None))
         self.assertEqual([(h["persona"], h["desde"]) for h in self.hechos(b, "sin_senales")], [("luis", None)])
         # Sin tareas abiertas, no: no hay nada que esperar de quien no tiene trabajo.
-        b = self.corre(ruta_de(240), ana() + luis(abiertas=False), personas=personas)
+        b = self.corre(ruta_de(240), ana() + luis(abiertas=False, ultima=-120))
         self.assertEqual(self.hechos(b, "sin_senales"), [])
+
+    def test_56_2_sin_senales_solo_con_senales_atribuidas_a_una_tarea(self):
+        """#56, punto 2 (fila 3): la última señal es la máxima historia.ultima_senal de sus tareas (un commit con su ID o
+        una edición sin ambigüedad), no personas[].ultima_senal, que cuenta latidos, commits sin ID y ediciones
+        ambiguas. Quien tiene abiertas y no ha dado ninguna también sale, sin hora."""
+        # Luis «late» y hace commits sin ID (personas[].ultima_senal de hace 1 min), pero lo último atribuido a una
+        # tarea suya es de hace 2 h: sin señales desde entonces (antes: con señales).
+        tareas = ana() + luis(ultima=-120)
+        por_id(tareas, "T20")["historia"]["ultima_senal"] = m(-200)
+        b = self.corre(ruta_de(240), tareas, personas=PERSONAS)
+        self.assertEqual([(h["persona"], h["desde"]) for h in self.hechos(b, "sin_senales")], [("luis", m(-120))])
+        # Con una edición atribuida a T12 hace 5 min, ya no: la máxima de sus tareas.
+        por_id(tareas, "T12")["historia"]["ultima_senal"] = m(-5)
+        self.assertEqual(self.hechos(self.corre(ruta_de(240), tareas, personas=PERSONAS), "sin_senales"), [])
+        # Sin ninguna atribuida y con abiertas, sale sin hora aunque personas[] diga que acaba de dar señales.
+        b = self.corre(ruta_de(240), ana() + luis(ultima=None), personas=PERSONAS)
+        self.assertEqual([(h["persona"], h["desde"]) for h in self.hechos(b, "sin_senales")], [("luis", None)])
 
     def test_cerrada_a_mano_hecha_para_la_ruta_no_medida(self):
         tareas = ana()
@@ -679,7 +699,7 @@ class Tabla(Base):
         movidos = [
             self.corre(ruta_de(240), tareas, ahora=iso(T0 + timedelta(minutes=5))),
             self.corre(ruta_de(300), ana()),
-            self.corre(ruta_de(240), ana() + luis(), personas=PERSONAS[:1]),
+            self.corre(ruta_de(240), ana() + luis(ultima=None)),
         ]
         for b in movidos:
             self.assertEqual(firma(b), firma(antes))
@@ -856,10 +876,13 @@ def momento_g14(mo, t28=None):
             "otras_entregas": otras,
             "hitos": otras + [declarada("2026-09-19T22:00:00+02:00", "sáb 22:00", donde="plan.md", nombre="Congelación")],
             "descansos": descansos}
-    ahora = fecha(mo["ahora"])
-    personas = [{"persona": p, "nombre": n,
-                 "ultima_senal": mo["sin_senales"][p]["desde"] if p in mo["sin_senales"]
-                 else iso(ahora - timedelta(minutes=1))} for p, n in POR_PERSONA.items()]
+    # La última señal atribuida a las tareas de cada persona (#56, 2): la de hechos.json si está sin señales; si no,
+    # hace 1 min.
+    ultima = {p: mo["sin_senales"][p]["desde"] if p in mo["sin_senales"] else iso(fecha(mo["ahora"]) - timedelta(minutes=1))
+              for p in POR_PERSONA}
+    for t in tareas:
+        t["historia"]["ultima_senal"] = ultima[t["dueno"]]
+    personas = [{"persona": p, "nombre": n} for p, n in POR_PERSONA.items()]
     return ruta, tareas, personas
 
 

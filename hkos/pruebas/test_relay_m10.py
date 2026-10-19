@@ -592,6 +592,36 @@ class Historia(unittest.TestCase):
         tres = modelo.historias(tareas, issues, eventos + [nuevo], personas, fin, cache=cache)
         self.assertEqual([t for t in uno if uno[t] is not tres[t]], ["T28"])
         self.assertEqual(tres["T28"][0]["primera_senal"], fin)
+        self.assertEqual(tres["T28"][0]["ultima_senal"], fin)          # #56, 2: el evento nuevo invalida la caché
+
+    def test_56_2_ultima_senal_solo_de_lo_atribuido_a_la_tarea(self):
+        """#56, punto 2: historia.ultima_senal es la hora del último commit con su ID o de la última edición atribuida
+        a ella sin ambigüedad. No cuentan los latidos, los push, las acciones del issue, los commits sin ID (aunque la
+        regla 9 los atribuya) ni las ediciones con atribucion_ambigua; null si no hay ninguno."""
+        a = {"persona": "persona-a", "papel": "principal", "sesion": "s-a"}
+        humano = {"persona": "persona-a", "papel": "humano"}
+
+        def ev(i, minuto, tipo, actor=a, **extra):
+            return dict({"v": 1, "id": f"e{i}", "ts": f"2026-09-19T10:{minuto:02d}:00Z", "actor": actor, "tipo": tipo,
+                         "fuente": "git" if tipo in ("commit", "push") else "mcp" if tipo == "reclamo" else "hook"}, **extra)
+        tareas = [{"id": t, "titulo": t, "dueno": "persona-a", "depende_de": []} for t in ("T01", "T02", "T03")]
+        issues = {t: {"creado_en": "2026-09-19T09:00:00Z", "acciones": []} for t in ("T01", "T02", "T03")}
+        issues["T01"]["acciones"] = [{"accion": "etiqueta", "ts": "2026-09-19T10:50:00Z", "por": "persona-a"}]
+        eventos = [ev(1, 0, "reclamo", tarea="T01"),
+                   ev(2, 5, "edicion", rutas=["a.py"]),                                   # atribuida a T01: cuenta
+                   ev(3, 10, "commit", humano, tarea="T01", datos={"sha": "aaa0001", "rama": "main"}),   # con ID
+                   ev(4, 15, "commit", humano, datos={"sha": "aaa0002", "rama": "main"}),              # sin ID: no
+                   ev(6, 25, "latido", tarea="T01"),
+                   ev(7, 30, "reclamo", tarea="T02"),
+                   ev(8, 35, "edicion", rutas=["b.py"]),                                  # T01 y T02: ambigua
+                   ev(5, 45, "push", humano, datos={"sha": "aaa0002", "incluye": ["aaa0001", "aaa0002"]})]   # la publica
+        hs = modelo.historias(tareas, issues, eventos, PERSONAS, "2026-09-19T11:00:00Z")
+        self.assertEqual({t: h["ultima_senal"] for t, (h, _) in hs.items()},
+                         {"T01": "2026-09-19T10:10:00Z", "T02": None, "T03": None})
+        # La edición de T02 con su ID sí cuenta, aunque haya dos abiertas.
+        eventos.append(ev(9, 40, "edicion", tarea="T02", rutas=["b.py"]))
+        hs = modelo.historias(tareas, issues, eventos, PERSONAS, "2026-09-19T11:00:00Z")
+        self.assertEqual(hs["T02"][0]["ultima_senal"], "2026-09-19T10:40:00Z")
 
 
 # =============================================================================================== relay
