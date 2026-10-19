@@ -68,7 +68,7 @@
     },
     "franja": {
       "type": "object",
-      "description": "Tras congelar, 2026-10-19, M10 (ADR-0013, decisión 4A): la franja planificada, derivada del plan (no es una estimación). valor null con su motivo si no se puede derivar.",
+      "description": "Tras congelar, 2026-10-19, M10 (ADR-0013, decisión 4A): la franja planificada, derivada del plan (no es una estimación). valor null con su motivo si no se puede derivar. min lleva los descansos dentro: el ritmo y lo que le queda a una tarea abierta usan la franja neta, min sin los descansos (api.md §11.4; tras congelar, 2026-10-19, M10, ajuste 3, punto 1).",
       "required": ["valor", "motivo", "fuente", "observado_en"],
       "additionalProperties": false,
       "properties": {

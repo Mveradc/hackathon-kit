@@ -71,6 +71,13 @@ Tres puntos en que los ajustes del issue #46 (PR #53) dejaron el contrato distin
 | **3. Orden del resumen de la ruta** | «plazo pasado» va justo detrás del veredicto (o del motivo de «sin estimación»), antes que «sin contar…» y «otra entrega…» | El resumen se corta a 120 caracteres (M17): con el orden anterior, el corte quitaba el plazo pasado o su hora (los dos ejemplos de `api.md` §11.6), el único dato rojo (un hecho), y dejaba lo declarado o lo que no se ha contado |
 | **4. Sin ninguna franja: `sin_plazo` y `pocos_datos`** | Cuando ninguna tarea abierta que cuenta tiene franja, los motivos son `sin_plazo` y, si alguna persona con tareas abiertas que cuentan tiene menos de 3 medidas, también `pocos_datos` (decisión 7A), en ese orden. Con alguna franja, `pocos_datos` sigue siendo solo de quien tiene tareas abiertas con franja | Sin plazos tampoco hay medidas: una tarea hecha sin franja no se mide (decisión 5A), así que el «n de 3» de cada persona es lo que la vista puede decir, y se dice con el motivo de cada cosa que falta. Es lo que da el momento «inicio» de G14 (sin `Inicio:`, ninguna franja y 0 de 3 para todas) |
 
+## Ajuste 3 tras congelar (2026-10-19, M10)
+Decididos por el usuario sobre la revisión independiente del issue #56 y el PR #58. Mandan sobre lo de arriba donde lo contradigan. La numeración es la del usuario; el punto 3 es de ADR-0012, el 7 y el 8 van en los dos y el 10 (el CI) solo va en el registro de cambios. Detalle en `api.md` (registro de cambios, §6 y §11) y en `estado.schema.json`, marcado «tras congelar, 2026-10-19, M10, ajuste 3».
+
+| Punto | Elegido | Por qué |
+|---|---|---|
+| **1. Lo que le queda a una tarea abierta** | Su **franja neta** (la franja sin los descansos que caen dentro, la misma con la que se mide el ritmo) × el ritmo, menos lo trabajado. La estimación salta los descansos **una sola vez**, al avanzar desde el inicio de la tarea | `api.md` §11.4 decía dos cosas («esa misma franja sin descansos» y «`franja.min` × el ritmo»), y el código hacía la segunda: la noche contaba dos veces, una dentro de `franja.min` y otra al saltar el descanso. En G14 «mitad con riesgo», unas 9 h de más en todos los `fin_tarde` (issue #56, fila 1; PR #58, diferencia 1) |
+
 ## Alternativas descartadas
 - **Que un modelo estime las duraciones o el riesgo:** no es una señal (constitución II) y no se puede probar sin modelo.
 - **Que la persona declare cuánto le falta** (acción en la web): sería declarado y caro; una acción nueva necesita ADR-0010 y queda fuera de M10.
