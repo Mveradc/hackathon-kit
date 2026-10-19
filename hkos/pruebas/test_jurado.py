@@ -99,7 +99,7 @@ def tarea(tid, valor, citas=None, fuente="hook", obs=AHORA, evidencia=None, hech
         t["conexiones"] = {"valor": conexiones, "fuente": "git", "observado_en": PLAN, "declarado": True}
     if hecha_en or nuevo or primera:
         t["historia"] = {"primera_senal": primera, "hecha_en": hecha_en, "trabajo_nuevo_desde": nuevo,
-                         "fuente": "derivado", "observado_en": obs}
+                         "ultima_senal": primera, "fuente": "derivado", "observado_en": obs}
     return t
 
 
@@ -421,8 +421,8 @@ class TablaK102(Base):
         en_curso, así que una tarea en curso por un latido (J1) o publicada sin pasar por en_curso con otra lista (J1b)
         se quedaba en «planificada»."""
         n = nota("2026-09-19 10:40")
-        sin_historia = {"primera_senal": None, "hecha_en": None, "trabajo_nuevo_desde": None, "fuente": "derivado",
-                        "observado_en": AHORA}
+        sin_historia = {"primera_senal": None, "hecha_en": None, "trabajo_nuevo_desde": None, "ultima_senal": None,
+                        "fuente": "derivado", "observado_en": AHORA}
         j1 = [dict(tarea("T01", "en_curso", ["2026-09-19 10:40"]), historia=dict(sin_historia)),
               tarea("T02", "reclamada", ["2026-09-19 10:40"], fuente="mcp")]
         self.assertEqual(self.cobertura(self.calcula([n], j1), n), "en_curso")
@@ -661,7 +661,8 @@ def momentos_g13():
                  "declarado": {"valor": "cerrada", "fuente": "github", "observado_en": "2026-09-18T19:00:00Z",
                                "declarado": True} if tid in a_mano else None,
                  "historia": {"primera_senal": primera, "hecha_en": hecha_en,   # el primer paso a publicada
-                              "trabajo_nuevo_desde": nuevo.get(tid), "fuente": "derivado", "observado_en": ahora}}
+                              "trabajo_nuevo_desde": nuevo.get(tid), "ultima_senal": primera, "fuente": "derivado",
+                             "observado_en": ahora}}
             if tid in evid:            # el último sha publicado, con su hora (#46, 6)
                 t["evidencia"] = {"valor": evid[tid]["sha"], "tipo": "commit", "fuente": "git",
                                   "observado_en": evid[tid]["observado_en"]}
