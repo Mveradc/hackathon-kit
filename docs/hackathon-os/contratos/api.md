@@ -89,6 +89,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§11.3 y el esquema (M20):** `corregida_por` = `{valor, fuente: "declarado", observado_en}`;
   - **§11.4 y el esquema (B2):** cada elemento de `sin_plazo[]` y `fuera_de_entrega[]` lleva `fuente` y `observado_en`;
   - **§11.3 y el esquema (B3):** `enlace` y `pitch` llevan `donde`, `fuente` y `observado_en`, sin autor;
+  - **§11.2, §11.3 y el esquema (B4):** la zona de `equipo.md` también en `jurado` (`jurado.zona`), con `ruta_critica: no`;
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -719,7 +720,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 
 **`.hackathon/pitch.md` → `jurado.pitch`** (ADR-0012, decisión 5B): las citas de todas sus etiquetas `(criterios: …)`. `null` sin `pitch.md`.
 
-**`.hackathon/equipo.md` → `ruta.equipo`, `zona`, `inicio` y `entrega`** (ADR-0013, decisión 1A; la zona también sirve a `jurado`, con cualquiera de los dos interruptores):
+**`.hackathon/equipo.md` → `ruta.equipo`, `zona`, `inicio` y `entrega`, y `jurado.zona`** (ADR-0013, decisión 1A). La zona también sirve a `jurado`, con cualquiera de los dos interruptores: con `vista_jurado: sí` el relay lee `equipo.md` aunque `ruta_critica` esté apagado y pone la zona en **`jurado.zona`** (la misma que `ruta.zona`), y la vista la lleva en su bloque `jurado` (tras congelar, 2026-10-19, M10, issue #46, B4):
 - Las líneas `- Inicio:` y `- Entrega:` de «## Hackathon». Se entiende una fecha (`AAAA-MM-DD`, `D/M/AAAA`, `D de <mes> [de AAAA]` o `D <mes> [AAAA]`, con el mes abreviado o entero y con o sin el día de la semana delante, como «dom 20 sep 09:30» o «dom 20 sep 2026 10:00»; sin año, el del commit), una hora `HH:MM` y una zona: un nombre IANA (`Europe/Madrid`) o un desfase (`UTC+2`, `UTC+02:00`, `+02:00`). Las abreviaturas (`CEST`) no valen: son ambiguas. **`Entrega:` sin zona hereda la de `Inicio:`** (tras congelar, 2026-10-19, M10, issue #46, ajuste 5 de ADR-0013).
 - **Dos horas** (ajuste 5): la línea trae dos horas `HH:MM` distintas, sin contar la zona (el `02:00` de `UTC+02:00` no es una hora), como «10:00 (cierre 11:00)». **Manda la primera**: es el `valor`, y la otra va a `ruta.otras_entregas` con `donde: equipo.md`, como discrepancia; no quita la estimación. La misma hora escrita dos veces es una.
 - `valor` = la hora en ISO 8601 con su desfase. Si no se puede: `null` con `motivo` = `sin_dato` (falta la línea, vacía, `—` o con `<…>`), `sin_zona` o `formato`. Con «(confirmar)», `confirmar: true`, y el valor se resuelve igual. `texto` es la línea tal cual, sin `- Entrega:`.
@@ -769,6 +770,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **Orden:** sin cubrir (todo lo que no es `cubierta` ni está corregido) por fuerza (`dato`, «obligatorio», «se valora», «nos gustaría ver», otra palabra, `comentario`, `sin_precisar`) y luego por `hora` (o `cita`), la más antigua primero; después las cubiertas, por hora; al final las corregidas, por hora.
 - **`cuenta`** (ajuste 2): `{notas, corregidas, cubiertas, sin_cubrir, sin_tarea, ambiguas, planificadas, en_curso, en_pitch, sin_cubrir_por_fuerza}`. Los totales por cobertura no cuentan las corregidas, que solo van en `corregidas`; `sin_cubrir` = `sin_tarea` + `ambiguas` + `planificadas` + `en_curso` + `en_pitch` (todo lo no cubierto, sin las corregidas), y una ambigua no cuenta en `sin_tarea`. `sin_cubrir_por_fuerza`: el desglose de las sin cubrir por el texto de su fuerza, en el orden de arriba.
 - **`viejo`** del bloque: `fuentes.git` está viejo. `observado_en`: la hora del cálculo (`ahora`).
+- **`zona`**: `jurado.zona` de `estado.json`, tal cual (B4), para que la web enseñe las horas de las notas con la zona de `equipo.md` también sin la ruta.
 - **`resumen`** (la línea del md, decisión 7B): `jurado: <sin_cubrir> sin cubrir (<n> «<la fuerza más fuerte entre las sin cubrir>»)[ · <ambiguas> ambigua(s)][ · <en_pitch> en el pitch] · <cubiertas> cubierta(s) de <notas>`; sin notas, `jurado: sin notas en criterios.md`; sin fichero, `jurado: sin criterios.md en main`. Cortado a **120** por grafemas (tras congelar, 2026-10-19, M10, issue #46, M17: así la línea del md, con « (HH:MM · derivado · viejo)» detrás, cabe en los 160 de §6 sin perder la hora, la fuente ni «viejo»).
 
 ### 11.4 Bloque `ruta` de la vista (ADR-0013)
@@ -823,6 +825,7 @@ Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-1
 {
   "jurado": {
     "observado_en": "2026-09-19T09:00:00Z", "fuente": "derivado", "viejo": false, "fichero": "ok",
+    "zona": {"valor": "Europe/Madrid", "fuente": "git", "observado_en": "2026-09-18T18:05:00Z", "declarado": true},
     "cuenta": {"notas": 3, "corregidas": 0, "cubiertas": 1, "sin_cubrir": 2, "sin_tarea": 1, "ambiguas": 0, "planificadas": 0, "en_curso": 1, "en_pitch": 0,
                "sin_cubrir_por_fuerza": [{"texto": "obligatorio", "n": 1}, {"texto": "nos gustaría ver", "n": 1}]},
     "notas": [

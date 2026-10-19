@@ -216,6 +216,7 @@
         "fuente": { "$ref": "#/$defs/fuente" },
         "viejo": { "type": "boolean" },
         "fichero": { "type": "string", "enum": ["ok", "sin fichero", "mal formado"] },
+        "zona": { "$ref": "#/$defs/dato", "description": "Tras congelar, 2026-10-19, M10, issue #46 (B4): jurado.zona de estado.json, tal cual: la zona con que se leen las horas de las notas." },
         "cuenta": {
           "type": "object",
           "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 2 de ADR-0012): sin_cubrir = sin_tarea + ambiguas + planificadas + en_curso + en_pitch (todo lo no cubierto, sin las corregidas, que solo van en corregidas). Una ambigua no cuenta en sin_tarea.",
@@ -819,6 +820,7 @@
       "additionalProperties": false,
       "properties": {
         "fichero": { "$ref": "#/$defs/dato", "description": "valor: ok | sin fichero | mal formado; observado_en: hora del commit de criterios.md en origin/main." },
+        "zona": { "$ref": "#/$defs/dato", "description": "Tras congelar, 2026-10-19, M10, issue #46 (B4): la zona horaria de equipo.md, la misma que ruta.zona, también con ruta_critica: no; con ella se leen las horas de las notas. Fuente git, declarado." },
         "notas": { "type": "array", "items": { "$ref": "#/$defs/nota" } },
         "pitch": {
           "description": "Decisión 5B: valor = citas de las etiquetas (criterios: …) de .hackathon/pitch.md; fuente git, declarado. null sin pitch.md.",
