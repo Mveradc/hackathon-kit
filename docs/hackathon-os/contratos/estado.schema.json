@@ -414,9 +414,26 @@
             }
           }
         },
+        "riesgos": {
+          "type": "array",
+          "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 3 de ADR-0013; R-36, «qué tareas la ponen en riesgo»): las tareas abiertas que, según la estimación, acaban (fin_tarde) después de la entrega, estén o no en la cadena. Vacía sin estimación. Es una previsión: nunca rojo. Sin cifra central, sin previsión por hito y sin «fiabilidad»: lo dicen el rango y la base.",
+          "items": {
+            "type": "object",
+            "required": ["tarea", "tipo", "fin_tarde", "dueno", "en_cadena", "viejo"],
+            "additionalProperties": false,
+            "properties": {
+              "tarea": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
+              "tipo": { "const": "estimacion" },
+              "fin_tarde": { "type": "string", "format": "date-time" },
+              "dueno": { "type": "string" },
+              "en_cadena": { "type": "boolean", "description": "Es uno de los eslabones de cadena." },
+              "viejo": { "type": "boolean", "description": "El de su tarjeta: su estado viene de una fuente vieja." }
+            }
+          }
+        },
         "cadena": {
           "type": "array",
-          "description": "La cadena más larga de tareas abiertas que cuentan para la entrega, en orden.",
+          "description": "La cadena más larga de tareas abiertas que cuentan para la entrega, en orden. Solo tareas abiertas: las hechas no salen (issue #46, ajuste 3).",
           "items": {
             "type": "object",
             "required": ["tarjeta", "por", "hasta", "franja", "fin_temprano", "fin_tarde"],

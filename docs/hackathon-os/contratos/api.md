@@ -80,6 +80,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
 - 2026-10-19, M10, issue #46 (las «Decisiones que faltan» de la revisión de los contratos de M10, decididas por el usuario; ajustes en ADR-0012 y ADR-0013). Sin subir `v`. Lo que cambia de forma se escribe aquí solo con la forma nueva; el esquema admite aún la anterior, con su `description` «TRANSITORIO (issue #46)», hasta que el código se adapte (K-105). Lo cubren:
   - **§11.4 y [estado.schema.json](estado.schema.json):** una tarea abierta sin plazo no quita la estimación: sale en `sin_plazo[]` y el resto se estima (ajuste 1 de ADR-0013);
   - **§11.3 y el esquema:** «sin cubrir» es todo lo no cubierto, sin las corregidas; `declarada` se parte en `planificada` y `en_curso`, y `cuenta` lo dice (ajuste 2 de ADR-0012);
+  - **§11.4 y el esquema:** `ruta.riesgos[]`, las tareas que según la estimación acaban después de la entrega; sin hora central, previsión por hito ni «fiabilidad» (ajuste 3 de ADR-0013);
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -776,6 +777,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 
   Orden: rojo, ámbar, gris; dentro, por plazo y por tarea.
 - **Cadena**: con estimación, la que lleva al fin `tarde` más tardío; sin ella, la que lleva al `Hasta` resuelto más tardío, siguiendo hacia atrás la predecesora abierta de `Hasta` más tardío. Cada eslabón, con su tarjeta, `por` (`inicio` en el primero), `hasta`, `franja` y su `fin_temprano` y `fin_tarde` (`null` sin estimación).
+- **`riesgos`** (tras congelar, 2026-10-19, M10, issue #46, ajuste 3 de ADR-0013; R-36): con estimación, cada tarea abierta cuyo `fin_tarde` es posterior a la entrega, esté o no en la cadena: `{tarea, tipo: "estimacion", fin_tarde, dueno, en_cadena, viejo}` (`viejo`, el de su tarjeta). Orden: por `fin_tarde`, la más tardía primero, y por tarea. Sin estimación, `[]`. Es una previsión: ámbar, nunca rojo. La cadena sigue siendo solo de tareas abiertas (las hechas no salen). La vista **no** da una hora central, ni previsión por hito, ni «fiabilidad»: el rango y la `base` lo dicen.
 - **`sin_plazo`**: las tareas abiertas sin franja, con el motivo de `hasta` o, si `hasta` se resolvió, el de la franja.
 - **`viejo`**: alguna de `vista.fuentes` está vieja; `dato_mas_viejo`, el `observado_en` más antiguo de esas fuentes. `observado_en`: la hora del cálculo.
 - **`resumen`** (decisión 7B), cortado a 160 por grafemas:
@@ -863,6 +865,7 @@ Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-1
        "franja": {"valor": {"desde": "2026-09-19T07:00:00+02:00", "hasta": "2026-09-19T13:00:00+02:00", "min": 360, "compartida": 1}, "motivo": null,
                   "fuente": "derivado", "observado_en": "2026-09-19T07:30:00Z", "declarado": true},
        "fin_temprano": null, "fin_tarde": null}],
+    "riesgos": [],
     "sin_plazo": [{"tarea": "T21", "motivo": "por_confirmar"}],
     "fuera_de_entrega": [{"tarea": "T09", "motivo": "condicional"}],
     "hitos": [{"hito": {"nombre": "Congelación", "valor": "2026-09-19T22:00:00+02:00", "texto": "sáb 22:00", "motivo": null, "donde": "plan.md",
@@ -874,4 +877,4 @@ Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-1
 }
 ```
 
-La fila «Entrega final» de Hitos (dom 11:00) no coincide con `equipo.md` (dom 10:00): sale al lado y no es la causa de «sin estimación» (lo es `pocos_datos`). Con 3 o más medidas por persona, el mismo bloque llevaría, por ejemplo, `"veredicto": {"valor": "justo", "motivos": [], "gravedad": "ambar", …}`, `"estimacion": {"temprano": "2026-09-20T05:40:00Z", "tarde": "2026-09-20T08:50:00Z", "margen_min": -50, "margen_max": 140}` y `"resumen": "ruta: estimación justo · fin 07:40–10:50 · entrega dom 10:00 · otra entrega: dom 11:00 (plan.md) · T05: plazo pasado 02:30"`, contra la entrega de `equipo.md`.
+La fila «Entrega final» de Hitos (dom 11:00) no coincide con `equipo.md` (dom 10:00): sale al lado y no es la causa de «sin estimación» (lo es `pocos_datos`). Con 3 o más medidas por persona, el mismo bloque llevaría, por ejemplo, `"veredicto": {"valor": "justo", "motivos": [], "gravedad": "ambar", …}`, `"estimacion": {"temprano": "2026-09-20T05:40:00Z", "tarde": "2026-09-20T08:50:00Z", "margen_min": -50, "margen_max": 140}`, en `riesgos` las tareas cuyo `fin_tarde` pasa de las 08:00Z (por ejemplo, `{"tarea": "T16", "tipo": "estimacion", "fin_tarde": "2026-09-20T08:50:00Z", "dueno": "ana", "en_cadena": true, "viejo": false}`) y `"resumen": "ruta: estimación justo · fin 07:40–10:50 · entrega dom 10:00 · otra entrega: dom 11:00 (plan.md) · T05: plazo pasado 02:30"`, contra la entrega de `equipo.md`.
