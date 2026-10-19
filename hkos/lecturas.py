@@ -157,6 +157,12 @@ def _de(dt, tz):
     return dt.astimezone(tz)
 
 
+def _utc(dt):
+    """dt en UTC, para restar y comparar (#63, 2): dos datetimes con el mismo tzinfo (el ZoneInfo en caché o la misma
+    _ZonaUE) se restan y se comparan como horas de reloj, sin su desfase, y a través del cambio de hora sale mal."""
+    return dt.astimezone(timezone.utc)
+
+
 # ------------------------------------------------------------------------------------------------ equipo.md
 def _zona_de(texto):
     """(zona normalizada, tzinfo, texto sin la zona, aviso) de una línea de equipo.md. Un desfase ISO 8601 pegado a la
@@ -242,7 +248,7 @@ def hora_equipo(texto, anio, tz_defecto=None, varias=False):
             return None, "sin_zona", confirmar, zona_n, tz, aviso, []
         dt = _local(dia, *horas[0], usada)
         otras = [_local(dia, *h, usada) for h in horas[1:]]
-        otras = [o if o > dt else _local(dia + timedelta(days=1), *h, usada) for o, h in zip(otras, horas[1:])]
+        otras = [o if _utc(o) > _utc(dt) else _local(dia + timedelta(days=1), *h, usada) for o, h in zip(otras, horas[1:])]
         return dt, None, confirmar, zona_n, usada, aviso, otras
     except ValueError:
         return None, "formato", confirmar, zona_n, tz, aviso, []
@@ -341,7 +347,7 @@ def resolver(texto, inicio, tz, anterior=None, anio=None, inicio_motivo=None):
                 return None, "sin_inicio"
             dia = _de(base, tz).date()
             dt = _local(dia, m.group(1), m.group(2), tz)
-            return (dt if dt >= base else _local(dia + timedelta(days=1), m.group(1), m.group(2), tz)), None
+            return (dt if _utc(dt) >= _utc(base) else _local(dia + timedelta(days=1), m.group(1), m.group(2), tz)), None
     except (ValueError, TypeError):
         pass
     return None, "formato"
@@ -495,7 +501,7 @@ def _turno(texto, inicio, tz):
         else:
             dia = base
         hasta = _local(dia, m.group(5), m.group(6), tz)
-        if hasta <= desde:
+        if _utc(hasta) <= _utc(desde):
             hasta = _local(dia + timedelta(days=1), m.group(5), m.group(6), tz)
         return desde, hasta, None
     except (ValueError, TypeError, AttributeError):
@@ -572,10 +578,10 @@ def leer_plan(texto, personas, ct, inicio, tz, anio, inicio_motivo=None):
                 valor, motivo = None, "sin_plazo"
             elif desde is None:
                 valor, motivo = None, "sin_inicio"
-            elif fin <= desde:
+            elif _utc(fin) <= _utc(desde):
                 valor, motivo = None, "orden"
-            else:
-                minutos = math.ceil((fin - desde).total_seconds() / 60 / compartida)
+            else:                                         # minutos transcurridos, no de reloj (#63, 2)
+                minutos = math.ceil((_utc(fin) - _utc(desde)).total_seconds() / 60 / compartida)
                 valor, motivo = {"desde": _iso(_de(desde, tz)), "hasta": _iso(fin), "min": minutos,
                                  "compartida": compartida}, None
             for t in fs[i:j]:
