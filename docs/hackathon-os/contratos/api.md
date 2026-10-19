@@ -82,6 +82,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§11.3 y el esquema:** «sin cubrir» es todo lo no cubierto, sin las corregidas; `declarada` se parte en `planificada` y `en_curso`, y `cuenta` lo dice (ajuste 2 de ADR-0012);
   - **§11.4 y el esquema:** `ruta.riesgos[]`, las tareas que según la estimación acaban después de la entrega; sin hora central, previsión por hito ni «fiabilidad» (ajuste 3 de ADR-0013);
   - **§11.2, §11.4 y el esquema:** los descansos se leen de la tabla `| Turno | Quién |` y de las líneas `- quién: turno`, con varias personas por turno (`descanso.personas`) y día en el final, y se restan de la franja al medir el ritmo (ajuste 4 de ADR-0013);
+  - **§11.2, §11.4 y el esquema:** «dos horas» en `- Entrega:` son dos horas distintas sin contar la zona; manda la primera y la otra va a `otras_entregas`, sin quitar la estimación. Valen «dom 20 sep 09:30» y «dom 20 sep 2026 10:00», y sin zona se hereda la de `Inicio:`. Solo es una entrega la fila de Hitos «Entrega» o «Entrega final…»; una nota dato sale como «(criterios.md, nota de HH:MM)», sin su texto (ajuste 5 de ADR-0013);
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -711,8 +712,9 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 **`.hackathon/pitch.md` → `jurado.pitch`** (ADR-0012, decisión 5B): las citas de todas sus etiquetas `(criterios: …)`. `null` sin `pitch.md`.
 
 **`.hackathon/equipo.md` → `ruta.equipo`, `zona`, `inicio` y `entrega`** (ADR-0013, decisión 1A; la zona también sirve a `jurado`, con cualquiera de los dos interruptores):
-- Las líneas `- Inicio:` y `- Entrega:` de «## Hackathon». Se entiende una fecha (`AAAA-MM-DD`, `D/M/AAAA` o `D de <mes> [de AAAA]`, con o sin el día de la semana delante; sin año, el del commit), una hora `HH:MM` y una zona: un nombre IANA (`Europe/Madrid`) o un desfase (`UTC+2`, `UTC+02:00`, `+02:00`). Las abreviaturas (`CEST`) no valen: son ambiguas.
-- `valor` = la hora en ISO 8601 con su desfase. Si no se puede: `null` con `motivo` = `sin_dato` (falta la línea, vacía, `—` o con `<…>`), `sin_zona`, `dos_horas` (la línea trae dos horas, como «10:00 (cierre 11:00)») o `formato`. Con «(confirmar)», `confirmar: true`, y el valor se resuelve igual. `texto` es la línea tal cual, sin `- Entrega:`.
+- Las líneas `- Inicio:` y `- Entrega:` de «## Hackathon». Se entiende una fecha (`AAAA-MM-DD`, `D/M/AAAA`, `D de <mes> [de AAAA]` o `D <mes> [AAAA]`, con el mes abreviado o entero y con o sin el día de la semana delante, como «dom 20 sep 09:30» o «dom 20 sep 2026 10:00»; sin año, el del commit), una hora `HH:MM` y una zona: un nombre IANA (`Europe/Madrid`) o un desfase (`UTC+2`, `UTC+02:00`, `+02:00`). Las abreviaturas (`CEST`) no valen: son ambiguas. **`Entrega:` sin zona hereda la de `Inicio:`** (tras congelar, 2026-10-19, M10, issue #46, ajuste 5 de ADR-0013).
+- **Dos horas** (ajuste 5): la línea trae dos horas `HH:MM` distintas, sin contar la zona (el `02:00` de `UTC+02:00` no es una hora), como «10:00 (cierre 11:00)». **Manda la primera**: es el `valor`, y la otra va a `ruta.otras_entregas` con `donde: equipo.md`, como discrepancia; no quita la estimación. La misma hora escrita dos veces es una.
+- `valor` = la hora en ISO 8601 con su desfase. Si no se puede: `null` con `motivo` = `sin_dato` (falta la línea, vacía, `—` o con `<…>`), `sin_zona` o `formato`. Con «(confirmar)», `confirmar: true`, y el valor se resuelve igual. `texto` es la línea tal cual, sin `- Entrega:`.
 - `zona` es la de `Inicio:` (o, si no tiene, la de `Entrega:`); `null` si ninguna se entiende.
 - `equipo`: `ok`, `sin fichero` o `mal formado` (sin «## Hackathon»).
 
@@ -724,8 +726,11 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
   - `H+N` (`H+2`, `H+1:30`): el inicio más N horas;
   - si no: `valor: null` y `motivo` = `vacio` (vacío o `—`), `relativo_sin_inicio` (`H+N` sin inicio), `sin_inicio` (un día sin inicio), `sin_zona`, `por_confirmar` (dice «por confirmar» o «?») o `formato`. Una tarea con `hasta.valor = null` sale «sin plazo», nunca «a tiempo».
 - **`franja`** (decisión 4A): `desde` = el `Hasta` resuelto de la fila anterior de la persona con otro `Hasta` (o, en la primera, el inicio); `hasta` = el suyo; `compartida` = las filas seguidas de la persona con ese mismo `Hasta`; `min` = (hasta − desde) / compartida en minutos, redondeado hacia arriba. Si no se puede: `valor: null` y `motivo` = `sin_plazo` (su `hasta` es `null`), `sin_inicio` (la primera fila, sin inicio) u `orden` (su `Hasta` no es posterior al `desde`). `fuente: derivado`, `declarado: true` (sale del plan).
-- **`hitos`**: cada fila de «## Hitos del equipo», con `nombre` = la columna Qué y la hora de Cuándo resuelta como un `Hasta`.
-- **`otras_entregas`** (decisión 1A): la fila de Hitos cuya Qué contiene «entrega» (sin distinguir mayúsculas), con `donde: plan.md`, y cada nota de fuerza `dato` cuyo «Afecta a» contiene «entrega» y cuyo «Qué dijo» trae una hora que se resuelve como un `Hasta`, con `donde: criterios.md`. Van todas, coincidan o no: la vista enseña las que no coinciden.
+- **`hitos`**: cada fila de «## Hitos del equipo», con `nombre` = la columna Qué y la hora de Cuándo resuelta como un `Hasta` o, si lleva fecha («dom 20 sep 09:30»), como una fecha de `equipo.md`, sin zona la de `Inicio:`.
+- **`otras_entregas`** (decisión 1A; ajuste 5): van todas, coincidan o no (la vista enseña las que no coinciden):
+  - la segunda hora de `- Entrega:`, si la línea trae dos, con `donde: equipo.md`;
+  - **las filas de Hitos que son una entrega**: aquellas cuya Qué es «Entrega» o empieza por «Entrega final» (sin distinguir mayúsculas ni espacios de más), con `donde: plan.md`. Las demás, aunque digan «entrega» («Entrega temprana»), son hitos;
+  - cada nota de fuerza `dato` cuyo «Afecta a» contiene «entrega» y cuyo «Qué dijo» trae una hora que se resuelve como un `Hasta`, con `donde: criterios.md`, `cita` = la de la nota y `texto: null`: el texto de una nota no sale aquí (constitución V).
 - **`descansos`** (decisión 9A; tras congelar, 2026-10-19, M10, issue #46, ajuste 4 de ADR-0013): un descanso por turno de «## Descansos», escrito de cualquiera de las dos formas:
   - una fila de la tabla `| Turno | Quién |` (la de los ejemplos de `/hack-plan` y de G14), con el turno en `Turno` y las personas en `Quién`;
   - una línea `- <quién>: <turno>`.
@@ -765,11 +770,10 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **Medidas y ritmo** (decisión 5A): para cada tarea hecha, no declarada, con `primera_senal`, `hecha_en` y franja: ritmo = (hecha_en − primera_senal − los descansos de su persona o de todos en medio) ÷ (`franja.min` − los minutos de esos descansos dentro de la franja ÷ `compartida`, y nunca menos de 1), en %, redondeado: los descansos se restan **también de la franja** (tras congelar, 2026-10-19, M10, issue #46, ajuste 4 de ADR-0013). Lo que le queda a una tarea abierta se mide con esa misma franja sin descansos. Por persona: `n` (las medidas), `ritmo_min` y `ritmo_max` (o `null` con `n < 3`). `base.minimo` es **3**, fijo; `base.desde`, el `hecha_en` más antiguo medido.
 - **Veredicto `sin_estimacion`**, con todos los `motivos` que apliquen, en este orden:
   - `sin_entrega`: `equipo.md` no tiene `- Entrega:`, no se puede leer (`ruta.equipo` distinto de `ok`) o esa línea no se resuelve (`motivo` `sin_dato`, `sin_zona` o `formato`);
-  - `entrega_doble`: esa línea trae dos horas (`motivo: dos_horas`);
   - `ciclo`: un ciclo en el grafo;
   - `pocos_datos`: una persona con tareas abiertas con franja y `n < 3`.
 
-  Una tarea abierta sin franja **no** quita la estimación (tras congelar, 2026-10-19, M10, issue #46, ajuste 1 de ADR-0013): va a `sin_plazo` y el resto se estima. `sin_plazo` ya no es un motivo (el esquema lo admite como transitorio hasta adaptar el código).
+  Una tarea abierta sin franja **no** quita la estimación (tras congelar, 2026-10-19, M10, issue #46, ajuste 1 de ADR-0013): va a `sin_plazo` y el resto se estima. `sin_plazo` ya no es un motivo (el esquema lo admite como transitorio hasta adaptar el código). Tampoco lo es `entrega_doble`: con dos horas en `- Entrega:`, manda la primera y la otra va a `otras_entregas` (ajuste 5).
 
   `gravedad: gris`, `estimacion: null`. Ni una discrepancia con `otras_entregas` ni «(confirmar)» quitan la estimación: con «(confirmar)», el objetivo lleva `confirmar: true` (declarado) y el resumen lo dice.
 - **Estimación** (si no hay motivos): lo que le queda a cada tarea abierta es `franja.min` × el ritmo de su dueño (`ritmo_min` para el fin temprano, `ritmo_max` para el tarde), menos el tiempo ya trabajado si está en curso (desde `primera_senal`, sin descansos), y nunca menos de 0. Una tarea de `sin_plazo` cuenta 0 min: sus sucesoras empiezan al acabar sus predecesoras abiertas (ajuste 1). Cada tarea empieza al acabar todas sus predecesoras abiertas (o ahora) y se salta los descansos de su persona y de todos; `temprano` y `tarde` son el fin más tardío de todas. `margen_min` = entrega − tarde y `margen_max` = entrega − temprano, en minutos.
@@ -787,9 +791,10 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **`viejo`**: alguna de `vista.fuentes` está vieja; `dato_mas_viejo`, el `observado_en` más antiguo de esas fuentes. `observado_en`: la hora del cálculo.
 - **`resumen`** (decisión 7B), cortado a 160 por grafemas:
   - con estimación: `ruta: estimación <a tiempo | justo | no llega> · fin <HH:MM>–<HH:MM> · entrega <día HH:MM>[ (confirmar)]`;
-  - sin ella: `ruta: sin estimación (<sin hora de entrega | dos horas de entrega | ciclo T04 → T07 → T04 | pocos datos: @ana 2 de 3, @marta 1 de 3>)`, con el primer motivo;
+  - sin ella: `ruta: sin estimación (<sin hora de entrega | ciclo T04 → T07 → T04 | pocos datos: @ana 2 de 3, @marta 1 de 3>)`, con el primer motivo;
   - detrás, con estimación y tareas en `sin_plazo`: ` · sin contar T28[, T30…] (sin plazo)` (ajuste 1);
-  - detrás, si hay `otras_entregas` que no coinciden: ` · otra entrega: <texto> (<dónde>)`; y si hay plazos pasados: ` · T05: plazo pasado <HH:MM>[ y N más]`.
+  - detrás, si hay `otras_entregas` que no coinciden, la primera: ` · otra entrega: <texto> (<dónde>)` si viene de `plan.md` o `equipo.md`, y ` · otra entrega: <día HH:MM> (criterios.md, nota de <HH:MM>)` si viene de una nota, con la hora resuelta y la de la cita de la nota: **nunca su texto** (constitución V; ajuste 5);
+  - y si hay plazos pasados: ` · T05: plazo pasado <HH:MM>[ y N más]`.
 
 ### 11.5 MCP
 Dos herramientas nuevas del servidor `os` (§5), de solo lectura, con la vista calculada como la del demonio (`proyeccion.vista` del `estado.json` local):

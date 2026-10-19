@@ -21,8 +21,7 @@ Valen la constitución II, III, IV y X (una hora estimada que se mueve con el re
   - **la estimación**, que siempre lleva la palabra «estimación», su base (cuántas tareas medidas por persona y desde cuándo), un **rango** y nunca una sola hora, la hora en que se calculó y la antigüedad de su dato más viejo.
 - **Colores:** el **rojo es solo para hechos** (un plazo que ya ha pasado). «No llega» es una previsión: **ámbar**, como «justo». «Sin estimación» es gris.
 - **Sin estimación, y lo dice**, solo cuando:
-  - `equipo.md` no tiene `- Entrega:`, no se puede leer, o esa línea no se puede resolver a una hora: «sin hora de entrega»;
-  - esa línea trae dos horas («10:00 (cierre 11:00)»): se enseñan las dos, sin elegir;
+  - `equipo.md` no tiene `- Entrega:`, no se puede leer, o esa línea no se puede resolver a una hora: «sin hora de entrega». Si trae dos horas («10:00 (cierre 11:00)»), manda la primera y la otra se enseña al lado (ajuste 5);
   - las dependencias tienen un ciclo: «ciclo T04 → T07 → T04»;
   - alguna persona con tareas abiertas tiene menos de 3 tareas medidas (decisión 7).
 - **Sin plazo no es «a tiempo».** Una tarea con `Hasta` vacío o sin resolver sale en una lista aparte, «sin plazo», con su motivo, y no cuenta como a tiempo ni como atrasada. **No quita la estimación** (ajuste 1, issue #46): el resto se estima y el resumen lo dice («sin contar T28 (sin plazo)»).
@@ -58,6 +57,7 @@ Decididos por el usuario sobre las «Decisiones que faltan» de la revisión de 
 | **1. Una tarea abierta sin plazo** | **No quita la estimación.** Sale en `sin_plazo[]` con su motivo, cuenta 0 min en el cálculo (sus sucesoras empiezan al acabar sus predecesoras) y el resto se estima. El resumen lo dice: «sin contar T28 (sin plazo)». `sin_plazo` deja de ser motivo de `sin_estimacion` | Con el contrato anterior, una sola fila «hora por confirmar» dejaba sin cifra a todo el reto (A3). Sigue sin contar como a tiempo, y se dice qué no se ha contado |
 | **3. Qué tareas ponen la entrega en riesgo** | **`ruta.riesgos[]`**: `{tarea, tipo: "estimacion", fin_tarde, dueno, en_cadena, viejo}`, cada tarea abierta que según la estimación acaba después de la entrega, esté o no en la cadena. La cadena es solo de tareas abiertas. **No** hay hora central, ni previsión por hito, ni «fiabilidad»: lo dicen el rango y la base | R-36 pide decir «qué tareas la ponen en riesgo», y los hechos solo traen lo que ya ha pasado (A6). Una hora central o una fiabilidad darían una precisión que no hay (decisión 6A); los hitos no se enlazan con tareas (decisión 3B) |
 | **4. Formato de los descansos** | Se leen de la tabla `\| Turno \| Quién \|` y de las líneas `- <@usuario \| Nombre \| Todos>: <día> HH:MM–[<día>] HH:MM`. Varias personas por turno (`descanso.personas`, una lista; `null` = «Todos»); el final puede llevar día. Se restan **de la franja** al medir el ritmo (y de la duración real, como ya decía la decisión 9A) | Los ejemplos de `/hack-plan` y G14 usan la tabla, y ningún turno casaba con el formato anterior (A5). Un descanso dentro de la franja no es tiempo planificado de trabajo: sin restarlo, una noche de sueño daría un ritmo «rápido» que no lo es (M12) |
+| **5. La hora de entrega** | «Dos horas» = dos horas distintas en la línea `- Entrega:`, sin contar la zona. **Manda la primera**; la otra va a `otras_entregas` y **no quita la estimación**. Valen «dom 20 sep 09:30» y «dom 20 sep 2026 10:00»; sin zona, se hereda la de `Inicio:`. Solo es una entrega la fila de Hitos cuya Qué es «Entrega» o empieza por «Entrega final»; las demás son hitos. Una nota `dato` sobre la entrega sale como «(criterios.md, nota de HH:MM)», nunca con su texto (V) | R1A ya decía que una discrepancia no deja sin cifra, y «10:00 (cierre 11:00)» del reto 02 es justo una (M2); un desfase `+02:00` no es una segunda hora. Los formatos reales de G14 y del reto 03 daban «sin hora de entrega» (M3). «Entrega temprana» del reto 02 salía siempre como discrepancia (M4). El texto de una nota es dato, no va al md (M5) |
 
 ## Alternativas descartadas
 - **Que un modelo estime las duraciones o el riesgo:** no es una señal (constitución II) y no se puede probar sin modelo.
@@ -65,7 +65,7 @@ Decididos por el usuario sobre las «Decisiones que faltan» de la revisión de 
 - **Replanificar sola** (mover tareas, cambiar dueños): la ruta avisa; lo decide el equipo con `/hack-plan` (constitución VI).
 - **Medir contra la congelación** (la propuesta del diseño de la 0.5.0, PR #43): la congelación es del equipo y puede moverse; la entrega es la del reto. La congelación sale como hito.
 - **Rojo para «no llega»:** el rojo dice que algo ya ha fallado; una previsión no lo ha hecho.
-- **Elegir entre dos horas de entrega** (por ejemplo, la más temprana): sería una decisión que no ha tomado el equipo.
+- **Elegir entre dos horas de entrega** (por ejemplo, la más temprana): sería una decisión que no ha tomado el equipo. Desde el ajuste 5 manda la primera que escribe el equipo, sin compararlas, y la otra se enseña al lado.
 
 ## Riesgos aceptados
 - La franja del plan no es una duración: un plan optimista da un ritmo «lento» que es del plan, no de la persona. Se dice «contra el plan».
