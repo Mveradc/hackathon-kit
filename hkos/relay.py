@@ -701,7 +701,8 @@ class Relay:
                 self.version += 1
                 self.estado = estado
                 self.texto = json.dumps(estado, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
-                self.vista = proyeccion.vista(estado, umbral_viejo_s=self.umbral_viejo_s)
+                self.vista = proyeccion.vista(estado, umbral_viejo_s=self.umbral_viejo_s,
+                                              umbral_parada_s=self.umbral_parada_s)
                 if self.web_nueva and self._pulso_github:   # M9a: el sondeo trajo un cambio que saca versión
                     self._pulso_github = False
                     self._reciente({"id": f"github-{self.version}", "tipo": "github.sondeo", "persona": None,
@@ -1026,6 +1027,16 @@ def sondeo_de(os_md, equipo_md, personas, aviso):
     return github.Sondeo(cliente, {p["persona"] for p in personas})
 
 
+def umbrales(os_md):
+    """(umbral_parada_s, umbral_viejo_s) del os.md del relay: los de su estado y los de su vista (issue #56)."""
+    umbral = proyeccion.parada_s(conf(os_md, "umbral_parada_min")) if os_md else proyeccion.PARADA_S
+    try:
+        viejo = float(conf(os_md, "umbral_viejo_s") or 300) if os_md else 300
+    except ValueError:
+        viejo = 300
+    return umbral, viejo
+
+
 def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=True):
     if not ip_permitida(ip):
         raise SystemExit(f"hk-os relay: {ip} no es 127.0.0.1, una IP privada de LAN ni una de Tailscale; "
@@ -1037,14 +1048,7 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
         sondeo = compilar.SondeoPlan(repo, personas, aviso=aviso) if es_repo else None
     else:
         sondeo = sondeo_de(os_md, equipo_md, personas, aviso) if con_github else None
-    try:
-        umbral = 60 * float(conf(os_md, "umbral_parada_min") or 20) if os_md else 1200
-    except ValueError:
-        umbral = 1200
-    try:
-        viejo = float(conf(os_md, "umbral_viejo_s") or 300) if os_md else 300
-    except ValueError:
-        viejo = 300
+    umbral, viejo = umbrales(os_md)
     nueva = web_nueva(os_md)                        # M9a: SSE `eventos` y `servicios` (api.md §0 y §3)
     jurado, ruta = vista_jurado(os_md), ruta_critica(os_md)     # M10 (api.md §11.1)
     novedades = Novedades(repo, viejo, aviso=aviso, web_nueva=nueva, vista_jurado=jurado, ruta_critica=ruta) \
