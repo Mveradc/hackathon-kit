@@ -1,0 +1,583 @@
+{
+ "nombre": "ejemplo",
+ "casos": [
+  {
+   "servido_en": "2026-09-19T09:00:00Z",
+   "persona": "ana",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-19T09:00:00Z"
+   },
+   "vista": {
+    "jurado": {
+     "observado_en": "2026-09-19T09:00:00Z",
+     "fuente": "derivado",
+     "viejo": false,
+     "fichero": "ok",
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-18T18:05:00Z",
+      "declarado": true
+     },
+     "cuenta": {
+      "notas": 3,
+      "corregidas": 0,
+      "cubiertas": 1,
+      "sin_cubrir": 2,
+      "sin_tarea": 1,
+      "ambiguas": 0,
+      "planificadas": 0,
+      "en_curso": 1,
+      "en_pitch": 0,
+      "sin_cubrir_por_fuerza": [
+       {
+        "texto": "obligatorio",
+        "n": 1
+       },
+       {
+        "texto": "nos gustaría ver",
+        "n": 1
+       }
+      ]
+     },
+     "notas": [
+      {
+       "nota": {
+        "clave": "3f9a1c07b2e4",
+        "cita": "2026-09-19 10:40",
+        "hora": "2026-09-19T10:40:00+02:00",
+        "quien": "Marta (Embat)",
+        "papel": "jurado",
+        "donde": "mesa 4",
+        "dijo": "Queremos ver la validación con datos reales",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "plan, pitch",
+        "anotado_por": "@ana",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T08:52:10Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "sin_tarea",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T08:52:10Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "a1b2c3d4e5f6",
+        "cita": "2026-09-18 21:15",
+        "hora": "2026-09-18T21:15:00+02:00",
+        "quien": "Luis (mentor)",
+        "papel": "mentor",
+        "donde": null,
+        "dijo": "estaría bien ver el informe en PDF",
+        "literal": false,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "nos gustaría ver"
+        },
+        "afecta_a": "plan",
+        "anotado_por": "@luis",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T08:52:10Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "en_curso",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T08:40:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T12",
+          "titulo": "Informe PDF",
+          "dueno": "marta",
+          "estado": "en_curso",
+          "etiqueta": "en curso",
+          "fuente": "hook",
+          "observado_en": "2026-09-19T08:40:00Z",
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 21:15",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T07:30:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "0c9d8e7f6a5b",
+        "cita": "2026-09-18 20:30",
+        "hora": "2026-09-18T20:30:00+02:00",
+        "quien": null,
+        "papel": "organización",
+        "donde": "charla de apertura",
+        "dijo": "La API devuelve JSON con el esquema publicado",
+        "literal": true,
+        "fuerza": {
+         "tipo": "dato",
+         "texto": "dato"
+        },
+        "afecta_a": "contratos",
+        "anotado_por": "@ana",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T08:52:10Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "cubierta",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T01:10:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T03",
+          "titulo": "Esquema de la API",
+          "dueno": "ana",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-19T01:10:00Z",
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:30",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T07:30:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T03",
+         "valor": "9e1f2a3b4c5d",
+         "fuente": "git",
+         "observado_en": "2026-09-19T01:10:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": null
+      }
+     ],
+     "sin_nota": [],
+     "resumen": "jurado: 2 sin cubrir · 1 «obligatorio» (criterios.md) · 1 cubierta de 3"
+    },
+    "ruta": {
+     "observado_en": "2026-09-19T09:00:00Z",
+     "fuente": "derivado",
+     "viejo": false,
+     "dato_mas_viejo": "2026-09-19T08:58:30Z",
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-18T18:05:00Z",
+      "declarado": true
+     },
+     "objetivo": {
+      "valor": "2026-09-20T10:00:00+02:00",
+      "texto": "2026-09-20 10:00, Europe/Madrid",
+      "confirmar": false,
+      "motivo": null,
+      "donde": "equipo.md",
+      "fuente": "git",
+      "observado_en": "2026-09-18T18:05:00Z",
+      "declarado": true
+     },
+     "otras_entregas": [
+      {
+       "nombre": "Entrega final",
+       "valor": "2026-09-20T11:00:00+02:00",
+       "texto": "dom 11:00",
+       "motivo": null,
+       "donde": "plan.md",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:30:00Z",
+       "declarado": true
+      }
+     ],
+     "veredicto": {
+      "valor": "sin_estimacion",
+      "motivos": [
+       "pocos_datos"
+      ],
+      "gravedad": "gris",
+      "fuente": "derivado",
+      "observado_en": "2026-09-19T09:00:00Z"
+     },
+     "estimacion": null,
+     "base": {
+      "minimo": 3,
+      "desde": "2026-09-18T21:40:00Z",
+      "personas": [
+       {
+        "persona": "ana",
+        "n": 2,
+        "ritmo_min": null,
+        "ritmo_max": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T09:00:00Z"
+       },
+       {
+        "persona": "luis",
+        "n": 3,
+        "ritmo_min": 110,
+        "ritmo_max": 160,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T09:00:00Z"
+       },
+       {
+        "persona": "marta",
+        "n": 1,
+        "ritmo_min": null,
+        "ritmo_max": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T09:00:00Z"
+       }
+      ]
+     },
+     "hechos": [
+      {
+       "tipo": "plazo_pasado",
+       "gravedad": "rojo",
+       "tarea": "T05",
+       "persona": "ana",
+       "plazo": "2026-09-19T02:30:00+02:00",
+       "arrastra": [
+        "T06",
+        "T16"
+       ],
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T09:00:00Z",
+       "viejo": false
+      },
+      {
+       "tipo": "sin_senales",
+       "gravedad": "gris",
+       "persona": "luis",
+       "desde": "2026-09-19T08:35:00Z",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T09:00:00Z",
+       "viejo": false
+      }
+     ],
+     "cadena": [
+      {
+       "tarjeta": {
+        "id": "T05",
+        "titulo": "Motor de detección",
+        "dueno": "ana",
+        "estado": "en_curso",
+        "etiqueta": "en curso",
+        "fuente": "hook",
+        "observado_en": "2026-09-19T08:50:00Z",
+        "viejo": false
+       },
+       "por": "inicio",
+       "hasta": {
+        "valor": "2026-09-19T02:30:00+02:00",
+        "texto": "sáb 02:30",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:30:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-18T23:00:00+02:00",
+         "hasta": "2026-09-19T02:30:00+02:00",
+         "min": 210,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:30:00Z",
+        "declarado": true
+       },
+       "fin_temprano": null,
+       "fin_tarde": null
+      },
+      {
+       "tarjeta": {
+        "id": "T06",
+        "titulo": "Ajuste con datos de Embat",
+        "dueno": "ana",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "github",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T13:00:00+02:00",
+        "texto": "sáb 13:00",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:30:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T07:00:00+02:00",
+         "hasta": "2026-09-19T13:00:00+02:00",
+         "min": 360,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:30:00Z",
+        "declarado": true
+       },
+       "fin_temprano": null,
+       "fin_tarde": null
+      }
+     ],
+     "riesgos": [],
+     "sin_plazo": [
+      {
+       "tarea": "T21",
+       "motivo": "por_confirmar",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:30:00Z"
+      }
+     ],
+     "fuera_de_entrega": [
+      {
+       "tarea": "T09",
+       "motivo": "condicional",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:30:00Z"
+      }
+     ],
+     "hitos": [
+      {
+       "hito": {
+        "nombre": "Congelación",
+        "valor": "2026-09-19T22:00:00+02:00",
+        "texto": "sáb 22:00",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:30:00Z",
+        "declarado": true
+       },
+       "pasado": false
+      }
+     ],
+     "descansos": [
+      {
+       "personas": null,
+       "desde": "2026-09-19T03:00:00+02:00",
+       "hasta": "2026-09-19T07:00:00+02:00",
+       "texto": "- Todos: sáb 03:00–07:00",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:30:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "luis",
+        "marta"
+       ],
+       "desde": "2026-09-19T23:00:00+02:00",
+       "hasta": "2026-09-20T07:30:00+02:00",
+       "texto": "| sáb 23:00–dom 07:30 | Luis y Marta |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:30:00Z",
+       "declarado": true
+      }
+     ],
+     "resumen": "ruta: sin estimación · T05: plazo pasado 02:30 · pocos datos: 2 personas · otra entrega: «dom 11:00» (plan.md)"
+    }
+   },
+   "antiguedades": {
+    "2026-09-18T18:05:00Z": 53700,
+    "2026-09-19T01:10:00Z": 28200,
+    "2026-09-19T07:30:00Z": 5400,
+    "2026-09-19T07:31:00Z": 5340,
+    "2026-09-19T08:40:00Z": 1200,
+    "2026-09-19T08:50:00Z": 600,
+    "2026-09-19T08:52:10Z": 470,
+    "2026-09-19T08:58:30Z": 90,
+    "2026-09-19T09:00:00Z": 0
+   },
+   "horas": {
+    "jurado": {
+     "2026-09-18T18:05:00Z": {
+      "hm": "20:05",
+      "dia": "vie 20:05",
+      "fecha": "vie 18 · 20:05"
+     },
+     "2026-09-18T20:30:00+02:00": {
+      "hm": "20:30",
+      "dia": "vie 20:30",
+      "fecha": "vie 18 · 20:30"
+     },
+     "2026-09-18T21:15:00+02:00": {
+      "hm": "21:15",
+      "dia": "vie 21:15",
+      "fecha": "vie 18 · 21:15"
+     },
+     "2026-09-19T01:10:00Z": {
+      "hm": "03:10",
+      "dia": "sáb 03:10",
+      "fecha": "sáb 19 · 03:10"
+     },
+     "2026-09-19T07:30:00Z": {
+      "hm": "09:30",
+      "dia": "sáb 09:30",
+      "fecha": "sáb 19 · 09:30"
+     },
+     "2026-09-19T08:40:00Z": {
+      "hm": "10:40",
+      "dia": "sáb 10:40",
+      "fecha": "sáb 19 · 10:40"
+     },
+     "2026-09-19T08:52:10Z": {
+      "hm": "10:52",
+      "dia": "sáb 10:52",
+      "fecha": "sáb 19 · 10:52"
+     },
+     "2026-09-19T09:00:00Z": {
+      "hm": "11:00",
+      "dia": "sáb 11:00",
+      "fecha": "sáb 19 · 11:00"
+     },
+     "2026-09-19T10:40:00+02:00": {
+      "hm": "10:40",
+      "dia": "sáb 10:40",
+      "fecha": "sáb 19 · 10:40"
+     }
+    },
+    "ruta": {
+     "2026-09-18T18:05:00Z": {
+      "hm": "20:05",
+      "dia": "vie 20:05",
+      "fecha": "vie 18 · 20:05"
+     },
+     "2026-09-18T21:40:00Z": {
+      "hm": "23:40",
+      "dia": "vie 23:40",
+      "fecha": "vie 18 · 23:40"
+     },
+     "2026-09-18T23:00:00+02:00": {
+      "hm": "23:00",
+      "dia": "vie 23:00",
+      "fecha": "vie 18 · 23:00"
+     },
+     "2026-09-19T02:30:00+02:00": {
+      "hm": "02:30",
+      "dia": "sáb 02:30",
+      "fecha": "sáb 19 · 02:30"
+     },
+     "2026-09-19T03:00:00+02:00": {
+      "hm": "03:00",
+      "dia": "sáb 03:00",
+      "fecha": "sáb 19 · 03:00"
+     },
+     "2026-09-19T07:00:00+02:00": {
+      "hm": "07:00",
+      "dia": "sáb 07:00",
+      "fecha": "sáb 19 · 07:00"
+     },
+     "2026-09-19T07:30:00Z": {
+      "hm": "09:30",
+      "dia": "sáb 09:30",
+      "fecha": "sáb 19 · 09:30"
+     },
+     "2026-09-19T07:31:00Z": {
+      "hm": "09:31",
+      "dia": "sáb 09:31",
+      "fecha": "sáb 19 · 09:31"
+     },
+     "2026-09-19T08:35:00Z": {
+      "hm": "10:35",
+      "dia": "sáb 10:35",
+      "fecha": "sáb 19 · 10:35"
+     },
+     "2026-09-19T08:50:00Z": {
+      "hm": "10:50",
+      "dia": "sáb 10:50",
+      "fecha": "sáb 19 · 10:50"
+     },
+     "2026-09-19T08:58:30Z": {
+      "hm": "10:58",
+      "dia": "sáb 10:58",
+      "fecha": "sáb 19 · 10:58"
+     },
+     "2026-09-19T09:00:00Z": {
+      "hm": "11:00",
+      "dia": "sáb 11:00",
+      "fecha": "sáb 19 · 11:00"
+     },
+     "2026-09-19T13:00:00+02:00": {
+      "hm": "13:00",
+      "dia": "sáb 13:00",
+      "fecha": "sáb 19 · 13:00"
+     },
+     "2026-09-19T22:00:00+02:00": {
+      "hm": "22:00",
+      "dia": "sáb 22:00",
+      "fecha": "sáb 19 · 22:00"
+     },
+     "2026-09-19T23:00:00+02:00": {
+      "hm": "23:00",
+      "dia": "sáb 23:00",
+      "fecha": "sáb 19 · 23:00"
+     },
+     "2026-09-20T07:30:00+02:00": {
+      "hm": "07:30",
+      "dia": "dom 07:30",
+      "fecha": "dom 20 · 07:30"
+     },
+     "2026-09-20T10:00:00+02:00": {
+      "hm": "10:00",
+      "dia": "dom 10:00",
+      "fecha": "dom 20 · 10:00"
+     },
+     "2026-09-20T11:00:00+02:00": {
+      "hm": "11:00",
+      "dia": "dom 11:00",
+      "fecha": "dom 20 · 11:00"
+     }
+    }
+   }
+  }
+ ]
+}

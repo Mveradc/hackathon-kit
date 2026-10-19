@@ -1,0 +1,2556 @@
+{
+ "nombre": "G13",
+ "casos": [
+  {
+   "servido_en": "2026-09-19T10:00:00Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-19T10:00:00Z"
+   },
+   "vista": {
+    "jurado": {
+     "observado_en": "2026-09-19T10:00:00Z",
+     "fuente": "derivado",
+     "viejo": false,
+     "fichero": "ok",
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-18T17:00:00Z",
+      "declarado": true
+     },
+     "cuenta": {
+      "notas": 6,
+      "corregidas": 0,
+      "cubiertas": 2,
+      "sin_cubrir": 4,
+      "sin_tarea": 0,
+      "ambiguas": 0,
+      "planificadas": 2,
+      "en_curso": 1,
+      "en_pitch": 1,
+      "sin_cubrir_por_fuerza": [
+       {
+        "texto": "dato",
+        "n": 1
+       },
+       {
+        "texto": "obligatorio",
+        "n": 2
+       },
+       {
+        "texto": "se valora",
+        "n": 1
+       }
+      ]
+     },
+     "notas": [
+      {
+       "nota": {
+        "clave": "a4dc30bd0ecd",
+        "cita": "2026-09-18 19:30",
+        "hora": "2026-09-18T19:30:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "charla de apertura",
+        "dijo": "El pitch dura cinco minutos y después hay tres de preguntas",
+        "literal": true,
+        "fuerza": {
+         "tipo": "dato",
+         "texto": "dato"
+        },
+        "afecta_a": "pitch",
+        "anotado_por": "Persona C",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T09:21:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "en_pitch",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [],
+       "evidencias": [],
+       "pitch": {
+        "donde": "pitch.md",
+        "fuente": "git",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "declarado": true
+       }
+      },
+      {
+       "nota": {
+        "clave": "8b12b3d7048c",
+        "cita": "2026-09-18 20:40",
+        "hora": "2026-09-18T20:40:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "Discord, canal #anuncios",
+        "dijo": "Las dudas sobre los datos, solo por el canal #embat-dudas",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "plan",
+        "anotado_por": "Persona C",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T09:21:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "planificada",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T20",
+          "titulo": "Preguntar a Embat las ambigüedades de abajo y anotar respuestas en `pitch/preguntas.md`",
+          "dueno": "persona-c",
+          "estado": "lista",
+          "etiqueta": "lista",
+          "fuente": "derivado",
+          "observado_en": "2026-09-18T17:00:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Preguntas",
+          "issue": 119,
+          "declarado": "cerrada",
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:40",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "dffc5b4b1706",
+        "cita": "2026-09-19 11:20",
+        "hora": "2026-09-19T11:20:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "Discord",
+        "dijo": "La entrega es por el formulario, antes del domingo a las 10:00, con una URL pública que funcione",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "— (anotada desde la web; la revisa /hack-check)",
+        "anotado_por": "@persona-c",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T09:21:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "planificada",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T09:50:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T09",
+          "titulo": "Publicar motor y web en una URL pública (plataforma por elegir)",
+          "dueno": "persona-a",
+          "estado": "pendiente",
+          "etiqueta": "pendiente",
+          "fuente": "github",
+          "observado_en": "2026-09-18T17:00:00Z",
+          "depende_de": [
+           "T17"
+          ],
+          "bloquea_a": [],
+          "espera": [
+           {
+            "id": "T17",
+            "dueno": "persona-b",
+            "estado": "lista"
+           }
+          ],
+          "bloque": "Despliegue",
+          "issue": 108,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 11:20",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        },
+        {
+         "tarjeta": {
+          "id": "T23",
+          "titulo": "Ajustar `.claude/skills/entrega/SKILL.md` a la forma de entrega",
+          "dueno": "persona-c",
+          "estado": "reclamada",
+          "etiqueta": "reclamada",
+          "fuente": "mcp",
+          "observado_en": "2026-09-19T09:50:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Supuestos",
+          "issue": 122,
+          "estado_declarado": true,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 11:20",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "06ac797864ff",
+        "cita": "2026-09-18 20:15",
+        "hora": "2026-09-18T20:15:00+02:00",
+        "quien": "Jorge",
+        "papel": "mentor de Embat",
+        "donde": "mesa del equipo",
+        "dijo": "se valora que cada acción cite la cifra de la empresa que la justifica",
+        "literal": false,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "se valora"
+        },
+        "afecta_a": "plan, reglas",
+        "anotado_por": "Persona A",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T09:21:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "en_curso",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T10:00:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T08",
+          "titulo": "2–3 reglas sobre los datos de la empresa que citan su cifra",
+          "dueno": "persona-a",
+          "estado": "en_curso",
+          "etiqueta": "en curso",
+          "fuente": "hook",
+          "observado_en": "2026-09-19T10:00:00Z",
+          "depende_de": [],
+          "bloquea_a": [
+           "T16"
+          ],
+          "espera": [],
+          "bloque": "Acciones",
+          "issue": 107,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Jorge",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        },
+        {
+         "tarjeta": {
+          "id": "T13",
+          "titulo": "Lista de 0–3 acciones con su cifra",
+          "dueno": "persona-b",
+          "estado": "lista",
+          "etiqueta": "lista",
+          "fuente": "derivado",
+          "observado_en": "2026-09-18T17:00:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Ficha",
+          "issue": 112,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Jorge",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "5fc3b6799520",
+        "cita": "2026-09-18 20:15",
+        "hora": "2026-09-18T20:15:00+02:00",
+        "quien": "Lucía",
+        "papel": "jurado",
+        "donde": "ronda por las mesas",
+        "dijo": "Nos gustaría ver la curva de los 24 meses con su tendencia",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "nos gustaría ver"
+        },
+        "afecta_a": "— (anotada desde la web; la revisa /hack-check)",
+        "anotado_por": "@persona-b",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T09:21:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "cubierta",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T21:20:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T11",
+          "titulo": "Score, curva de 24 meses y flecha de tendencia en `web/src/`, con el JSON de ejemplo",
+          "dueno": "persona-b",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-18T21:20:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Ficha",
+          "issue": 110,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Lucía",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T11",
+         "valor": "111c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-18T21:20:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": {
+        "donde": "pitch.md",
+        "fuente": "git",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "declarado": true
+       }
+      },
+      {
+       "nota": {
+        "clave": "4a7a5d81e724",
+        "cita": "2026-09-19 10:40",
+        "hora": "2026-09-19T10:40:00+02:00",
+        "quien": "Jorge",
+        "papel": "mentor de Embat",
+        "donde": "sesión formativa",
+        "dijo": "Un mes malo no puede hundir el score: eso es obligatorio",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "plan, contratos",
+        "anotado_por": "Persona A",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T09:21:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "cubierta",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T09:10:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T06",
+          "titulo": "Score 0–100 suavizado con `tendencia` en `motor/src/motor/score.py`",
+          "dueno": "persona-a",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:10:00Z",
+          "depende_de": [],
+          "bloquea_a": [
+           "T16",
+           "T24"
+          ],
+          "espera": [],
+          "bloque": "Score",
+          "issue": 105,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 10:40",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T06",
+         "valor": "061c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-19T09:10:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": null
+      }
+     ],
+     "sin_nota": [],
+     "resumen": "jurado: 4 sin cubrir · 1 «dato» (criterios.md) · 1 en el pitch · 2 cubiertas de 6"
+    }
+   },
+   "antiguedades": {
+    "2026-09-18T17:00:00Z": 61200,
+    "2026-09-18T19:31:00Z": 52140,
+    "2026-09-18T21:20:00Z": 45600,
+    "2026-09-19T09:10:00Z": 3000,
+    "2026-09-19T09:21:00Z": 2340,
+    "2026-09-19T09:41:00Z": 1140,
+    "2026-09-19T09:50:00Z": 600,
+    "2026-09-19T10:00:00Z": 0
+   },
+   "horas": {
+    "jurado": {
+     "2026-09-18T17:00:00Z": {
+      "hm": "19:00",
+      "dia": "vie 19:00",
+      "fecha": "vie 18 · 19:00"
+     },
+     "2026-09-18T19:30:00+02:00": {
+      "hm": "19:30",
+      "dia": "vie 19:30",
+      "fecha": "vie 18 · 19:30"
+     },
+     "2026-09-18T19:31:00Z": {
+      "hm": "21:31",
+      "dia": "vie 21:31",
+      "fecha": "vie 18 · 21:31"
+     },
+     "2026-09-18T20:15:00+02:00": {
+      "hm": "20:15",
+      "dia": "vie 20:15",
+      "fecha": "vie 18 · 20:15"
+     },
+     "2026-09-18T20:40:00+02:00": {
+      "hm": "20:40",
+      "dia": "vie 20:40",
+      "fecha": "vie 18 · 20:40"
+     },
+     "2026-09-18T21:20:00Z": {
+      "hm": "23:20",
+      "dia": "vie 23:20",
+      "fecha": "vie 18 · 23:20"
+     },
+     "2026-09-19T09:10:00Z": {
+      "hm": "11:10",
+      "dia": "sáb 11:10",
+      "fecha": "sáb 19 · 11:10"
+     },
+     "2026-09-19T09:21:00Z": {
+      "hm": "11:21",
+      "dia": "sáb 11:21",
+      "fecha": "sáb 19 · 11:21"
+     },
+     "2026-09-19T09:41:00Z": {
+      "hm": "11:41",
+      "dia": "sáb 11:41",
+      "fecha": "sáb 19 · 11:41"
+     },
+     "2026-09-19T09:50:00Z": {
+      "hm": "11:50",
+      "dia": "sáb 11:50",
+      "fecha": "sáb 19 · 11:50"
+     },
+     "2026-09-19T10:00:00Z": {
+      "hm": "12:00",
+      "dia": "sáb 12:00",
+      "fecha": "sáb 19 · 12:00"
+     },
+     "2026-09-19T10:40:00+02:00": {
+      "hm": "10:40",
+      "dia": "sáb 10:40",
+      "fecha": "sáb 19 · 10:40"
+     },
+     "2026-09-19T11:20:00+02:00": {
+      "hm": "11:20",
+      "dia": "sáb 11:20",
+      "fecha": "sáb 19 · 11:20"
+     }
+    }
+   },
+   "momento": "M1 · sáb 12:00"
+  },
+  {
+   "servido_en": "2026-09-19T12:30:00Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-19T12:30:00Z"
+   },
+   "vista": {
+    "jurado": {
+     "observado_en": "2026-09-19T12:30:00Z",
+     "fuente": "derivado",
+     "viejo": false,
+     "fichero": "ok",
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-18T17:00:00Z",
+      "declarado": true
+     },
+     "cuenta": {
+      "notas": 8,
+      "corregidas": 1,
+      "cubiertas": 1,
+      "sin_cubrir": 6,
+      "sin_tarea": 2,
+      "ambiguas": 0,
+      "planificadas": 2,
+      "en_curso": 1,
+      "en_pitch": 1,
+      "sin_cubrir_por_fuerza": [
+       {
+        "texto": "dato",
+        "n": 1
+       },
+       {
+        "texto": "obligatorio",
+        "n": 2
+       },
+       {
+        "texto": "se valora",
+        "n": 2
+       },
+       {
+        "texto": "comentario suelto",
+        "n": 1
+       }
+      ]
+     },
+     "notas": [
+      {
+       "nota": {
+        "clave": "a4dc30bd0ecd",
+        "cita": "2026-09-18 19:30",
+        "hora": "2026-09-18T19:30:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "charla de apertura",
+        "dijo": "El pitch dura cinco minutos y después hay tres de preguntas",
+        "literal": true,
+        "fuerza": {
+         "tipo": "dato",
+         "texto": "dato"
+        },
+        "afecta_a": "pitch",
+        "anotado_por": "Persona C",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "en_pitch",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [],
+       "evidencias": [],
+       "pitch": {
+        "donde": "pitch.md",
+        "fuente": "git",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "declarado": true
+       }
+      },
+      {
+       "nota": {
+        "clave": "8b12b3d7048c",
+        "cita": "2026-09-18 20:40",
+        "hora": "2026-09-18T20:40:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "Discord, canal #anuncios",
+        "dijo": "Las dudas sobre los datos, solo por el canal #embat-dudas",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "plan",
+        "anotado_por": "Persona C",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "planificada",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T20",
+          "titulo": "Preguntar a Embat las ambigüedades de abajo y anotar respuestas en `pitch/preguntas.md`",
+          "dueno": "persona-c",
+          "estado": "lista",
+          "etiqueta": "lista",
+          "fuente": "derivado",
+          "observado_en": "2026-09-18T17:00:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Preguntas",
+          "issue": 119,
+          "declarado": "cerrada",
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:40",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "dffc5b4b1706",
+        "cita": "2026-09-19 11:20",
+        "hora": "2026-09-19T11:20:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "Discord",
+        "dijo": "La entrega es por el formulario, antes del domingo a las 10:00, con una URL pública que funcione",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "— (anotada desde la web; la revisa /hack-check)",
+        "anotado_por": "@persona-c",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "planificada",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T09:50:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T09",
+          "titulo": "Publicar motor y web en una URL pública (plataforma por elegir)",
+          "dueno": "persona-a",
+          "estado": "pendiente",
+          "etiqueta": "pendiente",
+          "fuente": "github",
+          "observado_en": "2026-09-18T17:00:00Z",
+          "depende_de": [
+           "T17"
+          ],
+          "bloquea_a": [],
+          "espera": [
+           {
+            "id": "T17",
+            "dueno": "persona-b",
+            "estado": "lista"
+           }
+          ],
+          "bloque": "Despliegue",
+          "issue": 108,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 11:20",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        },
+        {
+         "tarjeta": {
+          "id": "T23",
+          "titulo": "Ajustar `.claude/skills/entrega/SKILL.md` a la forma de entrega",
+          "dueno": "persona-c",
+          "estado": "reclamada",
+          "etiqueta": "reclamada",
+          "fuente": "mcp",
+          "observado_en": "2026-09-19T09:50:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Supuestos",
+          "issue": 122,
+          "estado_declarado": true,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 11:20",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "06ac797864ff",
+        "cita": "2026-09-18 20:15",
+        "hora": "2026-09-18T20:15:00+02:00",
+        "quien": "Jorge",
+        "papel": "mentor de Embat",
+        "donde": "mesa del equipo",
+        "dijo": "se valora que cada acción cite la cifra de la empresa que la justifica",
+        "literal": false,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "se valora"
+        },
+        "afecta_a": "plan, reglas",
+        "anotado_por": "Persona A",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "en_curso",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T12:20:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T08",
+          "titulo": "2–3 reglas sobre los datos de la empresa que citan su cifra",
+          "dueno": "persona-a",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-19T10:12:00Z",
+          "depende_de": [],
+          "bloquea_a": [
+           "T16"
+          ],
+          "espera": [],
+          "bloque": "Acciones",
+          "issue": 107,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Jorge",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        },
+        {
+         "tarjeta": {
+          "id": "T13",
+          "titulo": "Lista de 0–3 acciones con su cifra",
+          "dueno": "persona-b",
+          "estado": "en_curso",
+          "etiqueta": "en curso",
+          "fuente": "git",
+          "observado_en": "2026-09-19T12:20:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Ficha",
+          "issue": 112,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Jorge",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T08",
+         "valor": "081c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-19T10:12:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "0483fc13aa16",
+        "cita": "2026-09-19 12:05",
+        "hora": "2026-09-19T12:05:00+02:00",
+        "quien": "Jorge",
+        "papel": "mentor de Embat",
+        "donde": "mesa del equipo",
+        "dijo": "corrige la nota del 2026-09-19 10:40: no es obligatorio, se valora; basta con que la tendencia no cambie por un solo mes",
+        "literal": false,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "se valora"
+        },
+        "afecta_a": "plan",
+        "anotado_por": "Persona A",
+        "corrige": "2026-09-19 10:40",
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "sin_tarea",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "7bb352ce052d",
+        "cita": "2026-09-19 13:30",
+        "hora": "2026-09-19T13:30:00+02:00",
+        "quien": "Lucía",
+        "papel": "jurado",
+        "donde": "ronda por las mesas",
+        "dijo": "Haced que la demo funcione sin internet y olvidaos del despliegue",
+        "literal": true,
+        "fuerza": {
+         "tipo": "comentario",
+         "texto": "comentario suelto"
+        },
+        "afecta_a": "— (anotada desde la web; la revisa /hack-check)",
+        "anotado_por": "@persona-b",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "sin_tarea",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "5fc3b6799520",
+        "cita": "2026-09-18 20:15",
+        "hora": "2026-09-18T20:15:00+02:00",
+        "quien": "Lucía",
+        "papel": "jurado",
+        "donde": "ronda por las mesas",
+        "dijo": "Nos gustaría ver la curva de los 24 meses con su tendencia",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "nos gustaría ver"
+        },
+        "afecta_a": "— (anotada desde la web; la revisa /hack-check)",
+        "anotado_por": "@persona-b",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "cubierta",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T12:15:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": "2026-09-19T12:15:00Z",
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T11",
+          "titulo": "Score, curva de 24 meses y flecha de tendencia en `web/src/`, con el JSON de ejemplo",
+          "dueno": "persona-b",
+          "estado": "en_curso",
+          "etiqueta": "en curso",
+          "fuente": "git",
+          "observado_en": "2026-09-19T12:15:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Ficha",
+          "issue": 110,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Lucía",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T11",
+         "valor": "111c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-18T21:20:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": {
+        "donde": "pitch.md",
+        "fuente": "git",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "declarado": true
+       }
+      },
+      {
+       "nota": {
+        "clave": "4a7a5d81e724",
+        "cita": "2026-09-19 10:40",
+        "hora": "2026-09-19T10:40:00+02:00",
+        "quien": "Jorge",
+        "papel": "mentor de Embat",
+        "donde": "sesión formativa",
+        "dijo": "Un mes malo no puede hundir el score: eso es obligatorio",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "plan, contratos",
+        "anotado_por": "Persona A",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "cubierta",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T09:10:00Z",
+        "viejo": false
+       },
+       "corregida_por": {
+        "valor": "0483fc13aa16",
+        "fuente": "declarado",
+        "observado_en": "2026-09-19T11:31:00Z"
+       },
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T06",
+          "titulo": "Score 0–100 suavizado con `tendencia` en `motor/src/motor/score.py`",
+          "dueno": "persona-a",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:10:00Z",
+          "depende_de": [],
+          "bloquea_a": [
+           "T16",
+           "T24"
+          ],
+          "espera": [],
+          "bloque": "Score",
+          "issue": 105,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 10:40",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T06",
+         "valor": "061c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-19T09:10:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": null
+      }
+     ],
+     "sin_nota": [],
+     "resumen": "jurado: 6 sin cubrir · 1 «dato» (criterios.md) · 1 en el pitch · 1 cubierta de 8"
+    }
+   },
+   "antiguedades": {
+    "2026-09-18T17:00:00Z": 70200,
+    "2026-09-18T19:31:00Z": 61140,
+    "2026-09-18T21:20:00Z": 54600,
+    "2026-09-19T09:10:00Z": 12000,
+    "2026-09-19T09:41:00Z": 10140,
+    "2026-09-19T09:50:00Z": 9600,
+    "2026-09-19T10:12:00Z": 8280,
+    "2026-09-19T11:31:00Z": 3540,
+    "2026-09-19T12:15:00Z": 900,
+    "2026-09-19T12:20:00Z": 600,
+    "2026-09-19T12:30:00Z": 0
+   },
+   "horas": {
+    "jurado": {
+     "2026-09-18T17:00:00Z": {
+      "hm": "19:00",
+      "dia": "vie 19:00",
+      "fecha": "vie 18 · 19:00"
+     },
+     "2026-09-18T19:30:00+02:00": {
+      "hm": "19:30",
+      "dia": "vie 19:30",
+      "fecha": "vie 18 · 19:30"
+     },
+     "2026-09-18T19:31:00Z": {
+      "hm": "21:31",
+      "dia": "vie 21:31",
+      "fecha": "vie 18 · 21:31"
+     },
+     "2026-09-18T20:15:00+02:00": {
+      "hm": "20:15",
+      "dia": "vie 20:15",
+      "fecha": "vie 18 · 20:15"
+     },
+     "2026-09-18T20:40:00+02:00": {
+      "hm": "20:40",
+      "dia": "vie 20:40",
+      "fecha": "vie 18 · 20:40"
+     },
+     "2026-09-18T21:20:00Z": {
+      "hm": "23:20",
+      "dia": "vie 23:20",
+      "fecha": "vie 18 · 23:20"
+     },
+     "2026-09-19T09:10:00Z": {
+      "hm": "11:10",
+      "dia": "sáb 11:10",
+      "fecha": "sáb 19 · 11:10"
+     },
+     "2026-09-19T09:41:00Z": {
+      "hm": "11:41",
+      "dia": "sáb 11:41",
+      "fecha": "sáb 19 · 11:41"
+     },
+     "2026-09-19T09:50:00Z": {
+      "hm": "11:50",
+      "dia": "sáb 11:50",
+      "fecha": "sáb 19 · 11:50"
+     },
+     "2026-09-19T10:12:00Z": {
+      "hm": "12:12",
+      "dia": "sáb 12:12",
+      "fecha": "sáb 19 · 12:12"
+     },
+     "2026-09-19T10:40:00+02:00": {
+      "hm": "10:40",
+      "dia": "sáb 10:40",
+      "fecha": "sáb 19 · 10:40"
+     },
+     "2026-09-19T11:20:00+02:00": {
+      "hm": "11:20",
+      "dia": "sáb 11:20",
+      "fecha": "sáb 19 · 11:20"
+     },
+     "2026-09-19T11:31:00Z": {
+      "hm": "13:31",
+      "dia": "sáb 13:31",
+      "fecha": "sáb 19 · 13:31"
+     },
+     "2026-09-19T12:05:00+02:00": {
+      "hm": "12:05",
+      "dia": "sáb 12:05",
+      "fecha": "sáb 19 · 12:05"
+     },
+     "2026-09-19T12:15:00Z": {
+      "hm": "14:15",
+      "dia": "sáb 14:15",
+      "fecha": "sáb 19 · 14:15"
+     },
+     "2026-09-19T12:20:00Z": {
+      "hm": "14:20",
+      "dia": "sáb 14:20",
+      "fecha": "sáb 19 · 14:20"
+     },
+     "2026-09-19T12:30:00Z": {
+      "hm": "14:30",
+      "dia": "sáb 14:30",
+      "fecha": "sáb 19 · 14:30"
+     },
+     "2026-09-19T13:30:00+02:00": {
+      "hm": "13:30",
+      "dia": "sáb 13:30",
+      "fecha": "sáb 19 · 13:30"
+     }
+    }
+   },
+   "momento": "M2 · sáb 14:30"
+  },
+  {
+   "servido_en": "2026-09-19T18:30:00Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-19T18:30:00Z"
+   },
+   "vista": {
+    "jurado": {
+     "observado_en": "2026-09-19T18:30:00Z",
+     "fuente": "derivado",
+     "viejo": false,
+     "fichero": "ok",
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-18T17:00:00Z",
+      "declarado": true
+     },
+     "cuenta": {
+      "notas": 8,
+      "corregidas": 1,
+      "cubiertas": 2,
+      "sin_cubrir": 5,
+      "sin_tarea": 2,
+      "ambiguas": 0,
+      "planificadas": 1,
+      "en_curso": 1,
+      "en_pitch": 1,
+      "sin_cubrir_por_fuerza": [
+       {
+        "texto": "dato",
+        "n": 1
+       },
+       {
+        "texto": "obligatorio",
+        "n": 2
+       },
+       {
+        "texto": "se valora",
+        "n": 1
+       },
+       {
+        "texto": "comentario suelto",
+        "n": 1
+       }
+      ]
+     },
+     "notas": [
+      {
+       "nota": {
+        "clave": "a4dc30bd0ecd",
+        "cita": "2026-09-18 19:30",
+        "hora": "2026-09-18T19:30:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "charla de apertura",
+        "dijo": "El pitch dura cinco minutos y después hay tres de preguntas",
+        "literal": true,
+        "fuerza": {
+         "tipo": "dato",
+         "texto": "dato"
+        },
+        "afecta_a": "pitch",
+        "anotado_por": "Persona C",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "en_pitch",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [],
+       "evidencias": [],
+       "pitch": {
+        "donde": "pitch.md",
+        "fuente": "git",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "declarado": true
+       }
+      },
+      {
+       "nota": {
+        "clave": "8b12b3d7048c",
+        "cita": "2026-09-18 20:40",
+        "hora": "2026-09-18T20:40:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "Discord, canal #anuncios",
+        "dijo": "Las dudas sobre los datos, solo por el canal #embat-dudas",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "plan",
+        "anotado_por": "Persona C",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "planificada",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T20",
+          "titulo": "Preguntar a Embat las ambigüedades de abajo y anotar respuestas en `pitch/preguntas.md`",
+          "dueno": "persona-c",
+          "estado": "lista",
+          "etiqueta": "lista",
+          "fuente": "derivado",
+          "observado_en": "2026-09-18T17:00:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Preguntas",
+          "issue": 119,
+          "declarado": "cerrada",
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:40",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "dffc5b4b1706",
+        "cita": "2026-09-19 11:20",
+        "hora": "2026-09-19T11:20:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "Discord",
+        "dijo": "La entrega es por el formulario, antes del domingo a las 10:00, con una URL pública que funcione",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "— (anotada desde la web; la revisa /hack-check)",
+        "anotado_por": "@persona-c",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "en_curso",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T17:40:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T09",
+          "titulo": "Publicar motor y web en una URL pública (plataforma por elegir)",
+          "dueno": "persona-a",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-19T17:40:00Z",
+          "depende_de": [
+           "T17"
+          ],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Despliegue",
+          "issue": 108,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 11:20",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        },
+        {
+         "tarjeta": {
+          "id": "T23",
+          "titulo": "Ajustar `.claude/skills/entrega/SKILL.md` a la forma de entrega",
+          "dueno": "persona-c",
+          "estado": "reclamada",
+          "etiqueta": "reclamada",
+          "fuente": "mcp",
+          "observado_en": "2026-09-19T09:50:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Supuestos",
+          "issue": 122,
+          "estado_declarado": true,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 11:20",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T09",
+         "valor": "091c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-19T17:40:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "0483fc13aa16",
+        "cita": "2026-09-19 12:05",
+        "hora": "2026-09-19T12:05:00+02:00",
+        "quien": "Jorge",
+        "papel": "mentor de Embat",
+        "donde": "mesa del equipo",
+        "dijo": "corrige la nota del 2026-09-19 10:40: no es obligatorio, se valora; basta con que la tendencia no cambie por un solo mes",
+        "literal": false,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "se valora"
+        },
+        "afecta_a": "plan",
+        "anotado_por": "Persona A",
+        "corrige": "2026-09-19 10:40",
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "sin_tarea",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "7bb352ce052d",
+        "cita": "2026-09-19 13:30",
+        "hora": "2026-09-19T13:30:00+02:00",
+        "quien": "Lucía",
+        "papel": "jurado",
+        "donde": "ronda por las mesas",
+        "dijo": "Haced que la demo funcione sin internet y olvidaos del despliegue",
+        "literal": true,
+        "fuerza": {
+         "tipo": "comentario",
+         "texto": "comentario suelto"
+        },
+        "afecta_a": "— (anotada desde la web; la revisa /hack-check)",
+        "anotado_por": "@persona-b",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "sin_tarea",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "06ac797864ff",
+        "cita": "2026-09-18 20:15",
+        "hora": "2026-09-18T20:15:00+02:00",
+        "quien": "Jorge",
+        "papel": "mentor de Embat",
+        "donde": "mesa del equipo",
+        "dijo": "se valora que cada acción cite la cifra de la empresa que la justifica",
+        "literal": false,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "se valora"
+        },
+        "afecta_a": "plan, reglas",
+        "anotado_por": "Persona A",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "cubierta",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T13:00:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T08",
+          "titulo": "2–3 reglas sobre los datos de la empresa que citan su cifra",
+          "dueno": "persona-a",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-19T10:12:00Z",
+          "depende_de": [],
+          "bloquea_a": [
+           "T16"
+          ],
+          "espera": [],
+          "bloque": "Acciones",
+          "issue": 107,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Jorge",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        },
+        {
+         "tarjeta": {
+          "id": "T13",
+          "titulo": "Lista de 0–3 acciones con su cifra",
+          "dueno": "persona-b",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-19T13:00:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Ficha",
+          "issue": 112,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Jorge",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T08",
+         "valor": "081c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-19T10:12:00Z",
+         "viejo": false
+        },
+        {
+         "tipo": "commit",
+         "tarea": "T13",
+         "valor": "131c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-19T13:00:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "5fc3b6799520",
+        "cita": "2026-09-18 20:15",
+        "hora": "2026-09-18T20:15:00+02:00",
+        "quien": "Lucía",
+        "papel": "jurado",
+        "donde": "ronda por las mesas",
+        "dijo": "Nos gustaría ver la curva de los 24 meses con su tendencia",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "nos gustaría ver"
+        },
+        "afecta_a": "— (anotada desde la web; la revisa /hack-check)",
+        "anotado_por": "@persona-b",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "cubierta",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T13:00:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T11",
+          "titulo": "Score, curva de 24 meses y flecha de tendencia en `web/src/`, con el JSON de ejemplo",
+          "dueno": "persona-b",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-19T13:00:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Ficha",
+          "issue": 110,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Lucía",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T11",
+         "valor": "112c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-19T13:00:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": {
+        "donde": "pitch.md",
+        "fuente": "git",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "declarado": true
+       }
+      },
+      {
+       "nota": {
+        "clave": "4a7a5d81e724",
+        "cita": "2026-09-19 10:40",
+        "hora": "2026-09-19T10:40:00+02:00",
+        "quien": "Jorge",
+        "papel": "mentor de Embat",
+        "donde": "sesión formativa",
+        "dijo": "Un mes malo no puede hundir el score: eso es obligatorio",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "plan, contratos",
+        "anotado_por": "Persona A",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "cubierta",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T09:10:00Z",
+        "viejo": false
+       },
+       "corregida_por": {
+        "valor": "0483fc13aa16",
+        "fuente": "declarado",
+        "observado_en": "2026-09-19T11:31:00Z"
+       },
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T06",
+          "titulo": "Score 0–100 suavizado con `tendencia` en `motor/src/motor/score.py`",
+          "dueno": "persona-a",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:10:00Z",
+          "depende_de": [],
+          "bloquea_a": [
+           "T16",
+           "T24"
+          ],
+          "espera": [],
+          "bloque": "Score",
+          "issue": 105,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 10:40",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T06",
+         "valor": "061c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-19T09:10:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": null
+      }
+     ],
+     "sin_nota": [],
+     "resumen": "jurado: 5 sin cubrir · 1 «dato» (criterios.md) · 1 en el pitch · 2 cubiertas de 8"
+    }
+   },
+   "antiguedades": {
+    "2026-09-18T17:00:00Z": 91800,
+    "2026-09-18T19:31:00Z": 82740,
+    "2026-09-19T09:10:00Z": 33600,
+    "2026-09-19T09:41:00Z": 31740,
+    "2026-09-19T09:50:00Z": 31200,
+    "2026-09-19T10:12:00Z": 29880,
+    "2026-09-19T11:31:00Z": 25140,
+    "2026-09-19T13:00:00Z": 19800,
+    "2026-09-19T17:40:00Z": 3000,
+    "2026-09-19T18:30:00Z": 0
+   },
+   "horas": {
+    "jurado": {
+     "2026-09-18T17:00:00Z": {
+      "hm": "19:00",
+      "dia": "vie 19:00",
+      "fecha": "vie 18 · 19:00"
+     },
+     "2026-09-18T19:30:00+02:00": {
+      "hm": "19:30",
+      "dia": "vie 19:30",
+      "fecha": "vie 18 · 19:30"
+     },
+     "2026-09-18T19:31:00Z": {
+      "hm": "21:31",
+      "dia": "vie 21:31",
+      "fecha": "vie 18 · 21:31"
+     },
+     "2026-09-18T20:15:00+02:00": {
+      "hm": "20:15",
+      "dia": "vie 20:15",
+      "fecha": "vie 18 · 20:15"
+     },
+     "2026-09-18T20:40:00+02:00": {
+      "hm": "20:40",
+      "dia": "vie 20:40",
+      "fecha": "vie 18 · 20:40"
+     },
+     "2026-09-19T09:10:00Z": {
+      "hm": "11:10",
+      "dia": "sáb 11:10",
+      "fecha": "sáb 19 · 11:10"
+     },
+     "2026-09-19T09:41:00Z": {
+      "hm": "11:41",
+      "dia": "sáb 11:41",
+      "fecha": "sáb 19 · 11:41"
+     },
+     "2026-09-19T09:50:00Z": {
+      "hm": "11:50",
+      "dia": "sáb 11:50",
+      "fecha": "sáb 19 · 11:50"
+     },
+     "2026-09-19T10:12:00Z": {
+      "hm": "12:12",
+      "dia": "sáb 12:12",
+      "fecha": "sáb 19 · 12:12"
+     },
+     "2026-09-19T10:40:00+02:00": {
+      "hm": "10:40",
+      "dia": "sáb 10:40",
+      "fecha": "sáb 19 · 10:40"
+     },
+     "2026-09-19T11:20:00+02:00": {
+      "hm": "11:20",
+      "dia": "sáb 11:20",
+      "fecha": "sáb 19 · 11:20"
+     },
+     "2026-09-19T11:31:00Z": {
+      "hm": "13:31",
+      "dia": "sáb 13:31",
+      "fecha": "sáb 19 · 13:31"
+     },
+     "2026-09-19T12:05:00+02:00": {
+      "hm": "12:05",
+      "dia": "sáb 12:05",
+      "fecha": "sáb 19 · 12:05"
+     },
+     "2026-09-19T13:00:00Z": {
+      "hm": "15:00",
+      "dia": "sáb 15:00",
+      "fecha": "sáb 19 · 15:00"
+     },
+     "2026-09-19T13:30:00+02:00": {
+      "hm": "13:30",
+      "dia": "sáb 13:30",
+      "fecha": "sáb 19 · 13:30"
+     },
+     "2026-09-19T17:40:00Z": {
+      "hm": "19:40",
+      "dia": "sáb 19:40",
+      "fecha": "sáb 19 · 19:40"
+     },
+     "2026-09-19T18:30:00Z": {
+      "hm": "20:30",
+      "dia": "sáb 20:30",
+      "fecha": "sáb 19 · 20:30"
+     }
+    }
+   },
+   "momento": "M3 · sáb 20:30"
+  },
+  {
+   "servido_en": "2026-09-19T12:50:00Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-19T12:50:00Z"
+   },
+   "vista": {
+    "jurado": {
+     "observado_en": "2026-09-19T12:50:00Z",
+     "fuente": "derivado",
+     "viejo": false,
+     "fichero": "ok",
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-18T17:00:00Z",
+      "declarado": true
+     },
+     "cuenta": {
+      "notas": 8,
+      "corregidas": 1,
+      "cubiertas": 1,
+      "sin_cubrir": 6,
+      "sin_tarea": 2,
+      "ambiguas": 0,
+      "planificadas": 2,
+      "en_curso": 1,
+      "en_pitch": 1,
+      "sin_cubrir_por_fuerza": [
+       {
+        "texto": "dato",
+        "n": 1
+       },
+       {
+        "texto": "obligatorio",
+        "n": 2
+       },
+       {
+        "texto": "se valora",
+        "n": 2
+       },
+       {
+        "texto": "comentario suelto",
+        "n": 1
+       }
+      ]
+     },
+     "notas": [
+      {
+       "nota": {
+        "clave": "a4dc30bd0ecd",
+        "cita": "2026-09-18 19:30",
+        "hora": "2026-09-18T19:30:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "charla de apertura",
+        "dijo": "El pitch dura cinco minutos y después hay tres de preguntas",
+        "literal": true,
+        "fuerza": {
+         "tipo": "dato",
+         "texto": "dato"
+        },
+        "afecta_a": "pitch",
+        "anotado_por": "Persona C",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "en_pitch",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [],
+       "evidencias": [],
+       "pitch": {
+        "donde": "pitch.md",
+        "fuente": "git",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "declarado": true
+       }
+      },
+      {
+       "nota": {
+        "clave": "8b12b3d7048c",
+        "cita": "2026-09-18 20:40",
+        "hora": "2026-09-18T20:40:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "Discord, canal #anuncios",
+        "dijo": "Las dudas sobre los datos, solo por el canal #embat-dudas",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "plan",
+        "anotado_por": "Persona C",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "planificada",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T20",
+          "titulo": "Preguntar a Embat las ambigüedades de abajo y anotar respuestas en `pitch/preguntas.md`",
+          "dueno": "persona-c",
+          "estado": "lista",
+          "etiqueta": "lista",
+          "fuente": "derivado",
+          "observado_en": "2026-09-18T17:00:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Preguntas",
+          "issue": 119,
+          "declarado": "cerrada",
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:40",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "dffc5b4b1706",
+        "cita": "2026-09-19 11:20",
+        "hora": "2026-09-19T11:20:00+02:00",
+        "quien": "Marta Ruiz",
+        "papel": "organización",
+        "donde": "Discord",
+        "dijo": "La entrega es por el formulario, antes del domingo a las 10:00, con una URL pública que funcione",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "— (anotada desde la web; la revisa /hack-check)",
+        "anotado_por": "@persona-c",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "planificada",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T09:50:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T09",
+          "titulo": "Publicar motor y web en una URL pública (plataforma por elegir)",
+          "dueno": "persona-a",
+          "estado": "pendiente",
+          "etiqueta": "pendiente",
+          "fuente": "github",
+          "observado_en": "2026-09-18T17:00:00Z",
+          "depende_de": [
+           "T17"
+          ],
+          "bloquea_a": [],
+          "espera": [
+           {
+            "id": "T17",
+            "dueno": "persona-b",
+            "estado": "lista"
+           }
+          ],
+          "bloque": "Despliegue",
+          "issue": 108,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 11:20",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        },
+        {
+         "tarjeta": {
+          "id": "T23",
+          "titulo": "Ajustar `.claude/skills/entrega/SKILL.md` a la forma de entrega",
+          "dueno": "persona-c",
+          "estado": "reclamada",
+          "etiqueta": "reclamada",
+          "fuente": "mcp",
+          "observado_en": "2026-09-19T09:50:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Supuestos",
+          "issue": 122,
+          "estado_declarado": true,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 11:20",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "06ac797864ff",
+        "cita": "2026-09-18 20:15",
+        "hora": "2026-09-18T20:15:00+02:00",
+        "quien": "Jorge",
+        "papel": "mentor de Embat",
+        "donde": "mesa del equipo",
+        "dijo": "se valora que cada acción cite la cifra de la empresa que la justifica",
+        "literal": false,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "se valora"
+        },
+        "afecta_a": "plan, reglas",
+        "anotado_por": "Persona A",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "en_curso",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T12:40:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T08",
+          "titulo": "2–3 reglas sobre los datos de la empresa que citan su cifra",
+          "dueno": "persona-a",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-19T10:12:00Z",
+          "depende_de": [],
+          "bloquea_a": [
+           "T16"
+          ],
+          "espera": [],
+          "bloque": "Acciones",
+          "issue": 107,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Jorge",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        },
+        {
+         "tarjeta": {
+          "id": "T13",
+          "titulo": "Lista de 0–3 acciones con su cifra",
+          "dueno": "persona-b",
+          "estado": "parada",
+          "etiqueta": "parada",
+          "fuente": "derivado",
+          "observado_en": "2026-09-19T12:40:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Ficha",
+          "issue": 112,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Jorge",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T08",
+         "valor": "081c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-19T10:12:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "0483fc13aa16",
+        "cita": "2026-09-19 12:05",
+        "hora": "2026-09-19T12:05:00+02:00",
+        "quien": "Jorge",
+        "papel": "mentor de Embat",
+        "donde": "mesa del equipo",
+        "dijo": "corrige la nota del 2026-09-19 10:40: no es obligatorio, se valora; basta con que la tendencia no cambie por un solo mes",
+        "literal": false,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "se valora"
+        },
+        "afecta_a": "plan",
+        "anotado_por": "Persona A",
+        "corrige": "2026-09-19 10:40",
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "sin_tarea",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "7bb352ce052d",
+        "cita": "2026-09-19 13:30",
+        "hora": "2026-09-19T13:30:00+02:00",
+        "quien": "Lucía",
+        "papel": "jurado",
+        "donde": "ronda por las mesas",
+        "dijo": "Haced que la demo funcione sin internet y olvidaos del despliegue",
+        "literal": true,
+        "fuerza": {
+         "tipo": "comentario",
+         "texto": "comentario suelto"
+        },
+        "afecta_a": "— (anotada desde la web; la revisa /hack-check)",
+        "anotado_por": "@persona-b",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "sin_tarea",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": null,
+       "tareas": [],
+       "evidencias": [],
+       "pitch": null
+      },
+      {
+       "nota": {
+        "clave": "5fc3b6799520",
+        "cita": "2026-09-18 20:15",
+        "hora": "2026-09-18T20:15:00+02:00",
+        "quien": "Lucía",
+        "papel": "jurado",
+        "donde": "ronda por las mesas",
+        "dijo": "Nos gustaría ver la curva de los 24 meses con su tendencia",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "nos gustaría ver"
+        },
+        "afecta_a": "— (anotada desde la web; la revisa /hack-check)",
+        "anotado_por": "@persona-b",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "cubierta",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T12:35:00Z",
+        "viejo": false
+       },
+       "corregida_por": null,
+       "trabajo_nuevo_desde": "2026-09-19T12:15:00Z",
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T11",
+          "titulo": "Score, curva de 24 meses y flecha de tendencia en `web/src/`, con el JSON de ejemplo",
+          "dueno": "persona-b",
+          "estado": "parada",
+          "etiqueta": "parada",
+          "fuente": "derivado",
+          "observado_en": "2026-09-19T12:35:00Z",
+          "depende_de": [],
+          "bloquea_a": [],
+          "espera": [],
+          "bloque": "Ficha",
+          "issue": 110,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-18 20:15 · Lucía",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T11",
+         "valor": "111c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-18T21:20:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": {
+        "donde": "pitch.md",
+        "fuente": "git",
+        "observado_en": "2026-09-18T19:31:00Z",
+        "declarado": true
+       }
+      },
+      {
+       "nota": {
+        "clave": "4a7a5d81e724",
+        "cita": "2026-09-19 10:40",
+        "hora": "2026-09-19T10:40:00+02:00",
+        "quien": "Jorge",
+        "papel": "mentor de Embat",
+        "donde": "sesión formativa",
+        "dijo": "Un mes malo no puede hundir el score: eso es obligatorio",
+        "literal": true,
+        "fuerza": {
+         "tipo": "palabra",
+         "texto": "obligatorio"
+        },
+        "afecta_a": "plan, contratos",
+        "anotado_por": "Persona A",
+        "corrige": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T11:31:00Z",
+        "declarado": true
+       },
+       "cobertura": {
+        "valor": "cubierta",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T09:10:00Z",
+        "viejo": false
+       },
+       "corregida_por": {
+        "valor": "0483fc13aa16",
+        "fuente": "declarado",
+        "observado_en": "2026-09-19T11:31:00Z"
+       },
+       "trabajo_nuevo_desde": null,
+       "tareas": [
+        {
+         "tarjeta": {
+          "id": "T06",
+          "titulo": "Score 0–100 suavizado con `tendencia` en `motor/src/motor/score.py`",
+          "dueno": "persona-a",
+          "estado": "publicada",
+          "etiqueta": "publicada",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:10:00Z",
+          "depende_de": [],
+          "bloquea_a": [
+           "T16",
+           "T24"
+          ],
+          "espera": [],
+          "bloque": "Score",
+          "issue": 105,
+          "viejo": false
+         },
+         "enlace": {
+          "cita": "2026-09-19 10:40",
+          "ambiguo": false,
+          "donde": "plan.md",
+          "fuente": "git",
+          "observado_en": "2026-09-19T09:41:00Z",
+          "declarado": true
+         }
+        }
+       ],
+       "evidencias": [
+        {
+         "tipo": "commit",
+         "tarea": "T06",
+         "valor": "061c0de",
+         "fuente": "git",
+         "observado_en": "2026-09-19T09:10:00Z",
+         "viejo": false
+        }
+       ],
+       "pitch": null
+      }
+     ],
+     "sin_nota": [],
+     "resumen": "jurado: 6 sin cubrir · 1 «dato» (criterios.md) · 1 en el pitch · 1 cubierta de 8"
+    }
+   },
+   "antiguedades": {
+    "2026-09-18T17:00:00Z": 71400,
+    "2026-09-18T19:31:00Z": 62340,
+    "2026-09-18T21:20:00Z": 55800,
+    "2026-09-19T09:10:00Z": 13200,
+    "2026-09-19T09:41:00Z": 11340,
+    "2026-09-19T09:50:00Z": 10800,
+    "2026-09-19T10:12:00Z": 9480,
+    "2026-09-19T11:31:00Z": 4740,
+    "2026-09-19T12:35:00Z": 900,
+    "2026-09-19T12:40:00Z": 600,
+    "2026-09-19T12:50:00Z": 0
+   },
+   "horas": {
+    "jurado": {
+     "2026-09-18T17:00:00Z": {
+      "hm": "19:00",
+      "dia": "vie 19:00",
+      "fecha": "vie 18 · 19:00"
+     },
+     "2026-09-18T19:30:00+02:00": {
+      "hm": "19:30",
+      "dia": "vie 19:30",
+      "fecha": "vie 18 · 19:30"
+     },
+     "2026-09-18T19:31:00Z": {
+      "hm": "21:31",
+      "dia": "vie 21:31",
+      "fecha": "vie 18 · 21:31"
+     },
+     "2026-09-18T20:15:00+02:00": {
+      "hm": "20:15",
+      "dia": "vie 20:15",
+      "fecha": "vie 18 · 20:15"
+     },
+     "2026-09-18T20:40:00+02:00": {
+      "hm": "20:40",
+      "dia": "vie 20:40",
+      "fecha": "vie 18 · 20:40"
+     },
+     "2026-09-18T21:20:00Z": {
+      "hm": "23:20",
+      "dia": "vie 23:20",
+      "fecha": "vie 18 · 23:20"
+     },
+     "2026-09-19T09:10:00Z": {
+      "hm": "11:10",
+      "dia": "sáb 11:10",
+      "fecha": "sáb 19 · 11:10"
+     },
+     "2026-09-19T09:41:00Z": {
+      "hm": "11:41",
+      "dia": "sáb 11:41",
+      "fecha": "sáb 19 · 11:41"
+     },
+     "2026-09-19T09:50:00Z": {
+      "hm": "11:50",
+      "dia": "sáb 11:50",
+      "fecha": "sáb 19 · 11:50"
+     },
+     "2026-09-19T10:12:00Z": {
+      "hm": "12:12",
+      "dia": "sáb 12:12",
+      "fecha": "sáb 19 · 12:12"
+     },
+     "2026-09-19T10:40:00+02:00": {
+      "hm": "10:40",
+      "dia": "sáb 10:40",
+      "fecha": "sáb 19 · 10:40"
+     },
+     "2026-09-19T11:20:00+02:00": {
+      "hm": "11:20",
+      "dia": "sáb 11:20",
+      "fecha": "sáb 19 · 11:20"
+     },
+     "2026-09-19T11:31:00Z": {
+      "hm": "13:31",
+      "dia": "sáb 13:31",
+      "fecha": "sáb 19 · 13:31"
+     },
+     "2026-09-19T12:05:00+02:00": {
+      "hm": "12:05",
+      "dia": "sáb 12:05",
+      "fecha": "sáb 19 · 12:05"
+     },
+     "2026-09-19T12:15:00Z": {
+      "hm": "14:15",
+      "dia": "sáb 14:15",
+      "fecha": "sáb 19 · 14:15"
+     },
+     "2026-09-19T12:35:00Z": {
+      "hm": "14:35",
+      "dia": "sáb 14:35",
+      "fecha": "sáb 19 · 14:35"
+     },
+     "2026-09-19T12:40:00Z": {
+      "hm": "14:40",
+      "dia": "sáb 14:40",
+      "fecha": "sáb 19 · 14:40"
+     },
+     "2026-09-19T12:50:00Z": {
+      "hm": "14:50",
+      "dia": "sáb 14:50",
+      "fecha": "sáb 19 · 14:50"
+     },
+     "2026-09-19T13:30:00+02:00": {
+      "hm": "13:30",
+      "dia": "sáb 13:30",
+      "fecha": "sáb 19 · 13:30"
+     }
+    }
+   },
+   "momento": "M2b · sáb 14:50"
+  }
+ ]
+}
