@@ -68,6 +68,7 @@ Tres puntos en que los ajustes del issue #46 (PR #53) dejaron el contrato distin
 |---|---|---|
 | **1. `sin_plazo` como motivo** | Vuelve a ser motivo de `sin_estimacion`, **solo** cuando hay tareas abiertas que cuentan y **ninguna** tiene franja. Si alguna la tiene, todo queda como dice el ajuste 1: las que no la tienen van a `sin_plazo[]`, cuentan 0 min y no quitan la estimación | Sin ninguna franja no hay nada que medir: con el ajuste 1 solo, todas contarían 0 min y el veredicto saldría «a tiempo» sin haber medido nada, justo lo que «sin plazo no es a tiempo» prohíbe |
 | **2. `dos_horas`** | Se queda como motivo de `Inicio:`: con dos horas distintas, `valor: null` y `motivo: dos_horas`. Solo deja de existir en `Entrega:`, donde manda la primera y la otra va a `otras_entregas` (ajuste 5) | En `Entrega:` la segunda hora tiene sitio, `otras_entregas`; en `Inicio:` no hay dónde enseñarla, y elegir una sería una decisión que no ha tomado el equipo |
+| **3. Orden del resumen de la ruta** | «plazo pasado» va justo detrás del veredicto (o del motivo de «sin estimación»), antes que «sin contar…» y «otra entrega…» | El resumen se corta a 120 caracteres (M17): con el orden anterior, el corte quitaba el plazo pasado o su hora (los dos ejemplos de `api.md` §11.6), el único dato rojo (un hecho), y dejaba lo declarado o lo que no se ha contado |
 
 ## Alternativas descartadas
 - **Que un modelo estime las duraciones o el riesgo:** no es una señal (constitución II) y no se puede probar sin modelo.

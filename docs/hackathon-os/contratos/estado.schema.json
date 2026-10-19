@@ -540,7 +540,7 @@
         },
         "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso" } },
         "resumen": {
-          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho.",
+          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 2: «plazo pasado» va antes que «sin contar…» y «otra entrega…», para que el corte no quite el único dato rojo.",
           "anyOf": [
             { "type": "string", "maxLength": 120 },
             { "type": "string", "maxLength": 160, "description": "TRANSITORIO (issue #46): se quita al adaptar el código. El tope anterior, 160." }
