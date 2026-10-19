@@ -113,6 +113,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§6, §11.4, §11.6 y el esquema (punto 5):** en el `resumen` de la ruta, «plazo pasado» va justo detrás del veredicto, también con estimación, antes de los motivos y de sus detalles; en el md, los motivos se abrevian («pocos datos: <n> personas», «sin plazo: <n> tareas»). El detalle completo sigue en la vista;
   - **§11.2, §11.4, §11.6 y el esquema (punto 6):** las horas de la ruta (el resumen y la vista) se escriben con la zona IANA de `equipo.md`, con el desfase de cada instante, no con un desfase fijo: un reto que cruza el cambio de hora sale bien. `vista_ruta.zona` (nueva, obligatoria), con la forma de `vista_jurado.zona`; `valor`, el nombre IANA si `equipo.md` lo da y, si no, el desfase;
   - **§11.2 (`H+N`):** `H+N` son N horas transcurridas desde el inicio, no de reloj: si el reto cruza un cambio de hora, H+17 desde sáb 10:00 CEST es dom 02:00 CET;
+  - **§6, §11.3, §11.4, §11.6 y el esquema (punto 7):** el texto libre que llega al md (la celda «Cuándo» o la línea `Entrega:` de «otra entrega», la Fuerza de una nota) va siempre entre «», con su fichero («(equipo.md)», «(plan.md)», «(criterios.md)») y recortado a 30 grafemas, sin autor: una excepción acotada a la constitución V (ADR-0012 y ADR-0013). La Fuerza pasa a ir detrás de ` · ` en el resumen del jurado;
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -505,7 +506,7 @@ Generado. Secciones en este orden y con estos títulos, para que `sesion.sh` y `
 - sin confirmar · propuesta de servicio «cache» · de @luis (18:10 · git)
 - fuera de servicios · scripts/descarga.py y 2 más (18:41 · git)
 ## Jurado y ruta                                                                             ← desde M10, con vista_jurado: sí o ruta_critica: sí
-- jurado: 2 sin cubrir (1 «obligatorio») · 1 cubierta de 3 (18:41 · derivado)
+- jurado: 2 sin cubrir · 1 «obligatorio» (criterios.md) · 1 cubierta de 3 (18:41 · derivado)
 - ruta: sin estimación · T05: plazo pasado 02:30 · pocos datos: 1 persona (18:41 · derivado)
 ## Novedades
 - 18:40 · decisión · «#12: …» (@ana ↔ @luis)
@@ -540,6 +541,7 @@ M9a (solo con `web_nueva: sí` y `servicios` en `estado.json`; si no, ni la secc
 
 M10 (tras congelar, 2026-10-19, M10; ADR-0012, decisión 7B; ADR-0013, decisión 10A; nota en ADR-0009). Solo si la vista trae el bloque `jurado` o `ruta`; si no trae ninguno, ni la sección ni las firmas, y el md es el de M9a:
 - **`## Jurado y ruta`**, entre «Servicios» y «Novedades», para todo el equipo (no es el subconjunto de la persona): una línea por bloque presente, primero jurado y después ruta, con el `resumen` del bloque (§11.3 y §11.4) y, detrás, la hora y la fuente: `- <resumen> (HH:MM · derivado)`, con `· viejo` detrás de la fuente si el bloque es `viejo`. El `resumen` tiene 120 caracteres como mucho (tras congelar, 2026-10-19, M10, issue #46, M17), así que la línea cabe en los 160 sin cortar la hora, la fuente ni «viejo». El texto de una nota no sale aquí: el detalle va en el MCP (`jurado`, `ruta`) y en la web.
+- **Texto libre en la sección** (tras congelar, 2026-10-19, M10, ajuste 3, punto 7): lo que escribe el equipo y llega a un `resumen` (la celda «Cuándo» de una fila de entrega o la línea `- Entrega:` en «otra entrega», la Fuerza de una nota en el del jurado) va **siempre entre «»**, con su fichero detrás (`(equipo.md)`, `(plan.md)`, `(criterios.md)`) y recortado a **30** grafemas (con «…» dentro de las comillas si no cabe), **sin autor**: ni el plan, ni `equipo.md`, ni la Fuerza dicen quién lo escribió. Es una excepción acotada a la constitución V (ADR-0012 y ADR-0013, «Ajuste 3 tras congelar»). Las horas, los IDs y los nombres de motivo los escribe el kit: no son texto libre.
 - **Firmas** en la cabecera, detrás de `servicios:` (o de `reservas:`), sin horas: `jurado:` = la `cuenta` del bloque; `ruta:` = **solo** `veredicto.valor`. Que la hora estimada, el margen o un hecho cambien sin cambiar el veredicto no abre un delta (X, R-25).
 - **El delta** recorre las secciones en este orden: colisiones, reservas, servicios, jurado y ruta, trabajo, novedades. El monitor no abre ningún turno por la ruta.
 - **En «Jurado y ruta», el delta se filtra por línea y firma** (tras congelar, 2026-10-19, M10, issue #46, ajuste 7 de ADR-0012 y ADR-0013), no por las líneas que la sesión no tenía: la línea `- jurado: …` solo se inyecta si cambió la firma `jurado:`, y la línea `- ruta: …` solo si cambió la firma `ruta:`, es decir, su veredicto (R10A). Que cambie `jurado:` no arrastra la línea de la ruta, aunque su texto («fin 07:40–10:50», «plazo pasado») se haya movido (X, R-25).
@@ -802,7 +804,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **`cuenta`** (ajuste 2): `{notas, corregidas, cubiertas, sin_cubrir, sin_tarea, ambiguas, planificadas, en_curso, en_pitch, sin_cubrir_por_fuerza}`. Los totales por cobertura no cuentan las corregidas, que solo van en `corregidas`; `sin_cubrir` = `sin_tarea` + `ambiguas` + `planificadas` + `en_curso` + `en_pitch` (todo lo no cubierto, sin las corregidas), y una ambigua no cuenta en `sin_tarea`. `sin_cubrir_por_fuerza`: el desglose de las sin cubrir por el texto de su fuerza, en el orden de arriba.
 - **`viejo`** del bloque: `fuentes.git` está viejo. `observado_en`: la hora del cálculo (`ahora`).
 - **`zona`**: `jurado.zona` de `estado.json`, tal cual (B4), para que la web enseñe las horas de las notas con la zona de `equipo.md` también sin la ruta.
-- **`resumen`** (la línea del md, decisión 7B): `jurado: <sin_cubrir> sin cubrir (<n> «<la fuerza más fuerte entre las sin cubrir>»)[ · <ambiguas> ambigua(s)][ · <en_pitch> en el pitch] · <cubiertas> cubierta(s) de <notas>`; sin notas, `jurado: sin notas en criterios.md`; sin fichero, `jurado: sin criterios.md en main`. Cortado a **120** por grafemas (tras congelar, 2026-10-19, M10, issue #46, M17: así la línea del md, con « (HH:MM · derivado · viejo)» detrás, cabe en los 160 de §6 sin perder la hora, la fuente ni «viejo»).
+- **`resumen`** (la línea del md, decisión 7B): `jurado: <sin_cubrir> sin cubrir · <n> «<la fuerza más fuerte entre las sin cubrir>» (criterios.md)[ · <ambiguas> ambigua(s)][ · <en_pitch> en el pitch] · <cubiertas> cubierta(s) de <notas>`, con la Fuerza entre «», recortada a 30 grafemas, con su fichero y sin autor (tras congelar, 2026-10-19, M10, ajuste 3, punto 7: es texto que escribe el equipo, §6); sin notas, `jurado: sin notas en criterios.md`; sin fichero, `jurado: sin criterios.md en main`. Cortado a **120** por grafemas (tras congelar, 2026-10-19, M10, issue #46, M17: así la línea del md, con « (HH:MM · derivado · viejo)» detrás, cabe en los 160 de §6 sin perder la hora, la fuente ni «viejo»).
 
 ### 11.4 Bloque `ruta` de la vista (ADR-0013)
 `proyeccion.vista` lo añade (clave `ruta`, `$defs/vista_ruta`) si `estado.json` trae `ruta`. Lo calcula `hkos/ruta.py`, con `ahora` como parámetro.
@@ -842,7 +844,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
   - con estimación, su detalle: `fin <HH:MM>–<HH:MM> · entrega <día HH:MM>[ (confirmar)]`;
   - sin ella, el primer motivo, **abreviado**: `sin hora de entrega`, `ciclo T04 → T07 → T04`, `sin plazo: <n> tareas` (las de `sin_plazo[]`) o `pocos datos: <n> personas` (aquellas por las que sale `pocos_datos`), con «1 tarea» y «1 persona» en singular (ajuste 3, punto 5). El detalle completo (qué tareas, cuántas medidas de cuántas) sigue en la vista: `sin_plazo[]` y `base.personas`;
   - con estimación y tareas en `sin_plazo`: `sin contar T28[, T30…] (sin plazo)` (ajuste 1);
-  - y, si hay `otras_entregas` que no coinciden, la primera: `otra entrega: <texto> (<dónde>)` si viene de `plan.md` o `equipo.md`, y `otra entrega: <día HH:MM> (criterios.md, nota de <HH:MM>)` si viene de una nota, con la hora resuelta y la de la cita de la nota: **nunca su texto** (constitución V; ajuste 5).
+  - y, si hay `otras_entregas` que no coinciden, la primera: `otra entrega: «<texto>» (<dónde>)` si viene de `plan.md` o `equipo.md`, con el texto entre «», recortado a 30 grafemas y sin autor (tras congelar, 2026-10-19, M10, ajuste 3, punto 7: antes iba sin comillas, §6), y `otra entrega: <día HH:MM> (criterios.md, nota de <HH:MM>)` si viene de una nota, con la hora resuelta y la de la cita de la nota: **nunca su texto** (constitución V; ajuste 5).
 
 ### 11.5 MCP
 Dos herramientas nuevas del servidor `os` (§5), de solo lectura, con la vista calculada como la del demonio (`proyeccion.vista` del `estado.json` local). **Cada una solo se lista con su interruptor encendido** en el `os.md` de la copia principal (§11.1; tras congelar, 2026-10-19, M10, issue #46, ajuste 7 de ADR-0012): con `vista_jurado: no` y `ruta_critica: no`, `tools/list` es exactamente el de la 0.4.0.
@@ -891,7 +893,7 @@ Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-1
        "pitch": null}
     ],
     "sin_nota": [],
-    "resumen": "jurado: 2 sin cubrir (1 «obligatorio») · 1 cubierta de 3"
+    "resumen": "jurado: 2 sin cubrir · 1 «obligatorio» (criterios.md) · 1 cubierta de 3"
   },
   "ruta": {
     "observado_en": "2026-09-19T09:00:00Z", "fuente": "derivado", "viejo": false, "dato_mas_viejo": "2026-09-19T08:58:30Z",
@@ -935,7 +937,7 @@ Reto 03, sábado a las 11:00 (Europe/Madrid), con pocos datos. Es la que usa K-1
                   {"personas": ["luis", "marta"], "desde": "2026-09-19T23:00:00+02:00", "hasta": "2026-09-20T07:30:00+02:00",
                    "texto": "| sáb 23:00–dom 07:30 | Luis y Marta |",
                    "motivo": null, "fuente": "git", "observado_en": "2026-09-19T07:30:00Z", "declarado": true}],
-    "resumen": "ruta: sin estimación · T05: plazo pasado 02:30 · pocos datos: 2 personas · otra entrega: dom 11:00 (plan.md)"
+    "resumen": "ruta: sin estimación · T05: plazo pasado 02:30 · pocos datos: 2 personas · otra entrega: «dom 11:00» (plan.md)"
   }
 }
 ```
