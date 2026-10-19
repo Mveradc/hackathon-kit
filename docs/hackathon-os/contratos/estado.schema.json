@@ -296,6 +296,7 @@
                       "type": "object",
                       "required": ["cita", "ambiguo", "donde", "fuente", "observado_en", "declarado"],
                       "additionalProperties": false,
+                      "description": "Tras congelar, 2026-10-19, M10, issue #46 (B3): donde, fuente y observado_en, sin autor (plan.md no dice quién puso la etiqueta).",
                       "properties": {
                         "cita": { "$ref": "#/$defs/cita" },
                         "ambiguo": { "type": "boolean" },
@@ -332,7 +333,9 @@
                   "type": "object",
                   "required": ["fuente", "observado_en", "declarado"],
                   "additionalProperties": false,
+                  "description": "Tras congelar, 2026-10-19, M10, issue #46 (B3): donde, fuente y observado_en, sin autor (pitch.md no dice quién puso la etiqueta).",
                   "properties": {
+                    "donde": { "const": "pitch.md" },
                     "fuente": { "$ref": "#/$defs/fuente" },
                     "observado_en": { "type": "string", "format": "date-time" },
                     "declarado": { "const": true }

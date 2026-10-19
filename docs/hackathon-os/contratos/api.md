@@ -88,6 +88,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§6, §11.3, §11.4 y el esquema (M17):** el `resumen` de cada bloque, 120 caracteres como mucho;
   - **§11.3 y el esquema (M20):** `corregida_por` = `{valor, fuente: "declarado", observado_en}`;
   - **§11.4 y el esquema (B2):** cada elemento de `sin_plazo[]` y `fuera_de_entrega[]` lleva `fuente` y `observado_en`;
+  - **§11.3 y el esquema (B3):** `enlace` y `pitch` llevan `donde`, `fuente` y `observado_en`, sin autor;
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -762,7 +763,8 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **`trabajo_nuevo_desde`**: el más antiguo de los `historia.trabajo_nuevo_desde` de sus tareas que vuelven a tener trabajo; si ninguna, `null`.
 - **`tareas[]`**: todas las enlazadas (también las ambiguas), con la tarjeta de §6 más `viejo` (su estado viene de una fuente vieja en `vista.fuentes`) y el `enlace` (`cita`, `ambiguo`, `donde: plan.md`, la hora del commit del plan y `declarado: true`).
 - **`evidencias[]`**: de cada tarea enlazada, aunque la nota no esté cubierta: el commit o la fusión de `tareas[].evidencia` (con su `tipo`, su `fuente` y su `observado_en`: el último sha publicado y su hora, ajuste 6) y el último resultado de la Prueba de cada conexión de `tareas[].conexiones` (`pasa` o `falla`, con su hora y su `viejo`, el de §10). La Prueba no cambia la cobertura (decisión 4A).
-- **`pitch`**: `{fuente, observado_en, declarado}` si la cita está en el pitch; si no, `null`. Sale aunque haya tareas.
+- **`pitch`**: `{donde: "pitch.md", fuente, observado_en, declarado}` si la cita está en el pitch; si no, `null`. Sale aunque haya tareas.
+- **Sin autor** (tras congelar, 2026-10-19, M10, issue #46, B3): el `enlace` y el `pitch` llevan `donde`, `fuente` y `observado_en`, y ningún autor: ni el plan ni el pitch dicen quién puso la etiqueta, y la web no lo inventa.
 - **`corregida_por`**: la nota posterior cuya `corrige` casa con esta y solo con esta, como declarada (tras congelar, 2026-10-19, M10, issue #46, M20): `{valor: <su clave>, fuente: "declarado", observado_en: <su observado_en>}`; si ninguna, `null`.
 - **Orden:** sin cubrir (todo lo que no es `cubierta` ni está corregido) por fuerza (`dato`, «obligatorio», «se valora», «nos gustaría ver», otra palabra, `comentario`, `sin_precisar`) y luego por `hora` (o `cita`), la más antigua primero; después las cubiertas, por hora; al final las corregidas, por hora.
 - **`cuenta`** (ajuste 2): `{notas, corregidas, cubiertas, sin_cubrir, sin_tarea, ambiguas, planificadas, en_curso, en_pitch, sin_cubrir_por_fuerza}`. Los totales por cobertura no cuentan las corregidas, que solo van en `corregidas`; `sin_cubrir` = `sin_tarea` + `ambiguas` + `planificadas` + `en_curso` + `en_pitch` (todo lo no cubierto, sin las corregidas), y una ambigua no cuenta en `sin_tarea`. `sin_cubrir_por_fuerza`: el desglose de las sin cubrir por el texto de su fuerza, en el orden de arriba.
