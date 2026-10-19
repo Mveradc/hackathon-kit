@@ -1013,6 +1013,25 @@ class Issue46(SinZoneinfo):
         self.assertIn("T01: plazo pasado 23:00", b["resumen"])                  # con el desfase fijo, «22:00»
         self.assertEqual(b["zona"], r["ruta"]["zona"])
 
+    def test_56_desfase_iso_pegado_a_la_hora_es_zona(self):
+        """#56 (sin decisión, fila 7): un desfase ISO 8601 pegado a la hora («10:00+02:00», «2026-09-20T10:00+02:00»)
+        es la zona, no una segunda hora. Antes, su «02:00» daba una entrega fantasma a las 02:00 del día siguiente, y con
+        todo en ISO, Inicio salía dos_horas y Entrega sin_zona."""
+        r = calcula(equipo=self.equipo(entrega="2026-09-20 10:00+02:00"), jurado=False)["ruta"]
+        self.assertEqual((r["entrega"]["valor"], r["entrega"]["motivo"], r["otras_entregas"]),
+                         ("2026-09-20T10:00:00+02:00", None, []))
+        r = calcula(equipo=self.equipo(inicio="2026-09-18T19:00+02:00", entrega="2026-09-20T10:00:00+02:00"), jurado=False)["ruta"]
+        self.assertEqual([(r[k]["valor"], r[k]["motivo"]) for k in ("inicio", "entrega")],
+                         [("2026-09-18T19:00:00+02:00", None), ("2026-09-20T10:00:00+02:00", None)])
+        self.assertEqual((r["zona"]["valor"], r["otras_entregas"]), ("+02:00", []))
+        self.assertEqual(lecturas.hora_equipo("2026-09-20T10:00-03:00", 2026)[0].isoformat(), "2026-09-20T10:00:00-03:00")
+        # Un tramo «10:00-11:00» sigue siendo dos horas (con «-», solo detrás de una hora ISO con «T» es zona), y la zona
+        # IANA de la línea manda sobre el desfase pegado.
+        r = calcula(equipo=self.equipo(entrega="dom 20 sep 10:00-11:00, Europe/Madrid"), jurado=False)["ruta"]
+        self.assertEqual((r["entrega"]["valor"], [o["valor"] for o in r["otras_entregas"]]),
+                         ("2026-09-20T10:00:00+02:00", ["2026-09-20T11:00:00+02:00"]))
+        self.assertEqual(lecturas.hora_equipo("2026-10-25T12:00+02:00 (Europe/Madrid)", 2026)[3], "Europe/Madrid")
+
     def test_b4_zona_en_el_bloque_jurado_y_b6_por_confirmar(self):
         r = calcula(equipo=leer("g14/equipo-2.md"), criterios=leer("g13/criterios.md"), ruta=False)
         self.assertIsNone(r["ruta"])

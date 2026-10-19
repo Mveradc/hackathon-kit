@@ -50,6 +50,8 @@ EN_TEXTO = re.compile(rf"\b(?:{_D}\.?,?\s+)?(?:\d{{1,2}}\s+(?:de\s+)?{_M}\.?(?:\
                       rf"(?:a\s+las\s+)?\d{{1,2}}:\d\d\b", re.I)
 IANA = re.compile(r"\b([A-Z][A-Za-z_]+(?:/[A-Z][A-Za-z_+-]+){1,2})\b")
 DESFASE = re.compile(r"(?:\b(?:UTC|GMT)\s*([+\-−])\s*(\d{1,2})(?::?([0-5]\d))?)|(?:(?<![\w:])([+\-−])(\d\d):([0-5]\d)\b)")
+# Un desfase ISO 8601 pegado a la hora (con o sin segundos): «10:00+02:00», «T10:00:00-03:00». La hora se queda.
+PEGADO = re.compile(r"(?<![\d:])(\d{1,2}:[0-5]\d)(:[0-5]\d)?([+\-−])(\d\d):?([0-5]\d)(?![\d:])")
 SOLO_UTC = re.compile(r"\b(?:UTC|GMT)\b(?!\s*[+\-−]\s*\d)")
 FECHA_ISO = re.compile(r"(?<!\d)(\d{4})-(\d\d)-(\d\d)(?!\d)")
 FECHA_BARRAS = re.compile(r"(?<!\d)(\d{1,2})/(\d{1,2})/(\d{4})(?!\d)")
@@ -156,14 +158,37 @@ def _de(dt, tz):
 
 # ------------------------------------------------------------------------------------------------ equipo.md
 def _zona_de(texto):
-    """(zona normalizada, tzinfo, texto sin la zona, aviso) de una línea de equipo.md."""
+    """(zona normalizada, tzinfo, texto sin la zona, aviso) de una línea de equipo.md. Un desfase ISO 8601 pegado a la
+    hora («10:00+02:00», «2026-09-20T10:00:00+02:00») es zona, no una segunda hora (#56); con «-», solo detrás de una
+    hora ISO con «T» (si no, «10:00-11:00» es un tramo con dos horas)."""
+    pegado = None
+    for m in PEGADO.finditer(texto):
+        if m.group(3) == "+" or texto[max(0, m.start() - 1):m.start()] in ("T", "t"):
+            pegado = _desfase(m.group(3), m.group(4), m.group(5))
+            if pegado:
+                texto = texto[:m.end(1)] + texto[m.end():]
+                break
+    zona_n, tz, resto, aviso = _zona_suelta(texto)
+    if zona_n is None and aviso is None and pegado:
+        return pegado[0], pegado[1], resto, None
+    return zona_n, tz, resto, aviso
+
+
+def _desfase(signo, h, mi):
+    """(«±HH:MM», tzinfo) de un desfase, o None si pasa de ±14:00."""
+    minutos = (int(h) * 60 + int(mi or 0)) * (-1 if signo in "-−" else 1)
+    if abs(minutos) > 14 * 60:
+        return None
+    tz = timezone(timedelta(minutes=minutos))
+    return _iso(datetime(2000, 1, 1, tzinfo=tz))[-6:], tz
+
+
+def _zona_suelta(texto):
     m = DESFASE.search(texto)
     if m:
-        signo, h, mi = (m.group(1), m.group(2), m.group(3)) if m.group(1) else (m.group(4), m.group(5), m.group(6))
-        minutos = (int(h) * 60 + int(mi or 0)) * (-1 if signo in "-−" else 1)
-        if abs(minutos) <= 14 * 60:
-            tz = timezone(timedelta(minutes=minutos))
-            return _iso(datetime(2000, 1, 1, tzinfo=tz))[-6:], tz, texto[:m.start()] + texto[m.end():], None
+        d = _desfase(*((m.group(1), m.group(2), m.group(3)) if m.group(1) else (m.group(4), m.group(5), m.group(6))))
+        if d:
+            return d[0], d[1], texto[:m.start()] + texto[m.end():], None
     m = IANA.search(texto)
     if m:
         tz = zona(m.group(1))
