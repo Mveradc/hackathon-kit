@@ -55,6 +55,16 @@ def web_nueva(os_md):
     return bool(os_md) and es_si(conf(os_md, "web_nueva"))
 
 
+def vista_jurado(os_md):
+    """M10 (api.md §11.1): `vista_jurado: sí` en os.md. Sin la línea, no. Solo lo lee el relay."""
+    return bool(os_md) and es_si(conf(os_md, "vista_jurado"))
+
+
+def ruta_critica(os_md):
+    """M10 (api.md §11.1): `ruta_critica: sí` en os.md. Sin la línea, no. Solo lo lee el relay."""
+    return bool(os_md) and es_si(conf(os_md, "ruta_critica"))
+
+
 def equipo(ruta):
     """Las personas de la tabla de coordinacion.md: [{persona, nombre}], con el usuario de GitHub en minúsculas.
     Las filas sin GitHub («—») no cuentan."""

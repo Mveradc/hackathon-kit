@@ -34,12 +34,13 @@ import colisiones_merge  # noqa: E402
 import compilar  # noqa: E402
 import contratos as contratos_mod  # noqa: E402
 import github  # noqa: E402
+import lecturas  # noqa: E402
 import proyeccion  # noqa: E402
 import servicios as servicios_mod  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from estados import fecha, iso  # noqa: E402
-from modelo import calcular  # noqa: E402
-from red import Servidor, ahora_iso, conf, equipo, web_nueva  # noqa: E402
+from modelo import calcular, historias  # noqa: E402
+from red import Servidor, ahora_iso, conf, equipo, ruta_critica, vista_jurado, web_nueva  # noqa: E402
 
 LOTE_MAX = 200
 CUERPO_MAX = 2 * 1024 * 1024
@@ -60,6 +61,10 @@ WEB = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "index.htm
 TAILNET = ipaddress.ip_network("100.64.0.0/10")
 PRIVADAS = [ipaddress.ip_network(n) for n in ("10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16")]
 FALLO = object()                # una lectura de git que falló (Novedades._en)
+# M10 (api.md §11.2): lo que se lee de origin/main con vista_jurado o ruta_critica, y con cuál de los dos.
+M10 = {"criterios": (".hackathon/criterios.md", True, True), "plan": (".hackathon/plan.md", True, True),
+       "pitch": (".hackathon/pitch.md", True, False), "equipo": (".hackathon/equipo.md", True, True),
+       "servicios": (SERVICIOS, True, False)}
 
 
 class Invalido(Exception):
@@ -173,15 +178,20 @@ class Novedades:
     sin dueño, o con más de una candidata, se dice una vez por `aviso`.
     Desde M9a, con `web_nueva`, lo que necesita servicios.calcular de origin/main (api.md §3): servicios.md, su historia
     (cada versión con la de sus padres; un sha ya leído no se vuelve a leer), autoridad.md, contratos.md y los ficheros.
-    Si no se puede leer, se queda lo último bueno; una versión que falla se reintenta tras 1, 2, 4… vueltas (issue #18)."""
+    Si no se puede leer, se queda lo último bueno; una versión que falla se reintenta tras 1, 2, 4… vueltas (issue #18).
+    Desde M10, con `vista_jurado` o `ruta_critica`, los ficheros de M10 (_leer_m10), en la misma vuelta."""
 
-    def __init__(self, repo, umbral_s=300, reloj=time.time, git=_git, aviso=None, web_nueva=False):
+    def __init__(self, repo, umbral_s=300, reloj=time.time, git=_git, aviso=None, web_nueva=False, vista_jurado=False,
+                 ruta_critica=False):
         self.repo, self.umbral_s, self.reloj, self.git = repo, umbral_s, reloj, git
         self.lista, self.ultimo_ok, self.fallando = [], None, False
         self.contratos, self.aviso, self._avisados = [], aviso, set()
         self.web_nueva, self.servicios, self._versiones, self._crea = web_nueva, None, {}, (None, None)
         self._vuelta, self._fallos = 0, {}       # sha → (fallos seguidos, vuelta del próximo intento)
         self.servicios_ok, self.servicios_fallando = None, False   # la última lectura buena de servicios.md
+        # M10: los ficheros que se leen (según los interruptores), la última lectura buena y su caché por blob.
+        self.m10_rutas = {k: r for k, (r, j, rc) in M10.items() if (vista_jurado and j) or (ruta_critica and rc)}
+        self.m10, self.m10_ok, self.m10_fallando, self._m10_blobs = None, None, False, {}
 
     def _leer(self, ruta):
         for ref in ("refs/remotes/origin/main", "HEAD"):
@@ -316,9 +326,42 @@ class Novedades:
         return {"texto": texto, "versiones": versiones, "rutas": rutas, "autoridad": autoridad, "contratos": contratos,
                 "observado_en": iso_us(float(cuando)) if cuando else iso_us(self.reloj())}
 
+    def _leer_m10(self):
+        """M10 (api.md §11.2): {textos, cts, clave} de los ficheros de M10 en origin/main (texto None si no está; cts:
+        la hora de su último commit, y `punta`, la de la punta), o FALLO si una lectura de git falla (quien llama se
+        queda con lo último bueno). Sin cambios en main, tres lecturas cortas (la ref, su hora y ls-tree): un fichero
+        solo se vuelve a leer si cambia su blob. Las de git, sin diálogos ni objetos de reemplazo (ADR-0011, _git y _texto)."""
+        ref = next((r for r in ("refs/remotes/origin/main", "HEAD")
+                    if self.git(self.repo, "rev-parse", "--verify", "-q", r) is not None), None)
+        punta = self.git(self.repo, "log", "-1", "--format=%ct", ref) if ref else None
+        arbol = self.git(self.repo, "ls-tree", ref, "--", *self.m10_rutas.values()) if punta else None
+        if arbol is None or not punta.strip():
+            return FALLO
+        blobs = {}
+        for linea in arbol.splitlines():
+            meta, _, ruta = linea.partition("\t")
+            if len(meta.split()) == 3:
+                blobs[ruta] = meta.split()[2]
+        textos, cts, leidos = {}, {"punta": iso_us(float(punta))}, {}
+        for k, ruta in self.m10_rutas.items():
+            blob = blobs.get(ruta)
+            if blob is None:
+                textos[k], cts[k] = None, None
+                continue
+            if self._m10_blobs.get(ruta, (None,))[0] != blob:
+                texto = self._texto(ref, ruta)
+                ct = self.git(self.repo, "log", "-1", "--format=%ct", ref, "--", ruta)
+                if texto is None or ct is None or not ct.strip():
+                    return FALLO
+                self._m10_blobs[ruta] = (blob, texto, iso_us(float(ct)))
+            leidos[ruta] = self._m10_blobs[ruta]
+            textos[k], cts[k] = leidos[ruta][1], leidos[ruta][2]
+        self._m10_blobs = leidos
+        return {"textos": textos, "cts": cts, "clave": (tuple(sorted(blobs.items())), cts["punta"])}
+
     def sondear(self):
         """True si cambió la lista o el estado del fetch."""
-        antes = (self.lista, self.fallando, self.contratos, self.servicios)
+        antes = (self.lista, self.fallando, self.contratos, self.servicios, self.m10)
         if self.git(self.repo, "fetch", "--quiet", "origin", timeout=20) is None:
             self.fallando = True
         else:
@@ -339,7 +382,14 @@ class Novedades:
                 self.servicios, self.servicios_ok = leido, self.reloj()
             elif self.servicios_ok is None:
                 self.servicios_ok = self.reloj()  # sin una lectura buena aún, el plazo cuenta desde el arranque
-        return (self.lista, self.fallando, self.contratos, self.servicios) != antes
+        if self.m10_rutas:                        # M10: con vista_jurado o ruta_critica (api.md §3 y §11.2)
+            leido = self._leer_m10()
+            self.m10_fallando = leido is FALLO
+            if leido is not FALLO:
+                self.m10, self.m10_ok = leido, self.reloj()
+            elif self.m10_ok is None:
+                self.m10_ok = self.reloj()
+        return (self.lista, self.fallando, self.contratos, self.servicios, self.m10) != antes
 
     def fuente(self):
         """El dato de fuentes.git si el fetch lleva fallando más de umbral_s, o si servicios.md de la punta lleva más de
@@ -348,6 +398,8 @@ class Novedades:
             return {"valor": "sin fetch", "fuente": "git", "observado_en": iso_us(self.ultimo_ok)}
         if self.servicios_fallando and self.reloj() - self.servicios_ok > self.umbral_s:
             return {"valor": "sin leer servicios", "fuente": "git", "observado_en": iso_us(self.servicios_ok)}
+        if self.m10_fallando and self.reloj() - self.m10_ok > self.umbral_s:
+            return {"valor": "sin leer jurado y ruta", "fuente": "git", "observado_en": iso_us(self.m10_ok)}
         return None
 
 
@@ -355,8 +407,12 @@ class Relay:
     """El estado del relay, sin HTTP. `ahora` se puede inyectar en las pruebas."""
 
     def __init__(self, carpeta, personas, ahora=ahora_iso, sondeo=None, umbral_parada_s=1200, novedades=None,
-                 umbral_viejo_s=300, contratos=None, wip=None, web_nueva=False):
+                 umbral_viejo_s=300, contratos=None, wip=None, web_nueva=False, vista_jurado=False, ruta_critica=False):
         self.carpeta, self.personas, self.ahora = carpeta, personas, ahora
+        # M10 (api.md §11): los interruptores del os.md del relay y las cachés de la historia y de las lecturas.
+        self.vista_jurado, self.ruta_critica = vista_jurado, ruta_critica
+        self._historia, self._historias, self._lecturas = {}, (None, None), (None, None)
+        self._avisos_m10 = set()
         # M9a (api.md §3), solo con `web_nueva`: los metadatos de los últimos eventos para el SSE `eventos`
         # ((seq, {id, tipo, persona, papel, ts})), el pulso de GitHub y la caché de las confirmaciones de servicios.
         self.web_nueva, self.seq, self.recientes = web_nueva, 0, []
@@ -461,8 +517,8 @@ class Relay:
                     self.cambio.notify_all()
         if nuevos:
             self.sucio.set()
-            if self.web_nueva and self.novedades and any(e["tipo"] == "push" and e["actor"]["papel"] == "demonio"
-                                                         for e in nuevos):
+            if (self.web_nueva or self.vista_jurado or self.ruta_critica) and self.novedades and \
+                    any(e["tipo"] == "push" and e["actor"]["papel"] == "demonio" for e in nuevos):
                 self.push_visto.set()
         return nuevos
 
@@ -567,6 +623,7 @@ class Relay:
     def recalcular(self):
         with self.lock:
             eventos = list(self.eventos)
+            guardados = len(eventos)
             for lista in self.latidos.values():
                 eventos += lista
             corruptas = {p: dict(c) for p, c in self.corruptas.items()}
@@ -614,6 +671,8 @@ class Relay:
                 leido = self.novedades.servicios
             if leido:
                 estado["servicios"] = self._servicios(leido, eventos)
+        if self.vista_jurado or self.ruta_critica:     # M10 (api.md §11.2)
+            self._m10(estado, tareas, issues, eventos[:guardados], ahora)
         # Sin la hora del cálculo ni la del relay: solo hay versión nueva (y SSE) si cambia algo de verdad.
         sin_hora = dict(estado, generado_en=None, fuentes={k: v for k, v in estado["fuentes"].items() if k != "relay"})
         # M8h: un sondeo bueno de GitHub sin cambios solo mueve la hora de fuentes.github. No es una versión nueva
@@ -665,6 +724,45 @@ class Relay:
         return servicios_mod.calcular(leido["texto"], leido["versiones"], sha_persona, leido["autoridad"],
                                       leido["contratos"], sorted(rutas), comprobados, pruebas, leido["observado_en"],
                                       ts_rutas, confirmado=self._conf)
+
+    def _m10(self, estado, tareas, issues, guardados, ahora):
+        """M10 (api.md §11.2): la historia y la evidencia de cada tarea (desde el registro guardado, sin latidos, y las
+        acciones de GitHub) y lo leído de origin/main: `jurado`, `ruta` y los campos nuevos de las tareas, cada uno
+        con su interruptor. La historia se recalcula solo si cambian los eventos, los issues o las tareas, y dentro, solo
+        las tareas cuyos eventos han cambiado (modelo.historias). Lo leído, solo si cambia algún blob o la punta."""
+        t = fecha(ahora)
+        hasta = sum(1 for e in guardados if fecha(e["ts"]) <= t)
+        clave = (len(guardados), hasta, hashlib.sha256(json.dumps([tareas, issues], sort_keys=True).encode()).hexdigest())
+        if self._historias[0] != clave:
+            self._historias = (clave, historias(tareas, issues, guardados, self.personas, ahora, self.umbral_parada_s,
+                                                self._historia))
+        hs, leido = self._historias[1], None
+        if self.novedades:
+            with self.lock:
+                leido = self.novedades.m10
+        extra = {}
+        if leido:
+            clave = (leido["clave"], json.dumps(self.personas, sort_keys=True))
+            if self._lecturas[0] != clave:
+                self._lecturas = (clave, lecturas.calcular(leido["textos"], leido["cts"], self.personas,
+                                                           self.vista_jurado, self.ruta_critica))
+            res = self._lecturas[1]
+            for a in res["avisos"]:
+                if a not in self._avisos_m10:
+                    self._avisos_m10.add(a)
+                    print(f"relay: {a}", file=sys.stderr, flush=True)
+            if self.vista_jurado:
+                estado["jurado"] = res["jurado"]
+            if self.ruta_critica:
+                estado["ruta"] = res["ruta"]
+            extra = res["tareas"]
+        for x in estado["tareas"]:
+            x.update(extra.get(x["id"], {}))
+            historia, evidencia = hs.get(x["id"], (None, None))
+            if historia:
+                x["historia"] = historia
+            if evidencia:
+                x["evidencia"] = evidencia
 
     def bucle(self, parar):
         """Recalcula tras cada lote (como mucho cada RECALCULO_MIN_S) y cada RECALCULO_RELOJ_S."""
@@ -935,15 +1033,20 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
     except ValueError:
         viejo = 300
     nueva = web_nueva(os_md)                        # M9a: SSE `eventos` y `servicios` (api.md §0 y §3)
-    novedades = Novedades(repo, viejo, aviso=aviso, web_nueva=nueva) if es_repo else None
+    jurado, ruta = vista_jurado(os_md), ruta_critica(os_md)     # M10 (api.md §11.1)
+    novedades = Novedades(repo, viejo, aviso=aviso, web_nueva=nueva, vista_jurado=jurado, ruta_critica=ruta) \
+        if es_repo else None
     wip = None
     if es_repo and os_md and colisiones_merge.modo_publicar(conf(os_md, "publicar_wip"))[0]:
         wip = colisiones_merge.Calculo(repo, {p["persona"] for p in personas}, aviso=aviso)
         wip = wip if wip.activo else None
     relay = Relay(carpeta, personas, sondeo=sondeo, umbral_parada_s=umbral, novedades=novedades, umbral_viejo_s=viejo,
-                  wip=wip, web_nueva=nueva)
+                  wip=wip, web_nueva=nueva, vista_jurado=jurado, ruta_critica=ruta)
     if nueva:
         aviso("Web de trabajo (web_nueva: sí): SSE `eventos` y servicios de .hackathon/servicios.md.")
+    if jurado or ruta:
+        aviso("M10 (" + " y ".join(n for n, s in (("vista_jurado", jurado), ("ruta_critica", ruta)) if s) +
+              ": sí): criterios, plan, pitch y equipo de origin/main, e historia de cada tarea desde el registro.")
     servidor = Servidor((ip, puerto), manejador(relay))
     parar = threading.Event()
     threading.Thread(target=relay.bucle, args=(parar,), daemon=True).start()
