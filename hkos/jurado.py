@@ -2,20 +2,23 @@
 git y sin reloj propio (`ahora` es un parámetro).
 
 bloque(jurado, tareas, ahora, …) recibe lo que el relay deja en `estado.json` (K-104, `estado.schema.json`): `jurado`
-(fichero, notas con su clave, pitch) y `tareas[]` (estado, declarado, criterios, conexiones, evidencia, fusion,
-historia), y devuelve `$defs/vista_jurado`, ya ordenado, con su `cuenta` y su `resumen`.
+(fichero, notas con su clave, pitch) y `tareas[]` (estado, declarado, criterios, conexiones, evidencia {valor, tipo,
+fuente, observado_en}, historia), y devuelve `$defs/vista_jurado`, ya ordenado, con su `cuenta` y su `resumen`.
 - Nunca «cubierta» porque algo lo declare: una `cerrada` a mano (⚑), el pitch o una etiqueta ambigua no cubren.
 - La evidencia se enseña siempre que exista; la Prueba es evidencia, no condición (decisión 4A).
 - El texto de las notas es dato (constitución V): sale tal cual, sin interpretarlo.
+- «Sin cubrir» es todo lo no cubierto menos las corregidas: sin_tarea + ambiguas + planificadas + en_curso + en_pitch
+  (#46, 2). Una ambigua cuenta solo en ambiguas.
 """
 import copy
 
 from estados import fecha
 
 FUENTE_VIEJA_S = 300                                   # umbral_viejo_s por defecto, el de proyeccion
-SIGUE_HECHA = ("en_curso", "en_revision", "integrada")  # decisión 6B: publicada antes, con trabajo nuevo
+# Decisión 6B (#46, 6): publicada antes y ahora con trabajo nuevo, aunque se pare o no se cierre, sigue hecha.
+SIGUE_HECHA = ("en_curso", "en_revision", "integrada", "parada", "no_cerrada")
 PALABRAS = ("obligatorio", "se valora", "nos gustaría ver")
-LINEA_MAX = 160                                        # api.md §6
+LINEA_MAX = 120                                        # api.md §6 (#46, M17): deja sitio a « (HH:MM · fuente · viejo)»
 DE_FUENTE = {"git": "git", "github": "github"}         # fuente de una tarjeta → vista.fuentes; lo demás llega por el relay
 
 
@@ -54,6 +57,11 @@ def hecha(t):
     return e["valor"] in SIGUE_HECHA and bool((t.get("historia") or {}).get("hecha_en"))
 
 
+def con_senales(t):
+    """Ha empezado: tiene historia.primera_senal (api.md §11.3, #46, 2)."""
+    return bool((t.get("historia") or {}).get("primera_senal"))
+
+
 def _viejas(fuentes, ahora, umbral):
     """{relay|github|git: viejo}: el `viejo` de vista.fuentes si viene; si no, la misma regla que proyeccion.vista."""
     salida = {}
@@ -80,16 +88,14 @@ def _tarjeta(t, tarjetas, viejas):
 
 
 def _evidencias(t, conexiones, viejas, ahora, umbral):
-    """El commit o la fusión que la publicó y el último resultado de la Prueba de cada conexión suya."""
+    """El commit o la fusión de la última publicación (tareas[].evidencia, #46, 6) y el último resultado de la Prueba
+    de cada conexión suya."""
     salida = []
-    if t.get("evidencia"):
-        e, h = t["estado"], t.get("historia") or {}
-        # La hora de la publicación que dejó esa evidencia: la del estado si sigue publicada (si se publicó otra vez,
-        # la de la última); si no, historia.hecha_en.
-        hora = e["observado_en"] if e["valor"] == "publicada" else h.get("hecha_en") or e["observado_en"]
-        salida.append({"tipo": "fusion" if t.get("fusion") == t["evidencia"] else "commit", "tarea": t["id"],
-                       "valor": t["evidencia"][:60], "fuente": "git", "observado_en": hora,
-                       "viejo": viejas.get("git", False)})
+    ev = t.get("evidencia")
+    if ev:
+        salida.append({"tipo": ev["tipo"], "tarea": t["id"], "valor": ev["valor"][:60], "fuente": ev["fuente"],
+                       "observado_en": ev["observado_en"],
+                       "viejo": viejas.get(DE_FUENTE.get(ev["fuente"], "relay"), False)})
     for clave in (t.get("conexiones") or {}).get("valor") or []:
         r = (conexiones.get(clave) or {}).get("resultado")
         if r:
@@ -99,14 +105,14 @@ def _evidencias(t, conexiones, viejas, ahora, umbral):
     return salida
 
 
-def _resumen(fichero, cuenta):
+def _resumen(fichero, cuenta, fuerte):
+    """fuerte: la fuerza más alta entre las sin cubrir, {texto, n}, o None."""
     from proyeccion import corta
     if fichero == "sin fichero":
         return "jurado: sin criterios.md en main"
     if not cuenta["notas"]:
         return "jurado: sin notas en criterios.md"
-    fuerte = cuenta["sin_cubrir_por_fuerza"][:1]
-    partes = [f"{cuenta['sin_cubrir']} sin cubrir" + "".join(f" ({f['n']} «{f['texto']}»)" for f in fuerte)]
+    partes = [f"{cuenta['sin_cubrir']} sin cubrir" + (f" ({fuerte['n']} «{fuerte['texto']}»)" if fuerte else "")]
     if cuenta["ambiguas"]:
         partes.append(f"{cuenta['ambiguas']} ambigua" + "s" * (cuenta["ambiguas"] != 1))
     if cuenta["en_pitch"]:
@@ -149,14 +155,16 @@ def bloque(jurado, tareas, ahora, fuentes=None, servicios=None, umbral_viejo_s=F
     for n in sorted(notas, key=_cuando):       # si varias corrigen la misma, cuenta la última
         casa = [m for m in casan(n["corrige"], notas) if m["clave"] != n["clave"]] if n.get("corrige") else []
         if len(casa) == 1 and _cuando(casa[0]) <= _cuando(n):
-            corregida[casa[0]["clave"]] = n["clave"]
+            # M20: la relación la escribe una persona en criterios.md: declarada, con la hora de ese commit.
+            corregida[casa[0]["clave"]] = {"valor": n["clave"], "fuente": "declarado", "observado_en": n["observado_en"]}
 
     salida = []
     for n in notas:
         es = list(enlaces[n["clave"]].values())
         firmes = [t for t, _, ambiguo, _ in es if not ambiguo]
-        if firmes:
-            valor = "cubierta" if all(hecha(t) for t in firmes) else "declarada"
+        if firmes:      # sin cubrir: en curso si alguna de sus tareas tiene señales; si no, planificada (#46, 2)
+            valor = "cubierta" if all(hecha(t) for t in firmes) else \
+                "en_curso" if any(con_senales(t) for t in firmes) else "planificada"
         elif es:
             valor = "ambigua"
         else:
@@ -179,8 +187,8 @@ def bloque(jurado, tareas, ahora, fuentes=None, servicios=None, umbral_viejo_s=F
             "trabajo_nuevo_desde": min(nuevo, key=fecha) if nuevo else None,
             "tareas": filas,
             "evidencias": evidencias,
-            "pitch": {"fuente": pitch["fuente"], "observado_en": pitch["observado_en"], "declarado": True}
-            if n["clave"] in en_pitch else None})
+            "pitch": {"donde": "pitch.md", "fuente": pitch["fuente"], "observado_en": pitch["observado_en"],
+                      "declarado": True} if n["clave"] in en_pitch else None})
 
     def orden(x):
         grupo = 2 if x["corregida_por"] else 1 if x["cobertura"]["valor"] == "cubierta" else 0
@@ -193,16 +201,20 @@ def bloque(jurado, tareas, ahora, fuentes=None, servicios=None, umbral_viejo_s=F
     for x in sin_cubrir:                       # ya en orden de fuerza
         f = x["nota"]["fuerza"]
         por_fuerza.setdefault((rango_fuerza(f), _norma(f["texto"])), {"texto": f["texto"], "n": 0})["n"] += 1
+    por_fuerza = list(por_fuerza.values())
 
     def cuantas(valor):
         return sum(x["cobertura"]["valor"] == valor for x in vivas)
-    cuenta = {"notas": len(salida), "sin_cubrir": len(sin_cubrir), "sin_tarea": cuantas("sin_tarea"),
-              "ambiguas": cuantas("ambigua"), "declaradas": cuantas("declarada"), "en_pitch": cuantas("en_pitch"),
-              "cubiertas": cuantas("cubierta"), "corregidas": len(salida) - len(vivas),
-              "sin_cubrir_por_fuerza": [por_fuerza[k] for k in sorted(por_fuerza, key=lambda k: k[0])]}
+    cuenta = {"notas": len(salida), "corregidas": len(salida) - len(vivas), "cubiertas": cuantas("cubierta"),
+              "sin_cubrir": len(sin_cubrir), "sin_tarea": cuantas("sin_tarea"), "ambiguas": cuantas("ambigua"),
+              "planificadas": cuantas("planificada"), "en_curso": cuantas("en_curso"), "en_pitch": cuantas("en_pitch"),
+              "sin_cubrir_por_fuerza": por_fuerza}
     fichero = (jurado.get("fichero") or {}).get("valor")
     resultado = {"observado_en": ahora, "fuente": "derivado", "viejo": viejas.get("git", False)}
     if fichero in ("ok", "sin fichero", "mal formado"):
         resultado["fichero"] = fichero
-    resultado.update(cuenta=cuenta, notas=salida, sin_nota=sin_nota, resumen=_resumen(fichero, cuenta))
+    if jurado.get("zona"):                     # B4: la de equipo.md, tal cual
+        resultado["zona"] = copy.deepcopy(jurado["zona"])
+    resultado.update(cuenta=cuenta, notas=salida, sin_nota=sin_nota,
+                     resumen=_resumen(fichero, cuenta, por_fuerza[0] if por_fuerza else None))
     return resultado
