@@ -396,10 +396,10 @@
               "type": "array",
               "items": { "anyOf": [
                 { "enum": ["sin_entrega", "ciclo", "pocos_datos"] },
-                { "enum": ["sin_plazo"], "description": "TRANSITORIO (issue #46): se quita al adaptar el código. Tras el ajuste 1 de ADR-0013, una tarea sin plazo va a sin_plazo[] y no quita la estimación." },
+                { "enum": ["sin_plazo"], "description": "Tras congelar, 2026-10-19, M10, ajuste 2: solo cuando hay tareas abiertas que cuentan y ninguna tiene franja (si no, «sin plazo» daría «a tiempo» sin medir nada). Si alguna tiene franja, las que no la tienen van a sin_plazo[] y no quitan la estimación (ajuste 1 de ADR-0013)." },
                 { "enum": ["entrega_doble"], "description": "TRANSITORIO (issue #46): se quita al adaptar el código. Tras el ajuste 5 de ADR-0013, con dos horas en Entrega: manda la primera y la otra va a otras_entregas." }
               ] },
-              "description": "sin_entrega: equipo.md sin Entrega:, ilegible o sin resolver. Las otras_entregas que no coinciden no quitan la estimación (decisión 1A); ni dos horas en Entrega: (ajuste 5) ni una tarea abierta sin plazo (ajuste 1), tampoco (issue #46)."
+              "description": "sin_entrega: equipo.md sin Entrega:, ilegible o sin resolver. Las otras_entregas que no coinciden no quitan la estimación (decisión 1A); ni dos horas en Entrega: (ajuste 5) ni una tarea abierta sin plazo si alguna otra tiene franja (ajuste 1), tampoco (issue #46). sin_plazo: ninguna tarea abierta que cuenta tiene franja (tras congelar, 2026-10-19, M10, ajuste 2)."
             },
             "gravedad": { "enum": ["ninguna", "ambar", "gris"], "description": "«no llega» es ámbar: el rojo es solo para hechos." },
             "fuente": { "$ref": "#/$defs/fuente" },
@@ -502,7 +502,7 @@
         },
         "sin_plazo": {
           "type": "array",
-          "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 1 de ADR-0013): las tareas abiertas que cuentan y no tienen franja. No quitan la estimación: cuentan 0 min y el resumen dice «sin contar T28 (sin plazo)».",
+          "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 1 de ADR-0013): las tareas abiertas que cuentan y no tienen franja. Si alguna otra abierta tiene franja, no quitan la estimación: cuentan 0 min y el resumen dice «sin contar T28 (sin plazo)». Si ninguna la tiene, el veredicto es sin_estimacion con el motivo sin_plazo (tras congelar, 2026-10-19, M10, ajuste 2).",
           "items": {
             "type": "object",
             "required": ["tarea", "motivo"],

@@ -94,6 +94,8 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§0 y §6 (B7):** la plantilla de `os.md` lleva `vista_jurado:` y `ruta_critica:`, y la cabecera de ejemplo de `estado-equipo.md`, las firmas `servicios:`, `jurado:` y `ruta:`;
   - **ADR-0013 (B8):** fuera la frase del desfase de `hk-os unir`, que ningún campo guarda;
   - **§11.2 y el esquema (B9):** la fila de entrega de Hitos va solo a `otras_entregas`, no se repite en `hitos`.
+- 2026-10-19, M10, tras congelar, ajuste 2 (tres puntos en que el issue #46 dejó el contrato distinto del código, decididos por el usuario; ADR-0013, «Ajuste 2 tras congelar»). Sin subir `v`. Lo cubren:
+  - **§11.4 y el esquema:** `sin_plazo` vuelve a ser motivo de `sin_estimacion`, solo cuando ninguna tarea abierta que cuenta tiene franja (si no, «sin plazo» daría «a tiempo» sin medir nada); si alguna la tiene, todo queda como dice el ajuste 1. En el esquema, `sin_plazo` deja de ser transitorio en `veredicto.motivos`.
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -791,9 +793,10 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **Veredicto `sin_estimacion`**, con todos los `motivos` que apliquen, en este orden:
   - `sin_entrega`: `equipo.md` no tiene `- Entrega:`, no se puede leer (`ruta.equipo` distinto de `ok`) o esa línea no se resuelve (`motivo` `sin_dato`, `sin_zona`, `por_confirmar` o `formato`);
   - `ciclo`: un ciclo en el grafo;
+  - `sin_plazo`: hay tareas abiertas que cuentan y **ninguna** tiene franja (tras congelar, 2026-10-19, M10, ajuste 2): sin ninguna franja no hay nada que medir, y estimar daría «a tiempo» sin haber medido nada;
   - `pocos_datos`: una persona con tareas abiertas con franja y `n < 3`.
 
-  Una tarea abierta sin franja **no** quita la estimación (tras congelar, 2026-10-19, M10, issue #46, ajuste 1 de ADR-0013): va a `sin_plazo` y el resto se estima. `sin_plazo` ya no es un motivo (el esquema lo admite como transitorio hasta adaptar el código). Tampoco lo es `entrega_doble`: con dos horas en `- Entrega:`, manda la primera y la otra va a `otras_entregas` (ajuste 5).
+  Si alguna tarea abierta que cuenta tiene franja, una sin franja **no** quita la estimación (tras congelar, 2026-10-19, M10, issue #46, ajuste 1 de ADR-0013): va a `sin_plazo` y el resto se estima. En ese caso `sin_plazo` no es un motivo (tras congelar, 2026-10-19, M10, ajuste 2). Tampoco lo es `entrega_doble`: con dos horas en `- Entrega:`, manda la primera y la otra va a `otras_entregas` (ajuste 5).
 
   `gravedad: gris`, `estimacion: null`. Ni una discrepancia con `otras_entregas` ni «(confirmar)» quitan la estimación: con «(confirmar)», el objetivo lleva `confirmar: true` (declarado) y el resumen lo dice.
 - **Estimación** (si no hay motivos): lo que le queda a cada tarea abierta es `franja.min` × el ritmo de su dueño (`ritmo_min` para el fin temprano, `ritmo_max` para el tarde), menos el tiempo ya trabajado si está en curso (desde `primera_senal`, sin descansos), y nunca menos de 0. Una tarea de `sin_plazo` cuenta 0 min: sus sucesoras empiezan al acabar sus predecesoras abiertas (ajuste 1). Cada tarea empieza al acabar todas sus predecesoras abiertas (o ahora) y se salta los descansos de su persona y de todos; `temprano` y `tarde` son el fin más tardío de todas. `margen_min` = entrega − tarde y `margen_max` = entrega − temprano, en minutos.
@@ -812,7 +815,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **`viejo`**: alguna de `vista.fuentes` está vieja; `dato_mas_viejo`, el `observado_en` más antiguo de esas fuentes. `observado_en`: la hora del cálculo.
 - **`resumen`** (decisión 7B), cortado a **120** por grafemas (tras congelar, 2026-10-19, M10, issue #46, M17, como el del jurado):
   - con estimación: `ruta: estimación <a tiempo | justo | no llega> · fin <HH:MM>–<HH:MM> · entrega <día HH:MM>[ (confirmar)]`;
-  - sin ella: `ruta: sin estimación (<sin hora de entrega | ciclo T04 → T07 → T04 | pocos datos: @ana 2 de 3, @marta 1 de 3>)`, con el primer motivo;
+  - sin ella: `ruta: sin estimación (<sin hora de entrega | ciclo T04 → T07 → T04 | sin plazo: T28[, T30…] | pocos datos: @ana 2 de 3, @marta 1 de 3>)`, con el primer motivo (`sin plazo: …`, tras congelar, 2026-10-19, M10, ajuste 2);
   - detrás, con estimación y tareas en `sin_plazo`: ` · sin contar T28[, T30…] (sin plazo)` (ajuste 1);
   - detrás, si hay `otras_entregas` que no coinciden, la primera: ` · otra entrega: <texto> (<dónde>)` si viene de `plan.md` o `equipo.md`, y ` · otra entrega: <día HH:MM> (criterios.md, nota de <HH:MM>)` si viene de una nota, con la hora resuelta y la de la cita de la nota: **nunca su texto** (constitución V; ajuste 5);
   - y si hay plazos pasados: ` · T05: plazo pasado <HH:MM>[ y N más]`.
