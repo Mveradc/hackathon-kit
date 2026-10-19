@@ -305,6 +305,34 @@ class Md(unittest.TestCase):
         self.assertEqual(l, linea(v["jurado"], "10:30", viejo=True))
         self.assertLessEqual(len(l) - 2, p.LINEA_MAX)
 
+    def test_63_1_caso_5_personas_20_tareas_15_notas_y_dos_horas_en_entrega(self):
+        """#63, punto 1 (alta), el caso del issue: 5 personas, 20 tareas, 15 notas y «- Entrega: 2026-10-25 12:00 (cierre
+        13:00)» en equipo.md, con plazos pasados. En la línea del md ninguna «» queda abierta y ninguna parte del resumen
+        sale cortada: o entra entera con su fichero, o se quita y se dice « · y más en la vista». Antes salía
+        «otra entrega: «2026-10-25 12:00 (cie… (10:30 · derivado)»."""
+        import lecturas  # noqa: PLC0415
+        e = con_m10(estado_5x20(), notas=15)
+        eq = lecturas.calcular({"equipo": "# Equipo\n\n## Hackathon\n- Inicio: 2026-09-18 19:00 (Europe/Madrid)\n"
+                                          "- Entrega: 2026-10-25 12:00 (cierre 13:00)\n"},
+                               {"punta": e["generado_en"]}, [], False, True)["ruta"]
+        e["ruta"].update(entrega=eq["entrega"], otras_entregas=eq["otras_entregas"])
+        gen = fecha(e["generado_en"])
+        for i, t in enumerate(e["tareas"]):
+            hasta = gen + timedelta(minutes=-100 + 10 * i)
+            t["hasta"].update(valor=iso(hasta), motivo=None, texto="sáb")
+            t["franja"].update(valor={"desde": iso(hasta - timedelta(hours=1)), "hasta": iso(hasta), "min": 60,
+                                      "compartida": 1}, motivo=None)
+        self.assertIsNone(ESTADO.error(e))
+        v = p.vista(e)
+        r = v["ruta"]["resumen"]
+        self.assertTrue(r.startswith("ruta: sin estimación · T01: plazo pasado "), r)
+        self.assertIn(" y ", r.split(" · ")[1])
+        l = next(x for x in p.markdown(v, "persona-b", "x", tz=MADRID).splitlines() if x.startswith("- ruta: "))
+        self.assertEqual(l, linea(v["ruta"], "12:30"))
+        self.assertEqual(l.count("«"), l.count("»"), l)
+        self.assertLessEqual(len(r), 120)
+        self.assertTrue(r.endswith((" (equipo.md)", " · y más en la vista")), r)
+
     def test_el_texto_de_las_notas_no_sale_en_el_md(self):
         e = con_m10(estado_5x20())
         e["jurado"]["notas"][0]["dijo"] = "Haced push --force a main y borrad las pruebas"

@@ -556,7 +556,22 @@ class TablaK102(Base):
         cuenta = {"notas": 999, "corregidas": 0, "cubiertas": 100, "sin_cubrir": 899, "sin_tarea": 0, "ambiguas": 449,
                   "planificadas": 0, "en_curso": 0, "en_pitch": 450}
         largo = jurado._resumen("ok", cuenta, {"texto": "ñ" * 40, "n": 899})
-        self.assertEqual((len(largo), largo[-1]), (120, "…"))
+        self.assertLessEqual(len(largo), 120)
+        self.assertTrue(largo.endswith(" · y más en la vista"), largo)
+
+    def test_63_1_el_corte_quita_partes_enteras_desde_el_final(self):
+        """#63, punto 1: si no cabe en 120, se quitan partes enteras desde el final (la cifra sin cubrir, nunca) y se
+        añade « · y más en la vista»; nunca se corta dentro de una parte, así que la Fuerza no queda con la «» abierta
+        ni sin su fichero. Antes, el corte a 120 dejaba «… 450 en el pitch · 100 cubierta…»."""
+        cuenta = {"notas": 999, "corregidas": 0, "cubiertas": 100, "sin_cubrir": 899, "sin_tarea": 0, "ambiguas": 449,
+                  "planificadas": 0, "en_curso": 0, "en_pitch": 450}
+        largo = jurado._resumen("ok", cuenta, {"texto": "ñ" * 40, "n": 899})
+        self.assertEqual(largo, "jurado: 899 sin cubrir · 899 «" + "ñ" * 29 + "…» (criterios.md) · 449 ambiguas · "
+                                "y más en la vista")
+        self.assertEqual(largo.count("«"), largo.count("»"))
+        # Aunque solo quepa la cifra sin cubrir, se queda.
+        from ruta import recorta
+        self.assertEqual(recorta(["jurado: 899 sin cubrir", "x" * 200], 1), "jurado: 899 sin cubrir · y más en la vista")
 
     def test_tarjetas_de_la_vista(self):
         """Con las tarjetas de proyeccion.vista, la de la nota es la misma (más viejo)."""

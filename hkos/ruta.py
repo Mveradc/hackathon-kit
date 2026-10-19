@@ -29,6 +29,7 @@ GRAVEDAD = {"rojo": 0, "ambar": 1, "gris": 2}
 LEGIBLE = {"a_tiempo": "a tiempo", "justo": "justo", "no_llega": "no llega"}
 RESUMEN_MAX = 120                           # M17: la línea del md, con « (HH:MM · fuente · viejo)», cabe en 160
 TEXTO_LIBRE_MAX = 30                        # #56, 7 (§6): el texto libre de un resumen, en grafemas
+Y_MAS = " · y más en la vista"              # #63, 1: lo que se pone cuando se quitan partes del resumen
 DESFASE = re.compile(r"^(?:UTC)?([+-])(\d{1,2})(?::?(\d\d))?$")
 
 
@@ -133,6 +134,19 @@ def entre_comillas(texto, n=TEXTO_LIBRE_MAX):
     return f"«{equilibra(''.join(gs[:k]).rstrip(), 10 ** 6)}…»"
 
 
+def recorta(partes, fijas, n=RESUMEN_MAX):
+    """Las partes de un resumen, separadas por « · », en n caracteres sin cortar nunca dentro de una (#63, 1): si no
+    caben, se quitan partes enteras desde el final (nunca las `fijas` primeras: el veredicto y el plazo pasado, o la
+    cifra sin cubrir) y se añade « · y más en la vista». Así ninguna «» queda abierta ni sin su fichero."""
+    partes = [" ".join(p.split()) for p in partes]
+    if len(" · ".join(partes)) <= n:
+        return " · ".join(partes)
+    k = len(partes)
+    while k > fijas and len(" · ".join(partes[:k]) + Y_MAS) > n:
+        k -= 1
+    return " · ".join(partes[:k]) + Y_MAS
+
+
 def _cuantas(n, cosa):
     """«1 tarea», «3 tareas»."""
     return f"{n} {cosa}" + "s" * (n != 1)
@@ -170,7 +184,7 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     personas: `vista["personas"]` ({persona, nombre?}: el nombre, para los descansos). fuentes: `vista["fuentes"]`
     ({k: {valor, observado_en, viejo}}). tarjetas: {ID: tarjeta de la vista (api.md §6)}; sin ella, una mínima.
     umbral_parada_s: el `umbral_parada_min` de os.md, en segundos (para «sin señales», con historia.ultima_senal)."""
-    from proyeccion import ETIQUETAS, corta     # aquí: proyeccion importa este módulo
+    from proyeccion import ETIQUETAS            # aquí: proyeccion importa este módulo
     t_ahora, fuentes, tarjetas = fecha(ahora), fuentes or {}, tarjetas or {}
     nombres = {p["persona"]: p.get("nombre") for p in personas}
     # #56, 2: la última señal de una persona es la última atribuida a alguna de sus tareas (historia.ultima_senal: un
@@ -430,7 +444,7 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         return f"{DIAS[d.weekday()]} {d.strftime('%H:%M')}"
 
     # #56, 5 (contrato del PR #59, §11.4): las partes, separadas por « · »: el veredicto; justo detrás, el plazo pasado
-    # (el único rojo, el primero por hora, «y N más»), para que el corte a 120 nunca lo quite; con estimación, el fin y
+    # (el único rojo, el primero por hora, «y N más»), que el recorte nunca quita (#63, 1); con estimación, el fin y
     # la entrega; sin ella, el primer motivo, abreviado; «sin contar …»; y la primera otra entrega.
     partes = [f"ruta: estimación {LEGIBLE[valor]}" if estimacion else "ruta: sin estimación"]
     pasados = [x for x in hechos if x["tipo"] == "plazo_pasado"]
@@ -453,7 +467,7 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
             partes.append(f"otra entrega: {dia_hm(o['valor']) if o.get('valor') else '—'} (criterios.md, nota de {de_nota})")
         else:                               # #56, 7: texto libre (constitución V): entre «», recortado, con su fichero
             partes.append(f"otra entrega: {entre_comillas(o['texto']) if o.get('texto') else '—'} ({o['donde']})")
-    resumen = " · ".join(partes)
+    resumen = recorta(partes, 1 + bool(pasados))
 
     return {
         "observado_en": ahora, "fuente": "derivado", "viejo": any(d.get("viejo") for d in leidas),
@@ -465,7 +479,7 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         "estimacion": estimacion,
         "base": {"minimo": MINIMO, "desde": min(hechas_en, key=fecha, default=None), "personas": base_personas},
         "hechos": hechos, "cadena": cadena, "riesgos": riesgos, "sin_plazo": sin_plazo, "fuera_de_entrega": fuera,
-        "hitos": hitos, "descansos": descansos, "resumen": corta(" ".join(resumen.split()), RESUMEN_MAX)}
+        "hitos": hitos, "descansos": descansos, "resumen": resumen}
 
 
 def firma(bloque):
