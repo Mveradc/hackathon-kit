@@ -15,3 +15,5 @@ datos_excluidos: data/, datos/   # ADR-0007: nunca se publican en refs/hackathon
 puerto_agente:            # vacío = 47100 + (cksum del git común) % 900 (ADR-0004)
 apagado_min: 30           # el demonio sale tras este tiempo sin eventos ni sesiones
 web_nueva: no             # sí = la web de trabajo de M9a, servida por el demonio de cada persona (api.md §4, ADR-0010)
+vista_jurado: no          # sí = qué tarea o evidencia cubre cada nota de criterios.md (R-35, ADR-0012, api.md §11)
+ruta_critica: no          # sí = si se llega a la Entrega de equipo.md con el ritmo real y qué la pone en riesgo (R-36, ADR-0013)

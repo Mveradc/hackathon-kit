@@ -43,7 +43,7 @@ estado/, salidas/ estado del pipeline, caché y JSONL generados (fuera de git)
 Interfaz gráfica, agentes autónomos y chat con Alberto (decisión).
 
 ## Convenciones
-Código, comentarios, docs y commits en español. Secretos solo en `.env` (plantilla en `.env.example`). Los datos del reto, fuera de git. Detalle en `.claude/rules/convenciones.md`.
+Código, comentarios, docs y commits en español. Cada commit empieza por el ID de su tarea en `.hackathon/plan.md`: `Txx · …` (por ejemplo, `T05 · …`). Secretos solo en `.env` (plantilla en `.env.example`). Los datos del reto, fuera de git. Detalle en `.claude/rules/convenciones.md`.
 
 ## Fechas (hora de Madrid, Europe/Madrid)
 - VIE 18 sep 2026, 19:00: inicio y materiales del lote inicial en el canal del track.

@@ -53,11 +53,12 @@ Sigue `templates/CLAUDE.md`, en su orden. Lo importante:
 - **Reglas de equipo**: invariantes numeradas que salen de los contratos, riesgos, trampas y ambigüedades del análisis y de los matices de la decisión. Concretas y comprobables, cada una con su origen entre paréntesis (ver «Etiquetas de origen»). **Solo lo que se pueda rastrear hasta el análisis o la decisión**: nada genérico ("escribe tests", "código limpio") ni supuestos sobre los datos que el reto no menciona.
 - **Fuera de alcance**: lo que la decisión deja fuera a propósito.
 - **Fechas**: con hora y zona horaria, si el análisis las da.
+- **Convenciones**: siempre con la frase de la plantilla sobre los commits (`Txx · …`, el ID de su tarea en el plan): con el Hackathon OS, un commit sin ID no hace avanzar ninguna tarea si su autor tiene más de una abierta (ADR-0013, decisión 11C).
 - Solo lo que no se deduce mirando el código.
 
 ### Reglas (`.claude/rules/`, 2–4 ficheros de 5–10 viñetas)
 Sigue `templates/rule.md`.
-- `convenciones.md`, sin `paths`: idioma del código y de la documentación, formato de commits, secretos solo en `.env`, datos del reto fuera de git.
+- `convenciones.md`, sin `paths`: idioma del código y de la documentación, formato de commits (cada uno empieza por `Txx · …`, el ID de su tarea en `.hackathon/plan.md`), secretos solo en `.env`, datos del reto fuera de git.
 - El resto, **con `paths:`** apuntando a las carpetas generadas donde aplican. Salen de los contratos y trampas del reto: formato exacto de entrega, datos que no son de fiar, cosas que el reto prohíbe… Cada viñeta, específica de este reto y rastreable hasta el análisis o la decisión, con el mismo criterio que las reglas de equipo.
 - **Cada viñeta termina con su origen entre paréntesis**, como las reglas de equipo (ver «Etiquetas de origen»). En `convenciones.md`, las que no salen del reto llevan `(convención del kit)`.
 

@@ -4,8 +4,13 @@
 Si algo no aplica, escribe "no" o "—". -->
 
 ## Hackathon
-- Inicio: <fecha y hora, zona horaria>
-- Entrega: <fecha y hora, zona horaria>
+<!-- Inicio y Entrega los lee el Hackathon OS (ruta crítica y hora de las notas de criterios.md), así que van con este
+formato: fecha AAAA-MM-DD, hora HH:MM y zona horaria entre paréntesis, como nombre (Europe/Madrid) o desfase (UTC+2),
+nunca abreviada (CEST es ambigua). Una sola hora por línea: si el reto da entrega y cierre, pon aquí la que manda para
+el equipo; con dos horas, la ruta crítica no estima. Si la hora aún no es segura, añade "(confirmar)" detrás;
+si no se sabe, "por confirmar". Ejemplo: "- Entrega: 2026-09-20 10:00 (Europe/Madrid) (confirmar)". -->
+- Inicio: <AAAA-MM-DD HH:MM (zona horaria)>
+- Entrega: <AAAA-MM-DD HH:MM (zona horaria)>
 - Presentación o defensa: <fecha y hora si se sabe, o "por confirmar">
 
 ## Personas

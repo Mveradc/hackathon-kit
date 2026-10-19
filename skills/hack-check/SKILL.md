@@ -74,10 +74,15 @@ Eres el verificador del equipo. La cadena del kit ya ha generado el análisis, l
 7. **Cobertura de la rúbrica.** Para cada criterio que puntúa, anota lo que el enunciado pide dentro de él (sus partes, no solo su nombre y su peso) y si cada parte tiene una tarea en el plan y un bloque o una respuesta en el pitch. Solo informa de los huecos; no los rellenes.
 
 8. **Notas de `criterios.md`.** Para cada nota, comprueba:
-   - que lo que dice que afecta (pitch, plan, contratos, reglas, entrega) lo recoge: un bloque o una respuesta del pitch, una tarea con dueño en el plan, un campo del contrato o una viñeta de las reglas, con la etiqueta `(criterios: <fecha hora>)`;
+   - que lo que dice que afecta (pitch, plan, contratos, reglas, entrega) lo recoge: un bloque o una respuesta del pitch, una tarea con dueño en el plan, un campo del contrato o una viñeta de las reglas, con la etiqueta `(criterios: <fecha hora>)`. Las notas anotadas desde la web llevan «Afecta a: —»: decide tú a qué afectan, con el mismo criterio;
    - si choca con el enunciado (dice otra cosa, cambia una fuerza, un plazo o un formato de entrega) o resuelve una ambigüedad del análisis.
 
-   Solo informa: no rellenas huecos ni eliges entre la nota y el enunciado. Un choque con una condición del paso 6 se informa también como bloqueante, con las dos citas.
+   **Etiquetas del plan.** En `plan.md`, la etiqueta va **al final de la celda «Cómo se comprueba»** de la fila que recoge la nota, nunca en «Tarea» ni en otra columna, con la forma `(criterios: <AAAA-MM-DD HH:MM>[ · quién][, <otra cita>…])`: « · quién», tal como va en la cabecera, cuando otra nota tiene la misma fecha y hora. Apunta como cambio de etiqueta, para aplicarlo:
+   - la fila que hace lo que pide una nota y no lleva su etiqueta;
+   - la cita que no casa con ninguna nota, o que casa con dos (le falta « · quién»), o que apunta a una nota corregida por otra posterior (va la nueva);
+   - la etiqueta que está en otra celda o con otra forma.
+
+   Fuera de esos cambios de etiqueta, solo informa: no rellenas huecos (una nota que ninguna fila recoge no recibe una fila nueva ni se etiqueta una fila que no la hace) ni eliges entre la nota y el enunciado. Un choque con una condición del paso 6 se informa también como bloqueante, con las dos citas.
 
 ## Informe
 
@@ -107,9 +112,10 @@ Al aplicar, usa Edit y cambia solo esto:
 - las palabras de fuerza (paso 2);
 - las referencias del pitch (paso 5);
 - el formato de las etiquetas (paso 1);
+- las etiquetas `(criterios: …)` de `plan.md` (paso 8): añadir, corregir o mover solo la etiqueta, al final de «Cómo se comprueba», sin cambiar el resto de la celda ni las 5 columnas. Con el Hackathon OS, cambiar esa celda reescribe el issue de la tarea;
 - los cambios de calendario del paso 4 y las filas del plan del paso 6, **solo con confirmación**: en la pregunta van aparte, uno a uno, con lo que se mueve y por qué. Con el argumento `aplicar`, el argumento cuenta como confirmación. Edita solo las filas afectadas de `plan.md`. Si el plan tiene columna `ID`, cada fila nueva recibe el siguiente ID tras la línea `IDs usados hasta: Txx` (si falta o es menor que el ID más alto del plan, parte de ese ID más alto), y esa línea se actualiza; las filas que solo se mueven conservan su ID.
 
-Si quitas una regla numerada del `CLAUDE.md`, renumera las siguientes. **Nunca** toques `analisis.md`, `decision.md`, `equipo.md` ni el código. Los huecos de cobertura, las notas sin recoger o en choque y los bloqueantes que no se resuelven con una fila del plan se quedan en el informe para que decida el equipo. **Nunca** toques `criterios.md`: solo lo escriben las personas. Al terminar, marca en la tabla de afirmaciones cuáles se han aplicado.
+Si quitas una regla numerada del `CLAUDE.md`, renumera las siguientes. **Nunca** toques `analisis.md`, `decision.md`, `equipo.md` ni el código. Los huecos de cobertura, las notas sin recoger o en choque y los bloqueantes que no se resuelven con una fila del plan se quedan en el informe para que decida el equipo. **Nunca** toques `criterios.md`: solo lo escriben las personas; la etiqueta se pone o se corrige en el plan, nunca en la nota. Al terminar, marca en la tabla de afirmaciones cuáles se han aplicado.
 
 ## Resumen
 

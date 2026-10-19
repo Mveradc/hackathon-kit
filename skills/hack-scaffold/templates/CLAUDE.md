@@ -39,7 +39,9 @@ Si una regla no sale de ahí, no va: nada de buenas prácticas genéricas ni de 
 <!-- Lo que la decisión deja fuera a propósito. Si alguien lo propone, se remite aquí. -->
 
 ## Convenciones
-<!-- Idioma de código y docs, commits, secretos en .env. Breve: el detalle está en .claude/rules/convenciones.md. -->
+<!-- Idioma de código y docs, commits, secretos en .env. Breve: el detalle está en .claude/rules/convenciones.md.
+La frase de los commits va siempre, tal cual. -->
+Cada commit empieza por el ID de su tarea en `.hackathon/plan.md`: `Txx · …` (por ejemplo, `T05 · …`).
 
 ## Fechas
 <!-- Hitos del reto con hora y zona horaria, sacados del análisis. "No especificado" si no hay. -->
