@@ -513,11 +513,13 @@ class Tabla(Base):
         b = self.corre(r, tareas)
         self.assertEqual((b["base"]["personas"][0]["ritmo_min"], b["base"]["personas"][0]["ritmo_max"]), (50, 100))
         self.assertEqual(b["descansos"], r["descansos"])
-        # Fin previsto: un descanso de todos de T0+30 a T0+90 se salta (temprano 60 → 120; tarde 180 → 240).
+        # Fin previsto: un descanso de todos de T0+30 a T0+90 se salta, una sola vez (#56, 1): quita 30 min a cada franja
+        # (T04 y T05 se quedan en 30 libres) y el tarde lo salta (temprano 15 + 15 = 30; tarde 45, tras el descanso a
+        # T0 + 105, y 45 más, a T0 + 150).
         r = ruta_de(600, descansos=[descanso(None, m(30), m(90), texto="- Todos: sáb 10:30–11:30")])
         b = self.corre(r, tareas)
         self.assertEqual((b["estimacion"]["temprano"], b["estimacion"]["tarde"]),
-                         (iso(T0 + timedelta(minutes=120)), iso(T0 + timedelta(minutes=240))))
+                         (iso(T0 + timedelta(minutes=30)), iso(T0 + timedelta(minutes=150))))
         # El de otra persona y el que no se entiende no cuentan para Ana (el segundo se enseña igual).
         malo = descanso(["Ana"], None, None, texto="- Ana: la siesta", motivo="formato")
         r = ruta_de(600, descansos=[descanso(["@luis"], m(0), m(600)), malo])
@@ -545,14 +547,36 @@ class Tabla(Base):
         for quien in (["Todos"], None):
             b = self.corre(ruta_de(600, descansos=[descanso(quien, *dentro)]), ana())
             self.assertEqual(b["base"]["personas"][0]["ritmo_min"], 100)
-        # El fin previsto también salta el turno de una lista (T04 y T05 de Ana, 60 min de descanso al empezar).
-        b = self.corre(ruta_de(600, descansos=[descanso(["@luis", "@ana"], m(0), m(60))]), ana())
-        self.assertEqual(b["estimacion"]["temprano"], iso(T0 + timedelta(minutes=120)))
+        # El fin previsto también salta el turno de una lista (T04 y T05 de Ana, 30 min de descanso al empezar, dentro
+        # de la franja de T04: le quedan 30 × 50 % = 15 min, que acaban a T0 + 45; T05, 30 min más).
+        b = self.corre(ruta_de(600, descansos=[descanso(["@luis", "@ana"], m(-30), m(30))]), ana())
+        self.assertEqual(b["estimacion"]["temprano"], iso(T0 + timedelta(minutes=75)))
         # Una franja compartida por dos filas: a cada una le toca la mitad del descanso.
         tareas = ana()
         tareas[0]["franja"]["valor"].update(desde=m(-240), compartida=2, min=60)
         b = self.corre(ruta_de(600, descansos=[descanso(["Ana"], m(-200), m(-140))]), tareas)
         self.assertEqual(b["base"]["personas"][0]["ritmo_min"], 100)          # 30 min de 60 − 60 ÷ 2
+
+    def test_56_1_lo_que_queda_con_la_franja_sin_descansos(self):
+        """#56, fila 1 (alta): lo que le queda a una abierta es su franja SIN descansos × el ritmo, y la estimación salta
+        los descansos una sola vez. Antes se usaba franja.min en bruto y la noche contaba dos veces."""
+        # T04 (franja de T0 a T0 + 60) con el descanso de Ana de T0 a T0 + 30 dentro: 30 min libres. Al 50 %, 15 min
+        # desde que acaba el descanso (T0 + 45); al 150 %, 45 min (T0 + 75). Antes: 30 y 90 min (T0 + 60 y T0 + 120).
+        b = self.corre(ruta_de(600, descansos=[descanso(["@ana"], m(0), m(30))]), ana())
+        self.assertEqual([(e["tarjeta"]["id"], e["fin_temprano"], e["fin_tarde"]) for e in b["cadena"]][0],
+                         ("T04", iso(T0 + timedelta(minutes=45)), iso(T0 + timedelta(minutes=75))))
+        # T05 (de T0 + 60 a T0 + 120, sin descanso dentro): 30 y 90 min más.
+        self.assertEqual((b["estimacion"]["temprano"], b["estimacion"]["tarde"]),
+                         (iso(T0 + timedelta(minutes=75)), iso(T0 + timedelta(minutes=165))))
+        # Una franja compartida: a cada fila le toca la mitad del descanso (T04 y T05, de T0 a T0 + 120, 60 min cada
+        # una, con 60 min de descanso dentro: 30 libres por fila).
+        tareas = ana()
+        for t in tareas[3:]:
+            t["franja"]["valor"].update(desde=m(0), hasta=m(120), compartida=2, min=60)
+        b = self.corre(ruta_de(600, descansos=[descanso(["@ana"], m(30), m(90))]), tareas)
+        # Al 50 %, T04: 15 min (T0 + 15) y T05: 15 min más, justo antes del descanso (T0 + 30). Antes: 30 min cada una
+        # y T05 acababa tras el descanso (T0 + 120).
+        self.assertEqual(b["estimacion"]["temprano"], iso(T0 + timedelta(minutes=30)))
 
     def test_riesgos_por_la_estimacion(self):
         """#46, 3: riesgos[] trae lo que, según la estimación (su extremo lento), acaba después de la entrega, con su dueño

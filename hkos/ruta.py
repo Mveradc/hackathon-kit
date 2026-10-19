@@ -156,6 +156,11 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
                                             if _es_de(d, persona, nombres.get(persona))])
         return cache_pausas[persona]
 
+    def libre(fr, persona):
+        """Los minutos de la franja que le tocan sin los descansos de su persona o de todos (la parte que le toca de
+        ellos), nunca menos de 1: con ellos se mide el ritmo y lo que le queda a una abierta (§11.4, #56, 1)."""
+        return max(1, fr["min"] - _solape(fecha(fr["desde"]), fecha(fr["hasta"]), pausas(persona)) / 60 / fr["compartida"])
+
     def viejo_de(fuente):
         return bool(fuentes.get(fuente if fuente in ("github", "git") else "relay", {}).get("viejo"))
 
@@ -205,8 +210,7 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
             a, b = fecha(h["primera_senal"]), fecha(h["hecha_en"])
             seg = (b - a).total_seconds() - _solape(a, b, pausas(t["dueno"]))
             # Decisión 4 (#46): los descansos tampoco cuentan en la franja (la parte que le toca de ellos).
-            libre = fr["min"] - _solape(fecha(fr["desde"]), fecha(fr["hasta"]), pausas(t["dueno"])) / 60 / fr["compartida"]
-            ritmo = max(1, math.floor(100 * seg / 60 / max(1, libre) + 0.5))
+            ritmo = max(1, math.floor(100 * seg / 60 / libre(fr, t["dueno"]) + 0.5))
             medidas.setdefault(t["dueno"], []).append((ritmo, h["hecha_en"]))
     duenos_abiertos = {cuentan[k]["dueno"] for k in abiertas}
     base_personas = []
@@ -274,9 +278,9 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
             if t["estado"]["valor"] in EMPEZADAS and h.get("primera_senal") and fecha(h["primera_senal"]) < t_ahora:
                 a = fecha(h["primera_senal"])
                 trabajado = (t_ahora - a).total_seconds() - _solape(a, t_ahora, pausas(p))
-            par = []
+            par, minutos = [], libre(fr, p)       # #56, 1: sin descansos, que _avanza ya salta (una sola vez)
             for i, ritmo in enumerate(ritmos[p]):
-                seg = max(0, math.ceil(fr["min"] * 60 * ritmo / 100 - trabajado))
+                seg = max(0, math.ceil(minutos * 60 * ritmo / 100 - trabajado))
                 par.append(_avanza(max([t_ahora] + [x[i] for x in antes]), seg, pausas(p)))
             fin[k] = tuple(par)
         return fin[k]
