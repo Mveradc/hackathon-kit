@@ -486,7 +486,7 @@ class Plan(SinZoneinfo):
                 "- Persona B: cuando pueda\n")
         r = calcula(equipo=EQUIPO_03, plan=plan, jurado=False)["ruta"]["descansos"]
         self.assertEqual([(d["personas"], d["desde"], d["hasta"], d["motivo"]) for d in r], [
-            (["persona-a", "persona-b", "persona-c"], "2026-09-19T03:00:00+02:00", "2026-09-19T07:00:00+02:00", None),
+            (None, "2026-09-19T03:00:00+02:00", "2026-09-19T07:00:00+02:00", None),          # «Todos»: null (#56)
             (["persona-a"], "2026-09-19T23:30:00+02:00", "2026-09-20T07:00:00+02:00", None),
             (["persona-c"], "2026-09-19T08:00:00+02:00", "2026-09-19T09:00:00+02:00", None),
             (["persona-b"], None, None, "formato")])
@@ -907,7 +907,17 @@ class Issue46(SinZoneinfo):
         d = calcula(equipo=EQUIPO_03, plan=plan, jurado=False)["ruta"]["descansos"]
         self.assertEqual([(x["personas"], x["desde"], x["hasta"]) for x in d], [
             (["persona-b", "persona-c"], "2026-09-19T23:00:00+02:00", "2026-09-20T07:30:00+02:00"),
-            (["persona-a", "persona-b", "persona-c"], "2026-09-20T08:00:00+02:00", "2026-09-20T08:30:00+02:00")])
+            (None, "2026-09-20T08:00:00+02:00", "2026-09-20T08:30:00+02:00")])       # «Todos»: null (#56)
+
+    def test_56_todos_en_descansos_es_null(self):
+        """#56 (sin decisión, fila 17): «Todos» en Descansos da personas: null (todo el equipo, §11.2 y la vista de
+        ejemplo de §11.6), no la lista del equipo; también en la tabla y junto a otras personas. Para el cálculo es lo
+        mismo (ruta._es_de acepta las dos formas)."""
+        plan = ("## Descansos\n| Turno | Quién |\n|---|---|\n| sáb 00:30–06:30 | Todos |\n"
+                "| sáb 07:00–07:30 | Persona A y todos |\n| sáb 08:00–08:30 | Persona B |\n")
+        d = calcula(equipo=EQUIPO_03, plan=plan, jurado=False)["ruta"]["descansos"]
+        self.assertEqual([x["personas"] for x in d], [None, None, ["persona-b"]])
+        con_jsonschema(self, estado_minimo(ruta=calcula(equipo=EQUIPO_03, plan=plan, jurado=False)["ruta"]))
 
     def test_5_dos_horas_la_primera_manda_y_la_otra_es_otra_entrega(self):
         personas = [{"persona": x.lower(), "nombre": x} for x in "ABCDE"]

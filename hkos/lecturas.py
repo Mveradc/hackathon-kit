@@ -460,24 +460,21 @@ def _filas(lineas):
 
 
 def _quienes(texto, personas):
-    """Las personas de una celda o de un «- <quién>:» de Descansos: @usuario, el nombre de coordinacion.md o «Todos»
-    (todas las del equipo). None = todo el equipo: «Todos» sin equipo, o la celda vacía."""
+    """Las personas de una celda o de un «- <quién>:» de Descansos: @usuario o el nombre de coordinacion.md. None = todo
+    el equipo: «Todos» (también junto a otras: ya están todas; §11.2 y #56) o la celda vacía."""
     nombres = {p["nombre"].lower(): p["persona"] for p in personas}
     usuarios = {p["persona"].lower() for p in personas}
-    salida, todos = [], False
+    salida = []
     for x in re.split(r"\s*(?:,|/|&|\+|\by\b)\s*", (texto or "").strip()):
         x = x.strip()
         if not x:
             continue
         if _llano(x) in ("todos", "todo el equipo", "el equipo", "equipo", "todas"):
-            todos = True
-            salida += [p["persona"] for p in personas]
-        elif x.startswith("@"):
+            return None
+        if x.startswith("@"):
             salida.append(x[1:].lower() if x[1:].lower() in usuarios else x[1:])
         else:
             salida.append(nombres.get(x.lower(), x))
-    if todos and not personas:
-        return None
     return [proyeccion.corta(p, TEXTO_MAX) for p in dict.fromkeys(salida)] or None
 
 
