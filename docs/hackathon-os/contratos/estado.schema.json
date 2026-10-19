@@ -23,6 +23,13 @@
       }
     },
     "texto_o_nada": { "anyOf": [{ "type": "null" }, { "type": "string", "maxLength": 300 }] },
+    "texto_ruta": {
+      "type": "string",
+      "maxLength": 240,
+      "pattern": "^[^\\u202A-\\u202E\\u2066-\\u2069]*$",
+      "description": "Tras congelar, 2026-10-20, M10, ajuste 4, punto 2 (api.md §11.5): texto libre de equipo.md o plan.md en el bloque ruta de la vista (lo que devuelven el MCP y la web), recortado a 60 grafemas con «…» y sin controles bidi (U+202A–U+202E, U+2066–U+2069). En estado.json va tal cual. El límite es de 60 grafemas y lo garantiza el código; maxLength cuenta puntos de código, no grafemas, así que va en 240 para no rechazar un texto bien recortado (59 «é» compuestas y «…» son 60 grafemas y 119 puntos de código)."
+    },
+    "texto_ruta_o_nada": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/texto_ruta" }] },
     "dato": {
       "type": "object",
       "required": ["valor", "fuente", "observado_en"],
@@ -80,7 +87,7 @@
             "properties": {
               "desde": { "type": "string", "format": "date-time" },
               "hasta": { "type": "string", "format": "date-time" },
-              "min": { "type": "integer", "minimum": 1, "description": "Minutos de la franja que le tocan: (hasta − desde) / compartida, redondeado hacia arriba." },
+              "min": { "type": "integer", "minimum": 1, "description": "Minutos de la franja que le tocan: (hasta − desde) / compartida, redondeado hacia arriba. Tras congelar, 2026-10-20, M10, ajuste 4, punto 4: minutos transcurridos, medidos en UTC, también si la franja cruza el cambio de hora (de sáb 22:00 CEST a dom 06:00 CET, 540)." },
               "compartida": { "type": "integer", "minimum": 1, "description": "Filas que se reparten el bloque (las que heredan el mismo Hasta)." }
             }
           }]
@@ -126,6 +133,42 @@
         "declarado": { "const": true }
       }
     },
+    "hora_declarada_vista": {
+      "type": "object",
+      "description": "Tras congelar, 2026-10-20, M10, ajuste 4, punto 2: $defs/hora_declarada en el bloque ruta de la vista (objetivo y otras_entregas), con texto recortado a 60 grafemas y sin controles bidi ($defs/texto_ruta).",
+      "required": ["valor", "texto", "motivo", "donde", "fuente", "observado_en", "declarado"],
+      "additionalProperties": false,
+      "properties": {
+        "nombre": { "$ref": "#/$defs/texto_o_nada", "description": "En las de Hitos, la columna Qué; en las demás, ausente." },
+        "valor": { "$ref": "#/$defs/hora_o_nada" },
+        "texto": { "$ref": "#/$defs/texto_ruta_o_nada" },
+        "confirmar": { "type": "boolean", "description": "La línea lleva «(confirmar)»." },
+        "motivo": { "anyOf": [{ "type": "null" }, { "enum": ["sin_dato", "sin_zona", "formato", "por_confirmar"] }] },
+        "donde": { "enum": ["equipo.md", "plan.md", "criterios.md"] },
+        "cita": { "$ref": "#/$defs/cita", "description": "Con donde criterios.md, la cita de la nota (texto es null); en las demás, ausente." },
+        "fuente": { "$ref": "#/$defs/fuente" },
+        "observado_en": { "type": "string", "format": "date-time", "description": "Hora del commit de ese fichero en origin/main." },
+        "declarado": { "const": true }
+      }
+    },
+    "hito_vista": {
+      "type": "object",
+      "description": "Tras congelar, 2026-10-20, M10, ajuste 4, punto 2: $defs/hora_declarada de un hito en el bloque ruta de la vista, con nombre (la columna Qué) recortado a 60 grafemas y sin controles bidi ($defs/texto_ruta).",
+      "required": ["valor", "texto", "motivo", "donde", "fuente", "observado_en", "declarado"],
+      "additionalProperties": false,
+      "properties": {
+        "nombre": { "$ref": "#/$defs/texto_ruta_o_nada", "description": "La columna Qué." },
+        "valor": { "$ref": "#/$defs/hora_o_nada" },
+        "texto": { "$ref": "#/$defs/texto_o_nada" },
+        "confirmar": { "type": "boolean", "description": "La línea lleva «(confirmar)»." },
+        "motivo": { "anyOf": [{ "type": "null" }, { "enum": ["sin_dato", "sin_zona", "formato", "por_confirmar"] }] },
+        "donde": { "enum": ["equipo.md", "plan.md", "criterios.md"] },
+        "cita": { "$ref": "#/$defs/cita" },
+        "fuente": { "$ref": "#/$defs/fuente" },
+        "observado_en": { "type": "string", "format": "date-time", "description": "Hora del commit de ese fichero en origin/main." },
+        "declarado": { "const": true }
+      }
+    },
     "hora_inicio": {
       "type": "object",
       "description": "Tras congelar, 2026-10-19, M10, ajuste 2: la línea Inicio: de equipo.md (ruta.inicio). Como $defs/hora_declarada, pero con el motivo dos_horas y siempre de equipo.md, sin nombre ni cita.",
@@ -155,6 +198,22 @@
         "desde": { "$ref": "#/$defs/hora_o_nada" },
         "hasta": { "$ref": "#/$defs/hora_o_nada" },
         "texto": { "type": "string", "maxLength": 300, "description": "La fila o la línea tal cual." },
+        "motivo": { "anyOf": [{ "type": "null" }, { "enum": ["formato", "sin_inicio", "sin_zona"] }] },
+        "fuente": { "$ref": "#/$defs/fuente" },
+        "observado_en": { "type": "string", "format": "date-time" },
+        "declarado": { "const": true }
+      }
+    },
+    "descanso_vista": {
+      "description": "Tras congelar, 2026-10-20, M10, ajuste 4, punto 2: $defs/descanso en el bloque ruta de la vista, con texto recortado a 60 grafemas y sin controles bidi ($defs/texto_ruta).",
+      "type": "object",
+      "required": ["personas", "desde", "hasta", "texto", "motivo", "fuente", "observado_en", "declarado"],
+      "additionalProperties": false,
+      "properties": {
+        "personas": { "anyOf": [{ "type": "null" }, { "type": "array", "items": { "type": "string", "maxLength": 60 } }], "description": "Los usuarios del turno, en orden (uno que no se resuelve, tal cual); null = «Todos»." },
+        "desde": { "$ref": "#/$defs/hora_o_nada" },
+        "hasta": { "$ref": "#/$defs/hora_o_nada" },
+        "texto": { "$ref": "#/$defs/texto_ruta", "description": "La fila o la línea, recortada a 60 grafemas y sin controles bidi." },
         "motivo": { "anyOf": [{ "type": "null" }, { "enum": ["formato", "sin_inicio", "sin_zona"] }] },
         "fuente": { "$ref": "#/$defs/fuente" },
         "observado_en": { "type": "string", "format": "date-time" },
@@ -357,7 +416,7 @@
           }
         },
         "resumen": {
-          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 3, punto 7: la Fuerza va entre «», recortada a 30 grafemas, con «(criterios.md)» y sin autor.",
+          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 3, punto 7: la Fuerza va entre «», recortada a 30 grafemas, con «(criterios.md)» y sin autor. Tras congelar, 2026-10-20, M10, ajuste 4, punto 1: nunca se corta dentro de una parte; si no cabe en 120, se quitan partes enteras desde el final y se añade « · y más en la vista». La cifra sin cubrir no se quita nunca.",
           "type": "string",
           "maxLength": 120
         }
@@ -375,10 +434,10 @@
         "dato_mas_viejo": { "$ref": "#/$defs/hora_o_nada" },
         "zona": { "$ref": "#/$defs/dato", "description": "Tras congelar, 2026-10-19, M10, ajuste 3, punto 6: ruta.zona de estado.json, tal cual, con la forma de vista_jurado.zona. valor: el nombre IANA si equipo.md lo da y, si no, el desfase; null sin zona. Las horas de la ruta (las de la vista que calcula ruta.py y las del resumen) se escriben con esta zona, con el desfase de cada instante, no con un desfase fijo." },
         "objetivo": {
-          "description": "Decisión 1A y diseño: la entrega de equipo.md (la congelación es un hito). null sin equipo.md legible.",
-          "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }]
+          "description": "Decisión 1A y diseño: la entrega de equipo.md (la congelación es un hito). null sin equipo.md legible. Tras congelar, 2026-10-20, M10, ajuste 4, punto 2: texto, recortado a 60 grafemas y sin controles bidi.",
+          "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada_vista" }]
         },
-        "otras_entregas": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada" }, "description": "Las de Hitos o de notas dato que no coinciden con el objetivo: se enseñan al lado, como discrepancia, y no quitan la estimación (decisión 1A)." },
+        "otras_entregas": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada_vista" }, "description": "Las de Hitos o de notas dato que no coinciden con el objetivo: se enseñan al lado, como discrepancia, y no quitan la estimación (decisión 1A). Tras congelar, 2026-10-20, M10, ajuste 4, punto 2: texto, recortado a 60 grafemas y sin controles bidi." },
         "veredicto": {
           "type": "object",
           "required": ["valor", "motivos", "gravedad", "fuente", "observado_en"],
@@ -527,12 +586,13 @@
             "type": "object",
             "required": ["hito", "pasado"],
             "additionalProperties": false,
-            "properties": { "hito": { "$ref": "#/$defs/hora_declarada" }, "pasado": { "type": "boolean" } }
-          }
+            "properties": { "hito": { "$ref": "#/$defs/hito_vista" }, "pasado": { "type": "boolean" } }
+          },
+          "description": "Tras congelar, 2026-10-20, M10, ajuste 4, punto 2: hito.nombre, recortado a 60 grafemas y sin controles bidi."
         },
-        "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso" } },
+        "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso_vista" }, "description": "Tras congelar, 2026-10-20, M10, ajuste 4, punto 2: texto, recortado a 60 grafemas y sin controles bidi." },
         "resumen": {
-          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 2: «plazo pasado» va antes que «sin contar…» y «otra entrega…», para que el corte no quite el único dato rojo. Tras congelar, 2026-10-19, M10, ajuste 3, punto 5: va justo detrás del veredicto, antes de los motivos y sus detalles, y los motivos van abreviados («pocos datos: <n> personas», «sin plazo: <n> tareas»); el detalle, en sin_plazo y base.personas. Punto 7: el texto de «otra entrega» de plan.md o equipo.md va entre «», recortado a 30 grafemas, con su fichero y sin autor.",
+          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 2: «plazo pasado» va antes que «sin contar…» y «otra entrega…», para que el corte no quite el único dato rojo. Tras congelar, 2026-10-19, M10, ajuste 3, punto 5: va justo detrás del veredicto, antes de los motivos y sus detalles, y los motivos van abreviados («pocos datos: <n> personas», «sin plazo: <n> tareas»); el detalle, en sin_plazo y base.personas. Punto 7: el texto de «otra entrega» de plan.md o equipo.md va entre «», recortado a 30 grafemas, con su fichero y sin autor. Tras congelar, 2026-10-20, M10, ajuste 4, punto 1: nunca se corta dentro de una parte; si no cabe en 120, se quitan partes enteras desde el final y se añade « · y más en la vista». El veredicto y el plazo pasado no se quitan nunca. Punto 3: la «otra entrega» con valor sale «otra entrega: <día HH:MM> (<fichero>)», con la hora en la zona del equipo y sin texto libre; solo sin valor, su texto entre «», recortado a 30 grafemas y con su fichero.",
           "type": "string",
           "maxLength": 120
         }
