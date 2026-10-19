@@ -26,7 +26,8 @@ ZONEINFO = True                 # las pruebas lo apagan para forzar el respaldo 
 DIJO_MAX, FUERZA_MAX, TEXTO_MAX = 500, 40, 300
 CRITERIO = re.compile(r"^## (\d{4}-\d\d-\d\d \d\d:\d\d) · (.+)$")       # la de relay.py
 CITA = re.compile(r"^\d{4}-\d\d-\d\d \d\d:\d\d( · .{1,80})?$")         # $defs/cita
-CORRIGE = re.compile(r"corrige la nota del (\d{4}-\d\d-\d\d \d\d:\d\d)(?: · ([^:;,.)»\n]{1,80}))?", re.I)
+# El «· quién» puede llevar sus paréntesis («Marta (Embat)», #56): uno sin abrir lo acaba (el de una cita entre ()).
+CORRIGE = re.compile(r"corrige la nota del (\d{4}-\d\d-\d\d \d\d:\d\d)(?: · ((?:[^:;,.()»\n]|\([^()\n]*\)){1,80}))?", re.I)
 CAMPO = re.compile(r"^- ([^:]+):\s*(.*)$")
 UNA_HORA = timedelta(hours=1)
 ENTREGA = re.compile(r"\bentregas?\b", re.I)      # la palabra, no «entregables»

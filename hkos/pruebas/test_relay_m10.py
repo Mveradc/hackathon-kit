@@ -178,6 +178,22 @@ class Criterios(SinZoneinfo):
                          ("Marta (Embat)", "jurado", "2026-09-18 20:00 · Ana", {"tipo": "sin_precisar", "texto": "sin precisar"}))
         self.assertIsNone(j["notas"][0]["donde"])
 
+    def test_56_corrige_con_parentesis_en_el_quien(self):
+        """#56 (sin decisión, fila 13): «corrige la nota del … · Marta (Embat)» no se corta en el primer «)». Antes,
+        corrige salía «… · Marta (Embat» (que no es una cita) y la corrección se perdía en silencio."""
+        import jurado
+        md = ("## 2026-09-19 10:40 · Marta (Embat) (jurado)\n- Qué dijo: «Un mes malo no hunde el score»\n"
+              "- Fuerza: obligatorio\n- Anotado por: @persona-a\n"
+              "## 2026-09-19 12:05 · Marta (Embat) (jurado)\n- Qué dijo: (paráfrasis) no es obligatorio, se valora "
+              "(corrige la nota del 2026-09-19 10:40 · Marta (Embat))\n- Fuerza: se valora\n- Anotado por: @persona-a\n")
+        notas = calcula(criterios=md)["jurado"]["notas"]
+        self.assertEqual([n["corrige"] for n in notas], [None, "2026-09-19 10:40 · Marta (Embat)"])
+        b = jurado.bloque({"fichero": {"valor": "ok", "fuente": "git", "observado_en": CT, "declarado": True},
+                           "zona": {"valor": None, "fuente": "git", "observado_en": CT, "declarado": True},
+                           "notas": notas, "pitch": None}, [], CT)
+        self.assertEqual(b["cuenta"]["corregidas"], 1)
+        self.assertEqual(lecturas.CORRIGE.search("corrige la nota del 2026-09-19 10:40 · Ana: mejor").group(2), "Ana")
+
     def test_utf16_y_crlf(self):
         md = leer("g13/criterios.md").replace("\n", "\r\n")
         texto = servicios.decodificar(b"\xff\xfe" + md.encode("utf-16-le"))
