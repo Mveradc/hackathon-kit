@@ -429,6 +429,60 @@ class Novedades(unittest.TestCase):
         self.assertIsNone(Esquema("estado.schema.json").error(r.estado))
         self.assertEqual(r.vista["novedades"][0]["tipo"], "decision")
 
+    # Issue #56, puntos 1 y 3 (decisión 8 del usuario).
+    T = 1795168800.0                                   # 2026-11-20T10:00:00Z
+    COMMIT = {"v": 1, "id": "git-persona-a-commit-1", "ts": "2026-11-20T09:30:00.000000Z",
+              "actor": {"persona": "persona-a", "papel": "humano"}, "tipo": "commit", "fuente": "git",
+              "datos": {"sha": "abc1234", "rama": "main", "alcanzable": True}}
+
+    def relay_m10(self, repo, ruta_critica=True):
+        """El relay con su clon y el reloj en T, un commit de hace 30 min en el registro y una vuelta de lectura."""
+        reloj, ahora = Reloj(self.T), Reloj(relay_mod.iso_us(self.T))
+        n = relay_mod.Novedades(repo, 300, reloj=reloj, ruta_critica=ruta_critica)
+        n.sondear()
+        d = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, d, True)
+        r = relay_mod.Relay(d, Base.PERSONAS, ahora=ahora, novedades=n, ruta_critica=ruta_critica)
+        r.recibir({"eventos": [self.COMMIT]})
+        r.recalcular()
+
+        def vuelta(t):
+            reloj.ts, ahora.ts = t, relay_mod.iso_us(t)
+            n.sondear()
+            r.recalcular()
+        return r, vuelta
+
+    def test_m10_fuentes_git_es_la_ultima_lectura_buena_no_el_ultimo_commit(self):
+        """Punto 1: con M10, fuentes.git.observado_en es la hora de la última lectura buena de origin/main. Un repo sin
+        commits nuevos no sale «viejo»; uno que no se puede leer, sí. Sin los interruptores, como en la 0.4.0."""
+        remoto, repo, _ = self.repos()
+        r, vuelta = self.relay_m10(repo, ruta_critica=False)
+        self.assertEqual(r.estado["fuentes"]["git"], {"valor": "ok", "fuente": "git", "observado_en": self.COMMIT["ts"]})
+        self.assertTrue(r.vista["fuentes"]["git"]["viejo"])
+        r, vuelta = self.relay_m10(repo)
+        self.assertEqual(r.estado["fuentes"]["git"], {"valor": "ok", "fuente": "git",
+                                                      "observado_en": relay_mod.iso_us(self.T)})
+        self.assertFalse(r.vista["fuentes"]["git"]["viejo"])
+        self.assertIsNone(Esquema("estado.schema.json").error(r.estado))
+        # Una lectura buena sin cambios no es versión nueva hasta un tercio de umbral_viejo_s (como fuentes.github).
+        version = r.version
+        vuelta(self.T + 60)
+        self.assertEqual(r.version, version)
+        # Una hora sin commits, leyendo bien cada 5 min: nunca «viejo».
+        for paso in range(1, 13):
+            vuelta(self.T + 300 * paso)
+            self.assertFalse(r.vista["fuentes"]["git"]["viejo"], paso)
+        self.assertEqual(r.estado["fuentes"]["git"]["observado_en"], relay_mod.iso_us(self.T + 3600))
+        # Sin poder leer el remoto: pasado el umbral, «viejo», con la hora de la última lectura buena.
+        self.git(repo, "remote", "set-url", "origin", os.path.join(remoto, "no-existe"))
+        vuelta(self.T + 3600 + 301)
+        self.assertEqual(r.estado["fuentes"]["git"], {"valor": "sin fetch", "fuente": "git",
+                                                      "observado_en": relay_mod.iso_us(self.T + 3600)})
+        self.assertTrue(r.vista["fuentes"]["git"]["viejo"])
+        self.git(repo, "remote", "set-url", "origin", remoto)
+        vuelta(self.T + 3600 + 360)
+        self.assertFalse(r.vista["fuentes"]["git"]["viejo"])
+
 
 if __name__ == "__main__":
     unittest.main()
