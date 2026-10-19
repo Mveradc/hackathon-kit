@@ -8,8 +8,10 @@ el md (`ruta:`): solo el veredicto.
 
 Reglas (ADR-0013): el objetivo es la entrega de equipo.md (las otras, al lado, sin quitar la estimación); el grafo, con
 `depende_de` y la cadena de cada persona (orden del plan, inferida); el ritmo, por persona, desde 3 medidas; con menos,
-solo hechos y «n de 3»; un rango y un veredicto de cuatro valores, nunca una sola hora; «sin plazo» nunca es «a tiempo»;
-«sin señales» nunca es «va lenta»; los descansos no cuentan; el rojo, solo para hechos.
+solo hechos y «n de 3»; un rango y un veredicto de cuatro valores, nunca una sola hora ni una cifra central; una tarea
+«sin plazo» nunca es «a tiempo»: sale aparte (sin_plazo[]) y se estima el resto (#46, 1); «sin señales» nunca es «va
+lenta»; los descansos no cuentan, ni en la franja al medir el ritmo (#46, 4); el rojo, solo para hechos; lo que según
+la estimación acaba después de la entrega, en riesgos[] (#46, 3).
 """
 import math
 import re
@@ -24,7 +26,7 @@ EMPEZADAS = {"en_curso", "parada", "no_cerrada", "en_revision", "integrada"}
 DIAS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
 GRAVEDAD = {"rojo": 0, "ambar": 1, "gris": 2}
 LEGIBLE = {"a_tiempo": "a tiempo", "justo": "justo", "no_llega": "no llega"}
-RESUMEN_MAX = 160
+RESUMEN_MAX = 120                           # M17: la línea del md, con « (HH:MM · fuente · viejo)», cabe en 160
 DESFASE = re.compile(r"^(?:UTC)?([+-])(\d{1,2})(?::?(\d\d))?$")
 
 
@@ -82,11 +84,17 @@ def _avanza(t, segundos, pausas):
 
 
 def _es_de(descanso, persona, nombre):
-    quien = descanso.get("persona")
-    if quien is None:
-        return True
-    quien = quien.strip().lstrip("@").casefold()
-    return quien == "todos" or quien == persona.casefold() or (nombre is not None and quien == nombre.casefold())
+    """personas: [@usuario | Nombre | Todos] (un turno puede ser de varias, #46, 4); vacía o null, todo el equipo."""
+    quienes = [q.strip().lstrip("@").casefold() for q in descanso.get("personas") or []]
+    return not quienes or any(q in ("todos", persona.casefold()) or (nombre is not None and q == nombre.casefold())
+                              for q in quienes)
+
+
+def _origen(t, ahora, *claves):
+    """La fuente y la hora del primer dato del plan que tenga la tarea (B2: lo declarado, con su procedencia); sin
+    ninguno, derivado ahora."""
+    d = next((t[k] for k in claves if t.get(k)), {"fuente": "derivado", "observado_en": ahora})
+    return {"fuente": d["fuente"], "observado_en": d["observado_en"]}
 
 
 def _zona(ruta):
@@ -163,8 +171,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     fuera, cuentan = [], {}
     for t in tareas:
         motivo = fuera_de_entrega(t)
-        if motivo:
-            fuera.append({"tarea": t["id"], "motivo": motivo})
+        if motivo:              # el título es de la fila del plan: la procedencia, la de sus datos del plan
+            fuera.append(dict({"tarea": t["id"], "motivo": motivo}, **_origen(t, ahora, "orden_plan", "hasta", "franja")))
         else:
             cuentan[t["id"]] = t
     ids = sorted(cuentan)
@@ -196,7 +204,9 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
                 and fr:
             a, b = fecha(h["primera_senal"]), fecha(h["hecha_en"])
             seg = (b - a).total_seconds() - _solape(a, b, pausas(t["dueno"]))
-            ritmo = max(1, math.floor(100 * seg / 60 / fr["min"] + 0.5))
+            # Decisión 4 (#46): los descansos tampoco cuentan en la franja (la parte que le toca de ellos).
+            libre = fr["min"] - _solape(fecha(fr["desde"]), fecha(fr["hasta"]), pausas(t["dueno"])) / 60 / fr["compartida"]
+            ritmo = max(1, math.floor(100 * seg / 60 / max(1, libre) + 0.5))
             medidas.setdefault(t["dueno"], []).append((ritmo, h["hecha_en"]))
     duenos_abiertos = {cuentan[k]["dueno"] for k in abiertas}
     base_personas = []
@@ -224,14 +234,32 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         t = cuentan[k]
         if k in abiertas and not _v(t.get("franja")):
             hasta = t.get("hasta") or {}
-            motivo = (hasta.get("motivo") or "vacio") if not hasta.get("valor") else \
-                ((t.get("franja") or {}).get("motivo") or "sin_plazo")
-            sin_plazo.append({"tarea": k, "motivo": motivo})
-    if sin_plazo:
+            if not hasta.get("valor"):
+                motivo, origen = hasta.get("motivo") or "vacio", _origen(t, ahora, "hasta")
+            else:
+                motivo, origen = (t.get("franja") or {}).get("motivo") or "sin_plazo", _origen(t, ahora, "franja")
+            sin_plazo.append(dict({"tarea": k, "motivo": motivo}, **origen))
+    # #46, 1: las sin plazo salen aparte y se estima el resto; sin ninguna otra abierta, no hay nada que estimar.
+    aparte = {x["tarea"] for x in sin_plazo}
+    estimables = abiertas - aparte
+    if aparte and not estimables:
         motivos.append("sin_plazo")
-    pocos = [b for b in base_personas if b["n"] < MINIMO and b["persona"] in duenos_abiertos]
+    # Pocos datos, de quien tiene algo que estimar (o, si no hay nada estimable, de quien tiene algo abierto).
+    pocos = [b for b in base_personas if b["n"] < MINIMO
+             and b["persona"] in {cuentan[k]["dueno"] for k in (estimables or abiertas)}]
     if pocos:
         motivos.append("pocos_datos")
+
+    def previas_estimables(k):
+        """{A: por} de las previas abiertas que se estiman; a través de una sin plazo, las suyas (no ocupa tiempo)."""
+        salida = {}
+        for a, por in sorted(previas[k].items()):
+            if a in estimables:
+                salida.setdefault(a, por)
+            elif a in aparte:
+                for b in previas_estimables(a):
+                    salida.setdefault(b, por)
+        return salida
 
     # --- estimación: cada tarea abierta, tras sus previas abiertas, al ritmo de su dueño y saltando descansos ---
     fin, estimacion = {}, None
@@ -240,7 +268,7 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         if k not in fin:
             t = cuentan[k]
             p, h, fr = t["dueno"], t.get("historia") or {}, _v(t["franja"])
-            antes = [termina(a) for a in previas[k] if a in abiertas]
+            antes = [termina(a) for a in previas_estimables(k)]
             trabajado = 0.0
             if t["estado"]["valor"] in EMPEZADAS and h.get("primera_senal") and fecha(h["primera_senal"]) < t_ahora:
                 a = fecha(h["primera_senal"])
@@ -253,9 +281,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         return fin[k]
 
     if not motivos:
-        for k in ids:
-            if k in abiertas:
-                termina(k)
+        for k in sorted(estimables):
+            termina(k)
         temprano = max([f[0] for f in fin.values()], default=t_ahora)
         tarde = max([f[1] for f in fin.values()], default=t_ahora)
         estimacion = {"temprano": iso(temprano), "tarde": iso(tarde),
@@ -302,33 +329,44 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
                                x.get("persona", "")))
 
     # --- cadena: la que lleva al fin más tardío (o, sin estimación, al Hasta resuelto más tardío) ---
-    if estimacion:
+    if estimacion:                              # solo abiertas, y las sin plazo, fuera (no tienen fin)
         def clave(k):
             return fin[k][1]
-        candidatas = [k for k in ids if k in abiertas]
+        candidatas, antes_de = sorted(estimables), previas_estimables
     else:
         def clave(k):
             v = _v(cuentan[k].get("hasta"))
             return (v is not None, fecha(v) if v else t_ahora)
         candidatas = [k for k in ids if k in abiertas and _v(cuentan[k].get("hasta"))]
-    eslabones = []
+
+        def antes_de(k):
+            return {a: por for a, por in sorted(previas[k].items()) if a in abiertas}
+    eslabones, por = [], {}
     actual = max(candidatas, key=clave, default=None)
     while actual is not None and actual not in eslabones:      # con un ciclo, se para al volver a una
         eslabones.append(actual)
-        antes = sorted(a for a in previas[actual] if a in abiertas)
-        actual = max(antes, key=clave, default=None)
+        antes = antes_de(actual)
+        siguiente = max(antes, key=clave, default=None)
+        if siguiente is not None:
+            por[actual] = antes[siguiente]
+        actual = siguiente
     eslabones.reverse()
     cadena = []
     for i, k in enumerate(eslabones):
         t = cuentan[k]
         cadena.append({
-            "tarjeta": tarjeta(t), "por": "inicio" if i == 0 else previas[k][eslabones[i - 1]],
+            "tarjeta": tarjeta(t), "por": "inicio" if i == 0 else por[k],
             "hasta": t.get("hasta") or {"valor": None, "texto": None, "motivo": "vacio", "fuente": "git",
                                         "observado_en": ahora, "declarado": True},
             "franja": t.get("franja") or {"valor": None, "motivo": "sin_plazo", "fuente": "derivado",
                                           "observado_en": ahora, "declarado": True},
             "fin_temprano": iso(fin[k][0]) if estimacion else None,
             "fin_tarde": iso(fin[k][1]) if estimacion else None})
+
+    # --- riesgos (#46, 3): lo que, según la estimación, acaba después de la entrega (el extremo lento) ---
+    riesgos = [{"tarea": k, "tipo": "estimacion", "fin_tarde": iso(fin[k][1]), "dueno": cuentan[k]["dueno"],
+                "en_cadena": k in eslabones, "viejo": viejo_de(cuentan[k]["estado"]["fuente"])}
+               for k in sorted(fin, key=lambda k: (fin[k][1], k)) if estimacion and fin[k][1] > t_entrega]
 
     # --- lo declarado, al lado ---
     otras = [o for o in ruta.get("otras_entregas", [])
@@ -351,13 +389,14 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     if estimacion:
         resumen = f"ruta: estimación {LEGIBLE[valor]} · fin {hm(estimacion['temprano'])}–{hm(estimacion['tarde'])} · " \
                   f"entrega {dia_hm(objetivo['valor'])}" + (" (confirmar)" if objetivo.get("confirmar") else "")
+        if sin_plazo:
+            resumen += f" · sin contar {', '.join(x['tarea'] for x in sin_plazo)} (sin plazo)"
     else:
-        primero = motivos[0]
-        por = {"sin_entrega": "sin hora de entrega", "entrega_doble": "dos horas de entrega",
-               "ciclo": "ciclo " + " → ".join(ciclo or []),
-               "sin_plazo": "sin plazo: " + ", ".join(x["tarea"] for x in sin_plazo),
-               "pocos_datos": "pocos datos: " + ", ".join(f"@{b['persona']} {b['n']} de {MINIMO}" for b in pocos)}
-        resumen = f"ruta: sin estimación ({por[primero]})"
+        texto = {"sin_entrega": "sin hora de entrega", "entrega_doble": "dos horas de entrega",
+                 "ciclo": "ciclo " + " → ".join(ciclo or []),
+                 "sin_plazo": "sin plazo: " + ", ".join(x["tarea"] for x in sin_plazo),
+                 "pocos_datos": "pocos datos: " + ", ".join(f"@{b['persona']} {b['n']} de {MINIMO}" for b in pocos)}
+        resumen = f"ruta: sin estimación ({texto[motivos[0]]})"
     if otras:
         resumen += f" · otra entrega: {otras[0].get('texto') or '—'} ({otras[0]['donde']})"
     pasados = [x for x in hechos if x["tipo"] == "plazo_pasado"]
@@ -372,8 +411,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
                       "observado_en": ahora},
         "estimacion": estimacion,
         "base": {"minimo": MINIMO, "desde": min(hechas_en, key=fecha, default=None), "personas": base_personas},
-        "hechos": hechos, "cadena": cadena, "sin_plazo": sin_plazo, "fuera_de_entrega": fuera, "hitos": hitos,
-        "descansos": descansos, "resumen": corta(" ".join(resumen.split()), RESUMEN_MAX)}
+        "hechos": hechos, "cadena": cadena, "riesgos": riesgos, "sin_plazo": sin_plazo, "fuera_de_entrega": fuera,
+        "hitos": hitos, "descansos": descansos, "resumen": corta(" ".join(resumen.split()), RESUMEN_MAX)}
 
 
 def firma(bloque):

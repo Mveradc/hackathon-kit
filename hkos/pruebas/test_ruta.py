@@ -40,6 +40,11 @@ class _Vista(Esquema):
 
 
 VISTA, ESTADO = _Vista("estado.schema.json"), Esquema("estado.schema.json")
+# Las decisiones de #46 (riesgos[], sin_plazo[] y fuera_de_entrega[] con su procedencia, descansos con personas: [lista])
+# llegan al esquema en otro PR. Hasta que se fusione, la salida no se valida y la entrada se valida sin los descansos;
+# con el esquema nuevo, todo se valida como antes.
+NUEVO = "riesgos" in ESTADO.raiz["$defs"]["vista_ruta"]["properties"]
+ESPERA = "esperando el esquema nuevo de #46 (PR de contratos)"
 
 
 def _jsonschema():
@@ -75,8 +80,10 @@ def dato(valor, fuente="git", obs=OBS):
     return {"valor": valor, "fuente": fuente, "observado_en": obs, "declarado": True}
 
 
-def descanso(persona, desde, hasta, texto=None, motivo=None):
-    return {"persona": persona, "desde": desde, "hasta": hasta, "texto": texto or f"- {persona or 'Todos'}: …",
+def descanso(personas, desde, hasta, texto=None, motivo=None):
+    """personas: la lista de quién (un turno puede ser de varias, #46, 4); None, todo el equipo."""
+    return {"personas": personas, "desde": desde, "hasta": hasta,
+            "texto": texto or f"- {' y '.join(personas or ['Todos'])}: …",
             "motivo": motivo, "fuente": "git", "observado_en": OBS, "declarado": True}
 
 
@@ -152,12 +159,21 @@ class Base(unittest.TestCase):
         """calcular(), con la entrada validada contra estado.schema.json y la salida contra $defs/vista_ruta."""
         ahora = ahora or iso(T0)
         estado = {"v": 1, "generado_en": ahora, "fuentes": {}, "personas": [], "tareas": tareas, "colisiones": [],
-                  "ruta": ruta}
+                  "ruta": ruta if NUEVO else dict(ruta, descansos=[])}
         self.assertIsNone(ESTADO.error(estado), "la entrada no tiene la forma de estado.schema.json")
         bloque = calcular(ruta, tareas, ahora, personas=personas, fuentes=fuentes, **kw)
-        self.assertIsNone(VISTA.error(bloque), "la salida no valida contra $defs/vista_ruta")
-        if JSONSCHEMA is not None:
-            JSONSCHEMA.validate(bloque)
+        if NUEVO:
+            self.assertIsNone(VISTA.error(bloque), "la salida no valida contra $defs/vista_ruta")
+            if JSONSCHEMA is not None:
+                JSONSCHEMA.validate(bloque)
+        self.assertLessEqual(len(bloque["resumen"]), 120)
+        # Un rango, sin cifra central; la cadena, solo de abiertas; sin estimación, sin riesgos (#46, 3).
+        self.assertLessEqual(set(bloque["estimacion"] or {}), {"temprano", "tarde", "margen_min", "margen_max"})
+        hechas = {t["id"] for t in tareas if t["estado"]["valor"] in ("publicada", "cerrada")
+                  or (t.get("declarado") or {}).get("valor") == "cerrada"}
+        self.assertFalse(hechas & {e["tarjeta"]["id"] for e in bloque["cadena"]})
+        if not bloque["estimacion"]:
+            self.assertEqual(bloque["riesgos"], [])
         return bloque
 
     def hechos(self, b, tipo):
@@ -166,6 +182,16 @@ class Base(unittest.TestCase):
 
 class Tabla(Base):
     """La tabla de casos de K-103, en el orden de «Hecho cuando»."""
+
+    @unittest.skipUnless(NUEVO, ESPERA)
+    def test_la_salida_valida_contra_el_esquema_nuevo(self):
+        tareas = ana()
+        tareas[4] = tarea("T05", "ana", "lista", 5)
+        tareas.append(tarea("T06", "ana", "lista", 6, titulo="[SI DA TIEMPO] Modo oscuro"))
+        b = calcular(ruta_de(30, descansos=[descanso(["@ana", "Luis"], m(30), m(40))]), tareas, iso(T0),
+                     personas=PERSONAS)
+        self.assertTrue(b["riesgos"] and b["sin_plazo"] and b["fuera_de_entrega"])
+        self.assertIsNone(VISTA.error(b))
 
     def test_con_estimacion_rango_margen_base_y_cadena(self):
         b = self.corre(ruta_de(240), ana())
@@ -184,7 +210,8 @@ class Tabla(Base):
                           ("T05", "orden_del_plan", iso(T0 + timedelta(minutes=60)), iso(T0 + timedelta(minutes=180)))])
         self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 11:00–13:00 · entrega sáb 14:00")
         self.assertEqual((b["objetivo"]["valor"], b["objetivo"]["donde"]), (m(240), "equipo.md"))
-        self.assertEqual((b["hechos"], b["sin_plazo"], b["fuera_de_entrega"], b["otras_entregas"]), ([], [], [], []))
+        self.assertEqual((b["hechos"], b["sin_plazo"], b["fuera_de_entrega"], b["otras_entregas"], b["riesgos"]),
+                         ([], [], [], [], []))
 
     def test_veredicto_en_sus_fronteras(self):
         # temprano = T0 + 60, tarde = T0 + 180: a tiempo si tarde ≤ entrega; justo si temprano ≤ entrega < tarde; no
@@ -261,21 +288,42 @@ class Tabla(Base):
                                                     "fuente": "derivado", "observado_en": iso(T0), "viejo": False}])
         self.assertEqual(b["resumen"], "ruta: sin estimación (ciclo T04 → T12 → T04)")
 
-    def test_tarea_abierta_sin_franja_sin_plazo_nunca_a_tiempo(self):
+    def test_tarea_abierta_sin_franja_aparte_y_el_resto_se_estima(self):
+        """#46, 1: una abierta que cuenta sin plazo no quita la estimación: va a sin_plazo[] (con su procedencia, B2),
+        se estima el resto y el resumen dice «sin contar». Ella nunca sale «a tiempo»: ni en la cadena ni con fin."""
         tareas = ana()
         tareas[-1] = tarea("T05", "ana", "lista", 5, motivo="por_confirmar")
         b = self.corre(ruta_de(240), tareas)
-        self.assertEqual(b["sin_plazo"], [{"tarea": "T05", "motivo": "por_confirmar"}])
-        self.assertEqual(b["veredicto"]["valor"], "sin_estimacion")
-        self.assertEqual(b["veredicto"]["motivos"], ["sin_plazo"])
-        self.assertIsNone(b["estimacion"])
-        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T05)")
+        self.assertEqual(b["sin_plazo"], [{"tarea": "T05", "motivo": "por_confirmar", "fuente": "git", "observado_en": OBS}])
+        self.assertEqual(b["veredicto"]["valor"], "a_tiempo")
+        self.assertEqual(b["veredicto"]["motivos"], [])
+        # Solo T04 (60 min de franja al 50 % y al 150 %).
+        self.assertEqual((b["estimacion"]["temprano"], b["estimacion"]["tarde"]),
+                         (iso(T0 + timedelta(minutes=30)), iso(T0 + timedelta(minutes=90))))
+        self.assertEqual([e["tarjeta"]["id"] for e in b["cadena"]], ["T04"])
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 10:30–11:30 · entrega sáb 14:00 · "
+                                       "sin contar T05 (sin plazo)")
         self.assertEqual(self.hechos(b, "plazo_pasado"), [])
-        # Con Hasta resuelto pero sin franja (no es posterior a la anterior), el motivo es el de la franja.
+        # Lo que espera a una sin plazo espera a lo que ella espera (T12 → T05 → T04): la sin plazo no ocupa tiempo.
+        con_luis = tareas + luis()
+        por_id(con_luis, "T12")["depende_de"] = ["T05"]
+        b = self.corre(ruta_de(240), con_luis)
+        self.assertEqual(b["veredicto"]["motivos"], [])
+        self.assertEqual(b["estimacion"]["tarde"], iso(T0 + timedelta(minutes=150)))
+        self.assertEqual([(e["tarjeta"]["id"], e["por"]) for e in b["cadena"]], [("T04", "inicio"), ("T12", "depende_de")])
+        # Si todas las abiertas que cuentan son sin plazo, no hay nada que estimar: sin estimación (nunca «a tiempo»).
+        solas = ana()[:3] + [tarea("T04", "ana", "lista", 4, motivo="por_confirmar"),
+                             tarea("T05", "ana", "lista", 5, motivo="vacio")]
+        b = self.corre(ruta_de(240), solas)
+        self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("sin_estimacion", ["sin_plazo"]))
+        self.assertIsNone(b["estimacion"])
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T04, T05)")
+        # Con Hasta resuelto pero sin franja (no es posterior a la anterior), el motivo y la procedencia, los de la franja.
         tareas[-1] = tarea("T05", "ana", "lista", 5, motivo_franja="orden")
         tareas[-1]["hasta"].update(valor=m(60), texto="sáb 11:00", motivo=None)
+        tareas[-1]["franja"]["observado_en"] = m(-30)
         b = self.corre(ruta_de(240), tareas)
-        self.assertEqual(b["sin_plazo"], [{"tarea": "T05", "motivo": "orden"}])
+        self.assertEqual(b["sin_plazo"], [{"tarea": "T05", "motivo": "orden", "fuente": "derivado", "observado_en": m(-30)}])
         # Sin plazo en las hechas y en las que no cuentan no quita nada.
         tareas = ana()
         tareas[0]["franja"] = {"valor": None, "motivo": "sin_inicio", "fuente": "derivado", "observado_en": OBS,
@@ -359,9 +407,10 @@ class Tabla(Base):
         tareas.append(tarea("T09", "ana", "publicada", 9, titulo="Sistema de colas", franja=(-30, -20), primera=-30,
                             hecha=-25))
         b = self.corre(ruta_de(240), tareas)
-        self.assertEqual(b["fuera_de_entrega"], [{"tarea": "T06", "motivo": "condicional"},
-                                                {"tarea": "T07", "motivo": "si_da_tiempo"},
-                                                {"tarea": "T08", "motivo": "condicional"}])
+        # B2: con su procedencia, la de la fila del plan.
+        self.assertEqual(b["fuera_de_entrega"], [{"tarea": "T06", "motivo": "condicional", "fuente": "git", "observado_en": OBS},
+                                                {"tarea": "T07", "motivo": "si_da_tiempo", "fuente": "git", "observado_en": OBS},
+                                                {"tarea": "T08", "motivo": "condicional", "fuente": "git", "observado_en": OBS}])
         # No son «sin plazo», no retrasan el fin y la cadena de Ana se las salta (T04 → T05).
         self.assertEqual(b["sin_plazo"], [])
         self.assertEqual(b["veredicto"]["valor"], "a_tiempo")
@@ -372,7 +421,7 @@ class Tabla(Base):
     def test_descansos_ni_en_el_ritmo_ni_en_el_fin_ni_sin_senales(self):
         # Ritmo: T03 (90 min) con 30 min de descanso de Ana dentro: 60 min de 60, 100 %.
         tareas = ana()
-        r = ruta_de(600, descansos=[descanso("@ana", m(-260), m(-230))])
+        r = ruta_de(600, descansos=[descanso(["@ana"], m(-260), m(-230))])
         b = self.corre(r, tareas)
         self.assertEqual((b["base"]["personas"][0]["ritmo_min"], b["base"]["personas"][0]["ritmo_max"]), (50, 100))
         self.assertEqual(b["descansos"], r["descansos"])
@@ -382,17 +431,71 @@ class Tabla(Base):
         self.assertEqual((b["estimacion"]["temprano"], b["estimacion"]["tarde"]),
                          (iso(T0 + timedelta(minutes=120)), iso(T0 + timedelta(minutes=240))))
         # El de otra persona y el que no se entiende no cuentan para Ana (el segundo se enseña igual).
-        malo = descanso("Ana", None, None, texto="- Ana: la siesta", motivo="formato")
-        r = ruta_de(600, descansos=[descanso("@luis", m(0), m(600)), malo])
+        malo = descanso(["Ana"], None, None, texto="- Ana: la siesta", motivo="formato")
+        r = ruta_de(600, descansos=[descanso(["@luis"], m(0), m(600)), malo])
         b = self.corre(r, tareas)
         self.assertEqual(b["estimacion"]["tarde"], iso(T0 + timedelta(minutes=180)))
         self.assertIn(malo, b["descansos"])
         # Sin señales desde hace 2 h, pero en su descanso (por su nombre): no sale «sin señales».
         personas = [{"persona": "ana", "nombre": "Ana", "ultima_senal": m(-120)}]
-        b = self.corre(ruta_de(600, descansos=[descanso("Ana", m(-100), m(30))]), tareas, personas=personas)
+        b = self.corre(ruta_de(600, descansos=[descanso(["Ana"], m(-100), m(30))]), tareas, personas=personas)
         self.assertEqual(self.hechos(b, "sin_senales"), [])
         b = self.corre(ruta_de(600), tareas, personas=personas)
         self.assertEqual(len(self.hechos(b, "sin_senales")), 1)
+
+    def test_descansos_de_varias_personas_y_restados_de_la_franja(self):
+        """Decisión 4 (#46): un turno con personas: [lista] cuenta para cada una de ellas (y para nadie más), y al medir
+        el ritmo el descanso se resta también de la franja: T01 (franja de 60 min, 30 de descanso dentro) se hizo en 30
+        min reales, al 100 % y no al 50 %."""
+        dentro = [m(-170), m(-140)]
+        b = self.corre(ruta_de(600, descansos=[descanso(["@luis", "Ana"], *dentro)]), ana())
+        self.assertEqual((b["base"]["personas"][0]["ritmo_min"], b["base"]["personas"][0]["ritmo_max"]), (100, 150))
+        # Otra lista sin Ana: no le cuenta.
+        b = self.corre(ruta_de(600, descansos=[descanso(["@luis", "@marta"], *dentro)]), ana())
+        self.assertEqual((b["base"]["personas"][0]["ritmo_min"], b["base"]["personas"][0]["ritmo_max"]), (50, 150))
+        # Con «Todos» en la lista o sin lista: a todo el equipo.
+        for quien in (["Todos"], None):
+            b = self.corre(ruta_de(600, descansos=[descanso(quien, *dentro)]), ana())
+            self.assertEqual(b["base"]["personas"][0]["ritmo_min"], 100)
+        # El fin previsto también salta el turno de una lista (T04 y T05 de Ana, 60 min de descanso al empezar).
+        b = self.corre(ruta_de(600, descansos=[descanso(["@luis", "@ana"], m(0), m(60))]), ana())
+        self.assertEqual(b["estimacion"]["temprano"], iso(T0 + timedelta(minutes=120)))
+        # Una franja compartida por dos filas: a cada una le toca la mitad del descanso.
+        tareas = ana()
+        tareas[0]["franja"]["valor"].update(desde=m(-240), compartida=2, min=60)
+        b = self.corre(ruta_de(600, descansos=[descanso(["Ana"], m(-200), m(-140))]), tareas)
+        self.assertEqual(b["base"]["personas"][0]["ritmo_min"], 100)          # 30 min de 60 − 60 ÷ 2
+
+    def test_riesgos_por_la_estimacion(self):
+        """#46, 3: riesgos[] trae lo que, según la estimación (su extremo lento), acaba después de la entrega, con su dueño
+        y si está en la cadena; sin estimación, nada."""
+        tareas = ana() + luis()
+        por_id(tareas, "T12")["franja"]["valor"].update(hasta=m(150), min=150)
+        por_id(tareas, "T12")["estado"]["fuente"] = "github"
+        fuentes = {"relay": {"valor": "ok", "observado_en": m(-1), "viejo": False},
+                   "github": {"valor": "ok", "observado_en": m(-30), "viejo": True},
+                   "git": {"valor": "ok", "observado_en": m(-1), "viejo": False}}
+        # Entrega a T0 + 120: T04 acaba a T0 + 90 (antes); T12, a T0 + 150, y T05, a T0 + 180, después.
+        b = self.corre(ruta_de(120), tareas, fuentes=fuentes)
+        self.assertEqual(b["veredicto"]["valor"], "no_llega")
+        self.assertEqual(b["riesgos"], [
+            {"tarea": "T12", "tipo": "estimacion", "fin_tarde": iso(T0 + timedelta(minutes=150)), "dueno": "luis",
+             "en_cadena": False, "viejo": True},
+            {"tarea": "T05", "tipo": "estimacion", "fin_tarde": iso(T0 + timedelta(minutes=180)), "dueno": "ana",
+             "en_cadena": True, "viejo": False}])
+        self.assertEqual(b["riesgos"][-1]["fin_tarde"], b["cadena"][-1]["fin_tarde"])
+        # A tiempo: ninguno. Sin estimación (sin hora de entrega): ninguno.
+        self.assertEqual(self.corre(ruta_de(240), tareas)["riesgos"], [])
+        self.assertEqual(self.corre(ruta_de(None), tareas)["riesgos"], [])
+
+    def test_resumen_de_120_como_mucho(self):
+        """M17: 120 como mucho, para que la línea del md quepa en 160 con « (HH:MM · fuente · viejo)»."""
+        otra = declarada(m(300), "domingo 20 de septiembre de 2026 a las 11:00 en punto", donde="plan.md", nombre="Entrega")
+        tareas = ana()
+        tareas[3] = tarea("T04", "ana", "en_curso", 4, franja=(-70, -10), primera=-60)
+        b = self.corre(ruta_de(600, otras_entregas=[otra]), tareas)
+        self.assertEqual((len(b["resumen"]), b["resumen"][-1]), (120, "…"))
+        self.assertTrue(b["resumen"].startswith("ruta: estimación a tiempo · fin "))
 
     def test_sin_senales_gris_nunca_lenta(self):
         personas = [{"persona": "ana", "nombre": "Ana", "ultima_senal": m(-1)},
@@ -607,9 +710,11 @@ def momento_g14(mo, t28=None):
              for d in ent["discrepancias"]]
     for o in otras:
         o["observado_en"] = obs_plan
-    descansos = [descanso(p, madrid(f["desde"]), madrid(f["hasta"]), texto=f"- {POR_PERSONA[p]}: {f['texto']}",
+    # Un descanso por turno, con todas sus personas (#46, 4; «sáb 23:00–dom 07:30 | Persona B y Persona C»).
+    descansos = [descanso(list(f["personas"]), madrid(f["desde"]), madrid(f["hasta"]),
+                          texto=f"- {' y '.join(POR_PERSONA[p] for p in f['personas'])}: {f['texto']}",
                           motivo=None if f["desde"] else "sin_inicio")
-                 for f in mo["descansos"]["filas"] for p in f["personas"]]
+                 for f in mo["descansos"]["filas"]]
     ruta = {"equipo": dato("ok", obs=ent["fichero_desde"]), "zona": dato("Europe/Madrid", obs=ent["fichero_desde"]),
             "inicio": declarada(madrid(inicio), mo["inicio"]["texto"], motivo=None if inicio else "por_confirmar"),
             "entrega": declarada(madrid(ent["valor"]), ent["texto"]),
@@ -625,11 +730,11 @@ def momento_g14(mo, t28=None):
 
 class G14(Base):
     """Los tres momentos de G14 (evals/coordinacion/simulador/guiones/g14/hechos.json), con las entradas que dejaría el
-    relay. Dos diferencias con hechos.json, por el contrato (api.md §11.4), que K-105 tiene que corregir allí:
-      - en las dos mitades, T28 («hora por confirmar») es una abierta que cuenta sin franja: `sin_estimacion` con
-        `sin_plazo`, no `a_tiempo` ni `no_llega`. Con T28 fuera de la entrega o con su Hasta, salen los de hechos.json;
-      - en «inicio», sin Inicio no hay franjas y sin franja no hay medida: la base es 0 de 3 para las tres personas,
-        no 2, 1 y 0 (el veredicto y sus motivos son los mismos)."""
+    relay. Con las decisiones de #46, en las dos mitades T28 («hora por confirmar») va a sin_plazo[] y el resto se
+    estima: el veredicto es el de hechos.json (a_tiempo y no_llega), y T08 y T09, en riesgo «por estimación», salen en
+    riesgos[]. Queda una diferencia, por el contrato (api.md §11.4), que K-105 tiene que corregir en hechos.json: en
+    «inicio», sin Inicio no hay franjas y sin franja no hay medida: la base es 0 de 3 para las tres personas, no 2, 1 y 0,
+    y como ninguna abierta tiene plazo, los motivos son sin_plazo y pocos_datos (el veredicto es el mismo)."""
 
     def momento(self, nombre, t28=None):
         mo = next(x for x in HECHOS["momentos"] if x["nombre"] == nombre)
@@ -656,47 +761,69 @@ class G14(Base):
         for p in mo["sin_senales"]:                                     # nunca «va lenta»
             self.assertEqual([h["tipo"] for h in b["hechos"] if h.get("persona") == p], ["sin_senales"])
         self.assertTrue({h["tipo"] for h in b["hechos"]} <= TIPOS_DE_HECHO)
-        self.assertEqual(len(b["descansos"]), 6)
+        self.assertEqual(len(b["descansos"]), len(mo["descansos"]["filas"]))
+        self.assertEqual([d["personas"] for d in b["descansos"]], [f["personas"] for f in mo["descansos"]["filas"]])
         self.assertEqual(all(d["desde"] for d in b["descansos"]), mo["descansos"]["resueltos"])
-        self.assertEqual(b["veredicto"]["valor"] == "a_tiempo" and bool(b["sin_plazo"]), False)
+        # La que no tiene plazo nunca es «a tiempo»: ni fin, ni cadena, ni riesgo.
+        aparte = {x["tarea"] for x in b["sin_plazo"]}
+        self.assertFalse(aparte & ({e["tarjeta"]["id"] for e in b["cadena"] if e["fin_tarde"]} |
+                                   {r["tarea"] for r in b["riesgos"]}))
+        self.assertTrue(all(x["fuente"] == "git" and x["observado_en"] == mo["entrega"]["fichero_desde"]
+                            for x in b["sin_plazo"] + b["fuera_de_entrega"]))
+        por_estimacion = {k for k, v in mo["en_riesgo"].items() if "estimacion" in v}
+        self.assertTrue(por_estimacion <= {r["tarea"] for r in b["riesgos"]}, por_estimacion)
 
     def test_inicio(self):
         mo, b = self.momento("inicio")
         self.comunes(mo, b)
         self.assertEqual(b["veredicto"]["valor"], mo["veredicto"])
+        # Sin Inicio, ninguna abierta tiene plazo: no queda nada que estimar (y nadie tiene medidas).
         self.assertEqual(b["veredicto"]["motivos"], ["sin_plazo", "pocos_datos"])
         self.assertEqual({p["persona"]: p["n"] for p in b["base"]["personas"]},
                          {"persona-a": 0, "persona-b": 0, "persona-c": 0})     # hechos.json: 2, 1 y 0 (ver arriba)
         self.assertIn("T20", [x["tarea"] for x in b["sin_plazo"]])     # lleva más de H+2 en curso, pero sin plazo
-        self.assertEqual(b["cadena"], [])                               # ningún Hasta resuelto
-        # 24 sin plazo: el resumen se corta a 160 (api.md §11.4), y lo de detrás no cabe.
+        self.assertEqual((b["cadena"], b["riesgos"]), ([], []))         # ningún Hasta resuelto
+        # 24 sin plazo: el resumen se corta a 120 (M17), y lo de detrás no cabe.
         self.assertTrue(b["resumen"].startswith("ruta: sin estimación (sin plazo: T03, T04, "))
-        self.assertEqual((len(b["resumen"]), b["resumen"][-1]), (160, "…"))
+        self.assertEqual((len(b["resumen"]), b["resumen"][-1]), (120, "…"))
 
     def test_mitad_bien(self):
         mo, b = self.momento("mitad bien")
         self.comunes(mo, b)
-        self.assertEqual(b["veredicto"]["valor"], "sin_estimacion")     # hechos.json: a_tiempo (ver arriba)
-        self.assertEqual(b["veredicto"]["motivos"], ["sin_plazo"])
-        self.assertEqual(b["sin_plazo"], [{"tarea": "T28", "motivo": "por_confirmar"}])
+        self.assertEqual(b["veredicto"]["valor"], mo["veredicto"])     # a_tiempo, sin contar T28
+        self.assertEqual(b["veredicto"]["motivos"], [])
+        self.assertEqual([(x["tarea"], x["motivo"]) for x in b["sin_plazo"]], [("T28", "por_confirmar")])
         self.assertEqual({p["persona"]: p["n"] for p in b["base"]["personas"]},
                          {p: x["n"] for p, x in mo["base"].items()})
-        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T28) · otra entrega: dom 20 sep 09:30 (plan.md)")
+        self.assertGreater(b["estimacion"]["margen_min"], 120)          # el extremo lento, horas antes de la entrega
+        self.assertIn(" · sin contar T28 (sin plazo)", b["resumen"])
+        self.assertTrue(b["resumen"].startswith("ruta: estimación a tiempo · fin "))
         self.assertEqual(self.hechos(b, "plazo_pasado"), [])           # T19 espera a T08, en plazo: nada en riesgo
-        for t28 in ("fuera", "hasta"):
+        self.assertEqual(b["riesgos"], [])
+        for t28 in ("fuera", "hasta"):                                  # con T28 fuera o con su Hasta, lo mismo
             with self.subTest(t28=t28):
                 _, c = self.momento("mitad bien", t28)
                 self.assertEqual(c["veredicto"]["valor"], mo["veredicto"])
-                self.assertGreater(c["estimacion"]["margen_min"], 120)  # el extremo lento, horas antes de la entrega
+                self.assertGreater(c["estimacion"]["margen_min"], 120)
                 self.assertEqual(firma(c), "a_tiempo")
 
     def test_mitad_con_riesgo(self):
         mo, b = self.momento("mitad con riesgo")
         self.comunes(mo, b)
-        self.assertEqual(b["veredicto"]["valor"], "sin_estimacion")     # hechos.json: no_llega (ver arriba)
-        self.assertEqual(b["veredicto"]["motivos"], ["sin_plazo"])
+        self.assertEqual(b["veredicto"]["valor"], mo["veredicto"])     # no_llega, sin contar T28
+        self.assertEqual(b["veredicto"]["motivos"], [])
+        self.assertEqual(b["veredicto"]["gravedad"], "ambar")
+        self.assertLess(b["estimacion"]["margen_max"], 0)               # los dos extremos, después de la entrega
         self.assertEqual({p["persona"]: p["n"] for p in b["base"]["personas"]},
                          {p: x["n"] for p, x in mo["base"].items()})
+        # La cadena más larga es la de A, por su orden del plan; T08 y T09 acaban tarde con cualquier ritmo.
+        self.assertEqual([(e["tarjeta"]["id"], e["por"]) for e in b["cadena"]],
+                         [("T04", "inicio"), ("T05", "depende_de"), ("T06", "orden_del_plan"),
+                          ("T07", "orden_del_plan"), ("T08", "orden_del_plan"), ("T09", "orden_del_plan")])
+        riesgos = {r["tarea"]: r for r in b["riesgos"]}
+        self.assertTrue(riesgos["T08"]["en_cadena"] and riesgos["T09"]["en_cadena"])
+        self.assertEqual((riesgos["T09"]["dueno"], riesgos["T09"]["fin_tarde"]), ("persona-a", b["estimacion"]["tarde"]))
+        self.assertEqual(len(b["resumen"]), 120)                         # cortado (M17): con 160 cabía entero
         pasados = self.hechos(b, "plazo_pasado")
         self.assertEqual([(h["tarea"], h["gravedad"]) for h in pasados],
                          [("T04", "rojo"), ("T05", "rojo"), ("T06", "rojo"), ("T07", "rojo")])
@@ -705,19 +832,13 @@ class G14(Base):
         self.assertEqual(pasados[0]["arrastra"], ["T05", "T06", "T07", "T08", "T09", "T19", "T27", "T28"])
         arrastradas = {t for h in pasados for t in h["arrastra"]}
         self.assertFalse({"T17", "T24", "T25", "T26"} & arrastradas)
-        self.assertTrue(b["resumen"].endswith(" · T04: plazo pasado 23:00 y 3 más"))
-        for t28 in ("fuera", "hasta"):
+        entrega = fecha(mo["entrega"]["valor"])
+        self.assertTrue(all(fecha(e["fin_temprano"]) > entrega for e in b["cadena"][-2:]))
+        for t28 in ("fuera", "hasta"):                                  # con T28 fuera o con su Hasta, lo mismo
             with self.subTest(t28=t28):
                 _, c = self.momento("mitad con riesgo", t28)
-                self.assertEqual(c["veredicto"]["valor"], mo["veredicto"])
-                self.assertEqual(c["veredicto"]["gravedad"], "ambar")
-                self.assertLess(c["estimacion"]["margen_max"], 0)        # los dos extremos, después de la entrega
-                # La cadena más larga es la de A, por su orden del plan; T08 y T09 acaban tarde con cualquier ritmo.
-                self.assertEqual([(e["tarjeta"]["id"], e["por"]) for e in c["cadena"]],
-                                 [("T04", "inicio"), ("T05", "depende_de"), ("T06", "orden_del_plan"),
-                                  ("T07", "orden_del_plan"), ("T08", "orden_del_plan"), ("T09", "orden_del_plan")])
-                entrega = fecha(mo["entrega"]["valor"])
-                self.assertTrue(all(fecha(e["fin_temprano"]) > entrega for e in c["cadena"][-2:]))
+                self.assertEqual((c["veredicto"]["valor"], c["veredicto"]["gravedad"]), (mo["veredicto"], "ambar"))
+                self.assertEqual([e["tarjeta"]["id"] for e in c["cadena"]], [e["tarjeta"]["id"] for e in b["cadena"]])
 
 
 if __name__ == "__main__":
