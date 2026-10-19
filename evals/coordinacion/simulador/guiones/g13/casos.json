@@ -1,6 +1,6 @@
 {
  "v": 1,
- "que_es": "Casos de la vista de jurado que los momentos de G13 no tienen (#46, M9). Cada uno parte de un momento de hechos.json (el mismo estado del motor y las mismas notas en main) y cambia plan.md o criterios.md con reemplazos de texto [de, a, veces], o añade un servicios.md con el último resultado de su Prueba; «espera» es lo que tiene que salir, con las claves de los momentos de hechos.json. Lo comprueba g13_g14.py con las reglas del contrato y las decisiones del issue #46.",
+ "que_es": "Casos de la vista de jurado que los momentos de G13 no tienen (#46, M9). Cada uno parte de un momento de hechos.json (el mismo estado del motor y las mismas notas en main) y cambia plan.md o criterios.md con reemplazos de texto [de, a, veces], o añade un servicios.md con el último resultado de su Prueba; o añade eventos con «pasos» (los del guion, abreviados); «espera» es lo que tiene que salir, con las claves de los momentos de hechos.json. Lo comprueba g13_g14.py con las reglas del contrato y las decisiones del issue #46 y del #56.",
  "casos": [
   {
    "id": "cita_ambigua",
@@ -324,6 +324,235 @@
       }
      ]
     }
+   }
+  },
+  {
+   "id": "quien_con_tilde",
+   "que": "la etiqueta de T11 dice «· Lucia» y la nota es de «Lucía»: el quién solo ignora mayúsculas y espacios, no las tildes, así que no casa; va a «sin nota» y N2 queda en el pitch (#56, fila 12)",
+   "base": "M1 · sáb 12:00",
+   "plan.md": [
+    [
+     "(criterios: 2026-09-18 20:15 · Lucía)",
+     "(criterios: 2026-09-18 20:15 · Lucia)"
+    ]
+   ],
+   "espera": {
+    "notas": {
+     "N2": {
+      "estado": "en_pitch",
+      "tareas": {},
+      "evidencia": [],
+      "trabajo_nuevo_desde": null,
+      "cerradas_a_mano": [],
+      "corregida_por": null,
+      "tambien_en_pitch": true
+     }
+    },
+    "orden": [
+     "N1",
+     "N4",
+     "N6",
+     "N3",
+     "N2",
+     "N5"
+    ],
+    "cuenta": {
+     "notas": 6,
+     "sin_cubrir": 5,
+     "sin_tarea": 0,
+     "planificadas": 2,
+     "en_curso": 1,
+     "en_pitch": 2,
+     "ambiguas": 0,
+     "cubiertas": 1,
+     "corregidas": 0,
+     "sin_cubrir_por_fuerza": [
+      {
+       "texto": "dato",
+       "n": 1
+      },
+      {
+       "texto": "obligatorio",
+       "n": 2
+      },
+      {
+       "texto": "se valora",
+       "n": 1
+      },
+      {
+       "texto": "nos gustaría ver",
+       "n": 1
+      }
+     ]
+    },
+    "sin_nota": [
+     {
+      "tarea": "T11",
+      "cita": "2026-09-18 20:15 · Lucia"
+     }
+    ],
+    "resumen": "jurado: 5 sin cubrir · 1 «dato» (criterios.md) · 2 en el pitch · 1 cubierta de 6"
+   }
+  },
+  {
+   "id": "corrige_con_parentesis",
+   "que": "la nota de las 10:40 es de «Marta (Embat)» y la de las 12:05 dice «corrige la nota del 2026-09-19 10:40 · Marta (Embat)»: el quién con paréntesis no se corta en el primer «)» y N5 sigue corregida por N7 (#56, fila 13)",
+   "base": "M2 · sáb 14:30",
+   "criterios.md": [
+    [
+     "## 2026-09-19 10:40 · Jorge (mentor de Embat)",
+     "## 2026-09-19 10:40 · Marta (Embat) (mentora)"
+    ],
+    [
+     "corrige la nota del 2026-09-19 10:40:",
+     "corrige la nota del 2026-09-19 10:40 · Marta (Embat):"
+    ]
+   ],
+   "espera": {
+    "notas": {
+     "N5": {
+      "estado": "corregida",
+      "tareas": {
+       "T06": "publicada"
+      },
+      "evidencia": [
+       {
+        "tarea": "T06",
+        "sha": "061c0de",
+        "observado_en": "2026-09-19T09:10:00Z"
+       }
+      ],
+      "trabajo_nuevo_desde": null,
+      "cerradas_a_mano": [],
+      "corregida_por": "N7",
+      "tambien_en_pitch": false
+     },
+     "N7": {
+      "estado": "sin_tarea",
+      "tareas": {},
+      "evidencia": [],
+      "trabajo_nuevo_desde": null,
+      "cerradas_a_mano": [],
+      "corregida_por": null,
+      "tambien_en_pitch": false
+     }
+    },
+    "orden": [
+     "N1",
+     "N4",
+     "N6",
+     "N3",
+     "N7",
+     "N8",
+     "N2",
+     "N5"
+    ],
+    "cuenta": {
+     "notas": 8,
+     "sin_cubrir": 6,
+     "sin_tarea": 2,
+     "planificadas": 2,
+     "en_curso": 1,
+     "en_pitch": 1,
+     "ambiguas": 0,
+     "cubiertas": 1,
+     "corregidas": 1,
+     "sin_cubrir_por_fuerza": [
+      {
+       "texto": "dato",
+       "n": 1
+      },
+      {
+       "texto": "obligatorio",
+       "n": 2
+      },
+      {
+       "texto": "se valora",
+       "n": 2
+      },
+      {
+       "texto": "comentario suelto",
+       "n": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "en_curso_por_estado",
+   "que": "un commit de T23 ya alcanzable la publica sin pasar por en curso (sin primera_senal), y T09 sigue pendiente: N6 está «en curso» por el estado de la tarjeta, no «planificada» (#56, fila 15)",
+   "base": "M1 · sáb 12:00",
+   "pasos": [
+    {
+     "t": 60900,
+     "persona": "persona-c",
+     "papel": "humano",
+     "fuente": "git",
+     "tipo": "commit",
+     "tarea": "T23",
+     "datos": {
+      "sha": "231c0de",
+      "rama": "main",
+      "alcanzable": true
+     },
+     "asunto": "T23 · Entrega en el SKILL"
+    }
+   ],
+   "espera": {
+    "notas": {
+     "N6": {
+      "estado": "en_curso",
+      "tareas": {
+       "T09": "pendiente",
+       "T23": "publicada"
+      },
+      "evidencia": [
+       {
+        "tarea": "T23",
+        "sha": "231c0de",
+        "observado_en": "2026-09-19T09:55:00Z"
+       }
+      ],
+      "trabajo_nuevo_desde": null,
+      "cerradas_a_mano": [],
+      "corregida_por": null,
+      "tambien_en_pitch": false
+     }
+    },
+    "orden": [
+     "N1",
+     "N4",
+     "N6",
+     "N3",
+     "N2",
+     "N5"
+    ],
+    "cuenta": {
+     "notas": 6,
+     "sin_cubrir": 4,
+     "sin_tarea": 0,
+     "planificadas": 1,
+     "en_curso": 2,
+     "en_pitch": 1,
+     "ambiguas": 0,
+     "cubiertas": 2,
+     "corregidas": 0,
+     "sin_cubrir_por_fuerza": [
+      {
+       "texto": "dato",
+       "n": 1
+      },
+      {
+       "texto": "obligatorio",
+       "n": 2
+      },
+      {
+       "texto": "se valora",
+       "n": 1
+      }
+     ]
+    },
+    "resumen": "jurado: 4 sin cubrir · 1 «dato» (criterios.md) · 1 en el pitch · 2 cubiertas de 6"
    }
   }
  ]

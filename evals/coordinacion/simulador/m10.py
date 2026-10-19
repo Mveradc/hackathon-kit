@@ -150,8 +150,8 @@ def relay(base, guion, versiones, ahora, jurado=True, ruta=True, tareas=None, ex
 
 
 def tareas_del_plan(guion, plan_md):
-    personas = json.loads(texto(guion["tareas"]))["personas"]
-    return leer_plan(plan_md, personas)
+    """Las tareas de plan.md con las personas del guion (las de su tareas.json, o las de un caso que añade alguna)."""
+    return leer_plan(plan_md, guion.get("personas") or json.loads(texto(guion["tareas"]))["personas"])
 
 
 # ------------------------------------------------------------------------------- la vista, con la forma de los hechos
@@ -197,12 +197,12 @@ def jurado_hechos(b, ids, conexiones=None):
             n["pruebas"] = pruebas
         notas[nid(x["nota"])] = n
     return {"notas": notas, "orden": [nid(x["nota"]) for x in b["notas"]], "cuenta": b["cuenta"],
-            "sin_nota": [{"tarea": s["tarea"], "cita": s["cita"]} for s in b["sin_nota"]]}
+            "sin_nota": [{"tarea": s["tarea"], "cita": s["cita"]} for s in b["sin_nota"]], "resumen": b["resumen"]}
 
 
 def jurado_esperado(esperado):
     """Lo que se compara de los hechos de G13 (todo menos el «motivo», que es texto para quien lee)."""
-    salida = {k: v for k, v in esperado.items() if k in ("orden", "cuenta", "sin_nota")}
+    salida = {k: v for k, v in esperado.items() if k in ("orden", "cuenta", "sin_nota", "resumen")}
     if "notas" in esperado:
         salida["notas"] = {k: {c: v for c, v in n.items() if c != "motivo"} for k, n in esperado["notas"].items()}
     return salida
@@ -213,8 +213,10 @@ def ruta_hechos(b, v, personas):
     e, o = b["estimacion"], b["objetivo"]
     hechos = b["hechos"]
     ciclo = next((h["ciclo"] for h in hechos if h["tipo"] == "ciclo"), None)
+    zona = b.get("zona")
     return {
         "tareas": {t["id"]: t["estado"] for c in v["columnas"].values() for t in c},
+        "zona": zona and {k: z(x) if k == "observado_en" else x for k, x in zona.items()},
         "entrega": {"texto": o["texto"], "valor": z(o["valor"]), "motivo": o["motivo"], "confirmar": o["confirmar"],
                     "discrepancias": [{"texto": x["texto"], "valor": z(x["valor"]), "donde": x["donde"]}
                                       for x in b["otras_entregas"]]},
@@ -239,8 +241,8 @@ def ruta_hechos(b, v, personas):
         "resumen": b["resumen"], "viejo": b["viejo"], "dato_mas_viejo": z(b["dato_mas_viejo"])}
 
 
-RUTA_CLAVES = ("tareas", "veredicto", "cifra", "base", "sin_plazo", "no_cuentan", "plazos_vencidos", "sin_senales",
-               "riesgos", "cadena", "ciclo", "descansos", "resumen", "viejo", "dato_mas_viejo")
+RUTA_CLAVES = ("tareas", "zona", "veredicto", "cifra", "base", "sin_plazo", "no_cuentan", "plazos_vencidos",
+               "sin_senales", "riesgos", "cadena", "ciclo", "descansos", "resumen", "viejo", "dato_mas_viejo")
 
 
 def ruta_esperada(esperado):
