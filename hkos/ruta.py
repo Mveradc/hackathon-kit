@@ -453,8 +453,7 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     if otras:
         o = otras[0]
         if o["donde"] == "criterios.md":     # de una nota: su hora resuelta y la de la cita, nunca su texto (#46, 5)
-            vieja = re.search(r"nota de (\d\d:\d\d)\)", o.get("texto") or "")     # la forma de antes de la cita
-            de_nota = o["cita"][11:16] if o.get("cita") else vieja.group(1) if vieja else "—"
+            de_nota = o["cita"][11:16] if o.get("cita") else "—"     # #56: solo la cita (ya no la forma provisional)
             resumen += f" · otra entrega: {dia_hm(o['valor']) if o.get('valor') else '—'} " \
                        f"(criterios.md, nota de {de_nota})"
         elif not o.get("texto"):

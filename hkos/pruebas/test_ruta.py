@@ -295,6 +295,10 @@ class Tabla(Base):
         b = self.corre(ruta_de(240, otras_entregas=[nota, hito]), ana())
         self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 11:00–13:00 · entrega sáb 14:00 · "
                                        "otra entrega: sáb 14:10 (criterios.md, nota de 08:52)")
+        # #56: de la nota solo cuenta su cita; el texto de la forma provisional («(criterios.md, nota de HH:MM)») no se lee.
+        provisional = declarada(m(250), "(criterios.md, nota de 10:40)", donde="criterios.md")
+        b = self.corre(ruta_de(240, otras_entregas=[provisional]), ana())
+        self.assertTrue(b["resumen"].endswith(" · otra entrega: sáb 14:10 (criterios.md, nota de —)"), b["resumen"])
         # Con dos horas en Entrega:, el relay ya da la primera (#51) y la otra en otras_entregas: se estima, sin
         # entrega_doble, y la otra sale al lado.
         dos = ruta_de(240, otras_entregas=[declarada(m(300), "sáb 14:00 (cierre 15:00)")])
