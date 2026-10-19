@@ -839,7 +839,7 @@
         "inicio": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }] },
         "entrega": { "anyOf": [{ "type": "null" }, { "$ref": "#/$defs/hora_declarada" }], "description": "Decisión 1A: - Entrega: de equipo.md." },
         "otras_entregas": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada" }, "description": "Para compararlas con la entrega (issue #46, ajuste 5): la segunda hora de Entrega: (donde equipo.md), las filas de Hitos cuya Qué es «Entrega» o empieza por «Entrega final» (donde plan.md) y las notas de fuerza dato que afectan a la entrega (donde criterios.md, con su cita y sin su texto)." },
-        "hitos": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada" }, "description": "La tabla «Hitos del equipo» del plan (la congelación es uno)." },
+        "hitos": { "type": "array", "items": { "$ref": "#/$defs/hora_declarada" }, "description": "La tabla «Hitos del equipo» del plan (la congelación es uno), sin las filas de entrega, que van solo a otras_entregas (issue #46, B9)." },
         "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso" } }
       }
     }

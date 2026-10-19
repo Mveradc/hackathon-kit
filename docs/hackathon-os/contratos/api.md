@@ -93,6 +93,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§11.2 y §11.4 (B6):** `por_confirmar` entre los motivos de `Inicio:` y `Entrega:` (ya estaba en el enum de `hora_declarada`);
   - **§0 y §6 (B7):** la plantilla de `os.md` lleva `vista_jurado:` y `ruta_critica:`, y la cabecera de ejemplo de `estado-equipo.md`, las firmas `servicios:`, `jurado:` y `ruta:`;
   - **ADR-0013 (B8):** fuera la frase del desfase de `hk-os unir`, que ningún campo guarda;
+  - **§11.2 y el esquema (B9):** la fila de entrega de Hitos va solo a `otras_entregas`, no se repite en `hitos`.
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -743,7 +744,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
   - `H+N` (`H+2`, `H+1:30`): el inicio más N horas;
   - si no: `valor: null` y `motivo` = `vacio` (vacío o `—`), `relativo_sin_inicio` (`H+N` sin inicio), `sin_inicio` (un día sin inicio), `sin_zona`, `por_confirmar` (dice «por confirmar» o «?») o `formato`. Una tarea con `hasta.valor = null` sale «sin plazo», nunca «a tiempo».
 - **`franja`** (decisión 4A): `desde` = el `Hasta` resuelto de la fila anterior de la persona con otro `Hasta` (o, en la primera, el inicio); `hasta` = el suyo; `compartida` = las filas seguidas de la persona con ese mismo `Hasta`; `min` = (hasta − desde) / compartida en minutos, redondeado hacia arriba. Si no se puede: `valor: null` y `motivo` = `sin_plazo` (su `hasta` es `null`), `sin_inicio` (la primera fila, sin inicio) u `orden` (su `Hasta` no es posterior al `desde`). `fuente: derivado`, `declarado: true` (sale del plan).
-- **`hitos`**: cada fila de «## Hitos del equipo», con `nombre` = la columna Qué y la hora de Cuándo resuelta como un `Hasta` o, si lleva fecha («dom 20 sep 09:30»), como una fecha de `equipo.md`, sin zona la de `Inicio:`.
+- **`hitos`**: cada fila de «## Hitos del equipo» **que no es una entrega** (las de entrega van solo a `otras_entregas`, abajo; no se repiten aquí: tras congelar, 2026-10-19, M10, issue #46, B9), con `nombre` = la columna Qué y la hora de Cuándo resuelta como un `Hasta` o, si lleva fecha («dom 20 sep 09:30»), como una fecha de `equipo.md`, sin zona la de `Inicio:`.
 - **`otras_entregas`** (decisión 1A; ajuste 5): van todas, coincidan o no (la vista enseña las que no coinciden):
   - la segunda hora de `- Entrega:`, si la línea trae dos, con `donde: equipo.md`;
   - **las filas de Hitos que son una entrega**: aquellas cuya Qué es «Entrega» o empieza por «Entrega final» (sin distinguir mayúsculas ni espacios de más), con `donde: plan.md`. Las demás, aunque digan «entrega» («Entrega temprana»), son hitos;
