@@ -77,6 +77,8 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§4:** la vista del demonio y de su web lleva los bloques; la web los pinta y no calcula nada;
   - **§6:** la sección `## Jurado y ruta` (una línea por vista) y las firmas `jurado:` y `ruta:`;
   - [estado.schema.json](estado.schema.json): `jurado` y `ruta` (opcionales); en `tareas[]`, `hasta` (con el motivo de «sin plazo»), `franja`, `orden_plan`, `historia`, `criterios` y `conexiones` (opcionales), y `evidencia` se rellena; los `$defs` `plazo`, `franja`, `historia`, `hora_declarada`, `descanso`, `nota` (con su `clave`), `cita`, `fuerza`, `vista_jurado` y `vista_ruta`. Todo dato es `{valor, fuente, observado_en}` (o lleva esos tres campos) y `viejo` en la vista. Lo validan el validador de M8b (`hkos/esquema.py`) y jsonschema.
+- 2026-10-19, M10, issue #46 (las «Decisiones que faltan» de la revisión de los contratos de M10, decididas por el usuario; ajustes en ADR-0012 y ADR-0013). Sin subir `v`. Lo que cambia de forma se escribe aquí solo con la forma nueva; el esquema admite aún la anterior, con su `description` «TRANSITORIO (issue #46)», hasta que el código se adapte (K-105). Lo cubren:
+  - **§11.4 y [estado.schema.json](estado.schema.json):** una tarea abierta sin plazo no quita la estimación: sale en `sin_plazo[]` y el resto se estima (ajuste 1 de ADR-0013);
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -758,11 +760,12 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
   - `sin_entrega`: `equipo.md` no tiene `- Entrega:`, no se puede leer (`ruta.equipo` distinto de `ok`) o esa línea no se resuelve (`motivo` `sin_dato`, `sin_zona` o `formato`);
   - `entrega_doble`: esa línea trae dos horas (`motivo: dos_horas`);
   - `ciclo`: un ciclo en el grafo;
-  - `sin_plazo`: una tarea abierta sin franja;
-  - `pocos_datos`: una persona con tareas abiertas y `n < 3`.
+  - `pocos_datos`: una persona con tareas abiertas con franja y `n < 3`.
+
+  Una tarea abierta sin franja **no** quita la estimación (tras congelar, 2026-10-19, M10, issue #46, ajuste 1 de ADR-0013): va a `sin_plazo` y el resto se estima. `sin_plazo` ya no es un motivo (el esquema lo admite como transitorio hasta adaptar el código).
 
   `gravedad: gris`, `estimacion: null`. Ni una discrepancia con `otras_entregas` ni «(confirmar)» quitan la estimación: con «(confirmar)», el objetivo lleva `confirmar: true` (declarado) y el resumen lo dice.
-- **Estimación** (si no hay motivos): lo que le queda a cada tarea abierta es `franja.min` × el ritmo de su dueño (`ritmo_min` para el fin temprano, `ritmo_max` para el tarde), menos el tiempo ya trabajado si está en curso (desde `primera_senal`, sin descansos), y nunca menos de 0. Cada tarea empieza al acabar todas sus predecesoras abiertas (o ahora) y se salta los descansos de su persona y de todos; `temprano` y `tarde` son el fin más tardío de todas. `margen_min` = entrega − tarde y `margen_max` = entrega − temprano, en minutos.
+- **Estimación** (si no hay motivos): lo que le queda a cada tarea abierta es `franja.min` × el ritmo de su dueño (`ritmo_min` para el fin temprano, `ritmo_max` para el tarde), menos el tiempo ya trabajado si está en curso (desde `primera_senal`, sin descansos), y nunca menos de 0. Una tarea de `sin_plazo` cuenta 0 min: sus sucesoras empiezan al acabar sus predecesoras abiertas (ajuste 1). Cada tarea empieza al acabar todas sus predecesoras abiertas (o ahora) y se salta los descansos de su persona y de todos; `temprano` y `tarde` son el fin más tardío de todas. `margen_min` = entrega − tarde y `margen_max` = entrega − temprano, en minutos.
 - **Veredicto** (decisión 6A), sin parámetros: `a_tiempo` si `tarde` ≤ entrega (`gravedad: ninguna`); `justo` si `temprano` ≤ entrega < `tarde` (`ambar`); `no_llega` si entrega < `temprano` (`ambar`: es una previsión; el rojo es solo para hechos).
 - **Hechos**, con o sin estimación y desde el principio:
   - `plazo_pasado`: una tarea abierta con `hasta.valor` anterior a ahora, con `plazo` y `arrastra` (sus sucesoras abiertas, directas o no). **Rojo**: es el único;
@@ -776,7 +779,8 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **`viejo`**: alguna de `vista.fuentes` está vieja; `dato_mas_viejo`, el `observado_en` más antiguo de esas fuentes. `observado_en`: la hora del cálculo.
 - **`resumen`** (decisión 7B), cortado a 160 por grafemas:
   - con estimación: `ruta: estimación <a tiempo | justo | no llega> · fin <HH:MM>–<HH:MM> · entrega <día HH:MM>[ (confirmar)]`;
-  - sin ella: `ruta: sin estimación (<sin hora de entrega | dos horas de entrega | ciclo T04 → T07 → T04 | sin plazo: T09, T12 | pocos datos: @ana 2 de 3, @marta 1 de 3>)`, con el primer motivo;
+  - sin ella: `ruta: sin estimación (<sin hora de entrega | dos horas de entrega | ciclo T04 → T07 → T04 | pocos datos: @ana 2 de 3, @marta 1 de 3>)`, con el primer motivo;
+  - detrás, con estimación y tareas en `sin_plazo`: ` · sin contar T28[, T30…] (sin plazo)` (ajuste 1);
   - detrás, si hay `otras_entregas` que no coinciden: ` · otra entrega: <texto> (<dónde>)`; y si hay plazos pasados: ` · T05: plazo pasado <HH:MM>[ y N más]`.
 
 ### 11.5 MCP

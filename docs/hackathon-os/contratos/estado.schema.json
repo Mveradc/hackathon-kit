@@ -335,7 +335,14 @@
           "additionalProperties": false,
           "properties": {
             "valor": { "enum": ["a_tiempo", "justo", "no_llega", "sin_estimacion"] },
-            "motivos": { "type": "array", "items": { "enum": ["sin_entrega", "entrega_doble", "ciclo", "sin_plazo", "pocos_datos"] }, "description": "sin_entrega: equipo.md sin Entrega:, ilegible o sin resolver; entrega_doble: esa línea trae dos horas. Las otras_entregas que no coinciden no quitan la estimación (decisión 1A)." },
+            "motivos": {
+              "type": "array",
+              "items": { "anyOf": [
+                { "enum": ["sin_entrega", "entrega_doble", "ciclo", "pocos_datos"] },
+                { "enum": ["sin_plazo"], "description": "TRANSITORIO (issue #46): se quita al adaptar el código. Tras el ajuste 1 de ADR-0013, una tarea sin plazo va a sin_plazo[] y no quita la estimación." }
+              ] },
+              "description": "sin_entrega: equipo.md sin Entrega:, ilegible o sin resolver; entrega_doble: esa línea trae dos horas. Las otras_entregas que no coinciden no quitan la estimación (decisión 1A); una tarea abierta sin plazo, tampoco (ajuste 1, issue #46)."
+            },
             "gravedad": { "enum": ["ninguna", "ambar", "gris"], "description": "«no llega» es ámbar: el rojo es solo para hechos." },
             "fuente": { "$ref": "#/$defs/fuente" },
             "observado_en": { "type": "string", "format": "date-time" }
@@ -420,6 +427,7 @@
         },
         "sin_plazo": {
           "type": "array",
+          "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 1 de ADR-0013): las tareas abiertas que cuentan y no tienen franja. No quitan la estimación: cuentan 0 min y el resumen dice «sin contar T28 (sin plazo)».",
           "items": {
             "type": "object",
             "required": ["tarea", "motivo"],

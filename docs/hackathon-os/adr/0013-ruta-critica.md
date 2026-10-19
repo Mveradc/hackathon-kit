@@ -24,9 +24,8 @@ Valen la constitución II, III, IV y X (una hora estimada que se mueve con el re
   - `equipo.md` no tiene `- Entrega:`, no se puede leer, o esa línea no se puede resolver a una hora: «sin hora de entrega»;
   - esa línea trae dos horas («10:00 (cierre 11:00)»): se enseñan las dos, sin elegir;
   - las dependencias tienen un ciclo: «ciclo T04 → T07 → T04»;
-  - una tarea abierta que cuenta para la entrega no tiene franja («sin plazo»);
   - alguna persona con tareas abiertas tiene menos de 3 tareas medidas (decisión 7).
-- **Sin plazo no es «a tiempo».** Una tarea con `Hasta` vacío o sin resolver sale en una lista aparte, «sin plazo», con su motivo, y no cuenta como a tiempo ni como atrasada.
+- **Sin plazo no es «a tiempo».** Una tarea con `Hasta` vacío o sin resolver sale en una lista aparte, «sin plazo», con su motivo, y no cuenta como a tiempo ni como atrasada. **No quita la estimación** (ajuste 1, issue #46): el resto se estima y el resumen lo dice («sin contar T28 (sin plazo)»).
 - **Sin señales no es lento.** Si una persona no deja señales (commits sin ID, `atribucion_ambigua`, sin OS), la vista dice «sin señales de @x desde HH:MM» (gris) y enseña al lado sus `sin_tarea` y discrepancias; nunca «@x va lenta». No hay ningún hecho de tipo «lentitud».
 - **Lo declarado, como declarado:** `Hasta`, la franja, el orden del plan, la entrega, los hitos y los descansos salen del plan o de `equipo.md` y llevan su procedencia y la hora del commit de ese fichero (como `servicios`). Una tarea `cerrada` a mano cuenta como hecha para la ruta, con su ⚑, pero no se mide para el ritmo.
 - **Horas con zona:** toda hora sale con la zona horaria de `equipo.md`. Los `ts` de los commits son del reloj del portátil: si se guarda el desfase que imprime `hk-os unir`, se enseña.
@@ -50,6 +49,13 @@ Valen la constitución II, III, IV y X (una hora estimada que se mueve con el re
 | **11. Commits sin ID** | **C.** El `CLAUDE.md` que genera `/hack-scaffold` recuerda `Txx · …` en los commits, y la vista dice «sin señales de @x desde HH:MM», nunca «va lenta» | Más tareas avanzan solas (mejor ritmo medido) y, cuando no, la vista no culpa a nadie |
 
 Validación sin datos reales (#41, pregunta 12): guiones largos del simulador (G14, 39 h del reto 03, con commits, descansos y un ajuste del plan) para cerrar el hito, y el ensayo con un equipo después.
+
+## Ajustes tras la revisión (2026-10-19, issue #46)
+Decididos por el usuario sobre las «Decisiones que faltan» de la revisión de los contratos de M10. Mandan sobre lo de arriba donde lo contradigan.
+
+| Ajuste | Elegido | Por qué |
+|---|---|---|
+| **1. Una tarea abierta sin plazo** | **No quita la estimación.** Sale en `sin_plazo[]` con su motivo, cuenta 0 min en el cálculo (sus sucesoras empiezan al acabar sus predecesoras) y el resto se estima. El resumen lo dice: «sin contar T28 (sin plazo)». `sin_plazo` deja de ser motivo de `sin_estimacion` | Con el contrato anterior, una sola fila «hora por confirmar» dejaba sin cifra a todo el reto (A3). Sigue sin contar como a tiempo, y se dice qué no se ha contado |
 
 ## Alternativas descartadas
 - **Que un modelo estime las duraciones o el riesgo:** no es una señal (constitución II) y no se puede probar sin modelo.
