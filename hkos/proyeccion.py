@@ -6,12 +6,16 @@ Las tres vistas salen de aquí (constitución IV):
   - firmas(vista, persona): una huella por sección, solo de lo que importa a la persona (sin horas), para delta.sh;
   - reservas_tsv(vista, persona): las reservas de las demás personas, para el aviso de reserva.sh (M8g).
 El texto que viene del plan o de los issues (títulos, novedades) es dato: va entre «» y con su autor (constitución V).
+Desde M10 (api.md §11.3 y §11.4), si estado.json trae `jurado` o `ruta`, la vista lleva su bloque (hkos/jurado.py y
+hkos/ruta.py) y el md, la sección «Jurado y ruta» con el `resumen` de cada uno; sin ellos, todo como en la 0.4.0.
 """
 import hashlib
 import json
 import unicodedata
 from datetime import timezone
 
+import jurado as jurado_mod
+import ruta as ruta_mod
 from estados import fecha
 
 ETIQUETAS = {"pendiente": "pendiente", "lista": "lista", "reclamada": "reclamada", "en_curso": "en curso",
@@ -27,6 +31,7 @@ TRABAJO = ("en_curso", "parada", "no_cerrada", "en_revision", "reclamada", "inte
 CUMPLEN = {"publicada", "cerrada"}
 PRESENCIA_VIEJA_S = 180                 # R-12: presencia con más de 3 minutos
 FUENTE_VIEJA_S = 300                    # R-12: GitHub o relay con más de 5 (umbral_viejo_s de os.md)
+PARADA_S = 1200                         # umbral_parada_min de os.md por defecto: «sin señales» de la ruta (M10)
 NOVEDADES_MAX = 5
 LINEA_MAX = 160                         # api.md §6
 RESUMEN_MAX = 200                       # caracteres del resumen de una novedad (estado.schema.json)
@@ -38,8 +43,9 @@ def _edad(ts, ahora):
     return max(0, int((fecha(ahora) - fecha(ts)).total_seconds()))
 
 
-def vista(estado, ahora=None, umbral_viejo_s=FUENTE_VIEJA_S):
-    """La vista del equipo, sin persona. `ahora` (por defecto, generado_en) solo decide qué está «viejo»."""
+def vista(estado, ahora=None, umbral_viejo_s=FUENTE_VIEJA_S, umbral_parada_s=PARADA_S):
+    """La vista del equipo, sin persona. `ahora` (por defecto, generado_en) decide qué está «viejo» y, con los bloques
+    de M10, es la hora del cálculo; `umbral_parada_s`, solo para «sin señales» de la ruta."""
     ahora = ahora or estado["generado_en"]
     tareas = {t["id"]: t for t in estado["tareas"]}
     nombres = {p["persona"]: p["nombre"] for p in estado["personas"]}
@@ -117,6 +123,13 @@ def vista(estado, ahora=None, umbral_viejo_s=FUENTE_VIEJA_S):
                 x["resultado"]["viejo"] = viejo(x["resultado"])
         for d in s["desajustes"]:
             d["viejo"] = d["fuente"] != "git" and viejo(d)
+    # M10 (api.md §11.3 y §11.4): cada bloque, solo si estado.json trae lo suyo; con la misma tarjeta que el resto.
+    if estado.get("jurado"):
+        salida["jurado"] = jurado_mod.bloque(estado["jurado"], estado["tareas"], ahora, fuentes, estado.get("servicios"),
+                                             umbral_viejo_s, tarjetas)
+    if estado.get("ruta"):
+        salida["ruta"] = ruta_mod.calcular(estado["ruta"], estado["tareas"], ahora, personas, fuentes, tarjetas,
+                                           umbral_parada_s)
     return salida
 
 
@@ -203,6 +216,12 @@ def firmas(v, persona):
     }
     if v.get("servicios"):                     # M9a: solo con servicios en el estado
         salida["servicios"] = _huella([x["clave"] for x in servicios_de(v, persona)])
+    # M10 (api.md §6, R10A): jurado = su cuenta; ruta = solo el veredicto. La hora estimada, el margen o un hecho que
+    # cambian sin cambiar el veredicto no abren un delta. Cada una, solo con su bloque.
+    if v.get("jurado"):
+        salida["jurado"] = _huella(v["jurado"]["cuenta"])
+    if v.get("ruta"):
+        salida["ruta"] = _huella(ruta_mod.firma(v["ruta"]))
     return salida
 
 
@@ -349,6 +368,19 @@ def linea_servicio(x, tz):
     return "- " + _linea(f"{x['grupo']} · {x['texto']} ({_hora(x['observado_en'], tz)} · {x['fuente']}{viejo})")
 
 
+def jurado_y_ruta(v):
+    """Los bloques de M10 que trae la vista, en el orden de la sección: [(clave, bloque)]."""
+    return [(k, v[k]) for k in ("jurado", "ruta") if v.get(k)]
+
+
+def linea_jurado_ruta(b, tz):
+    """«- jurado: 2 sin cubrir (1 «obligatorio») · 1 cubierta de 3 (18:41 · derivado)» (api.md §6, M10): el `resumen`
+    del bloque tal cual (ya cortado a 120, M17) y detrás su hora, su fuente y «· viejo» si lo es. Así cabe en 160 sin
+    que el corte se lleve la hora, la fuente ni «viejo»."""
+    viejo = " · viejo" if b.get("viejo") else ""
+    return "- " + _linea(f"{b['resumen']} ({_hora(b['observado_en'], tz)} · {b['fuente']}{viejo})")
+
+
 def linea_novedad(n, tz):
     tipo = {"decision": "decisión", "criterio": "criterio", "escalado": "escalado"}.get(n.get("tipo"), n.get("tipo", ""))
     cabeza = " ".join(f"{_hora(n['observado_en'], tz)} · {tipo} ·".split()) + " "
@@ -416,7 +448,8 @@ def markdown(v, persona, ruta_detalle, tz=None, epoch=None, relay=None, avisos_l
                 f"epoch={epoch if epoch is not None else int(fecha(v['ahora']).timestamp())} relay={relay_ok} "
                 f"github={'no' if github and github['valor'] == 'no' else 'viejo' if github and github['viejo'] else 'ok'} "
                 f"firmas=trabajo:{f['trabajo']},colisiones:{f['colisiones']},novedades:{f['novedades']},"
-                f"reservas:{f['reservas']}" + (f",servicios:{f['servicios']}" if "servicios" in f else "") + " -->")
+                f"reservas:{f['reservas']}" + "".join(f",{k}:{f[k]}" for k in ("servicios", "jurado", "ruta") if k in f)
+                + " -->")
     lineas = [cabecera]
     if relay is not None:
         lineas.append(f"> Relay sin respuesta desde {_hora(relay[1], tz)}: lo efímero (presencia, ficheros) puede estar viejo.")
@@ -431,6 +464,9 @@ def markdown(v, persona, ruta_detalle, tz=None, epoch=None, relay=None, avisos_l
     if v.get("servicios"):                     # M9a (api.md §6)
         lineas.append("## Servicios")
         lineas += [linea_servicio(x, tz) for x in servicios_de(v, persona)] or ["- todo cuadra"]
+    if jurado_y_ruta(v):                       # M10 (api.md §6): para todo el equipo, una línea por bloque
+        lineas.append("## Jurado y ruta")
+        lineas += [linea_jurado_ruta(b, tz) for _, b in jurado_y_ruta(v)]
     lineas.append("## Novedades")
     lineas += [linea_novedad(n, tz) for n in v["novedades"]] or ["- ninguna"]
     lineas.append("## Equipo")

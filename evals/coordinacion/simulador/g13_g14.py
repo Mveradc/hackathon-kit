@@ -29,6 +29,12 @@ Del motor de verdad solo se toman los estados (modelo.calcular, con cada evento 
 docs/hackathon-os/contratos/) y la historia de cada tarea (modelo.historias, la de §11.2).
 G14 tiene dos ramas con las mismas entradas: G14.json («inicio» y «mitad bien») y G14r.json («mitad con riesgo»).
 
+Después (K-105, criterios 2 y 3 de M10), lo mismo con el código de verdad (m10.py): los ficheros en un repo de git con
+su historia, el relay con sus interruptores (lecturas.py y la historia de cada tarea) y proyeccion.vista, que calcula los
+bloques con hkos/jurado.py y hkos/ruta.py. Cada bloque valida contra su $defs y, con la forma de los hechos, coincide
+con ellos en cada momento y caso, salvo las diferencias conocidas de CONOCIDAS (del contrato o de hkos/ruta.py, fuera de
+K-105), que se dicen una a una y fallan si dejan de salir.
+
 Uso: uv run --no-project evals/coordinacion/simulador/g13_g14.py   (0 OK · 1 falla)
 """
 import hashlib
@@ -36,7 +42,9 @@ import json
 import math
 import os
 import re
+import shutil
 import sys
+import tempfile
 import unicodedata
 from datetime import datetime, timedelta, timezone
 
@@ -49,6 +57,8 @@ from estados import ATRIBUIBLES, fecha  # noqa: E402
 from modelo import atribuir, calcular, historias  # noqa: E402
 from proyeccion import corta  # noqa: E402
 from simula import carga, ejecutar, montar  # noqa: E402
+import m10  # noqa: E402
+import servicios as servicios_mod  # noqa: E402
 
 if hasattr(sys.stdout, "reconfigure"):
     sys.stdout.reconfigure(errors="replace")   # en una consola cp1252, «≥» o «→» no cortan la salida
@@ -1003,6 +1013,126 @@ def caso_g14(caso, mo, guiones, fotos, deps, duenos, personas):
     reglas(nombre, caso["espera"], real)
 
 
+# ===================================================================================== con el código de verdad (K-105)
+FRANJA = ("hkos/ruta.py estima lo que le queda a una tarea abierta con franja.min (api.md §11.4, «Estimación»); los "
+          "hechos, con «esa misma franja sin descansos» (§11.4, «Medidas y ritmo»): el contrato dice las dos cosas")
+SENALES = ("los hechos dan «desde» la última señal con tarea (los commits sin ID no son señales, ADR-0013); el código, "
+           "personas[].ultima_senal de la vista, como dice api.md §11.4, que cuenta esos commits")
+GIT = ("fuentes.git es la hora del último evento de git, no la de la última lectura del relay, y la vista la da por vieja "
+       "a los 5 min sin commits (umbral_viejo_s): dato_mas_viejo sale el último commit (08:50), no 09:20")
+# Lo que el código de verdad da distinto de los hechos por el contrato o por hkos/ruta.py (fuera de K-105; en el PR):
+# {momento o caso: [(expresión de las rutas de difiere, por qué)]}. Cada una se enseña y falla si deja de salir.
+CONOCIDAS = {
+    "G14 «mitad con riesgo»": [(r"\.cifra\.rango\.", FRANJA), (r"\.riesgos\[\d+\]\.fin_tarde", FRANJA),
+                               (r"\.cadena\[\d+\]\.fin_t", FRANJA), (r"\.resumen", FRANJA),
+                               (r"\.sin_senales\.persona-c\.desde", SENALES)],
+    "G14 caso «cadena_de_cada_persona»": [(r"\.cifra\.rango\.", FRANJA)],
+    "G14 caso «descanso_de_todos»": [(r"\.cifra\.rango\.", FRANJA), (r"\.cadena\[\d+\]\.fin_tarde", FRANJA)],
+    "G14 caso «relay_caido»": [(r"\.dato_mas_viejo", GIT)],
+}
+
+
+class _Bloque(Esquema):
+    """estado.schema.json, para validar un bloque de la vista contra su $defs."""
+
+    def __init__(self, defs):
+        super().__init__("estado.schema.json")
+        self.defs = defs
+
+    def error(self, valor):
+        return self._error({"$ref": f"#/$defs/{self.defs}"}, valor, "")
+
+
+def compara_vivo(nombre, esperado, real):
+    dif = difiere(esperado, real)
+    conocidas = CONOCIDAS.get(nombre, [])
+    quedan = [d for d in dif if not any(re.match(p, d) for p, _ in conocidas)]
+    comprueba(f"{nombre}: el relay de verdad y proyeccion.vista dan lo que dicen los hechos", not quedan, quedan[:6])
+    for p, por in conocidas:
+        salen = [d for d in dif if re.match(p, d)]
+        comprueba(f"{nombre}: diferencia conocida en «{p}» ({por})", bool(salen), "ya no sale: quítala de CONOCIDAS")
+        if salen and not callado:
+            print(f"        p. ej. {salen[0]}")
+
+
+def cambios_de(caso):
+    """Los reemplazos [de, a, veces] de un caso, sobre cada versión del fichero que los tiene."""
+    def cambia(nombre, t):
+        for c in caso.get(nombre, []):
+            t = t.replace(c[0], c[1])
+        return t
+    return cambia
+
+
+def vivo_g13(cambia=None, solo=None):
+    """Criterio 2 de M10 con el código de verdad: cada momento y caso de G13 por el relay y proyeccion.vista."""
+    guion = carga(os.path.join(AQUI, "guiones/G13.json"))
+    datos = {"hechos": carga(os.path.join(AQUI, guion["hechos"])), "casos": carga(os.path.join(AQUI, "guiones/g13/casos.json"))}
+    if cambia:
+        cambia(datos)
+    hechos, esquema = datos["hechos"], _Bloque("vista_jurado")
+    pruebas = [(f"G13 «{mo['nombre']}»", mo, mo, {}) for mo in hechos["momentos"]] + \
+              [(f"G13 caso «{c['id']}»", next(m for m in hechos["momentos"] if m["nombre"] == c["base"]), c["espera"], c)
+               for c in datos["casos"]["casos"]]
+    tmp = tempfile.mkdtemp(prefix="hk-g13-")
+    try:
+        for nombre, mo, esperado, caso in pruebas:
+            if solo and nombre != solo:
+                continue
+            versiones = m10.versiones_g13(guion, hechos, mo["ahora"], cambios_de(caso))
+            extra = []
+            if "servicios.md" in caso:          # la Prueba de la conexión, con su último resultado (un hook `prueba`)
+                versiones[0][1]["servicios.md"] = caso["servicios.md"]
+                extra = [{"v": 1, "id": f"caso-prueba-{i}", "ts": r["observado_en"], "fuente": "hook", "tipo": "prueba",
+                          "actor": {"persona": "persona-b", "papel": "principal", "sesion": "s-b"},
+                          "datos": {"comando_sha": servicios_mod.huella_prueba(p), "resultado": r["resultado"], "codigo": 1}}
+                         for i, (p, r) in enumerate(caso["resultados"].items())]
+            r = m10.relay(tmp, guion, versiones, mo["ahora"], ruta=False, extra=extra)
+            v = m10.vista(r)
+            comprueba(f"{nombre}: la vista lleva el bloque jurado (y no el de la ruta), que valida contra $defs/vista_jurado",
+                      "jurado" in v and "ruta" not in v and esquema.error(v["jurado"]) is None,
+                      esquema.error(v.get("jurado")))
+            if "jurado" not in v:
+                continue
+            crit = cambios_de(caso)("criterios.md", texto(guion["entradas"]["criterios.md"]))
+            real = m10.jurado_hechos(v["jurado"], m10.ids_g13(crit, hechos), m10.conexiones_de(v))
+            compara_vivo(nombre, m10.jurado_esperado(esperado), real)
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def vivo_g14(cambia=None, solo=None):
+    """Criterio 3 de M10 con el código de verdad: cada momento y caso de G14 por el relay y proyeccion.vista. Las tareas,
+    las del plan que está en main a esa hora (tras el ajuste del sábado, T18 lleva [SI DA TIEMPO])."""
+    guiones = {g: carga(os.path.join(AQUI, "guiones", g)) for g in ("G14.json", "G14r.json")}
+    datos = {"hechos": carga(os.path.join(AQUI, guiones["G14.json"]["hechos"])),
+             "casos": carga(os.path.join(AQUI, "guiones/g14/casos.json"))}
+    if cambia:
+        cambia(datos)
+    hechos, esquema = datos["hechos"], _Bloque("vista_ruta")
+    personas = [p["persona"] for p in json.loads(texto(guiones["G14.json"]["tareas"]))["personas"]]
+    # sin_orden_del_plan no es de la vista (lo que daría sin la cadena de cada persona): lo comprueban las reglas.
+    pruebas = [(f"G14 «{mo['nombre']}»", mo, mo, {}) for mo in hechos["momentos"]] + \
+              [(f"G14 caso «{c['id']}»", next(m for m in hechos["momentos"] if m["nombre"] == c["base"]),
+                {k: v for k, v in c["espera"].items() if k != "sin_orden_del_plan"}, c) for c in datos["casos"]["casos"]]
+    tmp = tempfile.mkdtemp(prefix="hk-g14-")
+    try:
+        for nombre, mo, esperado, caso in pruebas:
+            if solo and nombre != solo:
+                continue
+            guion, hasta = guiones[mo["guion"]], caso.get("estado_a", mo["ahora"])
+            versiones = m10.versiones_g14(hechos, hasta, cambios_de(caso))
+            plan = [f["plan.md"] for _, f in versiones if "plan.md" in f][-1]
+            r = m10.relay(tmp, guion, versiones, hasta, jurado=False, tareas=m10.tareas_del_plan(guion, plan))
+            v = m10.vista(r, mo["ahora"])               # el relay caído: el estado de antes, visto después
+            comprueba(f"{nombre}: la vista lleva el bloque ruta (y no el del jurado), que valida contra $defs/vista_ruta",
+                      "ruta" in v and "jurado" not in v and esquema.error(v["ruta"]) is None, esquema.error(v.get("ruta")))
+            if "ruta" in v:
+                compara_vivo(nombre, m10.ruta_esperada(esperado), m10.ruta_hechos(v["ruta"], v, personas))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
 # ===================================================================================================== controles
 def pon(ruta_, valor):
     """Un cambio en los hechos o los casos: `ruta_` es una lista de claves e índices; el último recibe `valor` (None:
@@ -1072,6 +1202,18 @@ CONTROLES = [
     ("G14 mitad con riesgo: T19 de otra persona (punto 4)", g14, M + [2, "riesgos", 1, "dueno"], "persona-a"),
     ("G14 caso descanso de Todos: sin efecto en el rango", g14, ["casos", "casos", 7, "espera", "cifra", "rango", "tarde"],
      "2026-09-19T16:52:18Z"),
+    # K-105: el código de verdad (relay → proyeccion.vista) también lo detecta.
+    ("código de verdad, G13 M3: N6 «cubierta» con T23 solo reclamada", lambda c: vivo_g13(c, "G13 «M3 · sáb 20:30»"),
+     M + [2, "notas", "N6", "estado"], "cubierta"),
+    ("código de verdad, G13 M3: la evidencia de T11, el primer sha", lambda c: vivo_g13(c, "G13 «M3 · sáb 20:30»"),
+     M + [2, "notas", "N2", "evidencia", 0, "sha"], "111c0de"),
+    ("código de verdad, G13 caso ambigua: N3 «en curso»", lambda c: vivo_g13(c, "G13 caso «cita_ambigua»"),
+     ["casos", "casos", 0, "espera", "notas", "N3", "estado"], "en_curso"),
+    ("código de verdad, G14 mitad bien: «justo»", lambda c: vivo_g14(c, "G14 «mitad bien»"), M + [1, "veredicto"], "justo"),
+    ("código de verdad, G14 inicio: cifra con pocos datos", lambda c: vivo_g14(c, "G14 «inicio»"),
+     M + [0, "cifra", "hay"], True),
+    ("código de verdad, G14 caso dos horas: manda la segunda (11:00)", lambda c: vivo_g14(c, "G14 caso «dos_horas»"),
+     ["casos", "casos", 2, "espera", "entrega", "valor"], "2026-09-20T09:00:00Z"),
 ]
 
 
@@ -1079,6 +1221,9 @@ def main():
     global fallos, callado
     g13()
     g14()
+    print()
+    vivo_g13()
+    vivo_g14()
     print()
     for nombre, funcion, ruta_, valor in CONTROLES:     # con un hecho cambiado, tiene que fallar
         antes, callado = fallos, True
