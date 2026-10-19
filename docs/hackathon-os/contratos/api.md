@@ -90,6 +90,7 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§11.4 y el esquema (B2):** cada elemento de `sin_plazo[]` y `fuera_de_entrega[]` lleva `fuente` y `observado_en`;
   - **§11.3 y el esquema (B3):** `enlace` y `pitch` llevan `donde`, `fuente` y `observado_en`, sin autor;
   - **§11.2, §11.3 y el esquema (B4):** la zona de `equipo.md` también en `jurado` (`jurado.zona`), con `ruta_critica: no`;
+  - **§11.2 y §11.4 (B6):** `por_confirmar` entre los motivos de `Inicio:` y `Entrega:` (ya estaba en el enum de `hora_declarada`);
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -723,7 +724,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 **`.hackathon/equipo.md` → `ruta.equipo`, `zona`, `inicio` y `entrega`, y `jurado.zona`** (ADR-0013, decisión 1A). La zona también sirve a `jurado`, con cualquiera de los dos interruptores: con `vista_jurado: sí` el relay lee `equipo.md` aunque `ruta_critica` esté apagado y pone la zona en **`jurado.zona`** (la misma que `ruta.zona`), y la vista la lleva en su bloque `jurado` (tras congelar, 2026-10-19, M10, issue #46, B4):
 - Las líneas `- Inicio:` y `- Entrega:` de «## Hackathon». Se entiende una fecha (`AAAA-MM-DD`, `D/M/AAAA`, `D de <mes> [de AAAA]` o `D <mes> [AAAA]`, con el mes abreviado o entero y con o sin el día de la semana delante, como «dom 20 sep 09:30» o «dom 20 sep 2026 10:00»; sin año, el del commit), una hora `HH:MM` y una zona: un nombre IANA (`Europe/Madrid`) o un desfase (`UTC+2`, `UTC+02:00`, `+02:00`). Las abreviaturas (`CEST`) no valen: son ambiguas. **`Entrega:` sin zona hereda la de `Inicio:`** (tras congelar, 2026-10-19, M10, issue #46, ajuste 5 de ADR-0013).
 - **Dos horas** (ajuste 5): la línea trae dos horas `HH:MM` distintas, sin contar la zona (el `02:00` de `UTC+02:00` no es una hora), como «10:00 (cierre 11:00)». **Manda la primera**: es el `valor`, y la otra va a `ruta.otras_entregas` con `donde: equipo.md`, como discrepancia; no quita la estimación. La misma hora escrita dos veces es una.
-- `valor` = la hora en ISO 8601 con su desfase. Si no se puede: `null` con `motivo` = `sin_dato` (falta la línea, vacía, `—` o con `<…>`), `sin_zona` o `formato`. Con «(confirmar)», `confirmar: true`, y el valor se resuelve igual. `texto` es la línea tal cual, sin `- Entrega:`.
+- `valor` = la hora en ISO 8601 con su desfase. Si no se puede: `null` con `motivo` = `sin_dato` (falta la línea, vacía, `—` o con `<…>`), `sin_zona`, `por_confirmar` (dice «por confirmar» o «?», como `- Inicio: por confirmar`; tras congelar, 2026-10-19, M10, issue #46, B6) o `formato`. Con «(confirmar)», `confirmar: true`, y el valor se resuelve igual. `texto` es la línea tal cual, sin `- Entrega:`.
 - `zona` es la de `Inicio:` (o, si no tiene, la de `Entrega:`); `null` si ninguna se entiende.
 - `equipo`: `ok`, `sin fichero` o `mal formado` (sin «## Hackathon»).
 
@@ -780,7 +781,7 @@ Del clon de `origin/main`, en el mismo bucle que las novedades y `servicios` (§
 - **Grafo** (decisión 3B): entre las tareas que cuentan, A → B si B `depende_de` A (`por: depende_de`) o si A es la fila anterior de B en el `orden_plan` de la misma persona (`por: orden_del_plan`, inferido).
 - **Medidas y ritmo** (decisión 5A): para cada tarea hecha, no declarada, con `primera_senal`, `hecha_en` y franja: ritmo = (hecha_en − primera_senal − los descansos de su persona o de todos en medio) ÷ (`franja.min` − los minutos de esos descansos dentro de la franja ÷ `compartida`, y nunca menos de 1), en %, redondeado: los descansos se restan **también de la franja** (tras congelar, 2026-10-19, M10, issue #46, ajuste 4 de ADR-0013). Lo que le queda a una tarea abierta se mide con esa misma franja sin descansos. Por persona: `n` (las medidas), `ritmo_min` y `ritmo_max` (o `null` con `n < 3`). `base.minimo` es **3**, fijo; `base.desde`, el `hecha_en` más antiguo medido.
 - **Veredicto `sin_estimacion`**, con todos los `motivos` que apliquen, en este orden:
-  - `sin_entrega`: `equipo.md` no tiene `- Entrega:`, no se puede leer (`ruta.equipo` distinto de `ok`) o esa línea no se resuelve (`motivo` `sin_dato`, `sin_zona` o `formato`);
+  - `sin_entrega`: `equipo.md` no tiene `- Entrega:`, no se puede leer (`ruta.equipo` distinto de `ok`) o esa línea no se resuelve (`motivo` `sin_dato`, `sin_zona`, `por_confirmar` o `formato`);
   - `ciclo`: un ciclo en el grafo;
   - `pocos_datos`: una persona con tareas abiertas con franja y `n < 3`.
 
