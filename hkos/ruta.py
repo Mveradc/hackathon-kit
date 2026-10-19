@@ -21,7 +21,8 @@ from estados import fecha, iso
 
 MINIMO = 3                                  # base.minimo: fijo en el contrato (decisión 7A), no se configura
 HECHAS = {"publicada", "cerrada"}
-# Con trabajo empezado: lo ya trabajado (desde primera_senal, sin descansos) se descuenta de lo que le queda.
+# Con trabajo empezado: lo ya trabajado (desde primera_senal, o desde trabajo_nuevo_desde si vuelve a tener trabajo
+# tras publicarse, sin descansos) se descuenta de lo que le queda.
 EMPEZADAS = {"en_curso", "parada", "no_cerrada", "en_revision", "integrada"}
 DIAS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")
 GRAVEDAD = {"rojo": 0, "ambar": 1, "gris": 2}
@@ -274,9 +275,10 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
             t = cuentan[k]
             p, h, fr = t["dueno"], t.get("historia") or {}, _v(t["franja"])
             antes = [termina(a) for a in previas_estimables(k)]
-            trabajado = 0.0
-            if t["estado"]["valor"] in EMPEZADAS and h.get("primera_senal") and fecha(h["primera_senal"]) < t_ahora:
-                a = fecha(h["primera_senal"])
+            # #56, 9: tras volver a en_curso después de publicarse (6B), lo trabajado cuenta desde el trabajo nuevo.
+            desde, trabajado = h.get("trabajo_nuevo_desde") or h.get("primera_senal"), 0.0
+            if t["estado"]["valor"] in EMPEZADAS and desde and fecha(desde) < t_ahora:
+                a = fecha(desde)
                 trabajado = (t_ahora - a).total_seconds() - _solape(a, t_ahora, pausas(p))
             par, minutos = [], libre(fr, p)       # #56, 1: sin descansos, que _avanza ya salta (una sola vez)
             for i, ritmo in enumerate(ritmos[p]):

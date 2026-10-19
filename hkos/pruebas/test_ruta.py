@@ -698,6 +698,18 @@ class Tabla(Base):
         self.assertEqual([(e["fin_temprano"], e["fin_tarde"]) for e in b["cadena"]][0],
                          (iso(T0 + timedelta(minutes=10)), iso(T0 + timedelta(minutes=70))))
 
+    def test_56_9_trabajo_nuevo_tras_publicarse_desde_trabajo_nuevo_desde(self):
+        """#56, punto 9: una tarea publicada que vuelve a en_curso (6B) mide lo trabajado desde
+        historia.trabajo_nuevo_desde, no desde la primera_senal de antes de publicarse (con la que le quedaba siempre 0
+        y el fin era «ahora»)."""
+        tareas = ana()
+        tareas[3] = tarea("T04", "ana", "en_curso", 4, franja=(0, 60), primera=-300)
+        tareas[3]["historia"].update(hecha_en=m(-200), trabajo_nuevo_desde=m(-20))
+        b = self.corre(ruta_de(240), tareas)
+        # 20 min de trabajo nuevo: le quedan 10 y 70 min (antes, 0 y 0: T0 y T0).
+        self.assertEqual([(e["tarjeta"]["id"], e["fin_temprano"], e["fin_tarde"]) for e in b["cadena"]][0],
+                         ("T04", iso(T0 + timedelta(minutes=10)), iso(T0 + timedelta(minutes=70))))
+
 
 class CadenaDeCadaPersona(Base):
     """R3B (decisión 3B): la cadena de cada persona (sus filas, en orden) es una dependencia, aunque «Quién espera a
