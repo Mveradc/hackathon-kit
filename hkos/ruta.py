@@ -465,6 +465,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         if o["donde"] == "criterios.md":     # de una nota: su hora resuelta y la de la cita, nunca su texto (#46, 5)
             de_nota = o["cita"][11:16] if o.get("cita") else "—"     # #56: solo la cita (ya no la forma provisional)
             partes.append(f"otra entrega: {dia_hm(o['valor']) if o.get('valor') else '—'} (criterios.md, nota de {de_nota})")
+        elif o.get("valor"):                # #63, 3: su hora en la zona del equipo y su fichero, sin su texto libre
+            partes.append(f"otra entrega: {dia_hm(o['valor'])} ({o['donde']})")
         else:                               # #56, 7: texto libre (constitución V): entre «», recortado, con su fichero
             partes.append(f"otra entrega: {entre_comillas(o['texto']) if o.get('texto') else '—'} ({o['donde']})")
     resumen = recorta(partes, 1 + bool(pasados))

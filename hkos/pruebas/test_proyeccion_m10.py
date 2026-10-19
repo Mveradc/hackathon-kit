@@ -332,6 +332,8 @@ class Md(unittest.TestCase):
         self.assertEqual(l.count("«"), l.count("»"), l)
         self.assertLessEqual(len(r), 120)
         self.assertTrue(r.endswith((" (equipo.md)", " · y más en la vista")), r)
+        # #63, punto 3: la otra entrega de equipo.md, con su hora (la que discrepa) y su fichero, sin su texto.
+        self.assertTrue(r.endswith(" · pocos datos: 5 personas · otra entrega: dom 13:00 (equipo.md)"), r)
 
     def test_el_texto_de_las_notas_no_sale_en_el_md(self):
         e = con_m10(estado_5x20())
