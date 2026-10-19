@@ -7,7 +7,8 @@ fuente, observado_en}, historia), y devuelve `$defs/vista_jurado`, ya ordenado, 
 - Nunca «cubierta» porque algo lo declare: una `cerrada` a mano (⚑), el pitch o una etiqueta ambigua no cubren.
 - La evidencia se enseña siempre que exista; la Prueba es evidencia, no condición (decisión 4A).
 - El texto de las notas es dato (constitución V): sale tal cual, sin interpretarlo.
-- «Sin cubrir» es todo lo no cubierto menos las corregidas: sin_tarea + planificadas + en_curso + en_pitch (#46, 2).
+- «Sin cubrir» es todo lo no cubierto menos las corregidas: sin_tarea + ambiguas + planificadas + en_curso + en_pitch
+  (#46, 2). Una ambigua cuenta solo en ambiguas.
 """
 import copy
 
@@ -16,7 +17,6 @@ from estados import fecha
 FUENTE_VIEJA_S = 300                                   # umbral_viejo_s por defecto, el de proyeccion
 # Decisión 6B (#46, 6): publicada antes y ahora con trabajo nuevo, aunque se pare o no se cierre, sigue hecha.
 SIGUE_HECHA = ("en_curso", "en_revision", "integrada", "parada", "no_cerrada")
-SIN_SENALES = ("lista", "pendiente", "reclamada")      # #46, 2: una tarea sin señales (aún no ha empezado)
 PALABRAS = ("obligatorio", "se valora", "nos gustaría ver")
 LINEA_MAX = 120                                        # api.md §6 (#46, M17): deja sitio a « (HH:MM · fuente · viejo)»
 DE_FUENTE = {"git": "git", "github": "github"}         # fuente de una tarjeta → vista.fuentes; lo demás llega por el relay
@@ -58,8 +58,8 @@ def hecha(t):
 
 
 def con_senales(t):
-    """Ha empezado: su estado ya no es lista, pendiente ni reclamada, o tiene primera señal (#46, 2)."""
-    return t["estado"]["valor"] not in SIN_SENALES or bool((t.get("historia") or {}).get("primera_senal"))
+    """Ha empezado: tiene historia.primera_senal (api.md §11.3, #46, 2)."""
+    return bool((t.get("historia") or {}).get("primera_senal"))
 
 
 def _viejas(fuentes, ahora, umbral):
@@ -113,6 +113,8 @@ def _resumen(fichero, cuenta, fuerte):
     if not cuenta["notas"]:
         return "jurado: sin notas en criterios.md"
     partes = [f"{cuenta['sin_cubrir']} sin cubrir" + (f" ({fuerte['n']} «{fuerte['texto']}»)" if fuerte else "")]
+    if cuenta["ambiguas"]:
+        partes.append(f"{cuenta['ambiguas']} ambigua" + "s" * (cuenta["ambiguas"] != 1))
     if cuenta["en_pitch"]:
         partes.append(f"{cuenta['en_pitch']} en el pitch")
     partes.append(f"{cuenta['cubiertas']} cubierta" + "s" * (cuenta["cubiertas"] != 1) + f" de {cuenta['notas']}")
@@ -156,19 +158,17 @@ def bloque(jurado, tareas, ahora, fuentes=None, servicios=None, umbral_viejo_s=F
             # M20: la relación la escribe una persona en criterios.md: declarada, con la hora de ese commit.
             corregida[casa[0]["clave"]] = {"valor": n["clave"], "fuente": "declarado", "observado_en": n["observado_en"]}
 
-    salida, fase = [], {}
+    salida = []
     for n in notas:
         es = list(enlaces[n["clave"]].values())
         firmes = [t for t, _, ambiguo, _ in es if not ambiguo]
-        if firmes:
-            valor = "cubierta" if all(hecha(t) for t in firmes) else "declarada"
+        if firmes:      # sin cubrir: en curso si alguna de sus tareas tiene señales; si no, planificada (#46, 2)
+            valor = "cubierta" if all(hecha(t) for t in firmes) else \
+                "en_curso" if any(con_senales(t) for t in firmes) else "planificada"
         elif es:
             valor = "ambigua"
         else:
             valor = "en_pitch" if n["clave"] in en_pitch else "sin_tarea"
-        # Con tareas y sin cubrir (declarada o ambigua): en curso si alguna tiene señales; si no, planificada.
-        fase[n["clave"]] = valor if valor in ("cubierta", "en_pitch", "sin_tarea") else \
-            "en_curso" if any(con_senales(t) for t in (firmes or [t for t, _, _, _ in es])) else "planificada"
         filas = [{"tarjeta": _tarjeta(t, tarjetas, viejas),
                   "enlace": {"cita": cita, "ambiguo": ambiguo, "donde": "plan.md", "fuente": c["fuente"],
                              "observado_en": c["observado_en"], "declarado": True}} for t, cita, ambiguo, c in es]
@@ -201,16 +201,20 @@ def bloque(jurado, tareas, ahora, fuentes=None, servicios=None, umbral_viejo_s=F
     for x in sin_cubrir:                       # ya en orden de fuerza
         f = x["nota"]["fuerza"]
         por_fuerza.setdefault((rango_fuerza(f), _norma(f["texto"])), {"texto": f["texto"], "n": 0})["n"] += 1
+    por_fuerza = list(por_fuerza.values())
 
     def cuantas(valor):
-        return sum(fase[x["nota"]["clave"]] == valor for x in vivas)
+        return sum(x["cobertura"]["valor"] == valor for x in vivas)
     cuenta = {"notas": len(salida), "corregidas": len(salida) - len(vivas), "cubiertas": cuantas("cubierta"),
-              "sin_cubrir": len(sin_cubrir), "sin_tarea": cuantas("sin_tarea"), "planificadas": cuantas("planificada"),
-              "en_curso": cuantas("en_curso"), "en_pitch": cuantas("en_pitch")}
-    fuerte = por_fuerza[min(por_fuerza, key=lambda k: k[0])] if por_fuerza else None
+              "sin_cubrir": len(sin_cubrir), "sin_tarea": cuantas("sin_tarea"), "ambiguas": cuantas("ambigua"),
+              "planificadas": cuantas("planificada"), "en_curso": cuantas("en_curso"), "en_pitch": cuantas("en_pitch"),
+              "sin_cubrir_por_fuerza": por_fuerza}
     fichero = (jurado.get("fichero") or {}).get("valor")
     resultado = {"observado_en": ahora, "fuente": "derivado", "viejo": viejas.get("git", False)}
     if fichero in ("ok", "sin fichero", "mal formado"):
         resultado["fichero"] = fichero
-    resultado.update(cuenta=cuenta, notas=salida, sin_nota=sin_nota, resumen=_resumen(fichero, cuenta, fuerte))
+    if jurado.get("zona"):                     # B4: la de equipo.md, tal cual
+        resultado["zona"] = copy.deepcopy(jurado["zona"])
+    resultado.update(cuenta=cuenta, notas=salida, sin_nota=sin_nota,
+                     resumen=_resumen(fichero, cuenta, por_fuerza[0] if por_fuerza else None))
     return resultado

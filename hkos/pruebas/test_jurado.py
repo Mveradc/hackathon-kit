@@ -2,7 +2,8 @@
 tres momentos de G13 (evals/coordinacion/simulador/guiones/g13/hechos.json), sin relay, sin red y sin git.
 
 Cada entrada valida contra estado.schema.json (la nota de $defs/nota, tareas[] y jurado: la forma que produce K-104) y
-cada salida contra $defs/vista_jurado, con el validador del OS (esquema.py) y, si está, con jsonschema.
+cada salida contra $defs/vista_jurado, tal cual y sin lo «TRANSITORIO (issue #46)» (como quedará en K-105), con el
+validador del OS (esquema.py) y, si está, con jsonschema.
 Uso: uv run --no-project --with "jsonschema[format-nongpl]" -m unittest discover -s hkos/pruebas -v
 """
 import copy
@@ -25,8 +26,41 @@ try:
 except ImportError:
     jsonschema = None
 
+
+def endurecido(raiz, guarda=lambda rama: False, requeridos=()):
+    """El esquema como quedará en K-105 (cuerpo del PR #53, «Para endurecer en K-105»): sin las ramas y propiedades
+    «TRANSITORIO (issue #46)» (salvo las que `guarda` deja) y con los `requeridos` = [(ruta en $defs, campo)]."""
+    r = copy.deepcopy(raiz)
+
+    def transitoria(s):
+        return isinstance(s, dict) and str(s.get("description", "")).startswith("TRANSITORIO") and not guarda(s)
+
+    def poda(s):
+        if isinstance(s, dict):
+            if "anyOf" in s:
+                s["anyOf"] = [x for x in s["anyOf"] if not transitoria(x)]
+            if isinstance(s.get("properties"), dict):
+                s["properties"] = {k: v for k, v in s["properties"].items() if not transitoria(v)}
+            for v in s.values():
+                poda(v)
+        elif isinstance(s, list):
+            for v in s:
+                poda(v)
+    poda(r)
+    for ruta, campo in requeridos:
+        s = r["$defs"]
+        for parte in ruta:
+            s = s[parte]
+        s["required"] = s.get("required", []) + [campo]
+    return r
+
+
 ESQ = Esquema("estado.schema.json")
-DEFS = ESQ.raiz["$defs"]
+DURO = Esquema("estado.schema.json")
+_NOTAS = ("vista_jurado", "properties", "notas", "items", "properties")
+DURO.raiz = endurecido(ESQ.raiz, requeridos=[
+    (("vista_jurado", "properties", "cuenta"), "planificadas"), (("vista_jurado", "properties", "cuenta"), "en_curso"),
+    (_NOTAS + ("pitch", "anyOf", 1), "donde")])
 G13 = os.path.join(KIT, "evals", "coordinacion", "simulador", "guiones", "g13")
 AHORA = "2026-09-19T10:00:00Z"
 PLAN = "2026-09-19T07:30:00Z"            # hora del commit de plan.md
@@ -35,7 +69,7 @@ PITCH = "2026-09-19T08:00:00Z"
 FUENTES = {k: {"valor": "ok", "fuente": "derivado", "observado_en": AHORA} for k in ("relay", "github", "git")}
 
 
-def _jsonschema(sub):
+def _jsonschema(esq, sub):
     """Un validador de jsonschema para un trozo del esquema, o None si no hay uno con Draft 2020-12 y formatos."""
     v = getattr(jsonschema, "Draft202012Validator", None)
     if not hasattr(v, "FORMAT_CHECKER"):
@@ -43,31 +77,34 @@ def _jsonschema(sub):
     try:
         if v({"format": "date-time"}, format_checker=v.FORMAT_CHECKER).is_valid("ayer"):
             return None
-        return v({"$defs": DEFS, **sub}, format_checker=v.FORMAT_CHECKER)
+        return v({"$defs": esq.raiz["$defs"], **sub}, format_checker=v.FORMAT_CHECKER)
     except Exception:
         return None
 
 
-def validador(sub):
-    js = _jsonschema(sub)
+def validador(sub, esq=ESQ):
+    js = _jsonschema(esq, sub)
 
     def errores(valor):
-        e = ESQ._error(sub, valor, "")          # los $ref son locales: esquema.py los resuelve contra la raíz
+        e = esq._error(sub, valor, "")          # los $ref son locales: esquema.py los resuelve contra la raíz
         if e is None and js is not None:
             e = next(((list(x.absolute_path), x.message) for x in js.iter_errors(valor)), None)
         return e
     return errores
 
 
-VISTA = validador({"$ref": "#/$defs/vista_jurado"})
+# La salida, contra el esquema fusionado (#53) y contra el mismo sin lo transitorio (K-105): sin «declarada», sin
+# «declaradas», sin corregida_por suelta, sin el tope de 160, con planificadas, en_curso y pitch.donde.
+_VISTA, _VISTA_DURA = validador({"$ref": "#/$defs/vista_jurado"}), validador({"$ref": "#/$defs/vista_jurado"}, DURO)
+
+
+def VISTA(valor):
+    return _VISTA(valor) or _VISTA_DURA(valor)
+
+
 NOTA = validador({"$ref": "#/$defs/nota"})
-TAREAS = validador(ESQ.raiz["properties"]["tareas"])
+TAREAS = validador(DURO.raiz["properties"]["tareas"], DURO)       # tareas[].evidencia, solo como objeto
 JURADO = validador(ESQ.raiz["properties"]["jurado"])
-# Las decisiones de #46 (cuenta con planificadas y en_curso, tareas[].evidencia con tipo, corregida_por declarada, pitch
-# con donde) llegan al esquema en otro PR. Hasta que se fusione, la salida no se valida y tareas[] se valida sin la
-# evidencia; con el esquema nuevo, todo se valida como antes.
-NUEVO = "planificadas" in DEFS["vista_jurado"]["properties"]["cuenta"]["properties"]
-ESPERA = "esperando el esquema nuevo de #46 (PR de contratos)"
 
 
 def nota(cita, quien="Marta", papel="jurado", dijo="Queremos ver la validación con datos reales", fuerza="obligatorio",
@@ -122,15 +159,19 @@ class Base(unittest.TestCase):
         notas = j["notas"]
         for n in notas:
             self.assertIsNone(NOTA(n), n["cita"])
-        self.assertIsNone(TAREAS(tareas if NUEVO else [{k: v for k, v in t.items() if k != "evidencia"} for t in tareas]))
+        self.assertIsNone(TAREAS(tareas))
         self.assertIsNone(JURADO(j))
         antes = copy.deepcopy((j, tareas, fuentes, kw))
         b = jurado.bloque(j, tareas, ahora, fuentes=fuentes, **kw)
-        if NUEVO:
-            self.assertIsNone(VISTA(b))
+        self.assertIsNone(VISTA(b))
         c = b["cuenta"]
-        self.assertEqual(c["sin_cubrir"], c["sin_tarea"] + c["planificadas"] + c["en_curso"] + c["en_pitch"])
+        self.assertEqual(c["sin_cubrir"], c["sin_tarea"] + c["ambiguas"] + c["planificadas"] + c["en_curso"] + c["en_pitch"])
         self.assertEqual(c["notas"], c["sin_cubrir"] + c["cubiertas"] + c["corregidas"])
+        self.assertEqual(sum(f["n"] for f in c["sin_cubrir_por_fuerza"]), c["sin_cubrir"])
+        vivas = [x["cobertura"]["valor"] for x in b["notas"] if not x["corregida_por"]]
+        for clave, valor in (("sin_tarea", "sin_tarea"), ("ambiguas", "ambigua"), ("planificadas", "planificada"),
+                             ("en_curso", "en_curso"), ("en_pitch", "en_pitch"), ("cubiertas", "cubierta")):
+            self.assertEqual(c[clave], vivas.count(valor), clave)
         self.assertLessEqual(len(b["resumen"]), 120)
         self.assertEqual(antes, (j, tareas, fuentes, kw), "bloque() no cambia sus entradas")
         self.assertEqual(b, jurado.bloque(*copy.deepcopy((j, tareas, ahora)), fuentes=fuentes, **kw), "puro")
@@ -148,19 +189,35 @@ class TablaK102(Base):
     def test_validador_rechaza_una_salida_mala(self):
         """El validador de las pruebas no deja pasar cualquier cosa."""
         b = jurado.bloque(estado_jurado([nota("2026-09-19 10:40")]), [], AHORA)
-        if NUEVO:
-            self.assertIsNone(VISTA(b))
-        malo = copy.deepcopy(b)
-        malo["notas"][0]["cobertura"]["valor"] = "recogida"
-        self.assertIsNotNone(VISTA(malo))
+        self.assertIsNone(VISTA(b))
+        # También lo transitorio del esquema (#53), que el código ya no produce: K-105 lo quita.
+        x = b["notas"][0]
+        malos = {"cobertura inventada": ("cobertura", "recogida"), "declarada": ("cobertura", "declarada"),
+                 "corregida_por suelta": ("corregida_por", "0123456789ab"),
+                 "pitch sin donde": ("pitch", {"fuente": "git", "observado_en": PITCH, "declarado": True})}
+        for nombre, (campo, valor) in malos.items():
+            with self.subTest(nombre):
+                malo = copy.deepcopy(b)
+                malo["notas"][0][campo] = dict(x["cobertura"], valor=valor) if campo == "cobertura" else valor
+                self.assertIsNotNone(VISTA(malo))
+        for nombre, cambia in {"declaradas": lambda c: c.update(declaradas=0), "sin planificadas": lambda c: c.pop("planificadas"),
+                               "sin en_curso": lambda c: c.pop("en_curso"), "sin ambiguas": lambda c: c.pop("ambiguas")}.items():
+            with self.subTest(nombre):
+                malo = copy.deepcopy(b)
+                cambia(malo["cuenta"])
+                self.assertIsNotNone(VISTA(malo))
+        self.assertIsNotNone(VISTA(dict(b, resumen="j" * 121)))              # el tope de 160 era transitorio
 
-    @unittest.skipUnless(NUEVO, ESPERA)
     def test_la_salida_valida_contra_el_esquema_nuevo(self):
         n, vieja = nota("2026-09-19 10:40"), nota("2026-09-19 09:00", dijo="antes")
         n["corrige"] = "2026-09-19 09:00"
         t = tarea("T05", "publicada", ["2026-09-19 10:40"], fuente="git", evidencia="055c0de", tipo="fusion")
-        b = jurado.bloque(estado_jurado([n, vieja], pitch=["2026-09-19 10:40"]), [t], AHORA)
+        zona = {"valor": "Europe/Madrid", "fuente": "git", "observado_en": PLAN, "declarado": True}
+        j = dict(estado_jurado([n, vieja], pitch=["2026-09-19 10:40"]), zona=zona)
+        b = self.calcula(None, [t], j=j)
         self.assertIsNone(VISTA(b))
+        self.assertEqual(b["zona"], zona)                                    # B4: la de equipo.md, tal cual
+        self.assertNotIn("zona", self.calcula([n]))                          # sin ella en estado.json, no va
 
     def test_sin_tarea(self):
         n = nota("2026-09-19 10:40")
@@ -170,15 +227,17 @@ class TablaK102(Base):
         self.assertEqual((x["tareas"], x["evidencias"], x["pitch"], x["corregida_por"], x["trabajo_nuevo_desde"]),
                          ([], [], None, None, None))
         self.assertEqual(b["cuenta"], {"notas": 1, "corregidas": 0, "cubiertas": 0, "sin_cubrir": 1, "sin_tarea": 1,
-                                       "planificadas": 0, "en_curso": 0, "en_pitch": 0})
+                                       "ambiguas": 0, "planificadas": 0, "en_curso": 0, "en_pitch": 0,
+                                       "sin_cubrir_por_fuerza": [{"texto": "obligatorio", "n": 1}]})
         self.assertEqual(b["resumen"], "jurado: 1 sin cubrir (1 «obligatorio») · 0 cubiertas de 1")
         self.assertEqual((b["fichero"], b["sin_nota"], b["viejo"]), ("ok", [], False))
 
-    def test_declarada_con_su_tarea_en_curso(self):
+    def test_en_curso_con_su_tarea_empezada(self):
         n = nota("2026-09-18 21:15")
-        b = self.calcula([n], [tarea("T12", "en_curso", ["2026-09-18 21:15"], obs="2026-09-19T08:40:00Z")])
+        b = self.calcula([n], [tarea("T12", "en_curso", ["2026-09-18 21:15"], obs="2026-09-19T08:40:00Z",
+                                     primera="2026-09-19T08:40:00Z")])
         x = b["notas"][0]
-        self.assertEqual(x["cobertura"]["valor"], "declarada")
+        self.assertEqual(x["cobertura"]["valor"], "en_curso")
         self.assertEqual(x["cobertura"]["observado_en"], "2026-09-19T08:40:00Z")
         self.assertEqual(x["tareas"][0]["enlace"], {"cita": "2026-09-18 21:15", "ambiguo": False, "donde": "plan.md",
                                                     "fuente": "git", "observado_en": PLAN, "declarado": True})
@@ -202,10 +261,10 @@ class TablaK102(Base):
             {"tipo": "commit", "tarea": "T03", "valor": "9e1f2a3b4c5d", "fuente": "git", "observado_en": "2026-09-19T01:10:00Z", "viejo": False},
             {"tipo": "fusion", "tarea": "T04", "valor": "aa11bb22cc33", "fuente": "git", "observado_en": "2026-09-19T02:00:00Z", "viejo": False}])
         self.assertEqual(b["resumen"], "jurado: 0 sin cubrir · 1 cubierta de 1")
-        # Con una de las dos sin hacer: declarada, y la evidencia de la hecha se enseña igual.
+        # Con una de las dos sin hacer: sin cubrir, y la evidencia de la hecha se enseña igual.
         tareas[1] = tarea("T04", "lista", ["2026-09-18 20:30"], fuente="github")
         x = self.calcula([n], tareas)["notas"][0]
-        self.assertEqual(x["cobertura"]["valor"], "declarada")
+        self.assertEqual(x["cobertura"]["valor"], "planificada")       # ninguna con primera señal
         self.assertEqual([e["tarea"] for e in x["evidencias"]], ["T03"])
 
     def test_dos_notas_en_el_mismo_minuto(self):
@@ -218,9 +277,10 @@ class TablaK102(Base):
             self.assertEqual(x["cobertura"]["valor"], "ambigua")
             self.assertEqual([(f["tarjeta"]["id"], f["enlace"]["ambiguo"]) for f in x["tareas"]], [("T11", True)])
             self.assertEqual([e["valor"] for e in x["evidencias"]], ["111c0de"])
-        # Ambiguas y sin cubrir: con su tarea publicada (tiene señales), en curso.
-        self.assertEqual((b["cuenta"]["sin_cubrir"], b["cuenta"]["en_curso"], b["cuenta"]["cubiertas"]), (2, 2, 0))
-        self.assertEqual(b["resumen"], "jurado: 2 sin cubrir (1 «se valora») · 0 cubiertas de 2")
+        # Ambiguas y sin cubrir: cuentan en «ambiguas», no en sin_tarea ni en curso (#46, 2), y el resumen lo dice.
+        self.assertEqual({k: b["cuenta"][k] for k in ("sin_cubrir", "ambiguas", "sin_tarea", "en_curso", "cubiertas")},
+                         {"sin_cubrir": 2, "ambiguas": 2, "sin_tarea": 0, "en_curso": 0, "cubiertas": 0})
+        self.assertEqual(b["resumen"], "jurado: 2 sin cubrir (1 «se valora») · 2 ambiguas · 0 cubiertas de 2")
         # Con «· quién» (sin mayúsculas ni espacios de más): casa con una.
         b = self.calcula([lucia, jorge], [tarea("T11", "publicada", ["2026-09-18 20:15 ·  lucía"], fuente="git", evidencia="111c0de")])
         self.assertEqual((self.cobertura(b, lucia), self.cobertura(b, jorge)), ("cubierta", "sin_tarea"))
@@ -238,7 +298,7 @@ class TablaK102(Base):
     def test_en_pitch_y_con_tarea_y_pitch(self):
         solo = nota("2026-09-18 19:30", quien="Marta Ruiz", papel="organización", fuerza="dato")
         con = nota("2026-09-18 20:15", quien="Lucía", fuerza="nos gustaría ver")
-        b = self.calcula([solo, con], [tarea("T11", "en_curso", ["2026-09-18 20:15 · Lucía"])],
+        b = self.calcula([solo, con], [tarea("T11", "en_curso", ["2026-09-18 20:15 · Lucía"], primera="2026-09-19T09:00:00Z")],
                          pitch=["2026-09-18 19:30", "2026-09-18 20:15 · Lucía"])
         x = self.de(b, solo)
         self.assertEqual(x["cobertura"]["valor"], "en_pitch")
@@ -246,7 +306,7 @@ class TablaK102(Base):
         # B3: dónde, fuente y hora; sin autor.
         self.assertEqual(x["pitch"], {"donde": "pitch.md", "fuente": "git", "observado_en": PITCH, "declarado": True})
         y = self.de(b, con)
-        self.assertEqual(y["cobertura"]["valor"], "declarada")          # la cobertura, de la tarea
+        self.assertEqual(y["cobertura"]["valor"], "en_curso")           # la cobertura, de la tarea
         self.assertEqual(y["pitch"], {"donde": "pitch.md", "fuente": "git", "observado_en": PITCH, "declarado": True})
         self.assertEqual(y["tareas"][0]["enlace"], {"cita": "2026-09-18 20:15 · Lucía", "ambiguo": False, "donde": "plan.md",
                                                     "fuente": "git", "observado_en": PLAN, "declarado": True})
@@ -283,16 +343,16 @@ class TablaK102(Base):
         self.assertEqual([x["corregida_por"] for x in b["notas"]], [None, None, None])
         self.assertEqual(b["cuenta"]["corregidas"], 0)
 
-    def test_cerrada_a_mano_es_declarada(self):
+    def test_cerrada_a_mano_no_cubre(self):
         n = nota("2026-09-18 20:40")
         b = self.calcula([n], [tarea("T20", "lista", ["2026-09-18 20:40"], fuente="github", declarado="cerrada")])
         x = b["notas"][0]
-        self.assertEqual(x["cobertura"]["valor"], "declarada")
+        self.assertEqual(x["cobertura"]["valor"], "planificada")
         self.assertEqual(x["tareas"][0]["tarjeta"]["declarado"], "cerrada")   # con su ⚑, nunca como evidencia
         self.assertEqual(x["evidencias"], [])
         # Un estado declarado (cerrada o reclamada desde la web) tampoco cubre.
         b = self.calcula([n], [tarea("T20", "cerrada", ["2026-09-18 20:40"], fuente="web", estado_declarado=True)])
-        self.assertEqual(self.cobertura(b, n), "declarada")
+        self.assertEqual(self.cobertura(b, n), "planificada")
         self.assertTrue(b["notas"][0]["tareas"][0]["tarjeta"]["estado_declarado"])
 
     def test_publicada_que_vuelve_a_en_curso(self):
@@ -345,13 +405,14 @@ class TablaK102(Base):
                 x = b["notas"][0]
                 self.assertEqual((x["cobertura"]["valor"], x["trabajo_nuevo_desde"]), ("cubierta", "2026-09-19T12:15:00Z"))
                 self.assertEqual(b["cuenta"]["cubiertas"], 1)
-                # Sin haber estado publicada antes, no.
-                t["historia"]["hecha_en"] = None
-                self.assertEqual(self.cobertura(self.calcula([n], [t], ahora="2026-09-19T12:45:00Z"), n), "declarada")
+                # Sin haber estado publicada antes, no: sin cubrir, en curso (con su primera señal).
+                t["historia"].update(hecha_en=None, primera_senal="2026-09-19T12:15:00Z")
+                self.assertEqual(self.cobertura(self.calcula([n], [t], ahora="2026-09-19T12:45:00Z"), n), "en_curso")
 
     def test_cuenta_planificadas_en_curso_y_sin_cubrir(self):
-        """#46, 2: sin_cubrir = sin_tarea + planificadas + en_curso + en_pitch (todo lo no cubierto menos las corregidas);
-        planificada si ninguna de sus tareas tiene señales, en curso si alguna las tiene."""
+        """#46, 2 (api.md §11.3): sin_cubrir = sin_tarea + ambiguas + planificadas + en_curso + en_pitch (todo lo no
+        cubierto menos las corregidas); planificada si ninguna de sus tareas tiene primera señal, en curso si alguna la
+        tiene. Una ambigua cuenta en «ambiguas», aunque alguna de sus tareas haya empezado: no se reparte."""
         sola = nota("2026-09-18 19:00", dijo="sola")
         pitch = nota("2026-09-18 19:30", dijo="pitch", fuerza="dato")
         plan = nota("2026-09-18 20:00", dijo="plan")
@@ -366,19 +427,28 @@ class TablaK102(Base):
             tarea("T01", "lista", ["2026-09-18 20:00", "2026-09-18 21:30"], declarado="cerrada"),   # ⚑: sin señales
             tarea("T02", "reclamada", ["2026-09-18 20:00"], fuente="mcp"),
             tarea("T03", "lista", ["2026-09-18 20:30"]),
-            tarea("T04", "publicada", ["2026-09-18 20:30", "2026-09-18 22:00"], fuente="git"),       # empezó y acabó
-            tarea("T05", "pendiente", ["2026-09-18 21:00"], fuente="github", primera="2026-09-19T08:00:00Z"),
-            tarea("T06", "en_curso", ["2026-09-18 18:00"]),
+            tarea("T04", "publicada", ["2026-09-18 20:30", "2026-09-18 22:00"], fuente="git",       # empezó y acabó
+                  primera="2026-09-18T23:00:00Z", hecha_en="2026-09-19T01:00:00Z"),
+            tarea("T05", "pendiente", ["2026-09-18 21:00", "2026-09-18 21:30"], fuente="github",
+                  primera="2026-09-19T08:00:00Z"),
+            tarea("T06", "en_curso", ["2026-09-18 18:00"], primera="2026-09-19T08:30:00Z"),
         ]
         b = self.calcula([sola, pitch, plan, curso, senal, amb1, amb2, cubierta, vieja, corrige], tareas,
                          pitch=["2026-09-18 19:30"])
-        self.assertEqual([self.cobertura(b, x) for x in (plan, curso, senal, amb1, cubierta, vieja)],
-                         ["declarada", "declarada", "declarada", "ambigua", "cubierta", "declarada"])
-        # sin_tarea: sola y corrige; planificadas: plan y las dos ambiguas (solo T01, ⚑ sin señales); en curso: curso
-        # (T04) y señal (primera señal); la corregida (con T06 en curso) no cuenta en ninguna.
+        self.assertEqual([self.cobertura(b, x) for x in (sola, pitch, plan, curso, senal, amb1, amb2, cubierta, vieja)],
+                         ["sin_tarea", "en_pitch", "planificada", "en_curso", "en_curso", "ambigua", "ambigua",
+                          "cubierta", "en_curso"])
+        # sin_tarea: sola y corrige; ambiguas: las dos, aunque T05 haya empezado (antes iban a en curso); planificadas:
+        # plan (T01 con ⚑ y T02 reclamada, sin primera señal); en curso: curso (T04) y señal (T05); la corregida (con
+        # T06 en curso) no cuenta en ninguna.
         self.assertEqual(b["cuenta"], {"notas": 10, "corregidas": 1, "cubiertas": 1, "sin_cubrir": 8, "sin_tarea": 2,
-                                       "planificadas": 3, "en_curso": 2, "en_pitch": 1})
-        self.assertEqual(b["resumen"], "jurado: 8 sin cubrir (1 «dato») · 1 en el pitch · 1 cubierta de 10")
+                                       "ambiguas": 2, "planificadas": 1, "en_curso": 2, "en_pitch": 1,
+                                       "sin_cubrir_por_fuerza": [{"texto": "dato", "n": 1}, {"texto": "obligatorio", "n": 7}]})
+        self.assertEqual(b["resumen"], "jurado: 8 sin cubrir (1 «dato») · 2 ambiguas · 1 en el pitch · 1 cubierta de 10")
+        # Una sola ambigua, en singular.
+        b = self.calcula([amb1, amb2], [tarea("T01", "lista", ["2026-09-18 21:30 · Lucía", "2026-09-18 21:30"])])
+        self.assertEqual((self.cobertura(b, amb1), self.cobertura(b, amb2)), ("planificada", "ambigua"))
+        self.assertEqual(b["resumen"], "jurado: 2 sin cubrir (2 «obligatorio») · 1 ambigua · 0 cubiertas de 2")
 
     def test_prueba_que_falla_y_prueba_vieja_no_cambian_la_cobertura(self):
         a, b_ = nota("2026-09-19 10:40"), nota("2026-09-19 11:20", dijo="la entrega por formulario")
@@ -394,7 +464,7 @@ class TablaK102(Base):
         self.assertEqual((x["cobertura"]["valor"], x["cobertura"]["viejo"]), ("cubierta", False))
         self.assertEqual(x["evidencias"][1], {"tipo": "prueba", "tarea": "T05", "valor": "falla", "conexion": k1,
                                               "fuente": "hook", "observado_en": "2026-09-19T09:58:00Z", "viejo": False})
-        self.assertEqual((y["cobertura"]["valor"], y["cobertura"]["viejo"]), ("declarada", False))
+        self.assertEqual((y["cobertura"]["valor"], y["cobertura"]["viejo"]), ("planificada", False))
         self.assertEqual(y["evidencias"], [{"tipo": "prueba", "tarea": "T06", "valor": "pasa", "conexion": k2,
                                             "fuente": "hook", "observado_en": "2026-09-19T08:00:00Z", "viejo": True}])
         # Sin las Pruebas, la misma cobertura.
@@ -470,15 +540,15 @@ class TablaK102(Base):
         self.assertEqual((b["fichero"], b["cuenta"]["notas"]), ("mal formado", 1))
 
     def test_resumen_de_120_como_mucho(self):
-        """M17: 120 como mucho, para que la línea del md quepa en 160 con « (HH:MM · fuente · viejo)». Con las partes
-        que tiene hoy, el resumen más largo posible (fuerza de 40, cifras de tres) no llega a 120."""
+        """M17: 120 como mucho, para que la línea del md quepa en 160 con « (HH:MM · fuente · viejo)». El más largo
+        posible (fuerza de 40, cifras de tres, con ambiguas y pitch) pasa de 120 y se corta con «…»."""
         self.assertEqual(jurado.LINEA_MAX, 120)
         muchas = [nota(f"2026-09-19 10:{i:02d}", dijo=str(i), fuerza="ñ" * 40) for i in range(60)]
         self.assertLessEqual(len(self.calcula(muchas)["resumen"]), 120)
-        cuenta = {"notas": 999, "corregidas": 0, "cubiertas": 100, "sin_cubrir": 899, "sin_tarea": 0, "planificadas": 0,
-                  "en_curso": 0, "en_pitch": 899}
+        cuenta = {"notas": 999, "corregidas": 0, "cubiertas": 100, "sin_cubrir": 899, "sin_tarea": 0, "ambiguas": 449,
+                  "planificadas": 0, "en_curso": 0, "en_pitch": 450}
         largo = jurado._resumen("ok", cuenta, {"texto": "ñ" * 40, "n": 899})
-        self.assertLessEqual(len(largo), 120)
+        self.assertEqual((len(largo), largo[-1]), (120, "…"))
 
     def test_tarjetas_de_la_vista(self):
         """Con las tarjetas de proyeccion.vista, la de la nota es la misma (más viejo)."""
@@ -536,10 +606,18 @@ def notas_g13():
     return salida
 
 
+ANTES_DE_52 = {"sin_cubrir": "sin_tarea", "recogida_en_pitch": "en_pitch"}
+
+
 def momentos_g13():
     """(momento, jurado, tareas, {id de nota: clave}) de cada momento de hechos.json."""
     with open(os.path.join(G13, "hechos.json"), encoding="utf-8") as f:
         hechos = json.load(f)
+    # Los hechos de main aún usan los nombres de antes del contrato; el PR #52 los cambia a los de §11.3. Hasta que
+    # llegue a main, se montan aquí con los del contrato (con los de #52, no cambia nada).
+    for mo in hechos["momentos"]:
+        for esperado in mo["notas"].values():
+            esperado["estado"] = ANTES_DE_52.get(esperado["estado"], esperado["estado"])
     with open(os.path.join(G13, "tareas.json"), encoding="utf-8") as f:
         info = {t["id"]: t for t in json.load(f)["tareas"]}
     base = notas_g13()
@@ -569,12 +647,16 @@ def momentos_g13():
         tareas = []
         for tid, valor in mo["tareas"].items():
             publicada = valor == "publicada"
+            estado_en = evid[tid]["observado_en"] if publicada and tid in evid else nuevo.get(tid, ahora)
+            # La primera señal la pone el relay en el primer paso a en_curso: la tienen las que ya no están sin empezar.
+            primera = None if valor in EMPEZADA else estado_en
+            hecha_en = publicada_en.get(tid)       # de otro momento, solo si ya había pasado (M2b va detrás de M3)
+            hecha_en = hecha_en if hecha_en and fecha(hecha_en) <= fecha(ahora) else None
             t = {"id": tid, "titulo": info[tid]["titulo"], "dueno": info[tid]["dueno"],
-                 "estado": {"valor": valor, "fuente": "git" if publicada else "hook",
-                            "observado_en": evid[tid]["observado_en"] if publicada and tid in evid else nuevo.get(tid, ahora)},
+                 "estado": {"valor": valor, "fuente": "git" if publicada else "hook", "observado_en": estado_en},
                  "declarado": {"valor": "cerrada", "fuente": "github", "observado_en": "2026-09-18T19:00:00Z",
                                "declarado": True} if tid in a_mano else None,
-                 "historia": {"primera_senal": None, "hecha_en": publicada_en.get(tid),   # el primer paso a publicada
+                 "historia": {"primera_senal": primera, "hecha_en": hecha_en,   # el primer paso a publicada
                               "trabajo_nuevo_desde": nuevo.get(tid), "fuente": "derivado", "observado_en": ahora}}
             if tid in evid:            # el último sha publicado, con su hora (#46, 6)
                 t["evidencia"] = {"valor": evid[tid]["sha"], "tipo": "commit", "fuente": "git",
@@ -588,27 +670,20 @@ def momentos_g13():
 
 
 class GuionG13(Base):
-    RESUMENES = ["jurado: 4 sin cubrir (1 «dato») · 1 en el pitch · 2 cubiertas de 6",
-                 "jurado: 6 sin cubrir (1 «dato») · 1 en el pitch · 1 cubierta de 8",
-                 "jurado: 5 sin cubrir (1 «dato») · 1 en el pitch · 2 cubiertas de 8"]
+    RESUMENES = {"M1": "jurado: 4 sin cubrir (1 «dato») · 1 en el pitch · 2 cubiertas de 6",
+                 "M2": "jurado: 6 sin cubrir (1 «dato») · 1 en el pitch · 1 cubierta de 8",
+                 "M3": "jurado: 5 sin cubrir (1 «dato») · 1 en el pitch · 2 cubiertas de 8"}
 
     def test_momentos(self):
-        for (mo, j, tareas, ids), resumen in zip(momentos_g13(), self.RESUMENES):
+        for mo, j, tareas, ids in momentos_g13():
             with self.subTest(momento=mo["nombre"]):
                 de_clave = {v: k for k, v in ids.items()}
                 b = self.calcula(None, tareas, j=j, ahora=mo["ahora"])
                 self.assertEqual(sorted(de_clave[x["nota"]["clave"]] for x in b["notas"]), sorted(mo["notas"]))
                 for x in b["notas"]:
                     nid, esperado = de_clave[x["nota"]["clave"]], mo["notas"][de_clave[x["nota"]["clave"]]]
-                    c = x["cobertura"]["valor"]
                     estados = {f["tarjeta"]["id"]: f["tarjeta"]["estado"] for f in x["tareas"]}
-                    if x["corregida_por"]:
-                        valor = "corregida"
-                    elif c == "declarada":
-                        valor = "planificada" if all(e in EMPEZADA for e in estados.values()) else "en_curso"
-                    else:
-                        valor = {"sin_tarea": "sin_cubrir", "en_pitch": "recogida_en_pitch"}.get(c, c)
-                    real = {"estado": valor, "tareas": estados,
+                    real = {"estado": "corregida" if x["corregida_por"] else x["cobertura"]["valor"], "tareas": estados,
                             "evidencia": [{"tarea": e["tarea"], "sha": e["valor"], "observado_en": e["observado_en"]}
                                           for e in x["evidencias"] if e["tipo"] in ("commit", "fusion")],
                             "trabajo_nuevo_desde": x["trabajo_nuevo_desde"],
@@ -616,14 +691,19 @@ class GuionG13(Base):
                             "corregida_por": de_clave.get((x["corregida_por"] or {}).get("valor")), "tambien_en_pitch": x["pitch"] is not None}
                     self.assertEqual(real, {k: v for k, v in esperado.items() if k != "motivo"}, f"{mo['nombre']} {nid}")
                     self.assertFalse(x["cobertura"]["viejo"])
-                self.assertEqual(b["resumen"], resumen)
-                # #46, 2: la cuenta separa lo mismo que los hechos (sin_cubrir de hechos.json es sin_tarea aquí).
+                resumen = self.RESUMENES.get(mo["nombre"].split(" · ")[0])
+                if resumen:
+                    self.assertEqual(b["resumen"], resumen)
+                # #46, 2: la cuenta separa lo mismo que los hechos; con los de #52, que traen la suya, entera.
                 estados = [v["estado"] for v in mo["notas"].values()]
-                self.assertEqual({k: b["cuenta"][k] for k in ("sin_tarea", "planificadas", "en_curso", "en_pitch",
-                                                              "cubiertas", "corregidas")},
-                                 {"sin_tarea": estados.count("sin_cubrir"), "planificadas": estados.count("planificada"),
-                                  "en_curso": estados.count("en_curso"), "en_pitch": estados.count("recogida_en_pitch"),
-                                  "cubiertas": estados.count("cubierta"), "corregidas": estados.count("corregida")})
+                self.assertEqual({k: b["cuenta"][k] for k in ("sin_tarea", "ambiguas", "planificadas", "en_curso",
+                                                              "en_pitch", "cubiertas", "corregidas")},
+                                 {"sin_tarea": estados.count("sin_tarea"), "ambiguas": estados.count("ambigua"),
+                                  "planificadas": estados.count("planificada"), "en_curso": estados.count("en_curso"),
+                                  "en_pitch": estados.count("en_pitch"), "cubiertas": estados.count("cubierta"),
+                                  "corregidas": estados.count("corregida")})
+                if "cuenta" in mo:
+                    self.assertEqual(b["cuenta"], mo["cuenta"])
                 self.assertEqual(b["sin_nota"], [])
                 orden = [de_clave[x["nota"]["clave"]] for x in b["notas"]]
                 cubre = ("cubierta", "corregida")

@@ -1,6 +1,7 @@
 """K-103 (R-36, ADR-0013; api.md §11.4): la ruta crítica de hkos/ruta.py, con su tabla de casos, los tres momentos de G14
 y los casos de la cadena de cada persona (decisión 3B). Cada salida se valida contra $defs/vista_ruta de
-estado.schema.json (con el validador de M8b y, si está, con jsonschema), y cada entrada, contra estado.schema.json.
+estado.schema.json, tal cual y sin lo «TRANSITORIO (issue #46)» salvo el motivo sin_plazo (con el validador de M8b y,
+si está, con jsonschema), y cada entrada, contra estado.schema.json.
 Sin red, sin git y con `ahora` como parámetro.
 
 Uso: uv run --no-project --with "jsonschema[format-nongpl]" -m unittest hkos/pruebas/test_ruta.py -v
@@ -19,14 +20,13 @@ sys.path.insert(0, HKOS)
 from compilar import leer_plan  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from estados import fecha, iso  # noqa: E402
-from ruta import calcular, firma  # noqa: E402
+from ruta import calcular, firma, fuera_de_entrega, hecha  # noqa: E402
 
 try:
     import jsonschema
 except ImportError:
     jsonschema = None
 
-CONTRATOS = os.path.join(KIT, "docs", "hackathon-os", "contratos")
 CARPETA_G14 = os.path.join(KIT, "evals", "coordinacion", "simulador", "guiones", "g14")
 MADRID = timezone(timedelta(hours=2))          # Europe/Madrid en septiembre (CEST), como lo resuelve el relay
 T0 = datetime(2026, 9, 19, 8, 0, tzinfo=timezone.utc)    # sáb 19 sep, 10:00 en Madrid
@@ -39,15 +39,49 @@ class _Vista(Esquema):
         return self._error({"$ref": "#/$defs/vista_ruta"}, valor, "")
 
 
+def endurecido(raiz, guarda=lambda rama: False, requeridos=()):
+    """El esquema como quedará en K-105 (cuerpo del PR #53, «Para endurecer en K-105»): sin las ramas y propiedades
+    «TRANSITORIO (issue #46)» (salvo las que `guarda` deja) y con los `requeridos` = [(ruta en $defs, campo)]."""
+    r = copy.deepcopy(raiz)
+
+    def transitoria(s):
+        return isinstance(s, dict) and str(s.get("description", "")).startswith("TRANSITORIO") and not guarda(s)
+
+    def poda(s):
+        if isinstance(s, dict):
+            if "anyOf" in s:
+                s["anyOf"] = [x for x in s["anyOf"] if not transitoria(x)]
+            if isinstance(s.get("properties"), dict):
+                s["properties"] = {k: v for k, v in s["properties"].items() if not transitoria(v)}
+            for v in s.values():
+                poda(v)
+        elif isinstance(s, list):
+            for v in s:
+                poda(v)
+    poda(r)
+    for ruta, campo in requeridos:
+        s = r["$defs"]
+        for parte in ruta:
+            s = s[parte]
+        s["required"] = s.get("required", []) + [campo]
+    return r
+
+
+# La salida, contra el esquema fusionado (#53) y contra el mismo sin lo transitorio (K-105): sin entrega_doble ni
+# dos_horas, sin el tope de 160, con riesgos y con la procedencia de sin_plazo[] y fuera_de_entrega[]. El motivo
+# sin_plazo se queda: decisión del usuario, cuando ninguna abierta que cuenta tiene franja.
 VISTA, ESTADO = _Vista("estado.schema.json"), Esquema("estado.schema.json")
-# Las decisiones de #46 (riesgos[], sin_plazo[] y fuera_de_entrega[] con su procedencia, descansos con personas: [lista])
-# llegan al esquema en otro PR. Hasta que se fusione, la salida no se valida y la entrada se valida sin los descansos;
-# con el esquema nuevo, todo se valida como antes.
-NUEVO = "riesgos" in ESTADO.raiz["$defs"]["vista_ruta"]["properties"]
-ESPERA = "esperando el esquema nuevo de #46 (PR de contratos)"
+DURA = _Vista("estado.schema.json")
+_RUTA = ("vista_ruta", "properties")
+DURA.raiz = endurecido(VISTA.raiz, guarda=lambda rama: rama.get("enum") == ["sin_plazo"], requeridos=[
+    (("vista_ruta",), "riesgos"),
+    (_RUTA + ("sin_plazo", "items"), "fuente"), (_RUTA + ("sin_plazo", "items"), "observado_en"),
+    (_RUTA + ("fuera_de_entrega", "items"), "fuente"), (_RUTA + ("fuera_de_entrega", "items"), "observado_en")])
+ESTADO_DURO = Esquema("estado.schema.json")
+ESTADO_DURO.raiz = endurecido(ESTADO.raiz)          # la entrada: descansos con personas, sin dos_horas
 
 
-def _jsonschema():
+def _jsonschema(raiz):
     """El validador de jsonschema para $defs/vista_ruta, si hay uno con Draft 2020-12 y formatos (como test_esquemas)."""
     v = getattr(jsonschema, "Draft202012Validator", None)
     if not hasattr(v, "FORMAT_CHECKER"):
@@ -55,15 +89,22 @@ def _jsonschema():
     try:
         if v({"format": "date-time"}, format_checker=v.FORMAT_CHECKER).is_valid("ayer"):
             return None
-        with open(os.path.join(CONTRATOS, "estado.schema.json"), encoding="utf-8") as f:
-            raiz = json.load(f)
         return v({"$schema": raiz["$schema"], "$defs": raiz["$defs"], "$ref": "#/$defs/vista_ruta"},
                  format_checker=v.FORMAT_CHECKER)
     except Exception:
         return None
 
 
-JSONSCHEMA = _jsonschema()
+JSONSCHEMA, JSONSCHEMA_DURO = _jsonschema(VISTA.raiz), _jsonschema(DURA.raiz)
+
+
+def errores(bloque):
+    """None si la salida valida contra los dos esquemas (con el validador del OS y, si está, con jsonschema)."""
+    e = VISTA.error(bloque) or DURA.error(bloque)
+    for js in (JSONSCHEMA, JSONSCHEMA_DURO):
+        if e is None and js is not None:
+            e = next(((list(x.absolute_path), x.message) for x in js.iter_errors(bloque)), None)
+    return e
 
 
 def m(n):
@@ -154,19 +195,27 @@ def por_id(tareas, tid):
     return next(t for t in tareas if t["id"] == tid)
 
 
+def _abierta_con_franja(t):
+    """Abierta, que cuenta para la entrega y con franja: con una así, sin_plazo no es motivo (decisión del usuario)."""
+    return not fuera_de_entrega(t) and not hecha(t) and bool((t.get("franja") or {}).get("valor"))
+
+
 class Base(unittest.TestCase):
     def corre(self, ruta, tareas, ahora=None, personas=PERSONAS, fuentes=None, **kw):
         """calcular(), con la entrada validada contra estado.schema.json y la salida contra $defs/vista_ruta."""
         ahora = ahora or iso(T0)
         estado = {"v": 1, "generado_en": ahora, "fuentes": {}, "personas": [], "tareas": tareas, "colisiones": [],
-                  "ruta": ruta if NUEVO else dict(ruta, descansos=[])}
+                  "ruta": ruta}
         self.assertIsNone(ESTADO.error(estado), "la entrada no tiene la forma de estado.schema.json")
+        self.assertIsNone(ESTADO_DURO.error(estado), "la entrada usa una forma transitoria de estado.schema.json")
         bloque = calcular(ruta, tareas, ahora, personas=personas, fuentes=fuentes, **kw)
-        if NUEVO:
-            self.assertIsNone(VISTA.error(bloque), "la salida no valida contra $defs/vista_ruta")
-            if JSONSCHEMA is not None:
-                JSONSCHEMA.validate(bloque)
+        self.assertIsNone(errores(bloque), "la salida no valida contra $defs/vista_ruta")
         self.assertLessEqual(len(bloque["resumen"]), 120)
+        self.assertNotIn("entrega_doble", bloque["veredicto"]["motivos"])
+        if "sin_plazo" in bloque["veredicto"]["motivos"]:      # decisión del usuario: solo sin nada con franja
+            self.assertFalse([t for t in tareas if _abierta_con_franja(t)])
+        self.assertEqual([r["fin_tarde"] for r in bloque["riesgos"]],
+                         sorted((r["fin_tarde"] for r in bloque["riesgos"]), key=fecha, reverse=True))
         # Un rango, sin cifra central; la cadena, solo de abiertas; sin estimación, sin riesgos (#46, 3).
         self.assertLessEqual(set(bloque["estimacion"] or {}), {"temprano", "tarde", "margen_min", "margen_max"})
         hechas = {t["id"] for t in tareas if t["estado"]["valor"] in ("publicada", "cerrada")
@@ -183,15 +232,26 @@ class Base(unittest.TestCase):
 class Tabla(Base):
     """La tabla de casos de K-103, en el orden de «Hecho cuando»."""
 
-    @unittest.skipUnless(NUEVO, ESPERA)
     def test_la_salida_valida_contra_el_esquema_nuevo(self):
         tareas = ana()
         tareas[4] = tarea("T05", "ana", "lista", 5)
         tareas.append(tarea("T06", "ana", "lista", 6, titulo="[SI DA TIEMPO] Modo oscuro"))
-        b = calcular(ruta_de(30, descansos=[descanso(["@ana", "Luis"], m(30), m(40))]), tareas, iso(T0),
-                     personas=PERSONAS)
+        b = self.corre(ruta_de(30, descansos=[descanso(["@ana", "Luis"], m(30), m(40))]), tareas)
         self.assertTrue(b["riesgos"] and b["sin_plazo"] and b["fuera_de_entrega"])
-        self.assertIsNone(VISTA.error(b))
+        self.assertIsNone(errores(b))
+        # Lo transitorio del esquema (#53), que el código ya no produce, no pasa: K-105 lo quita.
+        malos = {"entrega_doble": dict(b, veredicto=dict(b["veredicto"], motivos=["entrega_doble"])),
+                 "sin riesgos": {k: v for k, v in b.items() if k != "riesgos"},
+                 "sin_plazo sin procedencia": dict(b, sin_plazo=[{"tarea": "T05", "motivo": "por_confirmar"}]),
+                 "fuera_de_entrega sin procedencia": dict(b, fuera_de_entrega=[{"tarea": "T06", "motivo": "si_da_tiempo"}]),
+                 "resumen de 160": dict(b, resumen="r" * 121),
+                 "dos_horas": dict(b, objetivo=dict(b["objetivo"], valor=None, motivo="dos_horas"))}
+        for nombre, malo in malos.items():
+            with self.subTest(nombre):
+                self.assertIsNotNone(errores(malo))
+        # El motivo sin_plazo sigue valiendo (decisión del usuario: cuando ninguna abierta que cuenta tiene franja).
+        self.assertIsNone(errores(dict(b, veredicto=dict(b["veredicto"], valor="sin_estimacion", motivos=["sin_plazo"],
+                                                            gravedad="gris"), estimacion=None, riesgos=[])))
 
     def test_con_estimacion_rango_margen_base_y_cadena(self):
         b = self.corre(ruta_de(240), ana())
@@ -227,27 +287,25 @@ class Tabla(Base):
                 self.assertTrue(b["resumen"].startswith(
                     "ruta: estimación " + {"a_tiempo": "a tiempo", "justo": "justo", "no_llega": "no llega"}[valor]))
 
-    def test_sin_entrega_ilegible_sin_resolver_y_dos_horas(self):
+    def test_sin_entrega_ilegible_y_sin_resolver(self):
         casos = {
-            "sin Entrega:": (ruta_de(None), "sin_entrega", False),
-            "equipo.md sin fichero": (ruta_de(None, equipo=dato("sin fichero")), "sin_entrega", False),
-            "equipo.md mal formado": (ruta_de(240, equipo=dato("mal formado")), "sin_entrega", False),
-            "sin dato": (ruta_de(entrega=None) | {"entrega": declarada(None, "—", motivo="sin_dato")}, "sin_entrega", True),
-            "sin zona": (ruta_de() | {"entrega": declarada(None, "dom 10:00", motivo="sin_zona")}, "sin_entrega", True),
-            "formato": (ruta_de() | {"entrega": declarada(None, "el domingo", motivo="formato")}, "sin_entrega", True),
-            "dos horas": (ruta_de() | {"entrega": declarada(None, "10:00 (cierre 11:00)", motivo="dos_horas")},
-                          "entrega_doble", True),
+            "sin Entrega:": (ruta_de(None), False),
+            "equipo.md sin fichero": (ruta_de(None, equipo=dato("sin fichero")), False),
+            "equipo.md mal formado": (ruta_de(240, equipo=dato("mal formado")), False),
+            "sin dato": (ruta_de(entrega=None) | {"entrega": declarada(None, "—", motivo="sin_dato")}, True),
+            "sin zona": (ruta_de() | {"entrega": declarada(None, "dom 10:00", motivo="sin_zona")}, True),
+            "por confirmar": (ruta_de() | {"entrega": declarada(None, "por confirmar", motivo="por_confirmar")}, True),
+            "formato": (ruta_de() | {"entrega": declarada(None, "el domingo", motivo="formato")}, True),
         }
-        for nombre, (ruta, motivo, con_objetivo) in casos.items():
+        for nombre, (ruta, con_objetivo) in casos.items():
             with self.subTest(nombre):
                 b = self.corre(ruta, ana())
                 self.assertEqual(b["veredicto"]["valor"], "sin_estimacion")
-                self.assertEqual(b["veredicto"]["motivos"], [motivo])
+                self.assertEqual(b["veredicto"]["motivos"], ["sin_entrega"])
                 self.assertEqual(b["veredicto"]["gravedad"], "gris")
                 self.assertIsNone(b["estimacion"])
                 self.assertEqual(b["objetivo"] is not None, con_objetivo)
-                self.assertEqual(b["resumen"], "ruta: sin estimación (" +
-                                 ("dos horas de entrega" if motivo == "entrega_doble" else "sin hora de entrega") + ")")
+                self.assertEqual(b["resumen"], "ruta: sin estimación (sin hora de entrega)")
                 self.assertTrue(all(e["fin_tarde"] is None for e in b["cadena"]))
         # Con más de un motivo, todos, en el orden del contrato; el resumen dice el primero.
         b = self.corre(ruta_de(None), ana()[:2] + ana()[3:])
@@ -256,17 +314,30 @@ class Tabla(Base):
 
     def test_otras_entregas_al_lado_con_estimacion(self):
         hito = declarada(m(300), "dom 11:00", donde="plan.md", nombre="Entrega final")
-        nota = declarada(m(250), "entregad a las 10:10", donde="criterios.md")
+        nota = declarada(m(250), None, donde="criterios.md", cita="2026-09-19 08:52")    # sin su texto (V)
         igual = declarada(iso(T0 + timedelta(minutes=240)), "sáb 14:00", donde="plan.md", nombre="Entrega")
         rota = declarada(None, "hora por confirmar", donde="plan.md", motivo="por_confirmar", nombre="Entrega (pitch)")
-        b = self.corre(ruta_de(240, otras_entregas=[hito, nota, igual, rota], hitos=[hito, igual]), ana())
+        congelacion = declarada(m(120), "sáb 12:00", donde="plan.md", nombre="Congelación")
+        b = self.corre(ruta_de(240, otras_entregas=[hito, nota, igual, rota], hitos=[congelacion]), ana())
         # La de igual hora (escrita en UTC) coincide y no sale; las demás salen al lado y no quitan la estimación.
         self.assertEqual(b["otras_entregas"], [hito, nota, rota])
         self.assertEqual(b["veredicto"]["valor"], "a_tiempo")
         self.assertIsNotNone(b["estimacion"])
         self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 11:00–13:00 · entrega sáb 14:00 · "
                                        "otra entrega: dom 11:00 (plan.md)")
-        self.assertEqual([h["hito"]["nombre"] for h in b["hitos"]], ["Entrega final", "Entrega"])
+        self.assertEqual([h["hito"]["nombre"] for h in b["hitos"]], ["Congelación"])
+        # La de una nota: su hora resuelta y la de la cita, nunca su texto (§11.4, ajuste 5).
+        b = self.corre(ruta_de(240, otras_entregas=[nota, hito]), ana())
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 11:00–13:00 · entrega sáb 14:00 · "
+                                       "otra entrega: sáb 14:10 (criterios.md, nota de 08:52)")
+        # Con dos horas en Entrega:, el relay ya da la primera (#51) y la otra en otras_entregas: se estima, sin
+        # entrega_doble, y la otra sale al lado.
+        dos = ruta_de(240, otras_entregas=[declarada(m(300), "sáb 14:00 (cierre 15:00)")])
+        dos["entrega"]["texto"] = "sáb 14:00 (cierre 15:00)"
+        b = self.corre(dos, ana())
+        self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("a_tiempo", []))
+        self.assertEqual(b["objetivo"]["valor"], m(240))
+        self.assertTrue(b["resumen"].endswith(" · otra entrega: sáb 14:00 (cierre 15:00) (equipo.md)"))
         # Con «(confirmar)», hay estimación, marcada.
         r = ruta_de(240)
         r["entrega"]["confirmar"] = True
@@ -332,6 +403,43 @@ class Tabla(Base):
         b = self.corre(ruta_de(240), tareas + luis())
         self.assertEqual(b["sin_plazo"], [])
         self.assertEqual(b["veredicto"]["motivos"], ["pocos_datos"])   # T01 sin franja: ya no se mide
+
+    def test_sin_plazo_es_motivo_solo_si_ninguna_abierta_que_cuenta_tiene_franja(self):
+        """Decisión del usuario (#46, 1): con alguna abierta que cuenta con franja, las sin plazo van a sin_plazo[] y se
+        estima el resto; sin ninguna, no hay nada que estimar y sin_plazo es el motivo (nunca «a tiempo» con nada)."""
+        tareas = ana()
+        tareas[-1] = tarea("T05", "ana", "lista", 5, motivo="por_confirmar")
+        b = self.corre(ruta_de(240), tareas)
+        self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("a_tiempo", []))
+        self.assertEqual([x["tarea"] for x in b["sin_plazo"]], ["T05"])
+        # Ni una «Si …» con franja ni una hecha con franja cuentan como algo que estimar.
+        solas = ana()[:3] + [tarea("T04", "ana", "lista", 4, motivo="por_confirmar"),
+                             tarea("T06", "ana", "lista", 6, franja=(0, 60), titulo="Si sobra tiempo: modo oscuro")]
+        b = self.corre(ruta_de(240), solas)
+        self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("sin_estimacion", ["sin_plazo"]))
+        self.assertEqual((b["estimacion"], b["riesgos"]), (None, []))
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin plazo: T04)")
+        # Con una abierta con franja de otra persona (T12 de Luis), ya hay qué estimar: T04 sale aparte.
+        b = self.corre(ruta_de(240), solas + luis())
+        self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("a_tiempo", []))
+        self.assertEqual([x["tarea"] for x in b["sin_plazo"]], ["T04"])
+        self.assertTrue(b["resumen"].endswith(" · sin contar T04 (sin plazo)"))
+
+    def test_resumen_plazo_pasado_antes_de_sin_contar_y_otra_entrega(self):
+        """Decisión del usuario: «plazo pasado» (el único rojo) va antes de «sin contar…» y de «otra entrega…», para que
+        el corte a 120 no se lo lleve."""
+        tareas = ana()
+        tareas[3] = tarea("T04", "ana", "en_curso", 4, franja=(-70, -10), primera=-60)
+        tareas[4] = tarea("T05", "ana", "lista", 5, motivo="por_confirmar")
+        otra = declarada(m(300), "dom 11:00", donde="plan.md", nombre="Entrega final")
+        b = self.corre(ruta_de(600, otras_entregas=[otra]), tareas)
+        # Entera no cabe en 120: el corte se lleva «otra entrega», no el plazo pasado (antes, al final, se perdía).
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 10:00–10:30 · entrega sáb 20:00 · "
+                                       "T04: plazo pasado 09:50 · sin contar T05 (sin plazo) …")
+        # Sin estimación, igual: el plazo pasado, justo detrás del motivo.
+        b = self.corre(ruta_de(None, otras_entregas=[otra]), tareas)
+        self.assertEqual(b["resumen"], "ruta: sin estimación (sin hora de entrega) · T04: plazo pasado 09:50 · "
+                                       "otra entrega: dom 11:00 (plan.md)")
 
     def test_plazo_vencido_rojo_y_lo_que_arrastra(self):
         tareas = ana()
@@ -468,7 +576,7 @@ class Tabla(Base):
 
     def test_riesgos_por_la_estimacion(self):
         """#46, 3: riesgos[] trae lo que, según la estimación (su extremo lento), acaba después de la entrega, con su dueño
-        y si está en la cadena; sin estimación, nada."""
+        y si está en la cadena; sin estimación, nada. Orden (§11.4): por fin_tarde, la más tardía primero, y por tarea."""
         tareas = ana() + luis()
         por_id(tareas, "T12")["franja"]["valor"].update(hasta=m(150), min=150)
         por_id(tareas, "T12")["estado"]["fuente"] = "github"
@@ -479,11 +587,20 @@ class Tabla(Base):
         b = self.corre(ruta_de(120), tareas, fuentes=fuentes)
         self.assertEqual(b["veredicto"]["valor"], "no_llega")
         self.assertEqual(b["riesgos"], [
-            {"tarea": "T12", "tipo": "estimacion", "fin_tarde": iso(T0 + timedelta(minutes=150)), "dueno": "luis",
-             "en_cadena": False, "viejo": True},
             {"tarea": "T05", "tipo": "estimacion", "fin_tarde": iso(T0 + timedelta(minutes=180)), "dueno": "ana",
-             "en_cadena": True, "viejo": False}])
-        self.assertEqual(b["riesgos"][-1]["fin_tarde"], b["cadena"][-1]["fin_tarde"])
+             "en_cadena": True, "viejo": False},
+            {"tarea": "T12", "tipo": "estimacion", "fin_tarde": iso(T0 + timedelta(minutes=150)), "dueno": "luis",
+             "en_cadena": False, "viejo": True}])
+        self.assertEqual(b["riesgos"][0]["fin_tarde"], b["cadena"][-1]["fin_tarde"])
+        # Con el mismo fin_tarde, por tarea: T12 (Luis, 180 min) empata con T05 y va detrás.
+        por_id(tareas, "T12")["franja"]["valor"].update(hasta=m(180), min=180)
+        b = self.corre(ruta_de(120), tareas, fuentes=fuentes)
+        self.assertEqual([(r["tarea"], r["fin_tarde"]) for r in b["riesgos"]],
+                         [("T05", iso(T0 + timedelta(minutes=180))), ("T12", iso(T0 + timedelta(minutes=180)))])
+        # Con la cadena de Luis detrás de T05 (T13, 30 min), T13 es la más tardía y va primero.
+        tareas.append(tarea("T13", "luis", "lista", 5, franja=(180, 210), deps=["T05"]))
+        b = self.corre(ruta_de(120), tareas, fuentes=fuentes)
+        self.assertEqual([r["tarea"] for r in b["riesgos"]], ["T13", "T05", "T12"])
         # A tiempo: ninguno. Sin estimación (sin hora de entrega): ninguno.
         self.assertEqual(self.corre(ruta_de(240), tareas)["riesgos"], [])
         self.assertEqual(self.corre(ruta_de(None), tareas)["riesgos"], [])
@@ -496,6 +613,8 @@ class Tabla(Base):
         b = self.corre(ruta_de(600, otras_entregas=[otra]), tareas)
         self.assertEqual((len(b["resumen"]), b["resumen"][-1]), (120, "…"))
         self.assertTrue(b["resumen"].startswith("ruta: estimación a tiempo · fin "))
+        # El corte se lleva lo de detrás, no el plazo pasado (decisión del usuario: va antes).
+        self.assertIn(" · T04: plazo pasado 09:50 · otra entrega: domingo", b["resumen"])
 
     def test_sin_senales_gris_nunca_lenta(self):
         personas = [{"persona": "ana", "nombre": "Ana", "ultima_senal": m(-1)},

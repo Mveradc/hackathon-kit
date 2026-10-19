@@ -224,8 +224,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     equipo_ok = _v(ruta.get("equipo")) == "ok"
     objetivo = dict(entrega) if entrega and equipo_ok else None
     t_entrega = fecha(objetivo["valor"]) if objetivo and objetivo.get("valor") else None
-    if t_entrega is None:
-        motivos.append("entrega_doble" if objetivo and objetivo.get("motivo") == "dos_horas" else "sin_entrega")
+    if t_entrega is None:       # con dos horas en Entrega: ya llega la primera, y la otra en otras_entregas (#46, 5)
+        motivos.append("sin_entrega")
     ciclo = _ciclo(ids, sucesoras)
     if ciclo:
         motivos.append("ciclo")
@@ -239,7 +239,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
             else:
                 motivo, origen = (t.get("franja") or {}).get("motivo") or "sin_plazo", _origen(t, ahora, "franja")
             sin_plazo.append(dict({"tarea": k, "motivo": motivo}, **origen))
-    # #46, 1: las sin plazo salen aparte y se estima el resto; sin ninguna otra abierta, no hay nada que estimar.
+    # #46, 1: las sin plazo salen aparte y se estima el resto. Decisión del usuario: sin_plazo es motivo solo si
+    # ninguna abierta que cuenta tiene franja (no hay nada que estimar, y nunca sale «a tiempo» con nada estimado).
     aparte = {x["tarea"] for x in sin_plazo}
     estimables = abiertas - aparte
     if aparte and not estimables:
@@ -363,10 +364,11 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
             "fin_temprano": iso(fin[k][0]) if estimacion else None,
             "fin_tarde": iso(fin[k][1]) if estimacion else None})
 
-    # --- riesgos (#46, 3): lo que, según la estimación, acaba después de la entrega (el extremo lento) ---
+    # --- riesgos (#46, 3): lo que, según la estimación, acaba después de la entrega (el extremo lento); la más tardía
+    # primero y luego por tarea (§11.4) ---
+    tardias = sorted((k for k in fin if estimacion and fin[k][1] > t_entrega), key=lambda k: (-fin[k][1].timestamp(), k))
     riesgos = [{"tarea": k, "tipo": "estimacion", "fin_tarde": iso(fin[k][1]), "dueno": cuentan[k]["dueno"],
-                "en_cadena": k in eslabones, "viejo": viejo_de(cuentan[k]["estado"]["fuente"])}
-               for k in sorted(fin, key=lambda k: (fin[k][1], k)) if estimacion and fin[k][1] > t_entrega]
+                "en_cadena": k in eslabones, "viejo": viejo_de(cuentan[k]["estado"]["fuente"])} for k in tardias]
 
     # --- lo declarado, al lado ---
     otras = [o for o in ruta.get("otras_entregas", [])
@@ -389,20 +391,27 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     if estimacion:
         resumen = f"ruta: estimación {LEGIBLE[valor]} · fin {hm(estimacion['temprano'])}–{hm(estimacion['tarde'])} · " \
                   f"entrega {dia_hm(objetivo['valor'])}" + (" (confirmar)" if objetivo.get("confirmar") else "")
-        if sin_plazo:
-            resumen += f" · sin contar {', '.join(x['tarea'] for x in sin_plazo)} (sin plazo)"
     else:
-        texto = {"sin_entrega": "sin hora de entrega", "entrega_doble": "dos horas de entrega",
-                 "ciclo": "ciclo " + " → ".join(ciclo or []),
+        texto = {"sin_entrega": "sin hora de entrega", "ciclo": "ciclo " + " → ".join(ciclo or []),
                  "sin_plazo": "sin plazo: " + ", ".join(x["tarea"] for x in sin_plazo),
                  "pocos_datos": "pocos datos: " + ", ".join(f"@{b['persona']} {b['n']} de {MINIMO}" for b in pocos)}
         resumen = f"ruta: sin estimación ({texto[motivos[0]]})"
-    if otras:
-        resumen += f" · otra entrega: {otras[0].get('texto') or '—'} ({otras[0]['donde']})"
+    # Decisión del usuario: el plazo pasado (el único rojo) va antes de lo demás, para que el corte a 120 no lo quite.
     pasados = [x for x in hechos if x["tipo"] == "plazo_pasado"]
     if pasados:
         resumen += f" · {pasados[0]['tarea']}: plazo pasado {hm(pasados[0]['plazo'])}" + \
                    (f" y {len(pasados) - 1} más" if len(pasados) > 1 else "")
+    if estimacion and sin_plazo:
+        resumen += f" · sin contar {', '.join(x['tarea'] for x in sin_plazo)} (sin plazo)"
+    if otras:
+        o = otras[0]
+        if o["donde"] == "criterios.md":     # de una nota: su hora resuelta y la de la cita, nunca su texto (#46, 5)
+            vieja = re.search(r"nota de (\d\d:\d\d)\)", o.get("texto") or "")     # la forma de antes de la cita
+            de_nota = o["cita"][11:16] if o.get("cita") else vieja.group(1) if vieja else "—"
+            resumen += f" · otra entrega: {dia_hm(o['valor']) if o.get('valor') else '—'} " \
+                       f"(criterios.md, nota de {de_nota})"
+        else:
+            resumen += f" · otra entrega: {o.get('texto') or '—'} ({o['donde']})"
 
     return {
         "observado_en": ahora, "fuente": "derivado", "viejo": any(d.get("viejo") for d in leidas),
