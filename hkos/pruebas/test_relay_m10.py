@@ -161,7 +161,9 @@ class Criterios(SinZoneinfo):
 
     def test_sin_fichero_mal_formado_repetida_y_comentarios(self):
         self.assertEqual(calcula()["jurado"], {"fichero": {"valor": "sin fichero", "fuente": "git", "observado_en": CT,
-                                                           "declarado": True}, "notas": [], "pitch": None})
+                                                           "declarado": True}, "notas": [], "pitch": None,
+                                               "zona": {"valor": None, "fuente": "git", "observado_en": CT,
+                                                        "declarado": True}})
         nota = "## 2026-09-18 20:00 · Ana (jurado)\n- Qué dijo: «Hola»\n- Anotado por: @ana\n"
         md = ("# Criterios\n<!-- ## 2026-01-01 00:00 · Plantilla (x)\n- Qué dijo: «no es una nota» -->\n" + nota + nota +
               "## 2026-09-18 21:00 · Luis (mentor)\n- Dónde: mesa\n\n## Otra sección\n- Qué dijo: «fuera de una nota»\n"
@@ -201,7 +203,7 @@ class Criterios(SinZoneinfo):
 # =============================================================================================== equipo.md
 class Equipo(SinZoneinfo):
     def linea(self, texto, anio=2026):
-        dt, motivo, confirmar, zona, _, aviso = lecturas.hora_equipo(texto, anio)
+        dt, motivo, confirmar, zona, _, aviso, _ = lecturas.hora_equipo(texto, anio)
         return (dt.isoformat() if dt else None), motivo, confirmar, zona, aviso
 
     def test_g14(self):
@@ -395,11 +397,11 @@ class Plan(SinZoneinfo):
         # el año: del Inicio, si no de la Entrega, si no del commit del plan
         plan = "## Hitos del equipo\n| Cuándo | Qué |\n|---|---|\n| 20 sep 09:30 | Entrega final |\n"
         r = calcula(equipo="## Hackathon\n- Entrega: 2027-09-20 10:00 (Europe/Madrid)\n", plan=plan, jurado=False)
-        self.assertEqual(r["ruta"]["hitos"][0]["valor"], "2027-09-20T09:30:00+02:00")
+        self.assertEqual(r["ruta"]["otras_entregas"][0]["valor"], "2027-09-20T09:30:00+02:00")
         cts = dict(CTS, plan="2028-01-02T00:00:00Z")
         r = calcula(equipo="## Hackathon\n- Inicio: por confirmar\n- Entrega: el domingo, +02:00\n", plan=plan, jurado=False,
                     cts=cts)
-        self.assertEqual(r["ruta"]["hitos"][0]["valor"], "2028-09-20T09:30:00+02:00")
+        self.assertEqual(r["ruta"]["otras_entregas"][0]["valor"], "2028-09-20T09:30:00+02:00")
 
     def test_franjas_y_orden_del_plan(self):
         r = calcula(equipo=leer("g14/equipo-2.md"), plan=leer("g14/plan-2.md"), jurado=False)["tareas"]
@@ -441,48 +443,48 @@ class Plan(SinZoneinfo):
                          [("H+1", None, "sin_dato"), ("H+17", None, "sin_dato"), ("H+27", None, "sin_dato")])
         r = calcula(equipo=EQUIPO_03, plan=leer("g13/plan.md"), jurado=False)["ruta"]
         self.assertEqual([(h["texto"], h["motivo"]) for h in r["hitos"]][1], ("sáb mañana (hora por confirmar)", "por_confirmar"))
-        self.assertEqual([o["nombre"][:16] for o in r["otras_entregas"]], ["Entrega temprana", "Entrega final (p"])
+        self.assertEqual([o["nombre"][:16] for o in r["otras_entregas"]], ["Entrega final (p"])   # la temprana es un hito
+        self.assertIn("Entrega temprana", [h["nombre"][:16] for h in r["hitos"]])
         crit = ("## 2026-09-19 11:20 · Marta (organización)\n- Qué dijo: «Se entrega antes del domingo a las 09:00»\n"
                 "- Fuerza: dato\n- Afecta a: entrega\n- Anotado por: @persona-c\n"
                 "## 2026-09-19 11:25 · Marta (organización)\n- Qué dijo: «El pitch, a las 10:00»\n- Fuerza: dato\n"
                 "- Afecta a: entrega\n- Anotado por: @persona-c\n")
         r = calcula(equipo=EQUIPO_03, criterios=crit, jurado=False)["ruta"]
         self.assertEqual([(o["valor"], o["texto"], o["donde"]) for o in r["otras_entregas"]],
-                         [("2026-09-20T09:00:00+02:00", "domingo a las 09:00", "criterios.md")])   # una hora suelta, no
+                         [("2026-09-20T09:00:00+02:00", "(criterios.md, nota de 11:20)", "criterios.md")])   # una hora suelta, no
 
     def test_descansos_de_g14_como_dicen_los_hechos(self):
         for mo in self.hechos["momentos"]:
             r = self.momento(mo)["ruta"]
-            filas = {}
-            for d in r["descansos"]:
-                filas.setdefault(d["texto"], []).append(d)
-            self.assertEqual(len(filas), len(mo["descansos"]["filas"]))
-            for (texto, ds), h in zip(filas.items(), mo["descansos"]["filas"]):
-                self.assertIn(h["texto"], texto)
-                self.assertEqual([d["persona"] for d in ds], h["personas"])
-                for d in ds:
-                    self.assertTrue(mismo(d["desde"], h["desde"]) and mismo(d["hasta"], h["hasta"]), (d, h))
-                    self.assertEqual(d["motivo"], None if mo["descansos"]["resueltos"] else "sin_inicio")
+            self.assertEqual(len(r["descansos"]), len(mo["descansos"]["filas"]))         # una entrada por turno
+            for d, h in zip(r["descansos"], mo["descansos"]["filas"]):
+                self.assertIn(h["texto"], d["texto"])
+                self.assertEqual(d["personas"], h["personas"])
+                self.assertTrue(mismo(d["desde"], h["desde"]) and mismo(d["hasta"], h["hasta"]), (d, h))
+                self.assertEqual(d["motivo"], None if mo["descansos"]["resueltos"] else "sin_inicio")
             con_jsonschema(self, estado_minimo(ruta=r))
 
     def test_descansos_en_lista_y_los_que_no_se_leen(self):
         plan = ("## Descansos\n- Todos: sáb 03:00–07:00\n- @persona-a: sáb 23:30-dom 07:00\n- Persona C: sáb 08:00—09:00\n"
                 "- Persona B: cuando pueda\n")
         r = calcula(equipo=EQUIPO_03, plan=plan, jurado=False)["ruta"]["descansos"]
-        self.assertEqual([(d["persona"], d["desde"], d["hasta"], d["motivo"]) for d in r], [
-            ("persona-a", "2026-09-19T03:00:00+02:00", "2026-09-19T07:00:00+02:00", None),
-            ("persona-b", "2026-09-19T03:00:00+02:00", "2026-09-19T07:00:00+02:00", None),
-            ("persona-c", "2026-09-19T03:00:00+02:00", "2026-09-19T07:00:00+02:00", None),
-            ("persona-a", "2026-09-19T23:30:00+02:00", "2026-09-20T07:00:00+02:00", None),
-            ("persona-c", "2026-09-19T08:00:00+02:00", "2026-09-19T09:00:00+02:00", None),
-            (None, None, None, "formato")])
+        self.assertEqual([(d["personas"], d["desde"], d["hasta"], d["motivo"]) for d in r], [
+            (["persona-a", "persona-b", "persona-c"], "2026-09-19T03:00:00+02:00", "2026-09-19T07:00:00+02:00", None),
+            (["persona-a"], "2026-09-19T23:30:00+02:00", "2026-09-20T07:00:00+02:00", None),
+            (["persona-c"], "2026-09-19T08:00:00+02:00", "2026-09-19T09:00:00+02:00", None),
+            (["persona-b"], None, None, "formato")])
         self.assertEqual(r[0]["texto"], "- Todos: sáb 03:00–07:00")
         sin_equipo = calcula(equipo=EQUIPO_03, plan=plan, jurado=False, personas=[])["ruta"]["descansos"]
-        self.assertEqual(sin_equipo[0]["persona"], None)                                    # «Todos» sin equipo: null
+        self.assertEqual(sin_equipo[0]["personas"], None)                                   # «Todos» sin equipo: null
         r = calcula(plan=plan, jurado=False)["ruta"]["descansos"]
         self.assertEqual({d["motivo"] for d in r}, {"sin_zona", "formato"})
-        dos = calcula(equipo=EQUIPO_03, plan=leer("02-facturas-real-plan.md", EJEMPLOS), jurado=False)["ruta"]["descansos"]
-        self.assertEqual([(d["persona"], d["desde"], d["motivo"]) for d in dos], [(None, None, "formato")] * 2)
+        personas = [{"persona": x.lower(), "nombre": x} for x in "ABCDE"]
+        dos = calcula(equipo=EQUIPO_03, plan=leer("02-facturas-real-plan.md", EJEMPLOS), jurado=False,
+                      personas=personas)["ruta"]["descansos"]
+        self.assertEqual([(d["personas"], d["desde"], d["hasta"], d["motivo"]) for d in dos][:2], [
+            (["e"], "2026-09-19T00:30:00+02:00", "2026-09-19T07:00:00+02:00", None),
+            (["a"], "2026-09-19T01:00:00+02:00", "2026-09-19T06:00:00+02:00", None)])
+        self.assertEqual((len(dos), {d["motivo"] for d in dos}), (9, {None}))
 
     def test_plan_mal_formado_no_da_campos(self):
         r = calcula(equipo=EQUIPO_03, plan="## Por persona\n| T01 | x | y |\n")
@@ -541,8 +543,9 @@ class Historia(unittest.TestCase):
             hs = modelo.historias(tareas, issues, eventos, personas, mo["ahora"])
             for nid, n in mo["notas"].items():
                 for ev in n["evidencia"]:
-                    historia, sha = hs[ev["tarea"]]
-                    self.assertEqual(sha, ev["sha"], (mo["nombre"], nid))
+                    historia, evidencia = hs[ev["tarea"]]
+                    self.assertEqual((evidencia["valor"], evidencia["tipo"], evidencia["observado_en"]),
+                                     (ev["sha"], "commit", ev["observado_en"]), (mo["nombre"], nid))
                     publicada = modelo.calcular(tareas, issues, eventos, personas, ev["observado_en"])
                     self.assertEqual(next(t for t in publicada["tareas"] if t["id"] == ev["tarea"])["estado"]["valor"],
                                      "publicada")
@@ -553,10 +556,11 @@ class Historia(unittest.TestCase):
                 for t in n["cerradas_a_mano"]:                     # cerrada a mano: ni hecha ni evidencia
                     self.assertEqual((hs[t][0]["hecha_en"], hs[t][1]), (None, None))
         m2 = modelo.historias(tareas, issues, eventos, personas, hechos["momentos"][1]["ahora"])["T11"]
-        self.assertEqual((m2[0]["hecha_en"], m2[0]["trabajo_nuevo_desde"], m2[1]),
+        self.assertEqual((m2[0]["hecha_en"], m2[0]["trabajo_nuevo_desde"], m2[1]["valor"]),
                          ("2026-09-18T21:20:00Z", "2026-09-19T12:15:00Z", "111c0de"))
         m3 = modelo.historias(tareas, issues, eventos, personas, hechos["momentos"][2]["ahora"])["T11"]
-        self.assertEqual((m3[0]["hecha_en"], m3[0]["trabajo_nuevo_desde"], m3[1]), ("2026-09-18T21:20:00Z", None, "112c0de"))
+        self.assertEqual((m3[0]["hecha_en"], m3[0]["trabajo_nuevo_desde"], m3[1]["valor"]),
+                         ("2026-09-18T21:20:00Z", None, "112c0de"))
 
     def test_g14_hechas_como_dicen_los_hechos(self):
         hechos = carga(os.path.join(GUIONES, "g14", "hechos.json"))
@@ -670,14 +674,16 @@ class Relay(SinZoneinfo):
         self.assertEqual(t["T06"]["criterios"]["valor"], ["2026-09-19 10:40"])
         self.assertEqual(t["T06"]["criterios"]["observado_en"], "2026-09-19T09:41:00Z")
         self.assertEqual(len(t["T02"]["conexiones"]["valor"]), 1)
-        self.assertEqual((t["T11"]["evidencia"], t["T11"]["historia"]["hecha_en"]), ("112c0de", "2026-09-18T21:20:00Z"))
+        self.assertEqual((t["T11"]["evidencia"]["valor"], t["T11"]["evidencia"]["observado_en"],
+                          t["T11"]["historia"]["hecha_en"]), ("112c0de", "2026-09-19T13:00:00Z", "2026-09-18T21:20:00Z"))
         self.assertNotIn("evidencia", t["T20"])                                              # cerrada a mano
         self.assertEqual(t["T05"]["hasta"]["valor"], "2026-09-19T02:30:00+02:00")
         self.assertEqual((t["T05"]["orden_plan"]["valor"], t["T13"]["franja"]["valor"]["compartida"]), (5, 3))
         ruta = e["ruta"]
         self.assertEqual((ruta["equipo"]["valor"], ruta["zona"]["valor"], ruta["inicio"]["valor"]),
                          ("ok", "Europe/Madrid", "2026-09-18T19:00:00+02:00"))
-        self.assertEqual(len(ruta["descansos"]), 6)                     # 5 turnos; uno es de dos personas
+        self.assertEqual(len(ruta["descansos"]), 5)                     # 5 turnos; uno es de dos personas
+        self.assertEqual(e["jurado"]["zona"], ruta["zona"])
         self.assertEqual(ruta["hitos"][0]["observado_en"], "2026-09-19T09:41:00Z")
 
     def test_cuatro_combinaciones(self):
@@ -832,6 +838,108 @@ class Interruptores(unittest.TestCase):
             f.write("\ufeffvista_jurado: sí\n".encode("utf-16-le"))
         self.assertTrue(red.vista_jurado(ruta))
         self.assertFalse(red.vista_jurado(None) or red.ruta_critica(os.path.join(d, "no-existe.md")))
+
+
+# =============================================================================================== issue #46
+class Issue46(SinZoneinfo):
+    """Las decisiones 4, 5 y 6 del issue #46 y B4, B6 y B9: cada caso fallaba con lo de K-104."""
+
+    def equipo(self, inicio="2026-09-18 19:00 (Europe/Madrid)", entrega="2026-09-20 10:00 (Europe/Madrid)"):
+        return f"# Equipo\n\n## Hackathon\n- Inicio: {inicio}\n- Entrega: {entrega}\n"
+
+    def test_4_un_descanso_por_turno_con_sus_personas(self):
+        for e, p in (("g14/equipo-2.md", "g14/plan-2.md"), ("g14/equipo-2.md", "g13/plan.md")):
+            d = calcula(equipo=leer(e), plan=leer(p), jurado=False)["ruta"]["descansos"]
+            self.assertEqual([x["personas"] for x in d], [["persona-c"], ["persona-b"], ["persona-a"],
+                                                         ["persona-b", "persona-c"], ["persona-a"]], p)
+            self.assertEqual((d[3]["desde"], d[3]["hasta"]), ("2026-09-19T23:00:00+02:00", "2026-09-20T07:30:00+02:00"))
+            self.assertNotIn("persona", d[3])
+        d = calcula(equipo=EQUIPO_03, plan=leer("03-xray-embat-real-plan.md", EJEMPLOS), jurado=False)["ruta"]["descansos"]
+        self.assertEqual((len(d), d[3]["personas"]), (5, ["persona-b", "persona-c"]))
+        plan = "## Descansos\n- Persona B y @persona-c: sáb 23:00–dom 07:30\n- Todos: dom 08:00–08:30\n"
+        d = calcula(equipo=EQUIPO_03, plan=plan, jurado=False)["ruta"]["descansos"]
+        self.assertEqual([(x["personas"], x["desde"], x["hasta"]) for x in d], [
+            (["persona-b", "persona-c"], "2026-09-19T23:00:00+02:00", "2026-09-20T07:30:00+02:00"),
+            (["persona-a", "persona-b", "persona-c"], "2026-09-20T08:00:00+02:00", "2026-09-20T08:30:00+02:00")])
+
+    def test_5_dos_horas_la_primera_manda_y_la_otra_es_otra_entrega(self):
+        personas = [{"persona": x.lower(), "nombre": x} for x in "ABCDE"]
+        for entrega in ("2026-09-20 10:00 (cierre 11:00) (Europe/Madrid)", "dom 20 sep 10:00 (cierre 11:00), Europe/Madrid"):
+            r = calcula(equipo=self.equipo(entrega=entrega), plan=leer("02-facturas-real-plan.md", EJEMPLOS), jurado=False,
+                        personas=personas)["ruta"]
+            self.assertEqual((r["entrega"]["valor"], r["entrega"]["motivo"]), ("2026-09-20T10:00:00+02:00", None), entrega)
+            self.assertEqual([(o["valor"], o["donde"]) for o in r["otras_entregas"]],
+                             [("2026-09-20T11:00:00+02:00", "equipo.md"), ("2026-09-20T10:00:00+02:00", "plan.md")])
+            self.assertEqual((r["otras_entregas"][0]["texto"], r["otras_entregas"][0]["observado_en"]), (entrega, CT))
+            self.assertEqual(r["otras_entregas"][1]["nombre"], "Entrega final (guía `/entrega`)")
+            nombres = [h["nombre"] for h in r["hitos"]]                         # las tempranas son hitos (y no entregas)
+            self.assertEqual([n[:16] for n in nombres if n.startswith("Entrega")], ["Entrega temprana"] * 2)
+            con_jsonschema(self, estado_minimo(ruta=r))
+        # la misma hora dos veces, o una zona con forma de hora, no son dos horas
+        for entrega in ("2026-09-20 10:00 (10:00) +02:00", "2026-09-20 10:00 UTC+02:00"):
+            r = calcula(equipo=self.equipo(entrega=entrega), jurado=False)["ruta"]
+            self.assertEqual((r["entrega"]["valor"], r["otras_entregas"]), ("2026-09-20T10:00:00+02:00", []), entrega)
+        r = calcula(equipo=self.equipo(inicio="2026-09-18 19:00 (cierre 20:00) (Europe/Madrid)"), jurado=False)["ruta"]
+        self.assertEqual((r["inicio"]["valor"], r["inicio"]["motivo"]), (None, "dos_horas"))   # en Inicio: no
+
+    def test_5_fechas_con_dia_y_mes_y_sin_zona(self):
+        casos = (("dom 20 sep 09:30 (Europe/Madrid)", "2026-09-20T09:30:00+02:00", None),
+                 ("dom 20 sep 2026 10:00", "2026-09-20T10:00:00+02:00", None),        # el equipo.md real del reto 03
+                 ("domingo, 20 sep. 2026 10:00", "2026-09-20T10:00:00+02:00", None),
+                 ("sáb 20 sep 2026 10:00", None, "formato"))                          # el día no cuadra
+        for entrega, valor, motivo in casos:
+            r = calcula(equipo=self.equipo(entrega=entrega), jurado=False)["ruta"]
+            self.assertEqual((r["entrega"]["valor"], r["entrega"]["motivo"]), (valor, motivo), entrega)
+            self.assertEqual(r["zona"]["valor"], "Europe/Madrid")                     # la de Inicio:
+        r = calcula(equipo=self.equipo(inicio="2026-09-18 19:00", entrega="dom 20 sep 2026 10:00"), jurado=False)["ruta"]
+        self.assertEqual((r["entrega"]["valor"], r["entrega"]["motivo"]), (None, "sin_zona"))
+        r = calcula(equipo=self.equipo(entrega="dom 20 sep 2026 10:00 (America/Bogota)"), jurado=False)["ruta"]
+        self.assertEqual(r["entrega"]["motivo"], "sin_zona")             # una zona que no se resuelve no hereda la otra
+
+    def test_5_b9_la_fila_entrega_solo_en_otras_entregas(self):
+        hechos = carga(os.path.join(GUIONES, "g14", "hechos.json"))
+        for mo in hechos["momentos"]:
+            r = calcula(equipo=leer(mo["equipo.md"].replace("guiones/", "")), plan=leer(mo["plan.md"].replace("guiones/", "")),
+                        jurado=False)["ruta"]
+            self.assertFalse([h for h in r["hitos"] if h["nombre"].startswith("Entrega final")], mo["nombre"])
+            self.assertEqual([o["texto"] for o in r["otras_entregas"]], ["dom 20 sep 09:30"])
+        self.assertTrue(lecturas.es_entrega("Entrega") and lecturas.es_entrega("entrega final (guía)"))
+        self.assertFalse(lecturas.es_entrega("Entrega temprana") or lecturas.es_entrega("Entregables listos"))
+
+    def test_5_nota_dato_sin_su_texto(self):
+        crit = ("## 2026-09-19 11:20 · Marta (organización)\n- Qué dijo: «Se entrega el domingo a las 09:00, sin prórroga»\n"
+                "- Fuerza: dato\n- Afecta a: entrega\n- Anotado por: @persona-c\n")
+        r = calcula(equipo=EQUIPO_03, criterios=crit, cts=dict(CTS, criterios="2026-09-19T09:25:00Z"))
+        o = r["ruta"]["otras_entregas"]
+        self.assertEqual(o, [{"valor": "2026-09-20T09:00:00+02:00", "texto": "(criterios.md, nota de 11:20)", "motivo": None,
+                              "donde": "criterios.md", "fuente": "git", "observado_en": "2026-09-19T09:25:00Z",
+                              "declarado": True}])
+        self.assertNotIn("prórroga", json.dumps(r["ruta"], ensure_ascii=False))
+
+    def test_6_evidencia_ultima_publicacion_con_su_hora_y_tipo(self):
+        g = carga(os.path.join(GUIONES, "G13.json"))
+        tareas, personas, issues, eventos, _ = montar(g, SIM)
+        m3 = modelo.historias(tareas, issues, eventos, personas, "2026-09-19T18:30:00Z")["T11"][1]
+        self.assertEqual(m3, {"valor": "112c0de", "tipo": "commit", "fuente": "git", "observado_en": "2026-09-19T13:00:00Z"})
+        # parada tras hecha_en: sigue hecha, con su trabajo nuevo y la evidencia de la publicación anterior
+        ahora = "2026-09-19T12:40:00Z"
+        t11 = next(t for t in modelo.calcular(tareas, issues, eventos, personas, ahora)["tareas"] if t["id"] == "T11")
+        h, ev = modelo.historias(tareas, issues, eventos, personas, ahora)["T11"]
+        self.assertEqual((t11["estado"]["valor"], h["hecha_en"], h["trabajo_nuevo_desde"]),
+                         ("parada", "2026-09-18T21:20:00Z", "2026-09-19T12:15:00Z"))
+        self.assertEqual((ev["valor"], ev["observado_en"]), ("111c0de", "2026-09-18T21:20:00Z"))
+        g = carga(os.path.join(GUIONES, "G2.json"))
+        tareas, personas, issues, eventos, _ = montar(g, SIM)
+        ev = modelo.historias(tareas, issues, eventos, personas, max(e["ts"] for e in eventos))["T15"][1]
+        self.assertEqual((ev["valor"], ev["tipo"]), ("a15a15a", "fusion"))
+
+    def test_b4_zona_en_el_bloque_jurado_y_b6_por_confirmar(self):
+        r = calcula(equipo=leer("g14/equipo-2.md"), criterios=leer("g13/criterios.md"), ruta=False)
+        self.assertIsNone(r["ruta"])
+        self.assertEqual(r["jurado"]["zona"], {"valor": "Europe/Madrid", "fuente": "git", "observado_en": CT,
+                                               "declarado": True})
+        r = calcula(equipo=self.equipo(inicio="por confirmar", entrega="domingo, hora por confirmar (Europe/Madrid)"))["ruta"]
+        self.assertEqual((r["inicio"]["motivo"], r["entrega"]["motivo"]), ("por_confirmar", "por_confirmar"))
 
 
 # =============================================================================================== arranque
