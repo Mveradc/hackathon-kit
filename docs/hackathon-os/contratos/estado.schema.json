@@ -317,7 +317,7 @@
                 "properties": {
                   "valor": { "enum": ["sin_tarea", "ambigua", "planificada", "en_curso", "en_pitch", "cubierta"], "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 2 de ADR-0012): planificada = sus tareas no han empezado; en_curso = alguna tiene señales. Tras congelar, 2026-10-19, M10, ajuste 3, punto 3: en_curso si alguna tiene el estado de la tarjeta distinto de lista, pendiente y reclamada, o historia.primera_senal; si no, planificada." },
                   "fuente": { "$ref": "#/$defs/fuente" },
-                  "observado_en": { "type": "string", "format": "date-time" },
+                  "observado_en": { "type": "string", "format": "date-time", "description": "El más reciente de los datos usados. Tras congelar, 2026-10-20, M10, ajuste 5, punto 3: en una nota planificada o en_curso, la más reciente entre la hora del commit del plan que trae su etiqueta (tareas[].enlace.observado_en) y la del estado de sus tareas (tareas[].tarjeta.observado_en)." },
                   "viejo": { "type": "boolean" }
                 }
               },
