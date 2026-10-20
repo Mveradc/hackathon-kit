@@ -62,7 +62,8 @@ HERRAMIENTAS_M10 = [
      "inputSchema": {"type": "object", "properties": {}}}),
     (red.ruta_critica, {"name": "ruta", "description": "Ruta crítica: si se llega a la entrega (veredicto, estimación con "
      "rango y su base, o por qué no la hay), los plazos pasados y lo que arrastran, la cadena, las tareas en riesgo, "
-     "las que no tienen plazo, hitos y descansos. Cómo leerlo: «sin_estimacion» con pocos_datos quiere decir que "
+     "las que no tienen plazo, las de quien no tiene usuario de GitHub (sin_usuario, no se estiman), hitos y "
+     "descansos. Cómo leerlo: «sin_estimacion» con pocos_datos quiere decir que "
      "alguna persona con tareas abiertas tiene menos de 3 tareas medidas (empezadas con señal y publicadas), no que "
      "nadie haya cerrado nada; el «n de 3» de cada persona va en base. Las franjas y los Hasta son plazos declarados "
      "en plan.md, no una previsión; sin estimación no hay margen ni previsión que dar. Cada dato lleva su procedencia, "

@@ -63,7 +63,10 @@ JSONSCHEMA = _jsonschema(VISTA.raiz)
 
 
 def errores(bloque):
-    """None si la salida valida contra $defs/vista_ruta (con el validador del OS y, si está, con jsonschema)."""
+    """None si la salida valida contra $defs/vista_ruta (con el validador del OS y, si está, con jsonschema). Mientras
+    el esquema no traiga sin_usuario[] (K-108, 2), se valida sin él."""
+    if "sin_usuario" not in VISTA.raiz["$defs"]["vista_ruta"]["properties"]:
+        bloque = {k: v for k, v in bloque.items() if k != "sin_usuario"}
     e = VISTA.error(bloque)
     if e is None and JSONSCHEMA is not None:
         e = next(((list(x.absolute_path), x.message) for x in JSONSCHEMA.iter_errors(bloque)), None)
@@ -562,7 +565,8 @@ class Tabla(Base):
 
     def test_pocos_datos_sin_hora_prevista_n_de_3(self):
         marta = [tarea("T31", "marta", "publicada", 1, franja=(-300, -240), primera=-300, hecha=-250)]
-        b = self.corre(ruta_de(240), ana() + luis(n=2) + marta)
+        con_marta = PERSONAS + [{"persona": "marta", "nombre": "Marta"}]
+        b = self.corre(ruta_de(240), ana() + luis(n=2) + marta, personas=con_marta)
         self.assertEqual(b["veredicto"], {"valor": "sin_estimacion", "motivos": ["pocos_datos"], "gravedad": "gris",
                                           "fuente": "derivado", "observado_en": iso(T0)})
         self.assertIsNone(b["estimacion"])
@@ -572,9 +576,40 @@ class Tabla(Base):
         self.assertEqual(b["resumen"], "ruta: sin estimación · pocos datos: 1 persona")
         self.assertTrue(b["cadena"] and all(e["fin_temprano"] is None and e["fin_tarde"] is None for e in b["cadena"]))
         # Con la tercera medida de Luis, hay cifra.
-        b = self.corre(ruta_de(240), ana() + luis(n=3) + marta)
+        b = self.corre(ruta_de(240), ana() + luis(n=3) + marta, personas=con_marta)
         self.assertEqual(b["veredicto"]["valor"], "a_tiempo")
         self.assertEqual(b["base"]["desde"], m(-370))
+
+    def test_k108_2_persona_sin_usuario_aparte_y_el_resto_se_estima(self):
+        """K-108, punto 2: la dueña de una tarea que no es un usuario de GitHub de equipo.md (en el plan, por su nombre,
+        sin @) no sale en base.personas, ni cuenta en pocos_datos, ni en sin_senales: nunca tendrá señales ni medidas.
+        Sus abiertas van a sin_usuario[] (con la procedencia del plan) y no se estiman; el resto, sí. Antes, «Persona C»
+        salía «sin señales» y en «pocos datos: 1 persona», y con ella en el equipo la ruta no estimaba nunca."""
+        c = [tarea("T30", "Persona C", "lista", 1, franja=(0, 60), ultima=None),
+             tarea("T31", "Persona C", "en_curso", 2, franja=(60, 120), primera=-30, ultima=None),
+             tarea("T32", "Persona C", "publicada", 3, franja=(-300, -240), primera=-300, hecha=-250, ultima=None)]
+        solo_ana = self.corre(ruta_de(240), ana())
+        b = self.corre(ruta_de(240), ana() + c)
+        self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["motivos"]), ("a_tiempo", []))
+        self.assertEqual((b["estimacion"], b["base"]), (solo_ana["estimacion"], solo_ana["base"]))
+        self.assertEqual(b["sin_usuario"], [{"tarea": k, "dueno": "Persona C", "fuente": "git", "observado_en": OBS}
+                                            for k in ("T30", "T31")])
+        self.assertEqual(self.hechos(b, "sin_senales"), [])
+        self.assertFalse({"T30", "T31"} & ({e["tarjeta"]["id"] for e in b["cadena"]} | {r["tarea"] for r in b["riesgos"]}))
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 11:00–13:00 · entrega sáb 14:00 · "
+                                       "sin contar T30, T31 (sin usuario)")
+        self.assertEqual(solo_ana["sin_usuario"], [])
+        # Justo detrás de «sin contar … (sin plazo)»: si no cabe, es lo primero que se quita.
+        b = self.corre(ruta_de(240), ana() + c + [tarea("T06", "ana", "lista", 6)])
+        self.assertEqual([x["tarea"] for x in b["sin_plazo"]], ["T06"])
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 11:00–13:00 · entrega sáb 14:00 · "
+                                       "sin contar T06 (sin plazo) · y más en la vista")
+        # Una sin plazo de Persona C va a sin_usuario[], no a sin_plazo[]; y quien sí tiene usuario, aunque no tenga
+        # medidas, sigue contando en pocos datos.
+        b = self.corre(ruta_de(240), ana() + luis(n=1) + [tarea("T33", "Persona C", "lista", 4)])
+        self.assertEqual(([x["tarea"] for x in b["sin_usuario"]], b["sin_plazo"]), (["T33"], []))
+        self.assertEqual(b["resumen"], "ruta: sin estimación · pocos datos: 1 persona")
+        self.assertEqual([p["persona"] for p in b["base"]["personas"]], ["ana", "luis"])
 
     def test_cadena_de_cada_persona_y_la_mas_larga(self):
         tareas = ana() + luis()

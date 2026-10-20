@@ -143,7 +143,8 @@ class Vista(unittest.TestCase):
                 if con_r:
                     self.assertEqual(v["ruta"], ruta.calcular(e["ruta"], e["tareas"], v["ahora"], v["personas"],
                                                               v["fuentes"], tarjetas(v), p.PARADA_S))
-                    self.assertIsNone(VISTA_RUTA.error(v["ruta"]))
+                    self.assertIsNone(VISTA_RUTA.error(v["ruta"] if "sin_usuario" in VISTA_RUTA.raiz["$defs"][
+                        "vista_ruta"]["properties"] else {k: x for k, x in v["ruta"].items() if k != "sin_usuario"}))
                 # Sin los bloques, lo demás de la vista no cambia.
                 sin = p.vista({k: x for k, x in e.items() if k not in ("jurado", "ruta")})
                 self.assertEqual({k: x for k, x in v.items() if k not in ("jurado", "ruta")}, sin)
