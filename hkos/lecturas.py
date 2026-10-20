@@ -20,6 +20,7 @@ from datetime import date, datetime, timedelta, timezone, tzinfo
 
 import compilar
 import proyeccion
+import ruta as ruta_mod
 import servicios as servicios_mod
 
 ZONEINFO = True                 # las pruebas lo apagan para forzar el respaldo de la UE también en Linux
@@ -144,6 +145,14 @@ def _iso(d):
 def _txt(v, n=TEXTO_MAX):
     v = (v or "").strip()
     return None if v in ("", "—", "-") else proyeccion.corta(v, n)
+
+
+def _libre(v):
+    """Un texto libre del bloque ruta (la línea de - Entrega:, la celda Cuándo de una entrega de Hitos, el Qué de un
+    hito; #63, 4): con la misma función que ruta.py (ruta.texto_del_bloque), a 60 grafemas con «…», sin el espacio de
+    antes del «…» y sin controles bidi."""
+    v = (v or "").strip()
+    return None if v in ("", "—", "-") else ruta_mod.texto_del_bloque(v)
 
 
 def _local(dia, h, mi, tz):
@@ -289,10 +298,11 @@ def leer_equipo(texto, ct, anio):
         tz_inicio = tz if zona_n else tz_inicio
         if aviso:
             salida["avisos"].append(aviso)
-        salida[clave.lower()] = {"valor": _iso(dt), "texto": _txt(linea) if linea is not None else None,
+        texto = None if linea is None else _libre(linea) if clave == "Entrega" else _txt(linea)
+        salida[clave.lower()] = {"valor": _iso(dt), "texto": texto,
                                  "confirmar": confirmar, "motivo": motivo, "donde": "equipo.md", "fuente": "git",
                                  "observado_en": ct, "declarado": True, "_dt": dt}
-        salida["otras"] += [{"valor": _iso(o), "texto": _txt(linea), "motivo": None, "donde": "equipo.md",
+        salida["otras"] += [{"valor": _iso(o), "texto": texto, "motivo": None, "donde": "equipo.md",
                              "fuente": "git", "observado_en": ct, "declarado": True} for o in otras]
     # #56, 6: la zona IANA si alguna de las dos líneas la da (con ella las horas cambian bien en el cambio de hora);
     # si no, el desfase de Inicio: (o el de Entrega:).
@@ -528,7 +538,7 @@ def leer_descansos(texto, personas, inicio, tz, ct):
     for linea, turno, quien in filas:
         desde, hasta, motivo = _turno(turno, inicio, tz)
         salida.append({"personas": _quienes(quien, personas), "desde": _iso(desde),
-                       "hasta": _iso(hasta), "texto": proyeccion.corta(linea, TEXTO_MAX), "motivo": motivo,
+                       "hasta": _iso(hasta), "texto": ruta_mod.texto_del_bloque(linea), "motivo": motivo,
                        "fuente": "git", "observado_en": ct, "declarado": True})
     return salida
 
@@ -544,7 +554,7 @@ def leer_hitos(texto, inicio, tz, anio, ct, inicio_motivo):
         cuando, que = (celdas + ["", ""])[:2]
         dt, motivo = resolver(cuando, inicio, tz, anterior, anio, inicio_motivo)
         anterior = dt or anterior
-        salida.append({"nombre": _txt(que), "valor": _iso(dt), "texto": _txt(cuando),
+        salida.append({"nombre": _libre(que), "valor": _iso(dt), "texto": _txt(cuando),
                        "motivo": HITO_MOTIVO.get(motivo, motivo), "donde": "plan.md", "fuente": "git",
                        "observado_en": ct, "declarado": True})
     return salida
@@ -666,10 +676,13 @@ def calcular(textos, cts, personas, vista_jurado, ruta_critica):
     if ruta_critica:
         texto_plan = textos.get("plan")
         filas = leer_hitos(texto_plan, inicio, tz, anio, ct("plan"), inicio_motivo) if texto_plan is not None else []
+        # B9 (#63): la fila «Entrega»/«Entrega final…» es la entrega aunque su Cuándo no se resuelva: va a
+        # otras_entregas, con su Cuándo como texto libre (a 60, como el resto), y nunca a hitos.
         hitos = [h for h in filas if not es_entrega(h["nombre"])]
+        entregas = [dict(h, texto=_libre(h["texto"])) for h in filas if es_entrega(h["nombre"])]
         notas = salida["jurado"]["notas"] if salida["jurado"] else \
             leer_criterios(textos.get("criterios"), ct("criterios"), tz)["notas"]
-        otras = eq["otras"] + [h for h in filas if es_entrega(h["nombre"])] + entregas_de_notas(notas, inicio, tz, anio)
+        otras = eq["otras"] + entregas + entregas_de_notas(notas, inicio, tz, anio)
         salida["ruta"] = {"equipo": eq["equipo"], "zona": eq["zona"], "inicio": _publica(eq["inicio"]),
                           "entrega": _publica(eq["entrega"]), "otras_entregas": otras, "hitos": hitos,
                           "descansos": leer_descansos(texto_plan, personas, inicio, tz, ct("plan"))
