@@ -1103,3 +1103,119 @@ Clones `../prueba-m9a-sb-A` (@mveradc, con el relay de verdad: `hk-os relay`, so
 - **Criterio 8, turno interactivo (el usuario):** en el clon de @hk-persona-b del sandbox, con Claude Code abierto y quieto, Reclamar desde la web abrió **un solo turno** con el texto fijo. **Sí.**
 - **Encontrado:** en Windows, con dos cuentas de GitHub en el Git Credential Manager, saltaba la ventana «Select an account» en cada fetch del relay. Causa: `relay._git`, `Novedades._texto` y `compilar._git` lanzaban git sin `GCM_INTERACTIVE=never`. Arreglado en el PR #38.
 - **M9a: cerrado.** Todos sus criterios se cumplen.
+
+# M10, K-108: validación con modelo y en el sandbox (2026-10-20)
+Pruebas de una en una, sin el relay del sandbox en marcha a la vez. Nada del kit se ha tocado: lo que falla se apunta con su caso.
+
+## Criterios
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | Con los interruptores apagados, todo como en la 0.4.0 | **Sí, salvo `web_vivo.py`, que no existe.** Ver «Criterio 1» |
+| 5 | Honestidad (tablas de casos de `jurado.py` y `ruta.py`) | **Sí, con un hueco:** un rango degenerado («fin 10:00–10:00») pasa como rango. Ver «Criterio 5» |
+| 7 | Con modelo y en el sandbox | **No.** La sesión que pregunta por MCP no usó las herramientas `jurado` ni `ruta` y respondió con cosas que la vista no dice. Lo demás, sí. Ver «Criterio 7» |
+
+## Criterio 1
+- `hkos/pruebas`: 555 OK (12 saltadas: lo propio de Windows). La primera pasada dio 1 error, `ConnectionAbortedError: [WinError 10053]`, sin guardar qué prueba; la segunda, limpia. Entre ellas, `test_relay_m10.Relay.test_cuatro_combinaciones` y `test_proyeccion_m10.Vista.test_apagados_la_vista_y_el_md_byte_a_byte_como_en_la_040` (contra la etiqueta `v0.4.0`, no saltada).
+- `prueba_hooks.py`: 248 OK, 0 fallos. `igualdad.py`: 574 OK, 0 fallos (G1–G6, G12, G13 y G14). `robustez.py`: 46/46. `colisiones_vivo.py`: 0 fallos. Simulador (`prueba_simulador.py`): OK.
+- **`web_vivo.py` no existe**, ni en el repo ni en el historial (`git log --all`). Lo citan el criterio 1 de M10 y los criterios 2 y 4 de M9a (`hitos.md`). Sin arreglar.
+- `comprobar.py --relanzar` sobre `../prueba-m6b-03` (cadena del 03 sin coordinación): como en K-99. A2–A7 pasan; A1 falla por la carpeta (plan de M6b, sin columna `ID`). A6: los seis comandos se paran sin sobrescribir; `/hack-scaffold` crea `.claude/settings.json` (nuevo, no sobrescrito).
+
+## Criterio 5
+| Viñeta | Casos |
+|---|---|
+| Ninguna estimación sin «estimación», su base y un rango; nunca una sola hora | `test_ruta`: `test_con_estimacion_rango_margen_base_y_cadena`, `test_veredicto_en_sus_fronteras` (el resumen empieza por «ruta: estimación …»), `test_pocos_datos_sin_hora_prevista_n_de_3` y la comprobación de `Base.corre` (la estimación solo con temprano, tarde y márgenes). **Hueco:** con el temprano igual al tarde (ritmos iguales, p. ej. 3 tareas al 100 %, o tareas que ya agotaron su franja), el resumen da una sola hora en forma de rango: `test_56_5_…` (`test_ruta.py:474`) espera «fin 10:00–10:00» |
+| Con menos de 3 medidas de alguna persona con abiertas, ninguna hora: «n de 3» | `test_pocos_datos_sin_hora_prevista_n_de_3`, `test_56_5_…` (5 personas), `test_sin_ninguna_franja_sin_plazo_y_pocos_datos`, G14 `test_inicio`; en la web, `Ruta.jsx` («n de 3 · sin ritmo todavía») |
+| Una tarea sin plazo, «sin plazo», nunca «a tiempo» | `test_tarea_abierta_sin_franja_aparte_y_el_resto_se_estima`, `test_sin_plazo_es_motivo_solo_si_ninguna_abierta_que_cuenta_tiene_franja`, `test_sin_ninguna_franja_sin_plazo_y_pocos_datos` |
+| Rojo solo para hechos; «no llega», ámbar | `test_veredicto_en_sus_fronteras`, `test_plazo_vencido_rojo_y_lo_que_arrastra` (solo `plazo_pasado` en rojo), `test_parada_y_no_cerrada_ambar`, `test_sin_senales_gris_nunca_lenta` |
+| Lo declarado, como declarado y con su procedencia | Plazos y franjas: la cadena lleva `hasta` y `franja` con `declarado` (`test_con_estimacion_…`); `sin_plazo[]` y `fuera_de_entrega[]` con su procedencia (`test_la_salida_valida_contra_el_esquema_nuevo`, `test_tarea_abierta_sin_franja_…`); orden del plan, como `por: orden_del_plan` (`test_cadena_de_cada_persona_y_la_mas_larga`); entrega, hitos y otras entregas (`test_otras_entregas_al_lado_con_estimacion`); descansos (`test_descansos_…`); enlaces y pitch (`test_jurado`: `test_en_pitch_y_con_tarea_y_pitch`, `test_dos_notas_en_el_mismo_minuto`); cierres a mano (`test_cerrada_a_mano_no_cubre`, `test_cerrada_a_mano_hecha_para_la_ruta_no_medida`). Observación: `hechos[].plazo` sale con fuente `derivado`, sin la procedencia del `Hasta` (la lleva la cadena) |
+| El texto de las notas, entrecomillado y saneado, con autor y papel (constitución V) | `test_relay_m10` (lectura: `quien`, `papel`, `literal`, recorte), `test_jurado.test_texto_imperativo_sale_como_dato` y `test_56_7_fuerza_entre_comillas_con_su_fichero_y_sin_autor`, `test_proyeccion_m10.Md.test_el_texto_de_las_notas_no_sale_en_el_md`; en la web, `Jurado.jsx` («dijo» entre «» con quién y papel) |
+
+## Criterio 7 (sandbox `Mveradc/hk-sandbox`)
+**Montaje.**
+- `../prueba-m10-03`: carpeta nueva con remoto en el sandbox y `analisis.md`, `enfoques.md`, `decision.md` y `equipo.md` de `../prueba-m9a-03` (reto 03).
+  - El reto 03 fue en septiembre: con sus fechas, toda la ruta saldría «plazo pasado». Por eso `equipo.md` pone el hackathon en curso, con las mismas 39 h: `Inicio: 2026-10-20 22:00 (Europe/Madrid)` y `Entrega: 2026-10-22 13:00 (Europe/Madrid)`. `/hack-scaffold`, `/hack-plan` y `/hack-check` avisan de que no coincide con el análisis (efecto del montaje).
+- La cadena, encima de `main` del sandbox (`3bf248f`, con la nota de K-99 en `criterios.md` y `vista_jurado: sí` y `ruta_critica: sí` en `os.md`), y `hk-os compilar` (26 issues editados, T28 cerrado, 7 dependencias).
+- Restos de pruebas anteriores, limpiados antes de empezar: #21–#23 sin asignar (K-99) y #28 y #45 reabiertos (M8e). El #49 (T01 desde fuera, M8e) sigue abierto, como en K-99.
+- Clones `../prueba-m10-sb-A` (@mveradc, relay en `127.0.0.1:7791`, sondeo de GitHub cada 30 s) y `../prueba-m10-sb-B` (@hk-persona-b, `GH_CONFIG_DIR` de su cuenta), con `credential.https://github.com.username` fijado en cada uno (y en `prueba-m10-03`). Unidos con `hk-os unir` (desfase +1 s) y demonios lanzados con `scripts/os/arranque.sh`.
+
+**`/hack-scaffold` (1,19 USD) y `/hack-plan` (0,68 USD).**
+- El `CLAUDE.md` recuerda en Convenciones: «Cada commit empieza por el ID de su tarea en `.hackathon/plan.md`: `Txx · …`», y `convenciones.md` lo repite.
+- El plan trae 26 tareas con `Hasta` de día y hora (`mar 23:00`, `mié 05:00`…), T10 con «Si …» y T19 con `[SI DA TIEMPO]`, y «## Descansos» con 6 líneas (`- @hk-persona-b: mié 02:00–07:00`, `- Persona C: jue 00:00–04:00`…).
+- Con `lecturas.calcular` y `compilar.leer_plan`, como el relay: sin avisos, los 26 `Hasta` resueltos (ninguno «sin plazo»), franjas de 30 a 570 min, los 6 descansos con persona y hora, 4 dependencias y la fila «Entrega final» del plan igual a `Entrega:` (no sale como otra entrega).
+- En `-p`, `/hack-plan` no edita el `CLAUDE.md`: la sección «Dueños» se pegó a mano (ya conocido).
+
+**Notas desde la web y `/hack-check aplicar` (1,56 USD).**
+- Anotar, como la web (`X-HK-Token`, JSON, `Host` y `Origin` locales):
+  - desde el demonio de A, Marta (jurado, «nos gustaría ver»): 200 en 4,1 s (`0e520a1`);
+  - desde el de B, Luis (mentor, «obligatorio»): 200 en 3,9 s (`93358fb`).
+
+  Las dos, con hora 22:42: el mismo minuto.
+- `/hack-check aplicar` en `prueba-m10-03` deja `(criterios: 2026-10-20 22:42 · Luis)` en T06 y T14, `(criterios: 2026-10-20 22:42 · Marta)` en T12 y `(criterios: 2026-10-18 19:03)` en T13. Siempre al final de «Cómo se comprueba», con «· quién» porque comparten minuto. No toca `criterios.md`.
+- Añade T27 y T28 (bloqueantes: el test oculto y las fechas). `compilar` reaprovecha y reabre los #47 y #48 del plan viejo del sandbox.
+- En los dos demonios, las tres notas salen «planificada», ordenadas por fuerza: «obligatorio», «se valora», «nos gustaría ver».
+
+**Una tarea publicada con su ID.**
+- B: `T13 · Desglose de lo que movió el score este mes` (`13aab34`) y push. La nota de K-99 sale `cubierta` en `/v1/vista` de A y de B a los **8,5 s** de terminar el push (≤ 60 s), con T13 «publicada · git» y el commit como evidencia.
+- Antes, `T12 · Curva…` (`03f4203`) cubrió la de Marta, pero sin medir: el script de la prueba buscaba la nota por la cita y daba con la de Luis, del mismo minuto.
+- Con dos cubiertas: «jurado: 1 sin cubrir · 1 «obligatorio» (criterios.md) · 2 cubiertas de 3». El bloque `jurado` de A y el de B son iguales salvo la hora del cálculo.
+
+**La ruta del plan real** (iguales en A y en B salvo la hora del cálculo).
+- **Objetivo:** `2026-10-22T13:00:00+02:00`, de `equipo.md` (declarado), zona Europe/Madrid.
+- **Veredicto:** `sin_estimacion`, motivo `pocos_datos`, gris. Las tres personas, 0 de 3.
+  - T12 y T13 se publicaron sin pasar por «en curso» (sin sesión): no tienen primera señal y no se miden (R5A).
+- **Resúmenes:**
+  - 22:43: «ruta: sin estimación · pocos datos: 3 personas»;
+  - 23:01: «ruta: sin estimación · T01: plazo pasado 23:00 y 1 más · pocos datos: 3 personas».
+- **Hechos a las 23:01:**
+  - T01 y T02 con el plazo pasado (`mar 23:00`), en rojo. T01 arrastra T02–T09, T11, T14–T18 y T23–T26 (por dependencias y por el orden del plan);
+  - «sin señales» de Persona C y de @mveradc, en gris.
+
+  La firma `ruta:` del md no cambia (`a0eb650a6746`): sin delta (R10A).
+- **Cadena:** T01 → T07 (orden del plan) → T23 (`depende_de`) → T26.
+- **Fuera de la entrega:** T10 (`condicional`) y T19 (`si_da_tiempo`). Sin plazo: ninguna. 6 hitos más la presentación «por confirmar» y 6 descansos.
+- La sección «## Jurado y ruta» de `estado-equipo.md` dice lo mismo que el `resumen` de cada bloque.
+
+**La sesión con MCP (el usuario, Claude Code en `../prueba-m10-sb-A`, 23:19).**
+- La sesión listaba `mcp__plugin_hackathon-kit_os__jurado` y `…__ruta`, pero **no las llamó**. Su transcript solo tiene un Grep de `criterios.md`, un Read de `.git/hackathon/os/estado-equipo.md` y un Grep de `plan.md`.
+- **«¿Qué criterio no cubrimos?»**
+  - Acierta con la nota de Luis, «obligatorio», con T06 (espera a T21) y T14.
+  - Dice que las otras dos están «cubiertas en el plan»: lo están por T12 y T13 **publicadas**, no por el plan.
+  - Añade un ejemplo de cifra («tus cobros se alargan 12 días») que no está en ningún fichero.
+- **«¿Qué pone en riesgo la entrega?»**
+  - Lee «pocos datos: 3 personas» como «somos 3 personas».
+  - Dice «Persona B lleva sin sesión desde las 22:54», cuando la ruta da «sin señales» a @mveradc y a Persona C, no a B.
+  - Añade riesgos del `CLAUDE.md` (fechas, despliegue, pitch).
+  - No dice la entrega (jue 13:00), ni el «n de 3», ni T10 y T19 fuera de la entrega, ni lo que arrastran T01 y T02.
+- **No se cumple** («responde con lo que dice la vista, con su procedencia y sin añadir nada»). Fallo aislado de una sesión: según las reglas del kit, al Pendiente y sin tocar el prompt. Si se repite, que el `CLAUDE.md` generado (o la descripción de las herramientas) mande a `jurado` y `ruta` para esas preguntas.
+
+**`comprobar.py` sobre `../prueba-m10-03`.**
+- Tras `/hack-pitch` (0,45 USD; sin él faltaba `pitch.md`), A1–A5 pasaban.
+- Tras `/hack-check aplicar`, dos fallos:
+  - **A1:** `motor.md` con 11 viñetas (máximo 10). `/hack-check` parte en dos las viñetas con etiquetas mezcladas, como pide su prompt, y así pasa del tope;
+  - **A7:** «fuente desconocida «equipo.md»». `verificacion.md` cita `equipo.md` por las fechas que no coinciden (efecto del montaje), y `comprobar.py` no conoce esa fuente.
+
+  A2–A5 pasan.
+
+## Encontrado durante la prueba
+- **`web_vivo.py`** no existe (arriba).
+- **Rango degenerado** en la ruta (criterio 5, arriba).
+- **El MCP no se usa solo** (criterio 7, arriba).
+- **A1 tras `/hack-check aplicar`:** una regla de 11 viñetas.
+- **A7 de `comprobar.py`:** no conoce `equipo.md` como fuente.
+- **Primera pasada de `hkos/pruebas`:** 1 error `WinError 10053`, sin repetir.
+- **Una sesión de `claude -p` en una carpeta con `os.md` activo lanza el demonio** aunque la carpeta no esté unida (`/hack-pitch` y `/hack-check` en `prueba-m10-03`). Se paró a mano: es lo esperado (`sesion.sh`), pero en las pruebas con modelo hay que pararlo después.
+- **Montaje:**
+  - el clon de B no tenía `user.name` propio y la nota de B salió con autor git «MichaelVDC» (en K-99, hk-persona-b). Se fijó antes de T12 y T13;
+  - un `fetch` en el clon de K-99, sin `credential.https://github.com.username`, abrió «Select an account» del Credential Manager.
+- **Observaciones:**
+  - Persona C (sin usuario de GitHub) sale siempre «sin señales», porque no puede emitir;
+  - la cobertura «planificada» de la nota de Luis lleva `observado_en` del 2026-10-14: la hora del estado de sus tareas, que sale de la historia de los issues del sandbox.
+
+## Gasto
+9,01 USD: A6 de `comprobar.py` 3,57, `/hack-scaffold` 1,19, `/hack-plan` 0,68, `/hack-pitch` 0,45 y `/hack-check aplicar` 1,56; la sesión interactiva del usuario, aparte.
+
+En el sandbox:
+- los commits `3bf248f` (cadena), `0e520a1` y `93358fb` (notas), `a4dc7cc` (pitch y `/hack-check`), y `03f4203` y `13aab34` (T12 y T13);
+- dos `compilar` (35 + 8 escrituras);
+- las etiquetas de `buzon.sh preparar`;
+- #21–#23 sin asignar, y #28 y #45 reabiertos.
