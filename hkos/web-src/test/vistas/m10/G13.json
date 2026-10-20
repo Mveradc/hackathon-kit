@@ -108,7 +108,7 @@
        "cobertura": {
         "valor": "planificada",
         "fuente": "derivado",
-        "observado_en": "2026-09-18T17:00:00Z",
+        "observado_en": "2026-09-19T09:41:00Z",
         "viejo": false
        },
        "corregida_por": null,
@@ -664,7 +664,7 @@
        "cobertura": {
         "valor": "planificada",
         "fuente": "derivado",
-        "observado_en": "2026-09-18T17:00:00Z",
+        "observado_en": "2026-09-19T09:41:00Z",
         "viejo": false
        },
        "corregida_por": null,
@@ -1327,7 +1327,7 @@
        "cobertura": {
         "valor": "planificada",
         "fuente": "derivado",
-        "observado_en": "2026-09-18T17:00:00Z",
+        "observado_en": "2026-09-19T09:41:00Z",
         "viejo": false
        },
        "corregida_por": null,
@@ -1995,7 +1995,7 @@
        "cobertura": {
         "valor": "planificada",
         "fuente": "derivado",
-        "observado_en": "2026-09-18T17:00:00Z",
+        "observado_en": "2026-09-19T09:41:00Z",
         "viejo": false
        },
        "corregida_por": null,

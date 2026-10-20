@@ -1,0 +1,2915 @@
+{
+ "nombre": "casos-G14",
+ "casos": [
+  {
+   "servido_en": "2026-09-19T11:00:00Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-19T11:00:00Z"
+   },
+   "vista": {
+    "ruta": {
+     "observado_en": "2026-09-19T11:00:00Z",
+     "fuente": "derivado",
+     "viejo": false,
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "dato_mas_viejo": "2026-09-19T11:00:00Z",
+     "objetivo": {
+      "valor": "2026-09-20T10:00:00+02:00",
+      "texto": "2026-09-20 10:00 (Europe/Madrid)",
+      "confirmar": false,
+      "motivo": null,
+      "donde": "equipo.md",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "otras_entregas": [],
+     "veredicto": {
+      "valor": "a_tiempo",
+      "motivos": [],
+      "gravedad": "ninguna",
+      "fuente": "derivado",
+      "observado_en": "2026-09-19T11:00:00Z"
+     },
+     "estimacion": {
+      "temprano": "2026-09-19T13:09:36Z",
+      "tarde": "2026-09-19T17:23:30Z",
+      "margen_min": 876,
+      "margen_max": 1130
+     },
+     "base": {
+      "minimo": 3,
+      "desde": "2026-09-18T17:50:00Z",
+      "personas": [
+       {
+        "persona": "persona-a",
+        "n": 7,
+        "ritmo_min": 72,
+        "ritmo_max": 105,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       },
+       {
+        "persona": "persona-b",
+        "n": 6,
+        "ritmo_min": 54,
+        "ritmo_max": 91,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       },
+       {
+        "persona": "persona-c",
+        "n": 5,
+        "ritmo_min": 21,
+        "ritmo_max": 104,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       }
+      ]
+     },
+     "hechos": [],
+     "cadena": [
+      {
+       "tarjeta": {
+        "id": "T25",
+        "titulo": "`README.md` con la URL de la demo y el arranque local",
+        "dueno": "persona-c",
+        "estado": "en_curso",
+        "etiqueta": "en curso",
+        "fuente": "hook",
+        "observado_en": "2026-09-19T10:50:00Z",
+        "depende_de": [],
+        "bloquea_a": [],
+        "espera": [],
+        "bloque": "README",
+        "issue": 124,
+        "viejo": false
+       },
+       "por": "inicio",
+       "hasta": {
+        "valor": "2026-09-19T16:30:00+02:00",
+        "texto": "sáb 16:30",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T14:00:00+02:00",
+         "hasta": "2026-09-19T16:30:00+02:00",
+         "min": 150,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-19T11:00:00Z",
+       "fin_tarde": "2026-09-19T12:11:30Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T28",
+        "titulo": "Respuesta a «¿cómo sabéis que acierta?» para el turno de preguntas",
+        "dueno": "persona-c",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "depende_de": [],
+        "bloquea_a": [],
+        "espera": [],
+        "bloque": "Preguntas",
+        "issue": 127,
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T21:30:00+02:00",
+        "texto": "sáb 21:30",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T16:30:00+02:00",
+         "hasta": "2026-09-19T21:30:00+02:00",
+         "min": 300,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-19T12:03:00Z",
+       "fin_tarde": "2026-09-19T17:23:30Z"
+      }
+     ],
+     "riesgos": [],
+     "sin_plazo": [],
+     "sin_usuario": [
+      {
+       "tarea": "T26",
+       "dueno": "Persona D",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T27",
+       "dueno": "Persona D",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      }
+     ],
+     "fuera_de_entrega": [
+      {
+       "tarea": "T10",
+       "motivo": "condicional",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T18",
+       "motivo": "si_da_tiempo",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      }
+     ],
+     "hitos": [
+      {
+       "hito": {
+        "nombre": "Contratos acordados: ventana de 24 meses, ficha motor → web…",
+        "valor": "2026-09-18T20:00:00+02:00",
+        "texto": "H+1",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": true
+      },
+      {
+       "hito": {
+        "nombre": "Demo mínima de principio a fin: una empresa real con curva,…",
+        "valor": "2026-09-19T13:30:00+02:00",
+        "texto": "sáb 13:30",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": false
+      },
+      {
+       "hito": {
+        "nombre": "Congelación: después, solo arreglos y pitch",
+        "valor": "2026-09-19T22:00:00+02:00",
+        "texto": "sáb 22:00",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": false
+      }
+     ],
+     "descansos": [
+      {
+       "personas": [
+        "persona-c"
+       ],
+       "desde": "2026-09-19T00:30:00+02:00",
+       "hasta": "2026-09-19T06:30:00+02:00",
+       "texto": "| sáb 00:30–06:30 | Persona C |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-b"
+       ],
+       "desde": "2026-09-19T01:00:00+02:00",
+       "hasta": "2026-09-19T07:00:00+02:00",
+       "texto": "| sáb 01:00–07:00 | Persona B |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T02:30:00+02:00",
+       "hasta": "2026-09-19T08:00:00+02:00",
+       "texto": "| sáb 02:30–08:00 | Persona A |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-b",
+        "persona-c"
+       ],
+       "desde": "2026-09-19T23:00:00+02:00",
+       "hasta": "2026-09-20T07:30:00+02:00",
+       "texto": "| sáb 23:00–dom 07:30 | Persona B y Persona C |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T23:30:00+02:00",
+       "hasta": "2026-09-20T07:00:00+02:00",
+       "texto": "| sáb 23:30–dom 07:00 | Persona A |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      }
+     ],
+     "resumen": "ruta: estimación a tiempo · fin 15:09–19:23 · entrega dom 10:00 · sin contar T26, T27 (sin usuario)"
+    }
+   },
+   "antiguedades": {
+    "2026-09-18T17:00:00Z": 64800,
+    "2026-09-19T07:31:00Z": 12540,
+    "2026-09-19T10:50:00Z": 600,
+    "2026-09-19T11:00:00Z": 0
+   },
+   "horas": {
+    "ruta": {
+     "2026-09-18T17:00:00Z": {
+      "hm": "19:00",
+      "dia": "vie 19:00",
+      "fecha": "vie 18 · 19:00"
+     },
+     "2026-09-18T17:50:00Z": {
+      "hm": "19:50",
+      "dia": "vie 19:50",
+      "fecha": "vie 18 · 19:50"
+     },
+     "2026-09-18T20:00:00+02:00": {
+      "hm": "20:00",
+      "dia": "vie 20:00",
+      "fecha": "vie 18 · 20:00"
+     },
+     "2026-09-19T00:30:00+02:00": {
+      "hm": "00:30",
+      "dia": "sáb 00:30",
+      "fecha": "sáb 19 · 00:30"
+     },
+     "2026-09-19T01:00:00+02:00": {
+      "hm": "01:00",
+      "dia": "sáb 01:00",
+      "fecha": "sáb 19 · 01:00"
+     },
+     "2026-09-19T02:30:00+02:00": {
+      "hm": "02:30",
+      "dia": "sáb 02:30",
+      "fecha": "sáb 19 · 02:30"
+     },
+     "2026-09-19T06:30:00+02:00": {
+      "hm": "06:30",
+      "dia": "sáb 06:30",
+      "fecha": "sáb 19 · 06:30"
+     },
+     "2026-09-19T07:00:00+02:00": {
+      "hm": "07:00",
+      "dia": "sáb 07:00",
+      "fecha": "sáb 19 · 07:00"
+     },
+     "2026-09-19T07:31:00Z": {
+      "hm": "09:31",
+      "dia": "sáb 09:31",
+      "fecha": "sáb 19 · 09:31"
+     },
+     "2026-09-19T08:00:00+02:00": {
+      "hm": "08:00",
+      "dia": "sáb 08:00",
+      "fecha": "sáb 19 · 08:00"
+     },
+     "2026-09-19T10:50:00Z": {
+      "hm": "12:50",
+      "dia": "sáb 12:50",
+      "fecha": "sáb 19 · 12:50"
+     },
+     "2026-09-19T11:00:00Z": {
+      "hm": "13:00",
+      "dia": "sáb 13:00",
+      "fecha": "sáb 19 · 13:00"
+     },
+     "2026-09-19T12:03:00Z": {
+      "hm": "14:03",
+      "dia": "sáb 14:03",
+      "fecha": "sáb 19 · 14:03"
+     },
+     "2026-09-19T12:11:30Z": {
+      "hm": "14:11",
+      "dia": "sáb 14:11",
+      "fecha": "sáb 19 · 14:11"
+     },
+     "2026-09-19T13:09:36Z": {
+      "hm": "15:09",
+      "dia": "sáb 15:09",
+      "fecha": "sáb 19 · 15:09"
+     },
+     "2026-09-19T13:30:00+02:00": {
+      "hm": "13:30",
+      "dia": "sáb 13:30",
+      "fecha": "sáb 19 · 13:30"
+     },
+     "2026-09-19T14:00:00+02:00": {
+      "hm": "14:00",
+      "dia": "sáb 14:00",
+      "fecha": "sáb 19 · 14:00"
+     },
+     "2026-09-19T16:30:00+02:00": {
+      "hm": "16:30",
+      "dia": "sáb 16:30",
+      "fecha": "sáb 19 · 16:30"
+     },
+     "2026-09-19T17:23:30Z": {
+      "hm": "19:23",
+      "dia": "sáb 19:23",
+      "fecha": "sáb 19 · 19:23"
+     },
+     "2026-09-19T21:30:00+02:00": {
+      "hm": "21:30",
+      "dia": "sáb 21:30",
+      "fecha": "sáb 19 · 21:30"
+     },
+     "2026-09-19T22:00:00+02:00": {
+      "hm": "22:00",
+      "dia": "sáb 22:00",
+      "fecha": "sáb 19 · 22:00"
+     },
+     "2026-09-19T23:00:00+02:00": {
+      "hm": "23:00",
+      "dia": "sáb 23:00",
+      "fecha": "sáb 19 · 23:00"
+     },
+     "2026-09-19T23:30:00+02:00": {
+      "hm": "23:30",
+      "dia": "sáb 23:30",
+      "fecha": "sáb 19 · 23:30"
+     },
+     "2026-09-20T07:00:00+02:00": {
+      "hm": "07:00",
+      "dia": "dom 07:00",
+      "fecha": "dom 20 · 07:00"
+     },
+     "2026-09-20T07:30:00+02:00": {
+      "hm": "07:30",
+      "dia": "dom 07:30",
+      "fecha": "dom 20 · 07:30"
+     },
+     "2026-09-20T10:00:00+02:00": {
+      "hm": "10:00",
+      "dia": "dom 10:00",
+      "fecha": "dom 20 · 10:00"
+     }
+    }
+   },
+   "momento": "persona_sin_usuario"
+  },
+  {
+   "servido_en": "2026-09-19T11:00:00Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-19T11:00:00Z"
+   },
+   "vista": {
+    "ruta": {
+     "observado_en": "2026-09-19T11:00:00Z",
+     "fuente": "derivado",
+     "viejo": false,
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "dato_mas_viejo": "2026-09-19T11:00:00Z",
+     "objetivo": {
+      "valor": "2026-09-20T10:00:00+02:00",
+      "texto": "2026-09-20 10:00 (Europe/Madrid)",
+      "confirmar": false,
+      "motivo": null,
+      "donde": "equipo.md",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "otras_entregas": [
+      {
+       "nombre": "Entrega final (pitch: hora por confirmar)",
+       "valor": "2026-09-20T09:30:00+02:00",
+       "texto": "dom 20 sep 09:30",
+       "motivo": null,
+       "donde": "plan.md",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      }
+     ],
+     "veredicto": {
+      "valor": "sin_estimacion",
+      "motivos": [
+       "sin_usuario"
+      ],
+      "gravedad": "gris",
+      "fuente": "derivado",
+      "observado_en": "2026-09-19T11:00:00Z"
+     },
+     "estimacion": null,
+     "base": {
+      "minimo": 3,
+      "desde": null,
+      "personas": []
+     },
+     "hechos": [],
+     "cadena": [
+      {
+       "tarjeta": {
+        "id": "T25",
+        "titulo": "`README.md` con la URL de la demo y el arranque local",
+        "dueno": "Persona Z",
+        "estado": "reclamada",
+        "etiqueta": "reclamada",
+        "fuente": "mcp",
+        "observado_en": "2026-09-19T09:35:00Z",
+        "depende_de": [],
+        "bloquea_a": [],
+        "espera": [],
+        "bloque": "README",
+        "issue": 124,
+        "estado_declarado": true,
+        "viejo": false
+       },
+       "por": "inicio",
+       "hasta": {
+        "valor": "2026-09-19T16:30:00+02:00",
+        "texto": "sáb 16:30",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T14:00:00+02:00",
+         "hasta": "2026-09-19T16:30:00+02:00",
+         "min": 150,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": null,
+       "fin_tarde": null
+      },
+      {
+       "tarjeta": {
+        "id": "T26",
+        "titulo": "Diapositivas en `pitch/` con capturas de las dos fichas",
+        "dueno": "Persona Z",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "depende_de": [],
+        "bloquea_a": [],
+        "espera": [],
+        "bloque": "Pitch",
+        "issue": 125,
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T18:30:00+02:00",
+        "texto": "sáb 18:30",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T16:30:00+02:00",
+         "hasta": "2026-09-19T18:30:00+02:00",
+         "min": 120,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": null,
+       "fin_tarde": null
+      },
+      {
+       "tarjeta": {
+        "id": "T27",
+        "titulo": "Elegir una empresa que mejora y otra que cae en `pitch/guion.md`",
+        "dueno": "Persona Z",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:40:00Z",
+        "depende_de": [
+         "T06"
+        ],
+        "bloquea_a": [],
+        "espera": [],
+        "bloque": "Casos demo",
+        "issue": 126,
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T21:00:00+02:00",
+        "texto": "sáb 21:00",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T18:30:00+02:00",
+         "hasta": "2026-09-19T21:00:00+02:00",
+         "min": 150,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": null,
+       "fin_tarde": null
+      }
+     ],
+     "riesgos": [],
+     "sin_plazo": [],
+     "sin_usuario": [
+      {
+       "tarea": "T08",
+       "dueno": "Persona X",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T09",
+       "dueno": "Persona X",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T17",
+       "dueno": "Persona Y",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T19",
+       "dueno": "Persona Y",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T25",
+       "dueno": "Persona Z",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T26",
+       "dueno": "Persona Z",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T27",
+       "dueno": "Persona Z",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T28",
+       "dueno": "Persona Z",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      }
+     ],
+     "fuera_de_entrega": [
+      {
+       "tarea": "T10",
+       "motivo": "condicional",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T18",
+       "motivo": "si_da_tiempo",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      }
+     ],
+     "hitos": [
+      {
+       "hito": {
+        "nombre": "Contratos acordados: ventana de 24 meses, ficha motor → web…",
+        "valor": "2026-09-18T20:00:00+02:00",
+        "texto": "H+1",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": true
+      },
+      {
+       "hito": {
+        "nombre": "Demo mínima de principio a fin: una empresa real con curva,…",
+        "valor": "2026-09-19T13:30:00+02:00",
+        "texto": "sáb 13:30",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": false
+      },
+      {
+       "hito": {
+        "nombre": "Congelación: después, solo arreglos y pitch",
+        "valor": "2026-09-19T22:00:00+02:00",
+        "texto": "sáb 22:00",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": false
+      }
+     ],
+     "descansos": [
+      {
+       "personas": [
+        "persona-c"
+       ],
+       "desde": "2026-09-19T00:30:00+02:00",
+       "hasta": "2026-09-19T06:30:00+02:00",
+       "texto": "| sáb 00:30–06:30 | Persona C |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-b"
+       ],
+       "desde": "2026-09-19T01:00:00+02:00",
+       "hasta": "2026-09-19T07:00:00+02:00",
+       "texto": "| sáb 01:00–07:00 | Persona B |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T02:30:00+02:00",
+       "hasta": "2026-09-19T08:00:00+02:00",
+       "texto": "| sáb 02:30–08:00 | Persona A |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-b",
+        "persona-c"
+       ],
+       "desde": "2026-09-19T23:00:00+02:00",
+       "hasta": "2026-09-20T07:30:00+02:00",
+       "texto": "| sáb 23:00–dom 07:30 | Persona B y Persona C |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T23:30:00+02:00",
+       "hasta": "2026-09-20T07:00:00+02:00",
+       "texto": "| sáb 23:30–dom 07:00 | Persona A |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      }
+     ],
+     "resumen": "ruta: sin estimación · sin usuario: 8 tareas · otra entrega: dom 09:30 (plan.md)"
+    }
+   },
+   "antiguedades": {
+    "2026-09-18T17:00:00Z": 64800,
+    "2026-09-19T07:31:00Z": 12540,
+    "2026-09-19T07:40:00Z": 12000,
+    "2026-09-19T09:35:00Z": 5100,
+    "2026-09-19T11:00:00Z": 0
+   },
+   "horas": {
+    "ruta": {
+     "2026-09-18T17:00:00Z": {
+      "hm": "19:00",
+      "dia": "vie 19:00",
+      "fecha": "vie 18 · 19:00"
+     },
+     "2026-09-18T20:00:00+02:00": {
+      "hm": "20:00",
+      "dia": "vie 20:00",
+      "fecha": "vie 18 · 20:00"
+     },
+     "2026-09-19T00:30:00+02:00": {
+      "hm": "00:30",
+      "dia": "sáb 00:30",
+      "fecha": "sáb 19 · 00:30"
+     },
+     "2026-09-19T01:00:00+02:00": {
+      "hm": "01:00",
+      "dia": "sáb 01:00",
+      "fecha": "sáb 19 · 01:00"
+     },
+     "2026-09-19T02:30:00+02:00": {
+      "hm": "02:30",
+      "dia": "sáb 02:30",
+      "fecha": "sáb 19 · 02:30"
+     },
+     "2026-09-19T06:30:00+02:00": {
+      "hm": "06:30",
+      "dia": "sáb 06:30",
+      "fecha": "sáb 19 · 06:30"
+     },
+     "2026-09-19T07:00:00+02:00": {
+      "hm": "07:00",
+      "dia": "sáb 07:00",
+      "fecha": "sáb 19 · 07:00"
+     },
+     "2026-09-19T07:31:00Z": {
+      "hm": "09:31",
+      "dia": "sáb 09:31",
+      "fecha": "sáb 19 · 09:31"
+     },
+     "2026-09-19T07:40:00Z": {
+      "hm": "09:40",
+      "dia": "sáb 09:40",
+      "fecha": "sáb 19 · 09:40"
+     },
+     "2026-09-19T08:00:00+02:00": {
+      "hm": "08:00",
+      "dia": "sáb 08:00",
+      "fecha": "sáb 19 · 08:00"
+     },
+     "2026-09-19T09:35:00Z": {
+      "hm": "11:35",
+      "dia": "sáb 11:35",
+      "fecha": "sáb 19 · 11:35"
+     },
+     "2026-09-19T11:00:00Z": {
+      "hm": "13:00",
+      "dia": "sáb 13:00",
+      "fecha": "sáb 19 · 13:00"
+     },
+     "2026-09-19T13:30:00+02:00": {
+      "hm": "13:30",
+      "dia": "sáb 13:30",
+      "fecha": "sáb 19 · 13:30"
+     },
+     "2026-09-19T14:00:00+02:00": {
+      "hm": "14:00",
+      "dia": "sáb 14:00",
+      "fecha": "sáb 19 · 14:00"
+     },
+     "2026-09-19T16:30:00+02:00": {
+      "hm": "16:30",
+      "dia": "sáb 16:30",
+      "fecha": "sáb 19 · 16:30"
+     },
+     "2026-09-19T18:30:00+02:00": {
+      "hm": "18:30",
+      "dia": "sáb 18:30",
+      "fecha": "sáb 19 · 18:30"
+     },
+     "2026-09-19T21:00:00+02:00": {
+      "hm": "21:00",
+      "dia": "sáb 21:00",
+      "fecha": "sáb 19 · 21:00"
+     },
+     "2026-09-19T22:00:00+02:00": {
+      "hm": "22:00",
+      "dia": "sáb 22:00",
+      "fecha": "sáb 19 · 22:00"
+     },
+     "2026-09-19T23:00:00+02:00": {
+      "hm": "23:00",
+      "dia": "sáb 23:00",
+      "fecha": "sáb 19 · 23:00"
+     },
+     "2026-09-19T23:30:00+02:00": {
+      "hm": "23:30",
+      "dia": "sáb 23:30",
+      "fecha": "sáb 19 · 23:30"
+     },
+     "2026-09-20T07:00:00+02:00": {
+      "hm": "07:00",
+      "dia": "dom 07:00",
+      "fecha": "dom 20 · 07:00"
+     },
+     "2026-09-20T07:30:00+02:00": {
+      "hm": "07:30",
+      "dia": "dom 07:30",
+      "fecha": "dom 20 · 07:30"
+     },
+     "2026-09-20T09:30:00+02:00": {
+      "hm": "09:30",
+      "dia": "dom 09:30",
+      "fecha": "dom 20 · 09:30"
+     },
+     "2026-09-20T10:00:00+02:00": {
+      "hm": "10:00",
+      "dia": "dom 10:00",
+      "fecha": "dom 20 · 10:00"
+     }
+    }
+   },
+   "momento": "todas_sin_usuario"
+  },
+  {
+   "servido_en": "2026-09-19T11:00:00Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-19T11:00:00Z"
+   },
+   "vista": {
+    "ruta": {
+     "observado_en": "2026-09-19T11:00:00Z",
+     "fuente": "derivado",
+     "viejo": false,
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "dato_mas_viejo": "2026-09-19T11:00:00Z",
+     "objetivo": {
+      "valor": "2026-09-20T10:00:00+02:00",
+      "texto": "2026-09-20 10:00 (Europe/Madrid)",
+      "confirmar": false,
+      "motivo": null,
+      "donde": "equipo.md",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "otras_entregas": [
+      {
+       "nombre": "Entrega final (pitch: hora por confirmar)",
+       "valor": "2026-09-20T09:30:00+02:00",
+       "texto": "dom 20 sep 09:30",
+       "motivo": null,
+       "donde": "plan.md",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      }
+     ],
+     "veredicto": {
+      "valor": "a_tiempo",
+      "motivos": [],
+      "gravedad": "ninguna",
+      "fuente": "derivado",
+      "observado_en": "2026-09-19T11:00:00Z"
+     },
+     "estimacion": {
+      "temprano": "2026-09-19T14:06:18Z",
+      "tarde": "2026-09-19T19:22:48Z",
+      "margen_min": 757,
+      "margen_max": 1073
+     },
+     "base": {
+      "minimo": 3,
+      "desde": "2026-09-18T17:50:00Z",
+      "personas": [
+       {
+        "persona": "persona-a",
+        "n": 7,
+        "ritmo_min": 72,
+        "ritmo_max": 105,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       },
+       {
+        "persona": "persona-b",
+        "n": 6,
+        "ritmo_min": 54,
+        "ritmo_max": 91,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       },
+       {
+        "persona": "persona-c",
+        "n": 5,
+        "ritmo_min": 21,
+        "ritmo_max": 104,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       }
+      ]
+     },
+     "hechos": [],
+     "cadena": [
+      {
+       "tarjeta": {
+        "id": "T08",
+        "titulo": "2–3 reglas sobre los datos de la empresa que citan su cifra",
+        "dueno": "persona-a",
+        "estado": "en_curso",
+        "etiqueta": "en curso",
+        "fuente": "hook",
+        "observado_en": "2026-09-19T10:55:00Z",
+        "depende_de": [],
+        "bloquea_a": [
+         "T19"
+        ],
+        "espera": [],
+        "bloque": "Acciones",
+        "issue": 107,
+        "viejo": false
+       },
+       "por": "inicio",
+       "hasta": {
+        "valor": "2026-09-19T13:30:00+02:00",
+        "texto": "sáb 13:30",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T11:00:00+02:00",
+         "hasta": "2026-09-19T13:30:00+02:00",
+         "min": 150,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-19T11:00:00Z",
+       "fin_tarde": "2026-09-19T11:33:00Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T09",
+        "titulo": "Publicar motor y web en una URL pública (plataforma por elegir)",
+        "dueno": "persona-a",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:50:00Z",
+        "depende_de": [
+         "T16"
+        ],
+        "bloquea_a": [
+         "T26"
+        ],
+        "espera": [],
+        "bloque": "Despliegue",
+        "issue": 108,
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T16:30:00+02:00",
+        "texto": "sáb 16:30",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T13:30:00+02:00",
+         "hasta": "2026-09-19T16:30:00+02:00",
+         "min": 180,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-19T13:09:36Z",
+       "fin_tarde": "2026-09-19T14:42:00Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T27",
+        "titulo": "Elegir una empresa que mejora y otra que cae en `pitch/guion.md`",
+        "dueno": "persona-c",
+        "estado": "pendiente",
+        "etiqueta": "pendiente",
+        "fuente": "github",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "depende_de": [
+         "T06",
+         "T26"
+        ],
+        "bloquea_a": [],
+        "espera": [
+         {
+          "id": "T26",
+          "dueno": "Persona D",
+          "estado": "pendiente"
+         }
+        ],
+        "bloque": "Casos demo",
+        "issue": 126,
+        "viejo": false
+       },
+       "por": "depende_de",
+       "hasta": {
+        "valor": "2026-09-19T21:00:00+02:00",
+        "texto": "sáb 21:00",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T16:30:00+02:00",
+         "hasta": "2026-09-19T21:00:00+02:00",
+         "min": 270,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-19T14:06:18Z",
+       "fin_tarde": "2026-09-19T19:22:48Z"
+      }
+     ],
+     "riesgos": [],
+     "sin_plazo": [
+      {
+       "tarea": "T28",
+       "motivo": "por_confirmar",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      }
+     ],
+     "sin_usuario": [
+      {
+       "tarea": "T26",
+       "dueno": "Persona D",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      }
+     ],
+     "fuera_de_entrega": [
+      {
+       "tarea": "T10",
+       "motivo": "condicional",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T18",
+       "motivo": "si_da_tiempo",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      }
+     ],
+     "hitos": [
+      {
+       "hito": {
+        "nombre": "Contratos acordados: ventana de 24 meses, ficha motor → web…",
+        "valor": "2026-09-18T20:00:00+02:00",
+        "texto": "H+1",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": true
+      },
+      {
+       "hito": {
+        "nombre": "Demo mínima de principio a fin: una empresa real con curva,…",
+        "valor": "2026-09-19T13:30:00+02:00",
+        "texto": "sáb 13:30",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": false
+      },
+      {
+       "hito": {
+        "nombre": "Congelación: después, solo arreglos y pitch",
+        "valor": "2026-09-19T22:00:00+02:00",
+        "texto": "sáb 22:00",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": false
+      }
+     ],
+     "descansos": [
+      {
+       "personas": [
+        "persona-c"
+       ],
+       "desde": "2026-09-19T00:30:00+02:00",
+       "hasta": "2026-09-19T06:30:00+02:00",
+       "texto": "| sáb 00:30–06:30 | Persona C |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-b"
+       ],
+       "desde": "2026-09-19T01:00:00+02:00",
+       "hasta": "2026-09-19T07:00:00+02:00",
+       "texto": "| sáb 01:00–07:00 | Persona B |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T02:30:00+02:00",
+       "hasta": "2026-09-19T08:00:00+02:00",
+       "texto": "| sáb 02:30–08:00 | Persona A |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-b",
+        "persona-c"
+       ],
+       "desde": "2026-09-19T23:00:00+02:00",
+       "hasta": "2026-09-20T07:30:00+02:00",
+       "texto": "| sáb 23:00–dom 07:30 | Persona B y Persona C |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T23:30:00+02:00",
+       "hasta": "2026-09-20T07:00:00+02:00",
+       "texto": "| sáb 23:30–dom 07:00 | Persona A |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      }
+     ],
+     "resumen": "ruta: estimación a tiempo · fin 16:06–21:22 · entrega dom 10:00 · sin contar T28 (sin plazo) · y más en la vista"
+    }
+   },
+   "antiguedades": {
+    "2026-09-18T17:00:00Z": 64800,
+    "2026-09-19T07:31:00Z": 12540,
+    "2026-09-19T07:50:00Z": 11400,
+    "2026-09-19T10:55:00Z": 300,
+    "2026-09-19T11:00:00Z": 0
+   },
+   "horas": {
+    "ruta": {
+     "2026-09-18T17:00:00Z": {
+      "hm": "19:00",
+      "dia": "vie 19:00",
+      "fecha": "vie 18 · 19:00"
+     },
+     "2026-09-18T17:50:00Z": {
+      "hm": "19:50",
+      "dia": "vie 19:50",
+      "fecha": "vie 18 · 19:50"
+     },
+     "2026-09-18T20:00:00+02:00": {
+      "hm": "20:00",
+      "dia": "vie 20:00",
+      "fecha": "vie 18 · 20:00"
+     },
+     "2026-09-19T00:30:00+02:00": {
+      "hm": "00:30",
+      "dia": "sáb 00:30",
+      "fecha": "sáb 19 · 00:30"
+     },
+     "2026-09-19T01:00:00+02:00": {
+      "hm": "01:00",
+      "dia": "sáb 01:00",
+      "fecha": "sáb 19 · 01:00"
+     },
+     "2026-09-19T02:30:00+02:00": {
+      "hm": "02:30",
+      "dia": "sáb 02:30",
+      "fecha": "sáb 19 · 02:30"
+     },
+     "2026-09-19T06:30:00+02:00": {
+      "hm": "06:30",
+      "dia": "sáb 06:30",
+      "fecha": "sáb 19 · 06:30"
+     },
+     "2026-09-19T07:00:00+02:00": {
+      "hm": "07:00",
+      "dia": "sáb 07:00",
+      "fecha": "sáb 19 · 07:00"
+     },
+     "2026-09-19T07:31:00Z": {
+      "hm": "09:31",
+      "dia": "sáb 09:31",
+      "fecha": "sáb 19 · 09:31"
+     },
+     "2026-09-19T07:50:00Z": {
+      "hm": "09:50",
+      "dia": "sáb 09:50",
+      "fecha": "sáb 19 · 09:50"
+     },
+     "2026-09-19T08:00:00+02:00": {
+      "hm": "08:00",
+      "dia": "sáb 08:00",
+      "fecha": "sáb 19 · 08:00"
+     },
+     "2026-09-19T10:55:00Z": {
+      "hm": "12:55",
+      "dia": "sáb 12:55",
+      "fecha": "sáb 19 · 12:55"
+     },
+     "2026-09-19T11:00:00+02:00": {
+      "hm": "11:00",
+      "dia": "sáb 11:00",
+      "fecha": "sáb 19 · 11:00"
+     },
+     "2026-09-19T11:00:00Z": {
+      "hm": "13:00",
+      "dia": "sáb 13:00",
+      "fecha": "sáb 19 · 13:00"
+     },
+     "2026-09-19T11:33:00Z": {
+      "hm": "13:33",
+      "dia": "sáb 13:33",
+      "fecha": "sáb 19 · 13:33"
+     },
+     "2026-09-19T13:09:36Z": {
+      "hm": "15:09",
+      "dia": "sáb 15:09",
+      "fecha": "sáb 19 · 15:09"
+     },
+     "2026-09-19T13:30:00+02:00": {
+      "hm": "13:30",
+      "dia": "sáb 13:30",
+      "fecha": "sáb 19 · 13:30"
+     },
+     "2026-09-19T14:06:18Z": {
+      "hm": "16:06",
+      "dia": "sáb 16:06",
+      "fecha": "sáb 19 · 16:06"
+     },
+     "2026-09-19T14:42:00Z": {
+      "hm": "16:42",
+      "dia": "sáb 16:42",
+      "fecha": "sáb 19 · 16:42"
+     },
+     "2026-09-19T16:30:00+02:00": {
+      "hm": "16:30",
+      "dia": "sáb 16:30",
+      "fecha": "sáb 19 · 16:30"
+     },
+     "2026-09-19T19:22:48Z": {
+      "hm": "21:22",
+      "dia": "sáb 21:22",
+      "fecha": "sáb 19 · 21:22"
+     },
+     "2026-09-19T21:00:00+02:00": {
+      "hm": "21:00",
+      "dia": "sáb 21:00",
+      "fecha": "sáb 19 · 21:00"
+     },
+     "2026-09-19T22:00:00+02:00": {
+      "hm": "22:00",
+      "dia": "sáb 22:00",
+      "fecha": "sáb 19 · 22:00"
+     },
+     "2026-09-19T23:00:00+02:00": {
+      "hm": "23:00",
+      "dia": "sáb 23:00",
+      "fecha": "sáb 19 · 23:00"
+     },
+     "2026-09-19T23:30:00+02:00": {
+      "hm": "23:30",
+      "dia": "sáb 23:30",
+      "fecha": "sáb 19 · 23:30"
+     },
+     "2026-09-20T07:00:00+02:00": {
+      "hm": "07:00",
+      "dia": "dom 07:00",
+      "fecha": "dom 20 · 07:00"
+     },
+     "2026-09-20T07:30:00+02:00": {
+      "hm": "07:30",
+      "dia": "dom 07:30",
+      "fecha": "dom 20 · 07:30"
+     },
+     "2026-09-20T09:30:00+02:00": {
+      "hm": "09:30",
+      "dia": "dom 09:30",
+      "fecha": "dom 20 · 09:30"
+     },
+     "2026-09-20T10:00:00+02:00": {
+      "hm": "10:00",
+      "dia": "dom 10:00",
+      "fecha": "dom 20 · 10:00"
+     }
+    }
+   },
+   "momento": "sin_usuario_en_la_cadena"
+  },
+  {
+   "servido_en": "2026-09-19T11:00:00Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-19T11:00:00Z"
+   },
+   "vista": {
+    "ruta": {
+     "observado_en": "2026-09-19T11:00:00Z",
+     "fuente": "derivado",
+     "viejo": false,
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "dato_mas_viejo": "2026-09-19T11:00:00Z",
+     "objetivo": {
+      "valor": "2026-09-20T10:00:00+02:00",
+      "texto": "2026-09-20 10:00 (Europe/Madrid)",
+      "confirmar": false,
+      "motivo": null,
+      "donde": "equipo.md",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "otras_entregas": [
+      {
+       "nombre": "Entrega final (pitch: hora por confirmar)",
+       "valor": "2026-09-20T09:30:00+02:00",
+       "texto": "dom 20 sep 09:30",
+       "motivo": null,
+       "donde": "plan.md",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      }
+     ],
+     "veredicto": {
+      "valor": "no_llega",
+      "motivos": [],
+      "gravedad": "ambar",
+      "fuente": "derivado",
+      "observado_en": "2026-09-19T11:00:00Z"
+     },
+     "estimacion": {
+      "temprano": "2026-09-21T07:32:42Z",
+      "tarde": "2026-09-21T07:32:42Z",
+      "margen_min": -1413,
+      "margen_max": -1413
+     },
+     "base": {
+      "minimo": 3,
+      "desde": "2026-09-18T18:40:00Z",
+      "personas": [
+       {
+        "persona": "persona-a",
+        "n": 3,
+        "ritmo_min": 299,
+        "ritmo_max": 299,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       },
+       {
+        "persona": "persona-b",
+        "n": 6,
+        "ritmo_min": 54,
+        "ritmo_max": 91,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       },
+       {
+        "persona": "persona-c",
+        "n": 4,
+        "ritmo_min": 52,
+        "ritmo_max": 104,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       }
+      ]
+     },
+     "hechos": [
+      {
+       "tarea": "T04",
+       "persona": "persona-a",
+       "plazo": "2026-09-18T23:00:00+02:00",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T11:00:00Z",
+       "viejo": false,
+       "tipo": "plazo_pasado",
+       "gravedad": "rojo",
+       "arrastra": [
+        "T05",
+        "T07",
+        "T08",
+        "T09",
+        "T19"
+       ]
+      },
+      {
+       "tarea": "T05",
+       "persona": "persona-a",
+       "plazo": "2026-09-19T03:00:00+02:00",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T11:00:00Z",
+       "viejo": false,
+       "tipo": "plazo_pasado",
+       "gravedad": "rojo",
+       "arrastra": [
+        "T07",
+        "T08",
+        "T09",
+        "T19"
+       ]
+      },
+      {
+       "tarea": "T06",
+       "persona": "Persona D",
+       "plazo": "2026-09-19T11:00:00+02:00",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T11:00:00Z",
+       "viejo": false,
+       "tipo": "plazo_pasado",
+       "gravedad": "rojo",
+       "arrastra": [
+        "T19",
+        "T27",
+        "T28"
+       ]
+      },
+      {
+       "tarea": "T07",
+       "persona": "persona-a",
+       "plazo": "2026-09-19T11:00:00+02:00",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T11:00:00Z",
+       "viejo": false,
+       "tipo": "plazo_pasado",
+       "gravedad": "rojo",
+       "arrastra": [
+        "T08",
+        "T09",
+        "T19"
+       ]
+      },
+      {
+       "tipo": "sin_senales",
+       "gravedad": "gris",
+       "persona": "persona-c",
+       "desde": "2026-09-19T08:30:00Z",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T11:00:00Z",
+       "viejo": false
+      }
+     ],
+     "cadena": [
+      {
+       "tarjeta": {
+        "id": "T04",
+        "titulo": "Copiar las columnas reales de `data_dictionary.md` a `docs/contratos.md`",
+        "dueno": "persona-a",
+        "estado": "en_curso",
+        "etiqueta": "en curso",
+        "fuente": "hook",
+        "observado_en": "2026-09-19T10:55:00Z",
+        "depende_de": [],
+        "bloquea_a": [
+         "T05"
+        ],
+        "espera": [],
+        "bloque": "Datos",
+        "issue": 103,
+        "viejo": false
+       },
+       "por": "inicio",
+       "hasta": {
+        "valor": "2026-09-18T23:00:00+02:00",
+        "texto": "H+4",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-18T21:00:00+02:00",
+         "hasta": "2026-09-18T23:00:00+02:00",
+         "min": 60,
+         "compartida": 2
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-19T12:09:54Z",
+       "fin_tarde": "2026-09-19T12:09:54Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T05",
+        "titulo": "Calcular caja, cobros y deuda mensuales por `company_id`, sin mezclar monedas",
+        "dueno": "persona-a",
+        "estado": "pendiente",
+        "etiqueta": "pendiente",
+        "fuente": "github",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "depende_de": [
+         "T03",
+         "T04"
+        ],
+        "bloquea_a": [],
+        "espera": [
+         {
+          "id": "T04",
+          "dueno": "persona-a",
+          "estado": "en_curso"
+         }
+        ],
+        "bloque": "Features",
+        "issue": 104,
+        "viejo": false
+       },
+       "por": "depende_de",
+       "hasta": {
+        "valor": "2026-09-19T03:00:00+02:00",
+        "texto": "H+8",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-18T23:00:00+02:00",
+         "hasta": "2026-09-19T03:00:00+02:00",
+         "min": 240,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-20T06:07:48Z",
+       "fin_tarde": "2026-09-20T06:07:48Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T07",
+        "titulo": "Desglose caja/cobros/deuda en puntos de score",
+        "dueno": "persona-a",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "depende_de": [],
+        "bloquea_a": [
+         "T19"
+        ],
+        "espera": [],
+        "bloque": "Score",
+        "issue": 106,
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T11:00:00+02:00",
+        "texto": "H+16",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T03:00:00+02:00",
+         "hasta": "2026-09-19T11:00:00+02:00",
+         "min": 480,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-20T15:06:00Z",
+       "fin_tarde": "2026-09-20T15:06:00Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T08",
+        "titulo": "2–3 reglas sobre los datos de la empresa que citan su cifra",
+        "dueno": "persona-a",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "depende_de": [],
+        "bloquea_a": [
+         "T19"
+        ],
+        "espera": [],
+        "bloque": "Acciones",
+        "issue": 107,
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T13:30:00+02:00",
+        "texto": "sáb 13:30",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T11:00:00+02:00",
+         "hasta": "2026-09-19T13:30:00+02:00",
+         "min": 150,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-20T22:34:30Z",
+       "fin_tarde": "2026-09-20T22:34:30Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T09",
+        "titulo": "Publicar motor y web en una URL pública (plataforma por elegir)",
+        "dueno": "persona-a",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:50:00Z",
+        "depende_de": [
+         "T16"
+        ],
+        "bloquea_a": [],
+        "espera": [],
+        "bloque": "Despliegue",
+        "issue": 108,
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T16:30:00+02:00",
+        "texto": "sáb 16:30",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T13:30:00+02:00",
+         "hasta": "2026-09-19T16:30:00+02:00",
+         "min": 180,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-21T07:32:42Z",
+       "fin_tarde": "2026-09-21T07:32:42Z"
+      }
+     ],
+     "riesgos": [
+      {
+       "tarea": "T09",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-21T07:32:42Z",
+       "dueno": "persona-a",
+       "en_cadena": true,
+       "viejo": false
+      },
+      {
+       "tarea": "T19",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-21T01:18:18Z",
+       "dueno": "persona-b",
+       "en_cadena": false,
+       "viejo": false
+      },
+      {
+       "tarea": "T08",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-20T22:34:30Z",
+       "dueno": "persona-a",
+       "en_cadena": true,
+       "viejo": false
+      },
+      {
+       "tarea": "T07",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-20T15:06:00Z",
+       "dueno": "persona-a",
+       "en_cadena": true,
+       "viejo": false
+      }
+     ],
+     "sin_plazo": [
+      {
+       "tarea": "T28",
+       "motivo": "por_confirmar",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      }
+     ],
+     "sin_usuario": [
+      {
+       "tarea": "T06",
+       "dueno": "Persona D",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      }
+     ],
+     "fuera_de_entrega": [
+      {
+       "tarea": "T10",
+       "motivo": "condicional",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T18",
+       "motivo": "si_da_tiempo",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      }
+     ],
+     "hitos": [
+      {
+       "hito": {
+        "nombre": "Contratos acordados: ventana de 24 meses, ficha motor → web…",
+        "valor": "2026-09-18T20:00:00+02:00",
+        "texto": "H+1",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": true
+      },
+      {
+       "hito": {
+        "nombre": "Demo mínima de principio a fin: una empresa real con curva,…",
+        "valor": "2026-09-19T13:30:00+02:00",
+        "texto": "sáb 13:30",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": false
+      },
+      {
+       "hito": {
+        "nombre": "Congelación: después, solo arreglos y pitch",
+        "valor": "2026-09-19T22:00:00+02:00",
+        "texto": "sáb 22:00",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": false
+      }
+     ],
+     "descansos": [
+      {
+       "personas": [
+        "persona-c"
+       ],
+       "desde": "2026-09-19T00:30:00+02:00",
+       "hasta": "2026-09-19T06:30:00+02:00",
+       "texto": "| sáb 00:30–06:30 | Persona C |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-b"
+       ],
+       "desde": "2026-09-19T01:00:00+02:00",
+       "hasta": "2026-09-19T07:00:00+02:00",
+       "texto": "| sáb 01:00–07:00 | Persona B |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T02:30:00+02:00",
+       "hasta": "2026-09-19T08:00:00+02:00",
+       "texto": "| sáb 02:30–08:00 | Persona A |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-b",
+        "persona-c"
+       ],
+       "desde": "2026-09-19T23:00:00+02:00",
+       "hasta": "2026-09-20T07:30:00+02:00",
+       "texto": "| sáb 23:00–dom 07:30 | Persona B y Persona C |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T23:30:00+02:00",
+       "hasta": "2026-09-20T07:00:00+02:00",
+       "texto": "| sáb 23:30–dom 07:00 | Persona A |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      }
+     ],
+     "resumen": "ruta: estimación no llega · T04: plazo pasado 23:00 y 3 más · y más en la vista"
+    }
+   },
+   "antiguedades": {
+    "2026-09-18T17:00:00Z": 64800,
+    "2026-09-19T07:31:00Z": 12540,
+    "2026-09-19T07:50:00Z": 11400,
+    "2026-09-19T10:55:00Z": 300,
+    "2026-09-19T11:00:00Z": 0
+   },
+   "horas": {
+    "ruta": {
+     "2026-09-18T17:00:00Z": {
+      "hm": "19:00",
+      "dia": "vie 19:00",
+      "fecha": "vie 18 · 19:00"
+     },
+     "2026-09-18T18:40:00Z": {
+      "hm": "20:40",
+      "dia": "vie 20:40",
+      "fecha": "vie 18 · 20:40"
+     },
+     "2026-09-18T20:00:00+02:00": {
+      "hm": "20:00",
+      "dia": "vie 20:00",
+      "fecha": "vie 18 · 20:00"
+     },
+     "2026-09-18T21:00:00+02:00": {
+      "hm": "21:00",
+      "dia": "vie 21:00",
+      "fecha": "vie 18 · 21:00"
+     },
+     "2026-09-18T23:00:00+02:00": {
+      "hm": "23:00",
+      "dia": "vie 23:00",
+      "fecha": "vie 18 · 23:00"
+     },
+     "2026-09-19T00:30:00+02:00": {
+      "hm": "00:30",
+      "dia": "sáb 00:30",
+      "fecha": "sáb 19 · 00:30"
+     },
+     "2026-09-19T01:00:00+02:00": {
+      "hm": "01:00",
+      "dia": "sáb 01:00",
+      "fecha": "sáb 19 · 01:00"
+     },
+     "2026-09-19T02:30:00+02:00": {
+      "hm": "02:30",
+      "dia": "sáb 02:30",
+      "fecha": "sáb 19 · 02:30"
+     },
+     "2026-09-19T03:00:00+02:00": {
+      "hm": "03:00",
+      "dia": "sáb 03:00",
+      "fecha": "sáb 19 · 03:00"
+     },
+     "2026-09-19T06:30:00+02:00": {
+      "hm": "06:30",
+      "dia": "sáb 06:30",
+      "fecha": "sáb 19 · 06:30"
+     },
+     "2026-09-19T07:00:00+02:00": {
+      "hm": "07:00",
+      "dia": "sáb 07:00",
+      "fecha": "sáb 19 · 07:00"
+     },
+     "2026-09-19T07:31:00Z": {
+      "hm": "09:31",
+      "dia": "sáb 09:31",
+      "fecha": "sáb 19 · 09:31"
+     },
+     "2026-09-19T07:50:00Z": {
+      "hm": "09:50",
+      "dia": "sáb 09:50",
+      "fecha": "sáb 19 · 09:50"
+     },
+     "2026-09-19T08:00:00+02:00": {
+      "hm": "08:00",
+      "dia": "sáb 08:00",
+      "fecha": "sáb 19 · 08:00"
+     },
+     "2026-09-19T08:30:00Z": {
+      "hm": "10:30",
+      "dia": "sáb 10:30",
+      "fecha": "sáb 19 · 10:30"
+     },
+     "2026-09-19T10:55:00Z": {
+      "hm": "12:55",
+      "dia": "sáb 12:55",
+      "fecha": "sáb 19 · 12:55"
+     },
+     "2026-09-19T11:00:00+02:00": {
+      "hm": "11:00",
+      "dia": "sáb 11:00",
+      "fecha": "sáb 19 · 11:00"
+     },
+     "2026-09-19T11:00:00Z": {
+      "hm": "13:00",
+      "dia": "sáb 13:00",
+      "fecha": "sáb 19 · 13:00"
+     },
+     "2026-09-19T12:09:54Z": {
+      "hm": "14:09",
+      "dia": "sáb 14:09",
+      "fecha": "sáb 19 · 14:09"
+     },
+     "2026-09-19T13:30:00+02:00": {
+      "hm": "13:30",
+      "dia": "sáb 13:30",
+      "fecha": "sáb 19 · 13:30"
+     },
+     "2026-09-19T16:30:00+02:00": {
+      "hm": "16:30",
+      "dia": "sáb 16:30",
+      "fecha": "sáb 19 · 16:30"
+     },
+     "2026-09-19T22:00:00+02:00": {
+      "hm": "22:00",
+      "dia": "sáb 22:00",
+      "fecha": "sáb 19 · 22:00"
+     },
+     "2026-09-19T23:00:00+02:00": {
+      "hm": "23:00",
+      "dia": "sáb 23:00",
+      "fecha": "sáb 19 · 23:00"
+     },
+     "2026-09-19T23:30:00+02:00": {
+      "hm": "23:30",
+      "dia": "sáb 23:30",
+      "fecha": "sáb 19 · 23:30"
+     },
+     "2026-09-20T06:07:48Z": {
+      "hm": "08:07",
+      "dia": "dom 08:07",
+      "fecha": "dom 20 · 08:07"
+     },
+     "2026-09-20T07:00:00+02:00": {
+      "hm": "07:00",
+      "dia": "dom 07:00",
+      "fecha": "dom 20 · 07:00"
+     },
+     "2026-09-20T07:30:00+02:00": {
+      "hm": "07:30",
+      "dia": "dom 07:30",
+      "fecha": "dom 20 · 07:30"
+     },
+     "2026-09-20T09:30:00+02:00": {
+      "hm": "09:30",
+      "dia": "dom 09:30",
+      "fecha": "dom 20 · 09:30"
+     },
+     "2026-09-20T10:00:00+02:00": {
+      "hm": "10:00",
+      "dia": "dom 10:00",
+      "fecha": "dom 20 · 10:00"
+     },
+     "2026-09-20T15:06:00Z": {
+      "hm": "17:06",
+      "dia": "dom 17:06",
+      "fecha": "dom 20 · 17:06"
+     },
+     "2026-09-20T22:34:30Z": {
+      "hm": "00:34",
+      "dia": "lun 00:34",
+      "fecha": "lun 21 · 00:34"
+     },
+     "2026-09-21T01:18:18Z": {
+      "hm": "03:18",
+      "dia": "lun 03:18",
+      "fecha": "lun 21 · 03:18"
+     },
+     "2026-09-21T07:32:42Z": {
+      "hm": "09:32",
+      "dia": "lun 09:32",
+      "fecha": "lun 21 · 09:32"
+     }
+    }
+   },
+   "momento": "sin_usuario_con_plazo_pasado"
+  },
+  {
+   "servido_en": "2026-09-19T11:00:00Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-19T11:00:00Z"
+   },
+   "vista": {
+    "ruta": {
+     "observado_en": "2026-09-19T11:00:00Z",
+     "fuente": "derivado",
+     "viejo": false,
+     "zona": {
+      "valor": "Europe/Madrid",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "dato_mas_viejo": "2026-09-19T11:00:00Z",
+     "objetivo": {
+      "valor": "2026-09-20T10:00:00+02:00",
+      "texto": "2026-09-20 10:00 (Europe/Madrid)",
+      "confirmar": false,
+      "motivo": null,
+      "donde": "equipo.md",
+      "fuente": "git",
+      "observado_en": "2026-09-19T07:31:00Z",
+      "declarado": true
+     },
+     "otras_entregas": [],
+     "veredicto": {
+      "valor": "no_llega",
+      "motivos": [],
+      "gravedad": "ambar",
+      "fuente": "derivado",
+      "observado_en": "2026-09-19T11:00:00Z"
+     },
+     "estimacion": {
+      "temprano": "2026-09-21T07:35:43Z",
+      "tarde": "2026-09-21T07:35:43Z",
+      "margen_min": -1416,
+      "margen_max": -1416
+     },
+     "base": {
+      "minimo": 3,
+      "desde": "2026-09-18T18:40:00Z",
+      "personas": [
+       {
+        "persona": "persona-a",
+        "n": 3,
+        "ritmo_min": 299,
+        "ritmo_max": 299,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       },
+       {
+        "persona": "persona-b",
+        "n": 6,
+        "ritmo_min": 54,
+        "ritmo_max": 91,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       },
+       {
+        "persona": "persona-c",
+        "n": 4,
+        "ritmo_min": 52,
+        "ritmo_max": 104,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T11:00:00Z"
+       }
+      ]
+     },
+     "hechos": [
+      {
+       "tarea": "T04",
+       "persona": "persona-a",
+       "plazo": "2026-09-18T23:00:00+02:00",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T11:00:00Z",
+       "viejo": false,
+       "tipo": "plazo_pasado",
+       "gravedad": "rojo",
+       "arrastra": [
+        "T05",
+        "T06",
+        "T07",
+        "T08",
+        "T09",
+        "T19",
+        "T27",
+        "T28"
+       ]
+      },
+      {
+       "tipo": "sin_senales",
+       "gravedad": "gris",
+       "persona": "persona-c",
+       "desde": "2026-09-19T08:30:00Z",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T11:00:00Z",
+       "viejo": false
+      }
+     ],
+     "cadena": [
+      {
+       "tarjeta": {
+        "id": "T04",
+        "titulo": "Copiar las columnas reales de `data_dictionary.md` a `docs/contratos.md`",
+        "dueno": "persona-a",
+        "estado": "en_curso",
+        "etiqueta": "en curso",
+        "fuente": "hook",
+        "observado_en": "2026-09-19T10:55:00Z",
+        "depende_de": [],
+        "bloquea_a": [
+         "T05"
+        ],
+        "espera": [],
+        "bloque": "Datos",
+        "issue": 103,
+        "viejo": false
+       },
+       "por": "inicio",
+       "hasta": {
+        "valor": "2026-09-18T23:00:00+02:00",
+        "texto": "H+4",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-18T21:00:00+02:00",
+         "hasta": "2026-09-18T23:00:00+02:00",
+         "min": 60,
+         "compartida": 2
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-19T12:09:54Z",
+       "fin_tarde": "2026-09-19T12:09:54Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T05",
+        "titulo": "Calcular caja, cobros y deuda mensuales por `company_id`, sin mezclar monedas",
+        "dueno": "persona-a",
+        "estado": "pendiente",
+        "etiqueta": "pendiente",
+        "fuente": "github",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "depende_de": [
+         "T03",
+         "T04"
+        ],
+        "bloquea_a": [],
+        "espera": [
+         {
+          "id": "T04",
+          "dueno": "persona-a",
+          "estado": "en_curso"
+         }
+        ],
+        "bloque": "Features",
+        "issue": 104,
+        "viejo": false
+       },
+       "por": "depende_de",
+       "hasta": {
+        "valor": "2026-09-19T13:10:00+02:00",
+        "texto": "sáb 13:10",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-18T23:00:00+02:00",
+         "hasta": "2026-09-19T13:10:00+02:00",
+         "min": 850,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-20T21:34:42Z",
+       "fin_tarde": "2026-09-20T21:34:42Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T06",
+        "titulo": "Score 0–100 suavizado con `tendencia` en `motor/src/motor/score.py`",
+        "dueno": "persona-a",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "depende_de": [],
+        "bloquea_a": [
+         "T19",
+         "T27"
+        ],
+        "espera": [],
+        "bloque": "Score",
+        "issue": 105,
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T13:15:00+02:00",
+        "texto": "sáb 13:15",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T13:10:00+02:00",
+         "hasta": "2026-09-19T13:15:00+02:00",
+         "min": 3,
+         "compartida": 2
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-20T21:43:41Z",
+       "fin_tarde": "2026-09-20T21:43:41Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T07",
+        "titulo": "Desglose caja/cobros/deuda en puntos de score",
+        "dueno": "persona-a",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "depende_de": [],
+        "bloquea_a": [
+         "T19"
+        ],
+        "espera": [],
+        "bloque": "Score",
+        "issue": 106,
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T13:15:00+02:00",
+        "texto": "sáb 13:15",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T13:10:00+02:00",
+         "hasta": "2026-09-19T13:15:00+02:00",
+         "min": 3,
+         "compartida": 2
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-20T21:52:40Z",
+       "fin_tarde": "2026-09-20T21:52:40Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T08",
+        "titulo": "2–3 reglas sobre los datos de la empresa que citan su cifra",
+        "dueno": "persona-a",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "derivado",
+        "observado_en": "2026-09-18T17:00:00Z",
+        "depende_de": [],
+        "bloquea_a": [
+         "T19"
+        ],
+        "espera": [],
+        "bloque": "Acciones",
+        "issue": 107,
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T13:30:00+02:00",
+        "texto": "sáb 13:30",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T13:15:00+02:00",
+         "hasta": "2026-09-19T13:30:00+02:00",
+         "min": 15,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-20T22:37:31Z",
+       "fin_tarde": "2026-09-20T22:37:31Z"
+      },
+      {
+       "tarjeta": {
+        "id": "T09",
+        "titulo": "Publicar motor y web en una URL pública (plataforma por elegir)",
+        "dueno": "persona-a",
+        "estado": "lista",
+        "etiqueta": "lista",
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:50:00Z",
+        "depende_de": [
+         "T16"
+        ],
+        "bloquea_a": [],
+        "espera": [],
+        "bloque": "Despliegue",
+        "issue": 108,
+        "viejo": false
+       },
+       "por": "orden_del_plan",
+       "hasta": {
+        "valor": "2026-09-19T16:30:00+02:00",
+        "texto": "sáb 16:30",
+        "motivo": null,
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "franja": {
+        "valor": {
+         "desde": "2026-09-19T13:30:00+02:00",
+         "hasta": "2026-09-19T16:30:00+02:00",
+         "min": 180,
+         "compartida": 1
+        },
+        "motivo": null,
+        "fuente": "derivado",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "fin_temprano": "2026-09-21T07:35:43Z",
+       "fin_tarde": "2026-09-21T07:35:43Z"
+      }
+     ],
+     "riesgos": [
+      {
+       "tarea": "T09",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-21T07:35:43Z",
+       "dueno": "persona-a",
+       "en_cadena": true,
+       "viejo": false
+      },
+      {
+       "tarea": "T19",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-21T01:21:19Z",
+       "dueno": "persona-b",
+       "en_cadena": false,
+       "viejo": false
+      },
+      {
+       "tarea": "T28",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-21T00:50:53Z",
+       "dueno": "persona-c",
+       "en_cadena": false,
+       "viejo": false
+      },
+      {
+       "tarea": "T27",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-21T00:19:41Z",
+       "dueno": "persona-c",
+       "en_cadena": false,
+       "viejo": false
+      },
+      {
+       "tarea": "T08",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-20T22:37:31Z",
+       "dueno": "persona-a",
+       "en_cadena": true,
+       "viejo": false
+      },
+      {
+       "tarea": "T07",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-20T21:52:40Z",
+       "dueno": "persona-a",
+       "en_cadena": true,
+       "viejo": false
+      },
+      {
+       "tarea": "T06",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-20T21:43:41Z",
+       "dueno": "persona-a",
+       "en_cadena": true,
+       "viejo": false
+      },
+      {
+       "tarea": "T05",
+       "tipo": "estimacion",
+       "fin_tarde": "2026-09-20T21:34:42Z",
+       "dueno": "persona-a",
+       "en_cadena": true,
+       "viejo": false
+      }
+     ],
+     "sin_plazo": [],
+     "sin_usuario": [],
+     "fuera_de_entrega": [
+      {
+       "tarea": "T10",
+       "motivo": "condicional",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      },
+      {
+       "tarea": "T18",
+       "motivo": "si_da_tiempo",
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z"
+      }
+     ],
+     "hitos": [
+      {
+       "hito": {
+        "nombre": "Contratos acordados: ventana de 24 meses, ficha motor → web…",
+        "valor": "2026-09-18T20:00:00+02:00",
+        "texto": "H+1",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": true
+      },
+      {
+       "hito": {
+        "nombre": "Demo mínima de principio a fin: una empresa real con curva,…",
+        "valor": "2026-09-19T13:30:00+02:00",
+        "texto": "sáb 13:30",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": false
+      },
+      {
+       "hito": {
+        "nombre": "Congelación: después, solo arreglos y pitch",
+        "valor": "2026-09-19T22:00:00+02:00",
+        "texto": "sáb 22:00",
+        "motivo": null,
+        "donde": "plan.md",
+        "fuente": "git",
+        "observado_en": "2026-09-19T07:31:00Z",
+        "declarado": true
+       },
+       "pasado": false
+      }
+     ],
+     "descansos": [
+      {
+       "personas": [
+        "persona-c"
+       ],
+       "desde": "2026-09-19T00:30:00+02:00",
+       "hasta": "2026-09-19T06:30:00+02:00",
+       "texto": "| sáb 00:30–06:30 | Persona C |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-b"
+       ],
+       "desde": "2026-09-19T01:00:00+02:00",
+       "hasta": "2026-09-19T07:00:00+02:00",
+       "texto": "| sáb 01:00–07:00 | Persona B |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T02:30:00+02:00",
+       "hasta": "2026-09-19T08:00:00+02:00",
+       "texto": "| sáb 02:30–08:00 | Persona A |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-b",
+        "persona-c"
+       ],
+       "desde": "2026-09-19T23:00:00+02:00",
+       "hasta": "2026-09-20T07:30:00+02:00",
+       "texto": "| sáb 23:00–dom 07:30 | Persona B y Persona C |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      },
+      {
+       "personas": [
+        "persona-a"
+       ],
+       "desde": "2026-09-19T23:30:00+02:00",
+       "hasta": "2026-09-20T07:00:00+02:00",
+       "texto": "| sáb 23:30–dom 07:00 | Persona A |",
+       "motivo": null,
+       "fuente": "git",
+       "observado_en": "2026-09-19T07:31:00Z",
+       "declarado": true
+      }
+     ],
+     "resumen": "ruta: estimación no llega · T04: plazo pasado 23:00 · fin hacia 09:35 (las medidas no varían) · entrega dom 10:00"
+    }
+   },
+   "antiguedades": {
+    "2026-09-18T17:00:00Z": 64800,
+    "2026-09-19T07:31:00Z": 12540,
+    "2026-09-19T07:50:00Z": 11400,
+    "2026-09-19T10:55:00Z": 300,
+    "2026-09-19T11:00:00Z": 0
+   },
+   "horas": {
+    "ruta": {
+     "2026-09-18T17:00:00Z": {
+      "hm": "19:00",
+      "dia": "vie 19:00",
+      "fecha": "vie 18 · 19:00"
+     },
+     "2026-09-18T18:40:00Z": {
+      "hm": "20:40",
+      "dia": "vie 20:40",
+      "fecha": "vie 18 · 20:40"
+     },
+     "2026-09-18T20:00:00+02:00": {
+      "hm": "20:00",
+      "dia": "vie 20:00",
+      "fecha": "vie 18 · 20:00"
+     },
+     "2026-09-18T21:00:00+02:00": {
+      "hm": "21:00",
+      "dia": "vie 21:00",
+      "fecha": "vie 18 · 21:00"
+     },
+     "2026-09-18T23:00:00+02:00": {
+      "hm": "23:00",
+      "dia": "vie 23:00",
+      "fecha": "vie 18 · 23:00"
+     },
+     "2026-09-19T00:30:00+02:00": {
+      "hm": "00:30",
+      "dia": "sáb 00:30",
+      "fecha": "sáb 19 · 00:30"
+     },
+     "2026-09-19T01:00:00+02:00": {
+      "hm": "01:00",
+      "dia": "sáb 01:00",
+      "fecha": "sáb 19 · 01:00"
+     },
+     "2026-09-19T02:30:00+02:00": {
+      "hm": "02:30",
+      "dia": "sáb 02:30",
+      "fecha": "sáb 19 · 02:30"
+     },
+     "2026-09-19T06:30:00+02:00": {
+      "hm": "06:30",
+      "dia": "sáb 06:30",
+      "fecha": "sáb 19 · 06:30"
+     },
+     "2026-09-19T07:00:00+02:00": {
+      "hm": "07:00",
+      "dia": "sáb 07:00",
+      "fecha": "sáb 19 · 07:00"
+     },
+     "2026-09-19T07:31:00Z": {
+      "hm": "09:31",
+      "dia": "sáb 09:31",
+      "fecha": "sáb 19 · 09:31"
+     },
+     "2026-09-19T07:50:00Z": {
+      "hm": "09:50",
+      "dia": "sáb 09:50",
+      "fecha": "sáb 19 · 09:50"
+     },
+     "2026-09-19T08:00:00+02:00": {
+      "hm": "08:00",
+      "dia": "sáb 08:00",
+      "fecha": "sáb 19 · 08:00"
+     },
+     "2026-09-19T08:30:00Z": {
+      "hm": "10:30",
+      "dia": "sáb 10:30",
+      "fecha": "sáb 19 · 10:30"
+     },
+     "2026-09-19T10:55:00Z": {
+      "hm": "12:55",
+      "dia": "sáb 12:55",
+      "fecha": "sáb 19 · 12:55"
+     },
+     "2026-09-19T11:00:00Z": {
+      "hm": "13:00",
+      "dia": "sáb 13:00",
+      "fecha": "sáb 19 · 13:00"
+     },
+     "2026-09-19T12:09:54Z": {
+      "hm": "14:09",
+      "dia": "sáb 14:09",
+      "fecha": "sáb 19 · 14:09"
+     },
+     "2026-09-19T13:10:00+02:00": {
+      "hm": "13:10",
+      "dia": "sáb 13:10",
+      "fecha": "sáb 19 · 13:10"
+     },
+     "2026-09-19T13:15:00+02:00": {
+      "hm": "13:15",
+      "dia": "sáb 13:15",
+      "fecha": "sáb 19 · 13:15"
+     },
+     "2026-09-19T13:30:00+02:00": {
+      "hm": "13:30",
+      "dia": "sáb 13:30",
+      "fecha": "sáb 19 · 13:30"
+     },
+     "2026-09-19T16:30:00+02:00": {
+      "hm": "16:30",
+      "dia": "sáb 16:30",
+      "fecha": "sáb 19 · 16:30"
+     },
+     "2026-09-19T22:00:00+02:00": {
+      "hm": "22:00",
+      "dia": "sáb 22:00",
+      "fecha": "sáb 19 · 22:00"
+     },
+     "2026-09-19T23:00:00+02:00": {
+      "hm": "23:00",
+      "dia": "sáb 23:00",
+      "fecha": "sáb 19 · 23:00"
+     },
+     "2026-09-19T23:30:00+02:00": {
+      "hm": "23:30",
+      "dia": "sáb 23:30",
+      "fecha": "sáb 19 · 23:30"
+     },
+     "2026-09-20T07:00:00+02:00": {
+      "hm": "07:00",
+      "dia": "dom 07:00",
+      "fecha": "dom 20 · 07:00"
+     },
+     "2026-09-20T07:30:00+02:00": {
+      "hm": "07:30",
+      "dia": "dom 07:30",
+      "fecha": "dom 20 · 07:30"
+     },
+     "2026-09-20T10:00:00+02:00": {
+      "hm": "10:00",
+      "dia": "dom 10:00",
+      "fecha": "dom 20 · 10:00"
+     },
+     "2026-09-20T21:34:42Z": {
+      "hm": "23:34",
+      "dia": "dom 23:34",
+      "fecha": "dom 20 · 23:34"
+     },
+     "2026-09-20T21:43:41Z": {
+      "hm": "23:43",
+      "dia": "dom 23:43",
+      "fecha": "dom 20 · 23:43"
+     },
+     "2026-09-20T21:52:40Z": {
+      "hm": "23:52",
+      "dia": "dom 23:52",
+      "fecha": "dom 20 · 23:52"
+     },
+     "2026-09-20T22:37:31Z": {
+      "hm": "00:37",
+      "dia": "lun 00:37",
+      "fecha": "lun 21 · 00:37"
+     },
+     "2026-09-21T00:19:41Z": {
+      "hm": "02:19",
+      "dia": "lun 02:19",
+      "fecha": "lun 21 · 02:19"
+     },
+     "2026-09-21T00:50:53Z": {
+      "hm": "02:50",
+      "dia": "lun 02:50",
+      "fecha": "lun 21 · 02:50"
+     },
+     "2026-09-21T01:21:19Z": {
+      "hm": "03:21",
+      "dia": "lun 03:21",
+      "fecha": "lun 21 · 03:21"
+     },
+     "2026-09-21T07:35:43Z": {
+      "hm": "09:35",
+      "dia": "lun 09:35",
+      "fecha": "lun 21 · 09:35"
+     }
+    }
+   },
+   "momento": "rango_sin_anchura"
+  }
+ ]
+}

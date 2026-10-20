@@ -184,7 +184,8 @@ export function CriterioPrueba({ task, conexion, result, source, label, age, at,
 // Cadena (0.5.0): la ruta crítica, solo con tareas abiertas. Las horas llegan en la vista; el componente solo las
 // coloca en la escala `min`–`max` (milisegundos). Cambios respecto de index.d.ts: la barra de cada fila es su franja
 // del plan (`kind`: `franja`, declarada; `plazo_pasado`, un hecho, en rojo; `vieja`); `est` es el tramo estimado, siempre
-// discontinuo (`estKind`: `prevista` o `no_llega`, en ámbar); `pulse` = [estado, palabra]; `sub`, `note` y `extra`
+// discontinuo (`estKind`: `prevista` o `no_llega`, en ámbar), o `estAt` si es una sola hora (un punto, no una barra de
+// anchura cero; lo mismo `end.at` en vez de `end.from`/`end.to`); `pulse` = [estado, palabra]; `sub`, `note` y `extra`
 // pueden ser nodos; `data` va al elemento de la fila.
 const CHAIN = {
   franja: "franja del plan (declarado)", curso: "en curso", prevista: "fin estimado (estimación)",
@@ -220,7 +221,7 @@ export function Cadena({ layout = "linea", rows = [], min = 0, max = 1, ticks = 
   const usados = new Set();
   for (const r of rows) {
     if (r.from != null) usados.add(r.kind || "franja");
-    if (r.est) usados.add(r.estKind || "prevista");
+    if (r.est || r.estAt != null) usados.add(r.estKind || "prevista");
   }
   const lane = (extra) => (
     <div className="hk-chain__lane">
@@ -251,6 +252,7 @@ export function Cadena({ layout = "linea", rows = [], min = 0, max = 1, ticks = 
               r.deadline != null ? <span key="d" className={cx("hk-chain__deadline", r.deadlinePast && "is-past")} style={{ left: pct(r.deadline) }} /> : null,
               r.from != null ? <span key="b" className={`hk-chain__bar hk-chain__bar--${r.kind || "franja"}`} style={span(r.from, r.to)} /> : null,
               r.est ? <span key="e" className={`hk-chain__bar hk-chain__bar--est hk-chain__bar--${r.estKind || "prevista"}`} style={span(r.est[0], r.est[1])} /> : null,
+              r.estAt != null ? <span key="p" className={`hk-chain__punto hk-chain__punto--${r.estKind || "prevista"}`} style={{ left: pct(r.estAt) }} /> : null,
             ])}
             <div className="hk-chain__state">
               {r.pulse ? <StatusPulse state={r.pulse[0]} label={r.pulse[1]} /> : null}
@@ -263,7 +265,9 @@ export function Cadena({ layout = "linea", rows = [], min = 0, max = 1, ticks = 
           <div className="hk-chain__fila" data-fin="">
             <div className="hk-chain__who"><span className="hk-chain__line">{end.title || "Fin estimado"}</span>
               <span className="hk-chain__sub">{end.sub || "un rango, con el ritmo real; nunca una sola hora"}</span></div>
-            {lane(<span className={`hk-chain__range hk-chain__range--${end.tone || "idle"}`} style={span(end.from, end.to)} />)}
+            {lane(end.at != null
+              ? <span className={`hk-chain__punto hk-chain__punto--${end.tone || "idle"}`} style={{ left: pct(end.at) }} />
+              : <span className={`hk-chain__range hk-chain__range--${end.tone || "idle"}`} style={span(end.from, end.to)} />)}
             <div className="hk-chain__state">
               <span className={`hk-chain__end hk-chain__end--${end.tone || "idle"}`}>{end.label}</span>
               {end.range ? <span className="hk-chain__note">{end.range}</span> : null}
