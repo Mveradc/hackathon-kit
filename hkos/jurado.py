@@ -114,15 +114,14 @@ def _evidencias(t, conexiones, viejas, ahora, umbral):
 
 def _resumen(fichero, cuenta, fuerte):
     """fuerte: la fuerza más alta entre las sin cubrir, {texto, n}, o None."""
-    from proyeccion import corta
-    from ruta import entre_comillas
+    from ruta import entre_comillas, recorta
     if fichero == "sin fichero":
         return "jurado: sin criterios.md en main"
     if not cuenta["notas"]:
         return "jurado: sin notas en criterios.md"
     # #56, 7 (§11.3 del contrato): la Fuerza es texto libre: detrás de « · », entre «», recortada a 30 grafemas, con su
     # fichero y sin autor.
-    partes = [f"{cuenta['sin_cubrir']} sin cubrir"]
+    partes = [f"jurado: {cuenta['sin_cubrir']} sin cubrir"]
     if fuerte:
         partes.append(f"{fuerte['n']} {entre_comillas(fuerte['texto'])} (criterios.md)")
     if cuenta["ambiguas"]:
@@ -130,7 +129,8 @@ def _resumen(fichero, cuenta, fuerte):
     if cuenta["en_pitch"]:
         partes.append(f"{cuenta['en_pitch']} en el pitch")
     partes.append(f"{cuenta['cubiertas']} cubierta" + "s" * (cuenta["cubiertas"] != 1) + f" de {cuenta['notas']}")
-    return corta("jurado: " + " · ".join(partes), LINEA_MAX)
+    # #63, 1: nunca se corta dentro de una parte; si no cabe, se quitan partes desde el final (la cifra sin cubrir, no).
+    return recorta(partes, 1, LINEA_MAX)
 
 
 def bloque(jurado, tareas, ahora, fuentes=None, servicios=None, umbral_viejo_s=FUENTE_VIEJA_S, tarjetas=None):
