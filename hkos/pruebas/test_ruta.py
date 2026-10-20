@@ -10,6 +10,7 @@ import copy
 import json
 import math
 import os
+import re
 import sys
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -179,6 +180,7 @@ class Base(unittest.TestCase):
         bloque = calcular(ruta, tareas, ahora, personas=personas, fuentes=fuentes, **kw)
         self.assertIsNone(errores(bloque), "la salida no valida contra $defs/vista_ruta")
         self.assertLessEqual(len(bloque["resumen"]), 120)
+        self.assertIsNone(re.search(r"(\d\d:\d\d)–\1\b", bloque["resumen"]), "un rango de una sola hora (K-108, 3)")
         self.assertNotIn("entrega_doble", bloque["veredicto"]["motivos"])
         if "sin_plazo" in bloque["veredicto"]["motivos"]:      # decisión del usuario: solo sin nada con franja
             self.assertFalse([t for t in tareas if _abierta_con_franja(t)])
@@ -240,6 +242,18 @@ class Tabla(Base):
         self.assertEqual((b["objetivo"]["valor"], b["objetivo"]["donde"]), (m(240), "equipo.md"))
         self.assertEqual((b["hechos"], b["sin_plazo"], b["fuera_de_entrega"], b["otras_entregas"], b["riesgos"]),
                          ([], [], [], [], []))
+
+    def test_k108_3_rango_degenerado_fin_hacia_una_hora(self):
+        """K-108, punto 3: con temprano = tarde (ritmos iguales: Luis, tres al 100 %), el resumen dice «fin hacia HH:MM
+        (las medidas no varían)», nunca «fin HH:MM–HH:MM» con la misma hora. El bloque no cambia: sigue siendo un
+        rango, con temprano y tarde."""
+        b = self.corre(ruta_de(240), luis())
+        self.assertEqual(b["estimacion"], {"temprano": iso(T0 + timedelta(minutes=60)),
+                                           "tarde": iso(T0 + timedelta(minutes=60)), "margen_min": 180, "margen_max": 180})
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin hacia 11:00 (las medidas no varían) · "
+                                       "entrega sáb 14:00")
+        # Con ritmos distintos, el rango de siempre.
+        self.assertIn(" · fin 11:00–13:00 · ", self.corre(ruta_de(240), ana())["resumen"])
 
     def test_veredicto_en_sus_fronteras(self):
         # temprano = T0 + 60, tarde = T0 + 180: a tiempo si tarde ≤ entrega; justo si temprano ≤ entrega < tarde; no
@@ -490,17 +504,23 @@ class Tabla(Base):
         r = ruta_de(None, inicio=declarada("2026-10-24T10:00:00+02:00", "2026-10-24 10:00 (Europe/Madrid)"),
                     otras_entregas=[cierre])
         r["entrega"] = declarada("2026-10-25T12:00:00+01:00", "2026-10-25 12:00 (cierre 13:00)")
-        b = self.corre(r, ana()[:3], ahora="2026-10-24T08:00:00Z")
-        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 10:00–10:00 · entrega dom 12:00 · "
+        # Ana, con una abierta de 60 min de franja desde las 10:00 del sábado (35 días después de T0).
+        tareas = ana()[:3] + [tarea("T04", "ana", "lista", 4, franja=(50400, 50460))]
+        b = self.corre(r, tareas, ahora="2026-10-24T08:00:00Z")
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 10:30–11:30 · entrega dom 12:00 · "
                                        "otra entrega: dom 13:00 (equipo.md)")
+        # Sin abiertas, temprano = tarde (K-108, 3): «fin hacia …» es más largo y la otra entrega ya no cabe.
+        b = self.corre(r, ana()[:3], ahora="2026-10-24T08:00:00Z")
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin hacia 10:00 (las medidas no varían) · "
+                                       "entrega dom 12:00 · y más en la vista")
         # La hora, en la zona del equipo (la IANA, a través del cambio de hora): una de antes del cambio, con +02:00.
         r["otras_entregas"] = [declarada("2026-10-24T21:00:00Z", "sáb 23:00", donde="plan.md", nombre="Entrega final")]
-        b = self.corre(r, ana()[:3], ahora="2026-10-24T08:00:00Z")
+        b = self.corre(r, tareas, ahora="2026-10-24T08:00:00Z")
         self.assertTrue(b["resumen"].endswith(" · otra entrega: sáb 23:00 (plan.md)"), b["resumen"])
         # Sin valor: su texto entre «», con su fichero.
         r["otras_entregas"] = [declarada(None, "domingo a mediodía", donde="plan.md", motivo="formato",
                                          nombre="Entrega final")]
-        b = self.corre(r, ana()[:3], ahora="2026-10-24T08:00:00Z")
+        b = self.corre(r, tareas, ahora="2026-10-24T08:00:00Z")
         self.assertTrue(b["resumen"].endswith(" · otra entrega: «domingo a mediodía» (plan.md)"), b["resumen"])
 
     def test_56_5_resumen_plazo_pasado_detras_del_veredicto_y_detalles_abreviados(self):
@@ -524,12 +544,13 @@ class Tabla(Base):
         b = self.corre(ruta_de(None), tareas, personas=[{"persona": p, "nombre": p} for p in muchas])
         self.assertEqual(b["veredicto"]["motivos"], ["sin_entrega", "ciclo", "sin_plazo", "pocos_datos"])
         self.assertEqual(b["resumen"], "ruta: sin estimación · T01: plazo pasado 09:40 y 11 más · sin hora de entrega")
-        # Con estimación, igual: el primero por hora y «y N más».
+        # Con estimación, igual: el primero por hora y «y N más». Todas ya pasadas de su tiempo: temprano = tarde, y
+        # «fin hacia 10:00 (las medidas no varían) · entrega sáb 20:00» ya no cabe en 120 (K-108, 3): se quita entera.
         tareas = ana()
         tareas[3:] = [tarea(f"T{40 + i}", "ana", "en_curso", None, franja=(-60, -50 + i), primera=-55) for i in range(8)]
         b = self.corre(ruta_de(600), tareas)
-        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · T40: plazo pasado 09:10 y 7 más · fin 10:00–10:00 · "
-                                       "entrega sáb 20:00")
+        self.assertEqual(b["estimacion"]["temprano"], b["estimacion"]["tarde"])
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · T40: plazo pasado 09:10 y 7 más · y más en la vista")
 
     def test_plazo_vencido_rojo_y_lo_que_arrastra(self):
         tareas = ana()

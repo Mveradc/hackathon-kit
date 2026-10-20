@@ -487,7 +487,9 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         partes.append(f"{pasados[0]['tarea']}: plazo pasado {hm(pasados[0]['plazo'])}" +
                       (f" y {len(pasados) - 1} más" if len(pasados) > 1 else ""))
     if estimacion:
-        partes.append(f"fin {hm(estimacion['temprano'])}–{hm(estimacion['tarde'])} · entrega {dia_hm(objetivo['valor'])}"
+        temprano, tarde = hm(estimacion["temprano"]), hm(estimacion["tarde"])
+        fin_txt = f"fin hacia {tarde} (las medidas no varían)" if temprano == tarde else f"fin {temprano}–{tarde}"
+        partes.append(f"{fin_txt} · entrega {dia_hm(objetivo['valor'])}"
                       + (" (confirmar)" if objetivo.get("confirmar") else ""))
         if sin_plazo:
             partes.append(f"sin contar {', '.join(x['tarea'] for x in sin_plazo)} (sin plazo)")
