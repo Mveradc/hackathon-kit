@@ -211,6 +211,27 @@ class TablaK102(Base):
         self.assertEqual(x["evidencias"], [])
         self.assertEqual((b["cuenta"]["en_curso"], b["cuenta"]["planificadas"]), (1, 0))
 
+    def test_k108_4_planificada_o_en_curso_con_la_hora_mas_reciente_del_plan_o_del_estado(self):
+        """K-108, punto 4: el observado_en de una nota planificada o en curso es la más reciente entre la hora del
+        commit del plan que trae su etiqueta y la del estado de sus tareas. En el sandbox salía la de los eventos
+        viejos de sus issues (2026-10-14), no la de cuando se enlazó."""
+        n = nota("2026-09-18 21:15")
+        viejo = "2026-09-14T09:00:00Z"
+        b = self.calcula([n], [tarea("T12", "lista", ["2026-09-18 21:15"], fuente="github", obs=viejo)])
+        self.assertEqual((self.de(b, n)["cobertura"]["valor"], self.de(b, n)["cobertura"]["observado_en"]),
+                         ("planificada", PLAN))
+        b = self.calcula([n], [tarea("T12", "en_curso", ["2026-09-18 21:15"], obs=viejo, primera=viejo)])
+        self.assertEqual((self.de(b, n)["cobertura"]["valor"], self.de(b, n)["cobertura"]["observado_en"]),
+                         ("en_curso", PLAN))
+        # Con el estado más reciente que el plan, la del estado (como antes).
+        b = self.calcula([n], [tarea("T12", "en_curso", ["2026-09-18 21:15"], obs="2026-09-19T08:40:00Z",
+                                     primera="2026-09-19T08:40:00Z")])
+        self.assertEqual(self.de(b, n)["cobertura"]["observado_en"], "2026-09-19T08:40:00Z")
+        # Una cubierta, la de sus tareas, sin cambios.
+        b = self.calcula([n], [tarea("T12", "publicada", ["2026-09-18 21:15"], fuente="git", obs="2026-09-19T07:00:00Z",
+                                     evidencia="abc1234", hecha_en="2026-09-19T07:00:00Z")])
+        self.assertEqual(self.de(b, n)["cobertura"]["observado_en"], "2026-09-19T07:00:00Z")
+
     def test_cubierta_con_todas_publicadas_o_cerradas_y_su_evidencia(self):
         n = nota("2026-09-18 20:30", fuerza="dato")
         tareas = [tarea("T03", "publicada", ["2026-09-18 20:30"], fuente="git", obs="2026-09-19T01:10:00Z",
@@ -632,9 +653,9 @@ def notas_g13():
 ANTES_DE_52 = {"sin_cubrir": "sin_tarea", "recogida_en_pitch": "en_pitch"}
 
 
-def momentos_g13():
-    """(momento, jurado, tareas, {id de nota: clave}) de cada momento de hechos.json."""
-    with open(os.path.join(G13, "hechos.json"), encoding="utf-8") as f:
+def momentos_g13(ruta=os.path.join(G13, "hechos.json")):
+    """(momento, jurado, tareas, {id de nota: clave}) de cada momento de hechos.json (o de `ruta`)."""
+    with open(ruta, encoding="utf-8") as f:
         hechos = json.load(f)
     # Los hechos de main aún usan los nombres de antes del contrato; el PR #52 los cambia a los de §11.3. Hasta que
     # llegue a main, se montan aquí con los del contrato (con los de #52, no cambia nada).
@@ -650,6 +671,9 @@ def momentos_g13():
              "observado_en": hechos["entradas"]["pitch.md"]["en_main_desde"], "declarado": True}
     plan_en = hechos["entradas"]["plan.md"]["en_main_desde"]
     ids = {h["id"]: base[h["cabecera"]]["clave"] for h in hechos["notas"]}
+    # La hora del estado de las que no han empezado (K-108, decisión 5): lista o pendiente desde el plan; reclamada,
+    # desde su última señal (sin_senales: «reclama T23 y no da más señales»), o ahora si los hechos no la dan.
+    reclama = {p: x["desde"] for p, x in hechos.get("sin_senales", {}).items()}
     publicada_en = {}
     salida = []
     for mo in hechos["momentos"]:
@@ -671,6 +695,10 @@ def momentos_g13():
         for tid, valor in mo["tareas"].items():
             publicada = valor == "publicada"
             estado_en = evid[tid]["observado_en"] if publicada and tid in evid else nuevo.get(tid, ahora)
+            if valor in ("lista", "pendiente"):
+                estado_en = plan_en
+            elif valor == "reclamada":
+                estado_en = reclama.get(info[tid]["dueno"], ahora)
             # La primera señal la pone el relay en el primer paso a en_curso: la tienen las que ya no están sin empezar.
             primera = None if valor in EMPEZADA else estado_en
             hecha_en = publicada_en.get(tid)       # de otro momento, solo si ya había pasado (M2b va detrás de M3)
@@ -715,6 +743,8 @@ class GuionG13(Base):
                             "trabajo_nuevo_desde": x["trabajo_nuevo_desde"],
                             "cerradas_a_mano": [f["tarjeta"]["id"] for f in x["tareas"] if f["tarjeta"].get("declarado") == "cerrada"],
                             "corregida_por": de_clave.get((x["corregida_por"] or {}).get("valor")), "tambien_en_pitch": x["pitch"] is not None}
+                    if "observado_en" in esperado:        # K-108, decisión 5 (PR #74): la hora de la nota, del bloque
+                        real["observado_en"] = x["cobertura"]["observado_en"]
                     self.assertEqual(real, {k: v for k, v in esperado.items() if k != "motivo"}, f"{mo['nombre']} {nid}")
                     self.assertFalse(x["cobertura"]["viejo"])
                 resumen = self.RESUMENES.get(mo["nombre"].split(" · ")[0])

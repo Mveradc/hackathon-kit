@@ -9,7 +9,8 @@
   "J4": "A: cubierta = todas sus tareas con enlace firme están hechas: publicada, cerrada sin ⚑ o, con J6 B, publicada antes y ahora con trabajo nuevo. Una integrada que nunca se publicó no cuenta, ni un fichero en main",
   "J5": "B: «en el pitch» (declarado): nunca cubierta; cuenta en «sin cubrir»",
   "J6": "B: sigue cubierta, con «trabajo nuevo desde», si tiene historia.hecha_en y ahora está en curso, parada, no cerrada, en revisión o integrada (#46, M7). La evidencia sale de tareas[].evidencia, {valor, tipo, fuente, observado_en} (api.md §11.2): el último sha publicado (aquí «sha», un commit de git), con la hora de esa publicación (#46, M6)",
-  "#56": "Decisiones del usuario sobre el issue #56: «en curso» por el estado de la tarjeta o por primera_senal; el «· quién» de una cita ignora mayúsculas y espacios, no tildes; «corrige la nota del … · quién» admite un quién con paréntesis («Marta (Embat)»); el resumen lleva la fuerza entre «» con «criterios.md» una vez dentro de su paréntesis, sin autor y en 120 como mucho"
+  "#56": "Decisiones del usuario sobre el issue #56: «en curso» por el estado de la tarjeta o por primera_senal; el «· quién» de una cita ignora mayúsculas y espacios, no tildes; «corrige la nota del … · quién» admite un quién con paréntesis («Marta (Embat)»); el resumen lleva la fuerza entre «» con «criterios.md» una vez dentro de su paréntesis, sin autor y en 120 como mucho",
+  "R5": "Decisión del usuario (K-108): la hora (observado_en) de una nota planificada es la más reciente entre el commit del plan con su etiqueta y el estado de sus tareas; N4 lleva la del plan (09:41) y N6 la de T23 reclamada (09:50)"
  },
  "estados": {
   "sin_tarea": "ninguna tarea del plan ni pitch.md la citan",
@@ -252,6 +253,7 @@
     },
     "N4": {
      "estado": "planificada",
+     "observado_en": "2026-09-19T09:41:00Z",
      "tareas": {
       "T20": "lista"
      },
@@ -284,6 +286,7 @@
     },
     "N6": {
      "estado": "planificada",
+     "observado_en": "2026-09-19T09:50:00Z",
      "tareas": {
       "T09": "pendiente",
       "T23": "reclamada"
@@ -396,6 +399,7 @@
     },
     "N4": {
      "estado": "planificada",
+     "observado_en": "2026-09-19T09:41:00Z",
      "tareas": {
       "T20": "lista"
      },
@@ -428,6 +432,7 @@
     },
     "N6": {
      "estado": "planificada",
+     "observado_en": "2026-09-19T09:50:00Z",
      "tareas": {
       "T09": "pendiente",
       "T23": "reclamada"
@@ -571,6 +576,7 @@
     },
     "N4": {
      "estado": "planificada",
+     "observado_en": "2026-09-19T09:41:00Z",
      "tareas": {
       "T20": "lista"
      },
@@ -746,6 +752,7 @@
     },
     "N4": {
      "estado": "planificada",
+     "observado_en": "2026-09-19T09:41:00Z",
      "tareas": {
       "T20": "lista"
      },
@@ -778,6 +785,7 @@
     },
     "N6": {
      "estado": "planificada",
+     "observado_en": "2026-09-19T09:50:00Z",
      "tareas": {
       "T09": "pendiente",
       "T23": "reclamada"

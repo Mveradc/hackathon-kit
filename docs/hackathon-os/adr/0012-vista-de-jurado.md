@@ -73,6 +73,13 @@ Decididos por el usuario sobre la revisión independiente del issue #63. Mandan 
 |---|---|---|
 | **1. Recorte del resumen** (vale también para ADR-0013) | **Nunca se corta dentro de una parte.** Si no cabe en 120, se quitan partes enteras desde el final y lo quitado se resume como « · y más en la vista». **La cifra sin cubrir no se quita nunca** (en la ruta, el veredicto y el plazo pasado) | El jurado monta el resumen entero y lo corta a 120, como la ruta, donde el corte se llevaba la `»` y el fichero de la «otra entrega» (issue #63). Aquí la Fuerza va la segunda y hoy no se llega a cortar, pero la regla es la misma para los dos bloques. Con partes enteras, cada texto del equipo que sale lleva sus comillas y su fichero, y la cifra que importa siempre está |
 
+## Ajuste 5 tras congelar (2026-10-20, M10)
+Decididos por el usuario sobre lo encontrado en K-108 (`evals/coordinacion/prueba.md`, «M10, K-108»). Mandan sobre lo de arriba donde lo contradigan. La numeración es la del usuario; los puntos 1 y 2 son de ADR-0013 («Ajuste 5 tras congelar») y el 4 (`hitos.md` y `docs/historial.md`) no cambia el contrato. Detalle en `api.md` (registro de cambios y §11.3) y en `estado.schema.json`, marcado «tras congelar, 2026-10-20, M10, ajuste 5».
+
+| Punto | Elegido | Por qué |
+|---|---|---|
+| **3. `observado_en` de una nota planificada o en curso** | La más reciente entre la hora del commit del plan que trae su etiqueta (`enlace.observado_en`) y la del estado de sus tareas (`tarjeta.observado_en`) | Con solo la del estado de sus tareas, una nota recién enlazada a tareas sin movimiento salía con la hora de eventos viejos de sus issues: en el sandbox de K-108, del 2026-10-14, no de cuando se enlazó. Enlazarla es un dato que la vista usa para decir «planificada» o «en curso», así que cuenta para su hora |
+
 ## Alternativas descartadas
 - **Que un modelo decida qué cubre cada nota** (lo que hace hoy `/hack-check` en `verificacion.md`): es lo que dice un modelo, no una señal (constitución II). Sigue como ayuda para poner las etiquetas de la decisión 3.
 - **Que el OS ejecute «Cómo se comprueba»** para obtener evidencia: es ejecutar código que un agente puede haber cambiado (como la Prueba en ADR-0011).

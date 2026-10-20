@@ -210,6 +210,11 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     from proyeccion import ETIQUETAS            # aquí: proyeccion importa este módulo
     t_ahora, fuentes, tarjetas = fecha(ahora), fuentes or {}, tarjetas or {}
     nombres = {p["persona"]: p.get("nombre") for p in personas}
+    usuarios = {p["persona"].casefold() for p in personas}
+
+    def con_usuario(persona):
+        """K-108, 2: un usuario de GitHub del equipo; una dueña por su nombre, sin @, nunca tendrá señales ni medidas."""
+        return persona.casefold() in usuarios
     # #56, 2: la última señal de una persona es la última atribuida a alguna de sus tareas (historia.ultima_senal: un
     # commit con su ID o una edición sin ambigüedad), no personas[].ultima_senal, que cuenta latidos, commits sin ID y
     # ediciones ambiguas.
@@ -279,15 +284,19 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     for t in tareas:
         h, fr = t.get("historia") or {}, _v(t.get("franja"))
         if t["estado"]["valor"] in HECHAS and not t.get("declarado") and h.get("primera_senal") and h.get("hecha_en") \
-                and fr:
+                and fr and con_usuario(t["dueno"]):
             a, b = fecha(h["primera_senal"]), fecha(h["hecha_en"])
             seg = (b - a).total_seconds() - _solape(a, b, pausas(t["dueno"]))
             # Decisión 4 (#46): los descansos tampoco cuentan en la franja (la parte que le toca de ellos).
             ritmo = max(1, math.floor(100 * seg / 60 / libre(fr, t["dueno"]) + 0.5))
             medidas.setdefault(t["dueno"], []).append((ritmo, h["hecha_en"]))
-    duenos_abiertos = {cuentan[k]["dueno"] for k in abiertas}
+    nadie = {k for k in abiertas if not con_usuario(cuentan[k]["dueno"])}
+    sin_usuario = [dict({"tarea": k, "dueno": cuentan[k]["dueno"]},
+                        **_origen(cuentan[k], ahora, "orden_plan", "titulo_plan", "hasta", "franja"))
+                   for k in ids if k in nadie]
+    duenos_abiertos = {cuentan[k]["dueno"] for k in abiertas - nadie}
     base_personas = []
-    for p in sorted(set(medidas) | {t["dueno"] for t in cuentan.values()}):
+    for p in sorted(set(medidas) | {t["dueno"] for t in cuentan.values() if con_usuario(t["dueno"])}):
         rs = [r for r, _ in medidas.get(p, [])]
         hay = len(rs) >= MINIMO
         base_personas.append({"persona": p, "n": len(rs), "ritmo_min": min(rs) if hay else None,
@@ -309,7 +318,7 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     sin_plazo = []
     for k in ids:
         t = cuentan[k]
-        if k in abiertas and not _v(t.get("franja")):
+        if k in abiertas - nadie and not _v(t.get("franja")):
             hasta = t.get("hasta") or {}
             if not hasta.get("valor"):
                 motivo, origen = hasta.get("motivo") or "vacio", _origen(t, ahora, "hasta")
@@ -319,9 +328,11 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     # #46, 1: las sin plazo salen aparte y se estima el resto. Decisión del usuario: sin_plazo es motivo solo si
     # ninguna abierta que cuenta tiene franja (no hay nada que estimar, y nunca sale «a tiempo» con nada estimado).
     aparte = {x["tarea"] for x in sin_plazo}
-    estimables = abiertas - aparte
+    estimables = abiertas - aparte - nadie
     if aparte and not estimables:
         motivos.append("sin_plazo")
+    if nadie and not estimables:
+        motivos.append("sin_usuario")
     # Pocos datos, de quien tiene algo que estimar (o, si no hay nada estimable, de quien tiene algo abierto).
     pocos = [b for b in base_personas if b["n"] < MINIMO
              and b["persona"] in {cuentan[k]["dueno"] for k in (estimables or abiertas)}]
@@ -329,12 +340,13 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         motivos.append("pocos_datos")
 
     def previas_estimables(k):
-        """{A: por} de las previas abiertas que se estiman; a través de una sin plazo, las suyas (no ocupa tiempo)."""
+        """{A: por} de las previas abiertas que se estiman; a través de una sin plazo o sin usuario, las suyas (no ocupa
+        tiempo)."""
         salida = {}
         for a, por in sorted(previas[k].items()):
             if a in estimables:
                 salida.setdefault(a, por)
-            elif a in aparte:
+            elif a in aparte or a in nadie:
                 for b in previas_estimables(a):
                     salida.setdefault(b, por)
         return salida
@@ -477,13 +489,18 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         partes.append(f"{pasados[0]['tarea']}: plazo pasado {hm(pasados[0]['plazo'])}" +
                       (f" y {len(pasados) - 1} más" if len(pasados) > 1 else ""))
     if estimacion:
-        partes.append(f"fin {hm(estimacion['temprano'])}–{hm(estimacion['tarde'])} · entrega {dia_hm(objetivo['valor'])}"
+        temprano, tarde = hm(estimacion["temprano"]), hm(estimacion["tarde"])
+        fin_txt = f"fin hacia {tarde} (las medidas no varían)" if temprano == tarde else f"fin {temprano}–{tarde}"
+        partes.append(f"{fin_txt} · entrega {dia_hm(objetivo['valor'])}"
                       + (" (confirmar)" if objetivo.get("confirmar") else ""))
         if sin_plazo:
             partes.append(f"sin contar {', '.join(x['tarea'] for x in sin_plazo)} (sin plazo)")
+        if sin_usuario:
+            partes.append(f"sin contar {', '.join(x['tarea'] for x in sin_usuario)} (sin usuario)")
     else:
         partes.append({"sin_entrega": "sin hora de entrega", "ciclo": "ciclo " + " → ".join(ciclo or []),
                        "sin_plazo": "sin plazo: " + _cuantas(len(sin_plazo), "tarea"),
+                       "sin_usuario": "sin usuario: " + _cuantas(len(sin_usuario), "tarea"),
                        "pocos_datos": "pocos datos: " + _cuantas(len(pocos), "persona")}[motivos[0]])
     if otras:
         o = otras[0]
@@ -505,7 +522,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
                       "observado_en": ahora},
         "estimacion": estimacion,
         "base": {"minimo": MINIMO, "desde": min(hechas_en, key=fecha, default=None), "personas": base_personas},
-        "hechos": hechos, "cadena": cadena, "riesgos": riesgos, "sin_plazo": sin_plazo, "fuera_de_entrega": fuera,
+        "hechos": hechos, "cadena": cadena, "riesgos": riesgos, "sin_plazo": sin_plazo, "sin_usuario": sin_usuario,
+        "fuera_de_entrega": fuera,
         "hitos": hitos, "descansos": descansos, "resumen": resumen}
 
 
