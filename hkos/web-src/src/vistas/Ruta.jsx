@@ -313,7 +313,7 @@ export function Ruta({ respuesta }) {
               <dd>{sinUsuario.length ? sinUsuario.map((x) => (
                 <span key={x.tarea} className="hk-bloque" data-sin-usuario={x.tarea}>
                   <span><b className="hk-mono">{x.tarea}</b> · <span data-dueno="">{x.dueno}</span>: sin usuario de GitHub: no se mide{est ? ", y no se cuenta en la estimación" : ""}.</span>
-                  <Declarado donde="equipo.md" d={x} servido={servido} />
+                  <Declarado donde="plan.md" d={x} servido={servido} />
                 </span>)) : <span className="hk-texto-sec">Ninguna tarea con un dueño sin usuario de GitHub.</span>}</dd>
               <dt>No cuentan</dt>
               <dd>{r.fuera_de_entrega.length ? r.fuera_de_entrega.map((x) => (
