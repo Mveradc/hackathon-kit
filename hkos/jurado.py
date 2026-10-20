@@ -188,6 +188,8 @@ def bloque(jurado, tareas, ahora, fuentes=None, servicios=None, umbral_viejo_s=F
         # La hora del estado de sus tareas (como en la vista de ejemplo de §11.6); sin tareas, la del pitch o la nota.
         horas = [f["tarjeta"]["observado_en"] for f in filas] or [
             pitch["observado_en"] if valor == "en_pitch" else n["observado_en"]]
+        if valor in ("planificada", "en_curso"):
+            horas += [f["enlace"]["observado_en"] for f in filas]
         nuevo = [t["historia"]["trabajo_nuevo_desde"] for t in firmes
                  if t["estado"]["valor"] in SIGUE_HECHA and hecha(t) and t["historia"].get("trabajo_nuevo_desde")]
         salida.append({

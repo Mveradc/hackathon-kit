@@ -211,6 +211,27 @@ class TablaK102(Base):
         self.assertEqual(x["evidencias"], [])
         self.assertEqual((b["cuenta"]["en_curso"], b["cuenta"]["planificadas"]), (1, 0))
 
+    def test_k108_4_planificada_o_en_curso_con_la_hora_mas_reciente_del_plan_o_del_estado(self):
+        """K-108, punto 4: el observado_en de una nota planificada o en curso es la más reciente entre la hora del
+        commit del plan que trae su etiqueta y la del estado de sus tareas. En el sandbox salía la de los eventos
+        viejos de sus issues (2026-10-14), no la de cuando se enlazó."""
+        n = nota("2026-09-18 21:15")
+        viejo = "2026-09-14T09:00:00Z"
+        b = self.calcula([n], [tarea("T12", "lista", ["2026-09-18 21:15"], fuente="github", obs=viejo)])
+        self.assertEqual((self.de(b, n)["cobertura"]["valor"], self.de(b, n)["cobertura"]["observado_en"]),
+                         ("planificada", PLAN))
+        b = self.calcula([n], [tarea("T12", "en_curso", ["2026-09-18 21:15"], obs=viejo, primera=viejo)])
+        self.assertEqual((self.de(b, n)["cobertura"]["valor"], self.de(b, n)["cobertura"]["observado_en"]),
+                         ("en_curso", PLAN))
+        # Con el estado más reciente que el plan, la del estado (como antes).
+        b = self.calcula([n], [tarea("T12", "en_curso", ["2026-09-18 21:15"], obs="2026-09-19T08:40:00Z",
+                                     primera="2026-09-19T08:40:00Z")])
+        self.assertEqual(self.de(b, n)["cobertura"]["observado_en"], "2026-09-19T08:40:00Z")
+        # Una cubierta, la de sus tareas, sin cambios.
+        b = self.calcula([n], [tarea("T12", "publicada", ["2026-09-18 21:15"], fuente="git", obs="2026-09-19T07:00:00Z",
+                                     evidencia="abc1234", hecha_en="2026-09-19T07:00:00Z")])
+        self.assertEqual(self.de(b, n)["cobertura"]["observado_en"], "2026-09-19T07:00:00Z")
+
     def test_cubierta_con_todas_publicadas_o_cerradas_y_su_evidencia(self):
         n = nota("2026-09-18 20:30", fuerza="dato")
         tareas = [tarea("T03", "publicada", ["2026-09-18 20:30"], fuente="git", obs="2026-09-19T01:10:00Z",
