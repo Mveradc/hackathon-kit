@@ -30,6 +30,17 @@ function Hora({ iso, zona, dia = true }) {
   return iso ? <time dateTime={iso}>{dia ? diaHm(iso, zona) : hm(iso, zona)}</time> : null;
 }
 
+// K-108, punto 2: si el fin temprano y el tarde son el mismo instante, no es un rango. La web solo compara las dos
+// horas que trae la vista para elegir el texto (y un punto en vez de una barra); no calcula nada.
+const igual = (temprano, tarde) => ms(temprano) === ms(tarde);
+
+/** «entre X y Y» o, si X = Y, «hacia X (las medidas no varían)». */
+function Fin({ temprano, tarde, zona, marcas = false }) {
+  return igual(temprano, tarde)
+    ? <>hacia <span {...(marcas ? { "data-temprano": "", "data-tarde": "" } : {})}><Hora iso={temprano} zona={zona} /></span> <span data-sin-rango="">(las medidas no varían)</span></>
+    : <>entre <span {...(marcas ? { "data-temprano": "" } : {})}><Hora iso={temprano} zona={zona} /></span> y <span {...(marcas ? { "data-tarde": "" } : {})}><Hora iso={tarde} zona={zona} /></span></>;
+}
+
 function Declarado({ donde, d, servido }) {
   return <ProvenanceTag source="declarado" label={`declarado · ${donde}`} age={hace(d.observado_en, servido)} at={d.observado_en} />;
 }
@@ -119,11 +130,13 @@ function Linea({ r, zona, servido, pasados, riesgos }) {
   const filas = r.cadena.map((e) => fila(e, zona, servido, pasados, riesgos, r.veredicto.valor, true));
   const [, , tono] = VEREDICTO[r.veredicto.valor] || VEREDICTO.sin_estimacion;
   const est = r.estimacion;
+  const uno = est && igual(est.temprano, est.tarde);
   return (
     <Cadena layout="linea" min={min} max={max} ticks={marcasDeHora(min, max, zona)} marks={marcas} rows={filas}
-      end={est ? { from: ms(est.temprano), to: ms(est.tarde), tone: tono, title: "Fin estimado (estimación)",
-        label: <span data-fin="">entre <Hora iso={est.temprano} zona={zona} /> y <Hora iso={est.tarde} zona={zona} /></span>,
-        range: "con el ritmo más rápido y con el más lento medidos; nunca una sola hora" } : undefined} />
+      end={est ? { ...(uno ? { at: ms(est.temprano), sub: "una hora: las medidas no varían" } : { from: ms(est.temprano), to: ms(est.tarde) }),
+        tone: tono, title: "Fin estimado (estimación)",
+        label: <span data-fin=""><Fin temprano={est.temprano} tarde={est.tarde} zona={zona} /></span>,
+        range: uno ? "el ritmo más rápido y el más lento medidos dan la misma hora" : "con el ritmo más rápido y con el más lento medidos; nunca una sola hora" } : undefined} />
   );
 }
 
@@ -146,12 +159,12 @@ function fila(e, zona, servido, pasados, riesgos, veredicto, linea) {
       {" "}<span data-hasta="">«Hasta» {e.hasta.texto ?? "—"}{e.hasta.valor ? null : ` (${MOTIVO[e.hasta.motivo] || e.hasta.motivo})`}</span>
       {" "}<Declarado donde="plan.md" d={e.hasta} servido={servido} /></span>,
     pulse,
-    note: e.fin_tarde ? <span data-fin-eslabon="">estimación: acaba entre <Hora iso={e.fin_temprano} zona={zona} /> y <Hora iso={e.fin_tarde} zona={zona} /></span> : null,
+    note: e.fin_tarde ? <span data-fin-eslabon="">estimación: acaba <Fin temprano={e.fin_temprano} tarde={e.fin_tarde} zona={zona} /></span> : null,
     noteKind: riesgo ? "no_llega" : "normal",
     ...(linea ? {
       kind: pasado ? "plazo_pasado" : t.viejo ? "vieja" : "franja",
       from: fr ? ms(fr.desde) : undefined, to: fr ? ms(fr.hasta) : undefined,
-      est: e.fin_tarde ? [ms(e.fin_temprano), ms(e.fin_tarde)] : undefined, estKind: riesgo ? "no_llega" : "prevista",
+      ...(e.fin_tarde ? (igual(e.fin_temprano, e.fin_tarde) ? { estAt: ms(e.fin_temprano) } : { est: [ms(e.fin_temprano), ms(e.fin_tarde)] }) : {}), estKind: riesgo ? "no_llega" : "prevista",
       deadline: e.hasta.valor ? ms(e.hasta.valor) : undefined, deadlinePast: pasado,
     } : {}),
   };
@@ -165,6 +178,7 @@ export function Ruta({ respuesta }) {
   const [pulso, palabra, tono] = VEREDICTO[r.veredicto.valor] || VEREDICTO.sin_estimacion;
   const est = r.estimacion;
   const obj = r.objetivo;
+  const sinUsuario = r.sin_usuario ?? [];        // K-108, punto 1; las vistas de antes no lo traen
   // Búsquedas por id en lo que ya trae la vista (ADR-0009: agrupar por un campo), no cálculos.
   const porTarea = new Map([...tarjetas(vista), ...r.cadena.map((e) => e.tarjeta)].map((t) => [t.id, t]));
   const pasados = new Set(r.hechos.filter((h) => h.tipo === "plazo_pasado").map((h) => h.tarea));
@@ -195,8 +209,8 @@ export function Ruta({ respuesta }) {
                 de <span data-margen-min="">{duracion(est.margen_min)}</span> a <span data-margen-max="">{duracion(est.margen_max)}</span>
               </span>
               <span className="hk-texto-sec">de margen sobre la entrega ({obj?.valor ? <Hora iso={obj.valor} zona={zona} /> : "—"}) ·
-                fin entre <span data-temprano=""><Hora iso={est.temprano} zona={zona} /></span> y <span data-tarde=""><Hora iso={est.tarde} zona={zona} /></span></span>
-              <span className="hk-texto">Con el ritmo medido de cada persona, la cadena acaba en ese rango. Es una previsión, no un hecho.</span>
+                fin <Fin temprano={est.temprano} tarde={est.tarde} zona={zona} marcas /></span>
+              <span className="hk-texto">Con el ritmo medido de cada persona, la cadena acaba {igual(est.temprano, est.tarde) ? "a esa hora" : "en ese rango"}. Es una previsión, no un hecho.</span>
             </>
           ) : (
             <>
@@ -218,7 +232,7 @@ export function Ruta({ respuesta }) {
                 : <><span data-n="">{b.n}</span> de <span data-minimo="">{r.base.minimo}</span> · sin ritmo todavía</>}</li>
             ))}
           </ul>
-          <span className="hk-texto-sec">Por persona: lo que tardó de verdad ÷ su franja del plan, sin descansos, en las tareas ya hechas. Hacen falta {r.base.minimo}; con menos, «n de {r.base.minimo}» y sin cifra.{r.base.desde ? <> Medidas desde <span data-base-desde=""><Hora iso={r.base.desde} zona={zona} /></span>.</> : null}</span>
+          <span className="hk-texto-sec">Por persona: lo que tardó de verdad ÷ su franja del plan, sin descansos, en las tareas ya hechas. Hacen falta {r.base.minimo}; con menos, «n de {r.base.minimo}» y sin cifra.{sinUsuario.length ? " Quien no tiene usuario de GitHub no sale aquí: va aparte, en «Sin usuario»." : ""}{r.base.desde ? <> Medidas desde <span data-base-desde=""><Hora iso={r.base.desde} zona={zona} /></span>.</> : null}</span>
         </div>
         <div className="hk-veredicto__col">
           <span className="hk-label">Contra qué</span>
@@ -292,6 +306,12 @@ export function Ruta({ respuesta }) {
                   <span><b className="hk-mono">{x.tarea}</b> · {MOTIVO[x.motivo] || x.motivo}: ni a tiempo ni tarde{est ? ", y no se cuenta en la estimación" : ""}.</span>
                   <Declarado donde="plan.md" d={x} servido={servido} />
                 </span>)) : <span className="hk-texto-sec">Ninguna tarea abierta sin plazo.</span>}</dd>
+              <dt>Sin usuario</dt>
+              <dd>{sinUsuario.length ? sinUsuario.map((x) => (
+                <span key={x.tarea} className="hk-bloque" data-sin-usuario={x.tarea}>
+                  <span><b className="hk-mono">{x.tarea}</b> · <span data-dueno="">{x.dueno}</span>: sin usuario de GitHub: no se mide.</span>
+                  <Declarado donde="equipo.md" d={x} servido={servido} />
+                </span>)) : <span className="hk-texto-sec">Ninguna tarea con un dueño sin usuario de GitHub.</span>}</dd>
               <dt>No cuentan</dt>
               <dd>{r.fuera_de_entrega.length ? r.fuera_de_entrega.map((x) => (
                 <span key={x.tarea} className="hk-bloque" data-fuera={x.tarea}>

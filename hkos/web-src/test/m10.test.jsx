@@ -218,6 +218,14 @@ describe.each(RUTA)("ruta · $nombre", ({ respuesta, antiguedades: edades, horas
       expect(minutos(q(v, "[data-margen-min]").textContent)).toBe(est.margen_min);
       expect(minutos(q(v, "[data-margen-max]").textContent)).toBe(est.margen_max);
       expect(q(container, "[data-fin]")).not.toBeNull();
+      // K-108, punto 2: con temprano = tarde, «hacia» y un punto; si no, «entre … y …» y la barra del rango.
+      const uno = Date.parse(est.temprano) === Date.parse(est.tarde);
+      expect(texto(q(v, "[data-margen]").nextElementSibling)).toMatch(uno ? /fin hacia .+ \(las medidas no varían\)$/ : /fin entre .+ y .+$/);
+      if (r.cadena.length) {
+        const fin = q(container, ".hk-chain__fila[data-fin]");
+        expect(!!fin.querySelector(".hk-chain__range")).toBe(!uno);
+        expect(!!fin.querySelector(".hk-chain__punto")).toBe(uno);
+      }
     } else {
       expect(v.querySelector("[data-margen]")).toBeNull();
       expect(texto(v)).toContain("Sin cifra");
@@ -344,7 +352,10 @@ describe.each(RUTA)("ruta · $nombre", ({ respuesta, antiguedades: edades, horas
       eslabones.forEach((el, i) => {
         const e = r.cadena[i], pasado = pasados.has(e.tarjeta.id);
         const estimado = el.querySelector(".hk-chain__bar--est");
-        expect(!!estimado).toBe(!!e.fin_tarde);
+        // K-108, punto 2: con sus dos fines iguales, un punto y no una barra de anchura cero.
+        const uno = !!e.fin_tarde && Date.parse(e.fin_temprano) === Date.parse(e.fin_tarde);
+        expect(!!estimado).toBe(!!e.fin_tarde && !uno);
+        expect(!!el.querySelector(".hk-chain__punto")).toBe(uno);
         if (estimado) expect(estimado.classList.contains("hk-chain__bar--plazo_pasado")).toBe(false);
         expect(!!el.querySelector(".hk-chain__bar--plazo_pasado")).toBe(pasado && !!e.franja.valor);
         expect(!!el.querySelector(".hk-chain__deadline.is-past")).toBe(pasado && !!e.hasta.valor);
@@ -359,6 +370,16 @@ describe.each(RUTA)("ruta · $nombre", ({ respuesta, antiguedades: edades, horas
     const { container } = render(<Ruta respuesta={respuesta} />);
     expect([...container.querySelectorAll("[data-sin-plazo]")].map((el) => el.dataset.sinPlazo)).toEqual(r.sin_plazo.map((x) => x.tarea));
     for (const x of r.sin_plazo) compruebaTiempo(q(container, `[data-sin-plazo="${x.tarea}"]`), x.observado_en, edades);
+    // K-108, punto 1 (las vistas de antes de K-108 no traen `sin_usuario`).
+    const sinUsuario = r.sin_usuario ?? [];
+    expect([...container.querySelectorAll("[data-sin-usuario]")].map((el) => el.dataset.sinUsuario)).toEqual(sinUsuario.map((x) => x.tarea));
+    for (const x of sinUsuario) {
+      const el = q(container, `[data-sin-usuario="${x.tarea}"]`);
+      expect(q(el, "[data-dueno]").textContent).toBe(x.dueno);
+      expect(texto(el)).toContain("sin usuario de GitHub: no se mide");
+      compruebaTiempo(el, x.observado_en, edades);
+      DECLARADO_SIN_AUTOR(el);
+    }
     expect([...container.querySelectorAll("[data-fuera]")].map((el) => el.dataset.fuera)).toEqual(r.fuera_de_entrega.map((x) => x.tarea));
     for (const x of r.fuera_de_entrega) compruebaTiempo(q(container, `[data-fuera="${x.tarea}"]`), x.observado_en, edades);
     const hitos = [...container.querySelectorAll("[data-hito]")];
@@ -572,6 +593,93 @@ describe("la web pinta lo que dice el bloque y no lo recalcula (ADR-0009)", () =
     const { container } = render(<Ruta respuesta={r} />);
     const h = r.vista.ruta.hitos.find((x) => x.hito.valor);
     expect([...container.querySelectorAll(".hk-chain__mark--hito")].map((m) => m.title)).toContain(`«${h.hito.nombre}» · declarado · ${h.hito.donde}`);
+  });
+});
+
+// --- K-108: decisiones del usuario ---
+
+describe("K-108: tareas sin usuario de GitHub y fin sin rango", () => {
+  const ej = CASOS.find((c) => c.nombre.startsWith("ejemplo")).respuesta;
+  const con = (cambia) => {
+    const v = structuredClone(ej.vista);
+    cambia(v);
+    return { ...ej, vista: v };
+  };
+  const estimada = (temprano, tarde, fines) => con((v) => {
+    const x = v.ruta;
+    x.veredicto = { ...x.veredicto, valor: "a_tiempo", motivos: [], gravedad: "ninguna" };
+    x.estimacion = { temprano, tarde, margen_min: 60, margen_max: 60 };
+    x.cadena.forEach((e, i) => Object.assign(e, fines[i]));
+    x.hechos = [];
+    x.riesgos = [];
+  });
+
+  it("punto 1: `sin_usuario[]` sale aparte, como las sin plazo, con «sin usuario de GitHub: no se mide» y su procedencia; esa persona no sale en la base", () => {
+    const sin = [{ tarea: "T09", dueno: "Persona C", fuente: "git", observado_en: "2026-09-18T18:05:00Z" },
+      { tarea: "T11", dueno: "Persona C", fuente: "git", observado_en: "2026-09-18T18:05:00Z" }];
+    const r = con((v) => { v.ruta.sin_usuario = sin; });
+    const { container } = render(<Ruta respuesta={r} />);
+    const els = [...container.querySelectorAll("[data-sin-usuario]")];
+    expect(els.map((el) => el.dataset.sinUsuario)).toEqual(["T09", "T11"]);
+    for (const el of els) {
+      expect(texto(el)).toContain("· Persona C: sin usuario de GitHub: no se mide.");
+      expect(texto(el)).not.toContain("@Persona C");
+      expect(texto(q(el, ".hk-prov"))).toContain("declarado · equipo.md");
+      expect(q(el, `time[datetime="${sin[0].observado_en}"]`).textContent).toBe("hace 14 h");
+      DECLARADO_SIN_AUTOR(el);
+    }
+    // Aparte, en su fila de «De dónde sale», junto a «Sin plazo».
+    expect(els[0].closest("dd").previousElementSibling.textContent).toBe("Sin usuario");
+    // La base es la de la vista: la web no añade a quien no tiene usuario.
+    expect([...container.querySelectorAll("[data-base-persona]")].map((el) => el.dataset.basePersona)).toEqual(r.vista.ruta.base.personas.map((b) => b.persona));
+    expect(q(container, '[data-base-persona="ana"]').closest(".hk-veredicto__col").textContent).not.toContain("Persona C");
+    expect(texto(q(container, "[data-base]").parentElement)).toContain("Quien no tiene usuario de GitHub no sale aquí");
+    // Vacía, o en una vista de antes de K-108 sin el campo: lo dice, sin filas.
+    for (const cambia of [(v) => { v.ruta.sin_usuario = []; }, (v) => { delete v.ruta.sin_usuario; }]) {
+      const c = render(<Ruta respuesta={con(cambia)} />).container;
+      expect(c.querySelector("[data-sin-usuario]")).toBeNull();
+      expect(texto(c)).toContain("Ninguna tarea con un dueño sin usuario de GitHub.");
+      expect(texto(c)).not.toContain("Quien no tiene usuario de GitHub no sale aquí");
+    }
+  });
+
+  it("punto 2: con temprano = tarde, «fin hacia HH:MM (las medidas no varían)», nunca «HH:MM–HH:MM», y un punto en vez de un rango de anchura cero", () => {
+    // El mismo instante escrito de dos maneras: la web compara instantes, no textos.
+    const r = estimada("2026-09-20T09:00:00Z", "2026-09-20T11:00:00+02:00",
+      [{ fin_temprano: "2026-09-20T07:00:00Z", fin_tarde: "2026-09-20T07:00:00Z" }, { fin_temprano: "2026-09-20T09:00:00Z", fin_tarde: "2026-09-20T09:00:00Z" }]);
+    const { container } = render(<Ruta respuesta={r} />);
+    const v = q(container, "[data-veredicto]");
+    expect(texto(q(v, "[data-margen]").nextElementSibling)).toMatch(/· fin hacia dom 11:00 \(las medidas no varían\)$/);
+    expect(texto(v)).toContain("la cadena acaba a esa hora");
+    expect(q(v, "[data-temprano]")).toBe(q(v, "[data-tarde]"));
+    const fin = q(container, ".hk-chain__fila[data-fin]");
+    expect(texto(q(fin, ".hk-chain__end"))).toBe("hacia dom 11:00 (las medidas no varían)");
+    expect(fin.querySelector(".hk-chain__range")).toBeNull();
+    expect(fin.querySelectorAll(".hk-chain__punto").length).toBe(1);
+    expect(texto(fin)).not.toContain("nunca una sola hora");
+    // Cada eslabón con sus dos fines iguales: lo mismo, sin barra discontinua de anchura cero.
+    for (const el of container.querySelectorAll("[data-eslabon]")) {
+      expect(texto(q(el, "[data-fin-eslabon]"))).toMatch(/^estimación: acaba hacia dom \d\d:\d\d \(las medidas no varían\)$/);
+      expect(el.querySelector(".hk-chain__bar--est")).toBeNull();
+      expect(el.querySelectorAll(".hk-chain__punto").length).toBe(1);
+    }
+    expect(texto(container)).not.toMatch(/(\d\d:\d\d) ?[–-] ?|entre (\S+ \d\d:\d\d) y /);
+  });
+
+  it("punto 2: con temprano ≠ tarde, el rango de siempre («entre … y …» y su barra)", () => {
+    const r = estimada("2026-09-20T09:00:00Z", "2026-09-20T12:00:00Z",
+      [{ fin_temprano: "2026-09-20T07:00:00Z", fin_tarde: "2026-09-20T08:00:00Z" }, { fin_temprano: "2026-09-20T09:00:00Z", fin_tarde: "2026-09-20T12:00:00Z" }]);
+    const { container } = render(<Ruta respuesta={r} />);
+    const v = q(container, "[data-veredicto]");
+    expect(texto(q(v, "[data-margen]").nextElementSibling)).toMatch(/· fin entre dom 11:00 y dom 14:00$/);
+    expect(texto(container)).not.toContain("las medidas no varían");
+    const fin = q(container, ".hk-chain__fila[data-fin]");
+    expect(fin.querySelector(".hk-chain__range")).not.toBeNull();
+    expect(fin.querySelector(".hk-chain__punto")).toBeNull();
+    for (const el of container.querySelectorAll("[data-eslabon]")) {
+      expect(texto(q(el, "[data-fin-eslabon]"))).toMatch(/^estimación: acaba entre /);
+      expect(el.querySelector(".hk-chain__bar--est")).not.toBeNull();
+    }
   });
 });
 

@@ -243,6 +243,10 @@ body {
 .hk-chain__range { position: absolute; top: 7px; height: 16px; box-sizing: border-box; border-radius: 3px; border: 1px dashed var(--line-strong); background: var(--surface-100); }
 .hk-chain__range--ok { border-color: var(--state-ok); }
 .hk-chain__range--wait { border-color: var(--state-wait); background: var(--wait-soft); }
+.hk-chain__punto { position: absolute; top: 4px; bottom: 4px; width: 0; margin-left: -1px; border-left: 2px dashed var(--line-strong); z-index: 1; }
+.hk-chain__punto--prevista { border-left-color: var(--ink-muted); }
+.hk-chain__punto--ok { border-left-color: var(--state-ok); }
+.hk-chain__punto--wait, .hk-chain__punto--no_llega { border-left-color: var(--state-wait); }
 .hk-chain__end { font-family: var(--font-mono); font-size: 13px; line-height: 18px; color: var(--ink-muted); }
 .hk-chain__end--ok { color: var(--state-ok); }
 .hk-chain__end--wait { color: var(--state-wait); }
