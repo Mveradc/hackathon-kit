@@ -307,6 +307,7 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Encontrado al cerrar:** con varias cuentas de GitHub en el Git Credential Manager de Windows, cada fetch del relay abría «Select an account»: el relay y `compilar.py` no usaban el entorno sin diálogos del demonio (PR #38).
 - **Decisión del usuario:** el ensayo (M8h, fase 2) queda aplazado sin fecha.
 - **Resultados** en `evals/coordinacion/prueba.md` («M9a, K-99» y «M9a, cierre»).
+- **Corregido tras K-108 (2026-10-20):** el cierre de M9a citaba `web_vivo.py`, un script que no existía; lo que pedía lo cubren `hkos/web-src/scripts/comprueba_compilado.mjs` y `pestanas_chrome.mjs`, en el CI web (`web-m9a.yml`).
 
 ## v0.4.0 — Hackathon OS y web de trabajo (2026-10-18)
 - **Qué sale:** M8a–M8h (estado del equipo, colisiones, robustez y modo sin GitHub) y M9a (web de trabajo nivel A, `servicios.md`, Anotar y Reclamar), opcional y experimental.
