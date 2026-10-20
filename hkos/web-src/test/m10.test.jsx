@@ -643,6 +643,61 @@ describe("K-108: tareas sin usuario de GitHub y fin sin rango", () => {
     }
   });
 
+  const usuarioC = (tarea) => ({ tarea, dueno: "Persona C", fuente: "git", observado_en: "2026-09-18T18:05:00Z" });
+
+  it("punto 1: todas las abiertas son de personas sin usuario: sin_estimacion con el motivo sin_usuario, sus tareas y el resumen tal cual", () => {
+    const resumen = "ruta: sin estimación · sin usuario: 2 tareas";
+    const r = con((v) => {
+      const x = v.ruta;
+      x.cadena.forEach((e) => { e.tarjeta.dueno = "Persona C"; });
+      x.sin_usuario = x.cadena.map((e) => usuarioC(e.tarjeta.id));
+      x.sin_plazo = [];
+      x.veredicto = { ...x.veredicto, valor: "sin_estimacion", motivos: ["sin_usuario"], gravedad: "gris" };
+      x.estimacion = null;
+      x.resumen = resumen;
+    });
+    const { container } = render(<Ruta respuesta={r} />);
+    const v = q(container, "[data-veredicto]");
+    expect(v.dataset.veredicto).toBe("sin_estimacion");
+    expect(q(v, "[data-veredicto-palabra]").textContent).toBe("Sin estimación");
+    expect(texto(v)).toContain("Sin cifra");
+    expect(v.querySelector("[data-margen]")).toBeNull();
+    expect([...v.querySelectorAll("[data-motivo]")].map((el) => [el.dataset.motivo, el.textContent]))
+      .toEqual([["sin_usuario", "de personas sin usuario de GitHub (no se miden): T05, T06"]]);
+    expect(container.querySelector("[data-fin], .hk-chain__bar, .hk-chain__range, .hk-chain__punto")).toBeNull();
+    expect([...container.querySelectorAll("[data-sin-usuario]")].map((el) => el.dataset.sinUsuario)).toEqual(["T05", "T06"]);
+    for (const el of container.querySelectorAll("[data-sin-usuario]")) expect(texto(el)).toContain("sin usuario de GitHub: no se mide.");
+    expect(q(container, "[data-resumen-ruta]").textContent).toBe(resumen);
+  });
+
+  it("punto 1: sin_plazo y sin_usuario a la vez, en el orden de la vista (sin_entrega, ciclo, sin_plazo, sin_usuario, pocos_datos), sin reordenar", () => {
+    const motivos = ["sin_entrega", "sin_plazo", "sin_usuario", "pocos_datos"];
+    const r = con((v) => {
+      const x = v.ruta;
+      x.sin_usuario = [usuarioC("T09")];
+      x.veredicto = { ...x.veredicto, valor: "sin_estimacion", motivos, gravedad: "gris" };
+      x.resumen = "ruta: sin estimación · sin hora de entrega";
+    });
+    const { container } = render(<Ruta respuesta={r} />);
+    expect([...container.querySelectorAll("[data-motivo]")].map((el) => [el.dataset.motivo, el.textContent])).toEqual([
+      ["sin_entrega", "sin hora de entrega"], ["sin_plazo", "sin plazo: T21"],
+      ["sin_usuario", "de personas sin usuario de GitHub (no se miden): T09"], ["pocos_datos", "pocos datos: hacen falta 3 tareas medidas por persona"]]);
+    expect(q(container, "[data-resumen-ruta]").textContent).toBe("ruta: sin estimación · sin hora de entrega");
+  });
+
+  it("punto 1: si queda alguna estimable, sin_usuario no es motivo: sale aparte, no se cuenta, y se estima el resto", () => {
+    const resumen = "ruta: a tiempo · sin contar T09 (sin usuario)";
+    const r = estimada("2026-09-20T09:00:00Z", "2026-09-20T12:00:00Z",
+      [{ fin_temprano: "2026-09-20T07:00:00Z", fin_tarde: "2026-09-20T08:00:00Z" }, { fin_temprano: "2026-09-20T09:00:00Z", fin_tarde: "2026-09-20T12:00:00Z" }]);
+    r.vista.ruta.sin_usuario = [usuarioC("T09")];
+    r.vista.ruta.resumen = resumen;
+    const { container } = render(<Ruta respuesta={r} />);
+    expect(container.querySelector("[data-motivo]")).toBeNull();
+    expect(q(container, "[data-margen]")).not.toBeNull();
+    expect(texto(q(container, '[data-sin-usuario="T09"]'))).toContain("T09 · Persona C: sin usuario de GitHub: no se mide, y no se cuenta en la estimación.");
+    expect(q(container, "[data-resumen-ruta]").textContent).toBe(resumen);
+  });
+
   it("punto 2: con temprano = tarde, «fin hacia HH:MM (las medidas no varían)», nunca «HH:MM–HH:MM», y un punto en vez de un rango de anchura cero", () => {
     // El mismo instante escrito de dos maneras: la web compara instantes, no textos.
     const r = estimada("2026-09-20T09:00:00Z", "2026-09-20T11:00:00+02:00",

@@ -13,7 +13,9 @@ const VEREDICTO = {
   a_tiempo: ["ok", "A tiempo", "ok"], justo: ["wait", "Justo", "wait"], no_llega: ["wait", "No llega", "wait"],
   sin_estimacion: ["idle", "Sin estimación", "idle"],
 };
-const MOTIVO_SIN = { sin_entrega: "sin hora de entrega", ciclo: "ciclo en las dependencias", sin_plazo: "ninguna tarea abierta tiene plazo", pocos_datos: "pocos datos: hacen falta 3 tareas medidas por persona" };
+// sin_plazo y sin_usuario (K-108) son motivos solo si no queda ninguna tarea abierta estimable: cada uno, con sus tareas.
+const MOTIVO_SIN = { sin_entrega: "sin hora de entrega", ciclo: "ciclo en las dependencias", sin_plazo: "sin plazo",
+  sin_usuario: "de personas sin usuario de GitHub (no se miden)", pocos_datos: "pocos datos: hacen falta 3 tareas medidas por persona" };
 const MOTIVO = {
   vacio: "«Hasta» vacío", relativo_sin_inicio: "H+N sin Inicio en equipo.md", sin_inicio: "sin Inicio en equipo.md",
   sin_zona: "sin zona en equipo.md", por_confirmar: "por confirmar", formato: "un formato que no se entiende",
@@ -185,7 +187,8 @@ export function Ruta({ respuesta }) {
   const riesgos = new Set(r.riesgos.map((x) => x.tarea));
   const ciclo = r.hechos.find((h) => h.tipo === "ciclo");
   const textoMotivo = (m) => m === "ciclo" && ciclo ? `ciclo ${ciclo.ciclo.join(" → ")}`
-    : m === "sin_plazo" ? `${MOTIVO_SIN[m]}: ${r.sin_plazo.map((x) => x.tarea).join(", ")}` : MOTIVO_SIN[m] || m;
+    : m === "sin_plazo" ? `${MOTIVO_SIN[m]}: ${r.sin_plazo.map((x) => x.tarea).join(", ")}`
+      : m === "sin_usuario" ? `${MOTIVO_SIN[m]}: ${sinUsuario.map((x) => x.tarea).join(", ")}` : MOTIVO_SIN[m] || m;
 
   return (
     <div className="hk-col" data-vista="ruta">
@@ -309,7 +312,7 @@ export function Ruta({ respuesta }) {
               <dt>Sin usuario</dt>
               <dd>{sinUsuario.length ? sinUsuario.map((x) => (
                 <span key={x.tarea} className="hk-bloque" data-sin-usuario={x.tarea}>
-                  <span><b className="hk-mono">{x.tarea}</b> · <span data-dueno="">{x.dueno}</span>: sin usuario de GitHub: no se mide.</span>
+                  <span><b className="hk-mono">{x.tarea}</b> · <span data-dueno="">{x.dueno}</span>: sin usuario de GitHub: no se mide{est ? ", y no se cuenta en la estimación" : ""}.</span>
                   <Declarado donde="equipo.md" d={x} servido={servido} />
                 </span>)) : <span className="hk-texto-sec">Ninguna tarea con un dueño sin usuario de GitHub.</span>}</dd>
               <dt>No cuentan</dt>
