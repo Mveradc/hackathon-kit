@@ -317,7 +317,7 @@
                 "properties": {
                   "valor": { "enum": ["sin_tarea", "ambigua", "planificada", "en_curso", "en_pitch", "cubierta"], "description": "Tras congelar, 2026-10-19, M10, issue #46 (ajuste 2 de ADR-0012): planificada = sus tareas no han empezado; en_curso = alguna tiene señales. Tras congelar, 2026-10-19, M10, ajuste 3, punto 3: en_curso si alguna tiene el estado de la tarjeta distinto de lista, pendiente y reclamada, o historia.primera_senal; si no, planificada." },
                   "fuente": { "$ref": "#/$defs/fuente" },
-                  "observado_en": { "type": "string", "format": "date-time" },
+                  "observado_en": { "type": "string", "format": "date-time", "description": "El más reciente de los datos usados. Tras congelar, 2026-10-20, M10, ajuste 5, punto 3: en una nota planificada o en_curso, la más reciente entre la hora del commit del plan que trae su etiqueta (tareas[].enlace.observado_en) y la del estado de sus tareas (tareas[].tarjeta.observado_en)." },
                   "viejo": { "type": "boolean" }
                 }
               },
@@ -425,7 +425,7 @@
     "vista_ruta": {
       "type": "object",
       "description": "Tras congelar, 2026-10-19, M10 (ADR-0013; api.md §11): el bloque ruta de proyeccion.vista, solo con ruta_critica: sí. No es un campo de estado.json.",
-      "required": ["observado_en", "fuente", "viejo", "dato_mas_viejo", "zona", "objetivo", "otras_entregas", "veredicto", "estimacion", "base", "hechos", "riesgos", "cadena", "sin_plazo", "fuera_de_entrega", "hitos", "descansos", "resumen"],
+      "required": ["observado_en", "fuente", "viejo", "dato_mas_viejo", "zona", "objetivo", "otras_entregas", "veredicto", "estimacion", "base", "hechos", "riesgos", "cadena", "sin_plazo", "sin_usuario", "fuera_de_entrega", "hitos", "descansos", "resumen"],
       "additionalProperties": false,
       "properties": {
         "observado_en": { "type": "string", "format": "date-time" },
@@ -448,9 +448,10 @@
               "type": "array",
               "items": { "anyOf": [
                 { "enum": ["sin_entrega", "ciclo", "pocos_datos"] },
-                { "enum": ["sin_plazo"], "description": "Tras congelar, 2026-10-19, M10, ajuste 2: solo cuando hay tareas abiertas que cuentan y ninguna tiene franja (si no, «sin plazo» daría «a tiempo» sin medir nada). Si alguna tiene franja, las que no la tienen van a sin_plazo[] y no quitan la estimación (ajuste 1 de ADR-0013)." }
+                { "enum": ["sin_plazo"], "description": "Tras congelar, 2026-10-19, M10, ajuste 2: solo cuando hay tareas abiertas que cuentan y ninguna tiene franja (si no, «sin plazo» daría «a tiempo» sin medir nada). Si alguna tiene franja, las que no la tienen van a sin_plazo[] y no quitan la estimación (ajuste 1 de ADR-0013). Tras congelar, 2026-10-20, M10, ajuste 5, punto 1: cuando ninguna abierta que cuenta es estimable (de persona con usuario y con franja) y sin_plazo[] no está vacía; las de sin_usuario[] no cuentan para esta regla." },
+                { "enum": ["sin_usuario"], "description": "Tras congelar, 2026-10-20, M10, ajuste 5, punto 1: cuando ninguna abierta que cuenta es estimable y sin_usuario[] no está vacía. Va detrás de sin_plazo y delante de pocos_datos." }
               ] },
-              "description": "sin_entrega: equipo.md sin Entrega:, ilegible o sin resolver. Las otras_entregas que no coinciden no quitan la estimación (decisión 1A); ni dos horas en Entrega: (ajuste 5) ni una tarea abierta sin plazo si alguna otra tiene franja (ajuste 1), tampoco (issue #46). sin_plazo: ninguna tarea abierta que cuenta tiene franja (tras congelar, 2026-10-19, M10, ajuste 2)."
+              "description": "sin_entrega: equipo.md sin Entrega:, ilegible o sin resolver. Las otras_entregas que no coinciden no quitan la estimación (decisión 1A); ni dos horas en Entrega: (ajuste 5) ni una tarea abierta sin plazo si alguna otra tiene franja (ajuste 1), tampoco (issue #46). sin_plazo: ninguna tarea abierta que cuenta tiene franja (tras congelar, 2026-10-19, M10, ajuste 2). Orden (tras congelar, 2026-10-20, M10, ajuste 5, punto 1): sin_entrega, ciclo, sin_plazo, sin_usuario, pocos_datos. Si alguna abierta es estimable, ni sin_plazo ni sin_usuario son motivo."
             },
             "gravedad": { "enum": ["ninguna", "ambar", "gris"], "description": "«no llega» es ámbar: el rojo es solo para hechos." },
             "fuente": { "$ref": "#/$defs/fuente" },
@@ -458,7 +459,7 @@
           }
         },
         "estimacion": {
-          "description": "null salvo con veredicto a_tiempo, justo o no_llega. Siempre un rango, nunca una sola hora. Tras congelar, 2026-10-19, M10, ajuste 3, punto 6: temprano y tarde (como fin_temprano, fin_tarde y riesgos[].fin_tarde) llevan el desfase de la zona de equipo.md en ese instante.",
+          "description": "null salvo con veredicto a_tiempo, justo o no_llega. Siempre un rango, nunca una sola hora. Tras congelar, 2026-10-19, M10, ajuste 3, punto 6: temprano y tarde (como fin_temprano, fin_tarde y riesgos[].fin_tarde) llevan el desfase de la zona de equipo.md en ese instante. Tras congelar, 2026-10-20, M10, ajuste 5, punto 2: temprano y tarde van siempre, también si son iguales (rango degenerado); entonces el resumen dice «fin hacia HH:MM (las medidas no varían)».",
           "anyOf": [{ "type": "null" }, {
             "type": "object",
             "required": ["temprano", "tarde", "margen_min", "margen_max"],
@@ -480,6 +481,7 @@
             "desde": { "$ref": "#/$defs/hora_o_nada" },
             "personas": {
               "type": "array",
+              "description": "Tras congelar, 2026-10-20, M10, ajuste 5, punto 1: solo personas con usuario de GitHub en equipo.md; una persona sin usuario no sale aquí ni cuenta para pocos_datos (sus tareas abiertas, en sin_usuario).",
               "items": {
                 "type": "object",
                 "required": ["persona", "n", "ritmo_min", "ritmo_max", "fuente", "observado_en"],
@@ -506,7 +508,7 @@
               "tipo": { "enum": ["plazo_pasado", "parada", "no_cerrada", "sin_senales", "ciclo"] },
               "gravedad": { "enum": ["rojo", "ambar", "gris"], "description": "Rojo solo para plazo_pasado." },
               "tarea": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
-              "persona": { "type": "string" },
+              "persona": { "type": "string", "description": "Tras congelar, 2026-10-20, M10, ajuste 5, punto 1: en sin_senales, nunca una persona sin usuario." },
               "plazo": { "$ref": "#/$defs/hora_o_nada" },
               "desde": { "$ref": "#/$defs/hora_o_nada", "description": "En sin_senales, la última señal atribuida a una tarea (la más reciente de las historia.ultima_senal de sus tareas), o null si ninguna la tiene (tras congelar, 2026-10-19, M10, ajuste 3, punto 2)." },
               "arrastra": { "type": "array", "items": { "type": "string", "pattern": "^T[0-9]{2,3}$" } },
@@ -566,6 +568,21 @@
             }
           }
         },
+        "sin_usuario": {
+          "type": "array",
+          "description": "Tras congelar, 2026-10-20, M10, ajuste 5, punto 1 (api.md §11.4): las tareas abiertas que cuentan de personas sin usuario (la dueña no es un usuario de GitHub de equipo.md; en el plan, por su nombre, sin @). Solo aquí, aunque tampoco tengan franja (no van a sin_plazo). No se estiman: cuentan 0 min, como las de sin_plazo, y con estimación el resumen dice «sin contar T05, T09 (sin usuario)». Siempre va; vacía si no hay ninguna.",
+          "items": {
+            "type": "object",
+            "required": ["tarea", "dueno", "fuente", "observado_en"],
+            "additionalProperties": false,
+            "properties": {
+              "tarea": { "type": "string", "pattern": "^T[0-9]{2,3}$" },
+              "dueno": { "$ref": "#/$defs/texto_ruta", "description": "El nombre del plan, recortado a 60 grafemas y sin controles bidi." },
+              "fuente": { "$ref": "#/$defs/fuente", "description": "La del dueño de la tarea: el plan (git)." },
+              "observado_en": { "type": "string", "format": "date-time", "description": "La de ese dato (la hora del commit de plan.md)." }
+            }
+          }
+        },
         "fuera_de_entrega": {
           "type": "array",
           "items": {
@@ -592,7 +609,7 @@
         },
         "descansos": { "type": "array", "items": { "$ref": "#/$defs/descanso_vista" }, "description": "Tras congelar, 2026-10-20, M10, ajuste 4, punto 2: texto, recortado a 60 grafemas y sin controles bidi." },
         "resumen": {
-          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 2: «plazo pasado» va antes que «sin contar…» y «otra entrega…», para que el corte no quite el único dato rojo. Tras congelar, 2026-10-19, M10, ajuste 3, punto 5: va justo detrás del veredicto, antes de los motivos y sus detalles, y los motivos van abreviados («pocos datos: <n> personas», «sin plazo: <n> tareas»); el detalle, en sin_plazo y base.personas. Punto 7: el texto de «otra entrega» de plan.md o equipo.md va entre «», recortado a 30 grafemas, con su fichero y sin autor. Tras congelar, 2026-10-20, M10, ajuste 4, punto 1: nunca se corta dentro de una parte; si no cabe en 120, se quitan partes enteras desde el final y se añade « · y más en la vista». El veredicto y el plazo pasado no se quitan nunca. Punto 3: la «otra entrega» con valor sale «otra entrega: <día HH:MM> (<fichero>)», con la hora en la zona del equipo y sin texto libre; solo sin valor, su texto entre «», recortado a 30 grafemas y con su fichero.",
+          "description": "Decisión 7B: la línea de estado-equipo.md, sin el «- » ni la hora. Tras congelar, 2026-10-19, M10, issue #46 (M17): 120 caracteres como mucho. Tras congelar, 2026-10-19, M10, ajuste 2: «plazo pasado» va antes que «sin contar…» y «otra entrega…», para que el corte no quite el único dato rojo. Tras congelar, 2026-10-19, M10, ajuste 3, punto 5: va justo detrás del veredicto, antes de los motivos y sus detalles, y los motivos van abreviados («pocos datos: <n> personas», «sin plazo: <n> tareas»); el detalle, en sin_plazo y base.personas. Punto 7: el texto de «otra entrega» de plan.md o equipo.md va entre «», recortado a 30 grafemas, con su fichero y sin autor. Tras congelar, 2026-10-20, M10, ajuste 4, punto 1: nunca se corta dentro de una parte; si no cabe en 120, se quitan partes enteras desde el final y se añade « · y más en la vista». El veredicto y el plazo pasado no se quitan nunca. Punto 3: la «otra entrega» con valor sale «otra entrega: <día HH:MM> (<fichero>)», con la hora en la zona del equipo y sin texto libre; solo sin valor, su texto entre «», recortado a 30 grafemas y con su fichero. Tras congelar, 2026-10-20, M10, ajuste 5, punto 1: con estimación y sin_usuario no vacía, « · sin contar T05, T09 (sin usuario)», justo detrás de «sin contar … (sin plazo)»; sin estimación, el motivo abreviado «sin usuario: <n> tareas». Punto 2: con estimacion.temprano = tarde, «fin hacia HH:MM (las medidas no varían)», nunca «HH:MM–HH:MM» con la misma hora.",
           "type": "string",
           "maxLength": 120
         }
