@@ -188,6 +188,8 @@ def jurado_hechos(b, ids, conexiones=None):
              "cerradas_a_mano": [f["tarjeta"]["id"] for f in filas if f["tarjeta"].get("declarado") == "cerrada"],
              "corregida_por": clave_a_id.get((x["corregida_por"] or {}).get("valor")),
              "tambien_en_pitch": x["pitch"] is not None}
+        if n["estado"] == "planificada":       # R5: la hora del commit del plan con su etiqueta o la de sus tareas
+            n["observado_en"] = z(x["cobertura"]["observado_en"])
         if any(f["enlace"]["ambiguo"] for f in filas):
             n["ambiguas"] = [f["tarjeta"]["id"] for f in filas if f["enlace"]["ambiguo"]]
         pruebas = [{"conexion": conexiones.get(e["conexion"], e["conexion"]), "resultado": e["valor"],
@@ -235,6 +237,8 @@ def ruta_hechos(b, v, personas, estado=None):
         "base": {p["persona"]: {"n": p["n"], "ritmo": None if p["ritmo_min"] is None else
                                 {"min": p["ritmo_min"], "max": p["ritmo_max"]}} for p in b["base"]["personas"]},
         "sin_plazo": {x["tarea"]: TEXTO_MOTIVO.get(x["motivo"], x["motivo"]) for x in b["sin_plazo"]},
+        "sin_usuario": [{"tarea": x["tarea"], "dueno": x["dueno"], "fuente": x["fuente"], "observado_en": z(x["observado_en"])}
+                        for x in b.get("sin_usuario") or []],
         "no_cuentan": {x["tarea"]: FUERA.get(x["motivo"], x["motivo"]) for x in b["fuera_de_entrega"]},
         "plazos_vencidos": {h["tarea"]: {"plazo": z(h["plazo"]), "arrastra": h["arrastra"]}
                             for h in hechos if h["tipo"] == "plazo_pasado"},
@@ -253,7 +257,7 @@ def ruta_hechos(b, v, personas, estado=None):
         "resumen": b["resumen"], "viejo": b["viejo"], "dato_mas_viejo": z(b["dato_mas_viejo"])}
 
 
-RUTA_CLAVES = ("tareas", "zona", "veredicto", "cifra", "base", "sin_plazo", "no_cuentan", "plazos_vencidos",
+RUTA_CLAVES = ("tareas", "zona", "veredicto", "cifra", "base", "sin_plazo", "sin_usuario", "no_cuentan", "plazos_vencidos",
                "sin_senales", "riesgos", "cadena", "ciclo", "descansos", "franjas", "hitos", "resumen", "viejo",
                "dato_mas_viejo")
 
