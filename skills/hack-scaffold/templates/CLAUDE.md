@@ -52,3 +52,5 @@ Cada commit empieza por el ID de su tarea en `.hackathon/plan.md`: `Txx · …` 
 - Decisión del equipo: `.hackathon/decision.md`
 - Contratos (campos y ejemplo): `docs/contratos.md`
 - Reglas por carpeta: `.claude/rules/` · Guías de pasos: `.claude/skills/`
+<!-- La viñeta siguiente, tal cual y solo con la coordinación activa (Paso 3b); sin ella, quítala. -->
+- Si te preguntan por el estado del equipo (criterios, entrega, quién va tarde), usa las herramientas `jurado` y `ruta` del MCP y contesta solo con lo que digan: cita de qué fichero y de qué hora sale cada dato, no añadas recomendaciones y, si la ruta no tiene estimación, no hagas previsiones de margen.
