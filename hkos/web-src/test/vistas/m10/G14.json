@@ -232,6 +232,7 @@
        "observado_en": "2026-09-18T17:00:00Z"
       }
      ],
+     "sin_usuario": [],
      "fuera_de_entrega": [
       {
        "tarea": "T10",
@@ -595,6 +596,7 @@
        "observado_en": "2026-09-19T07:31:00Z"
       }
      ],
+     "sin_usuario": [],
      "fuera_de_entrega": [
       {
        "tarea": "T10",
@@ -1371,6 +1373,7 @@
        "observado_en": "2026-09-19T07:31:00Z"
       }
      ],
+     "sin_usuario": [],
      "fuera_de_entrega": [
       {
        "tarea": "T10",
@@ -1489,7 +1492,7 @@
        "declarado": true
       }
      ],
-     "resumen": "ruta: estimación no llega · T04: plazo pasado 23:00 y 3 más · fin 09:32–09:32 · entrega dom 10:00 · y más en la vista"
+     "resumen": "ruta: estimación no llega · T04: plazo pasado 23:00 y 3 más · y más en la vista"
     }
    },
    "antiguedades": {

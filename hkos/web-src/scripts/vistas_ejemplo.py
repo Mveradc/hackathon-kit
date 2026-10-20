@@ -21,6 +21,8 @@ que pinta la web, cada uno validado contra $defs/vista_jurado y $defs/vista_ruta
 - G13.json y G14.json: los momentos de G13 y de G14, con la vista entera que da proyeccion.vista con el relay de verdad
   y sus interruptores, como en igualdad.py y g13_g14.py (evals/coordinacion/simulador/m10.py: los ficheros de cada
   guion en un repo de git con su historia). G13, solo con vista_jurado; G14, solo con ruta_critica. De la vista, solo los bloques.
+- casos-G14.json: los casos de guiones/g14/casos.json de K-108 (R5: persona sin usuario, todas sin usuario, rango sin
+  anchura), por el mismo camino que vivo_g14 de g13_g14.py.
 Cada caso lleva `antiguedades` (como arriba, más la de `ruta.dato_mas_viejo`) y `horas`: cada hora de cada bloque
 escrita en la zona con que la enseña la web, {bloque: {hora: {hm, dia, fecha}}}: la `zona` del bloque (issue #56 para
 la ruta, #63 para el jurado: el nombre IANA de equipo.md o el desfase) y, sin ella, como ruta.py en el resumen (el
@@ -48,6 +50,7 @@ import relay as relay_mod  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from fixture import estado_5x20  # noqa: E402
 import g12  # noqa: E402
+import g13_g14  # noqa: E402
 from igualdad import SondeoFijo  # noqa: E402
 from simula import carga, contratos_de, montar  # noqa: E402
 
@@ -186,6 +189,30 @@ def momentos_m10(tmp):
     return casos13, casos14
 
 
+CASOS_G14 = ("persona_sin_usuario", "todas_sin_usuario", "sin_usuario_en_la_cadena", "sin_usuario_con_plazo_pasado",
+             "rango_sin_anchura")
+
+
+def casos_g14(tmp):
+    """Los casos de G14 de K-108 (CASOS_G14) con el relay de verdad, como vivo_g14 de g13_g14.py."""
+    guiones = {g: carga(os.path.join(SIM, "guiones", g)) for g in ("G14.json", "G14r.json")}
+    h14 = carga(os.path.join(SIM, guiones["G14.json"]["hechos"]))
+    casos = {c["id"]: c for c in carga(os.path.join(SIM, "guiones", "g14", "casos.json"))["casos"]}
+    salida = []
+    for id_ in CASOS_G14:
+        caso = casos[id_]
+        mo = next(m for m in h14["momentos"] if m["nombre"] == caso["base"])
+        hasta = caso.get("estado_a", mo["ahora"])
+        tabla = json.loads(g13_g14.texto(guiones[mo["guion"]]["tareas"]))["personas"] + caso.get("personas", [])
+        guion = g13_g14.con_pasos(guiones[mo["guion"]], caso, tabla if caso.get("personas") else None)
+        versiones = m10.versiones_g14(h14, hasta, g13_g14.cambios_de(caso))
+        plan = [f["plan.md"] for _, f in versiones if "plan.md" in f][-1]
+        r = m10.relay(tmp, guion, versiones, hasta, jurado=False, tareas=m10.tareas_del_plan(guion, plan))
+        ahora = caso.get("ahora", mo["ahora"])
+        salida.append(caso_m10(bloques(m10.vista(r, ahora)), ahora, r.personas[0]["persona"], momento=id_))
+    return salida
+
+
 def bloques(v):
     """De la vista, solo los bloques de M10 (lo que pintan Jurado y Ruta crítica)."""
     return {k: v[k] for k in ("jurado", "ruta") if k in v}
@@ -231,6 +258,7 @@ def main():
         g13, g14 = momentos_m10(tmp)
         guarda("G13", g13, SALIDA_M10)
         guarda("G14", g14, SALIDA_M10)
+        guarda("casos-G14", casos_g14(tmp), SALIDA_M10)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

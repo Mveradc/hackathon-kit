@@ -442,6 +442,25 @@ describe("las vistas de M10 cubren lo que hay que comprobar", () => {
     for (const v of ["plazo_pasado", "sin_senales"]) expect(hechos).toContain(v);
     expect(RUTA.some((c) => c.respuesta.vista.ruta.riesgos.length)).toBe(true);
   });
+
+  it("K-108 con el código de verdad (casos-G14): persona sin usuario, todas sin usuario y rango sin anchura", () => {
+    const de = (id) => RUTA.find((c) => c.nombre.startsWith(`casos-G14 ${id} `)).respuesta.vista.ruta;
+    expect(de("persona_sin_usuario").sin_usuario.map((x) => x.tarea)).toEqual(["T26", "T27"]);
+    expect(de("persona_sin_usuario").estimacion).not.toBeNull();
+    const todas = de("todas_sin_usuario");
+    expect(todas.veredicto).toMatchObject({ valor: "sin_estimacion", motivos: ["sin_usuario"] });
+    expect(todas.base.personas).toEqual([]);
+    const rango = de("rango_sin_anchura").estimacion;
+    expect(Date.parse(rango.temprano)).toBe(Date.parse(rango.tarde));
+    // Y lo que pinta la web con ellos.
+    const pinta = (id) => render(<Ruta respuesta={RUTA.find((c) => c.nombre.startsWith(`casos-G14 ${id} `)).respuesta} />).container;
+    const t = pinta("todas_sin_usuario");
+    expect(texto(q(t, '[data-motivo="sin_usuario"]'))).toBe(`de personas sin usuario de GitHub (no se miden): ${todas.sin_usuario.map((x) => x.tarea).join(", ")}`);
+    expect(t.querySelectorAll("[data-sin-usuario]").length).toBe(todas.sin_usuario.length);
+    expect(t.querySelector("[data-base-persona]")).toBeNull();
+    const horas = RUTA.find((c) => c.nombre.startsWith("casos-G14 rango_sin_anchura ")).horas.ruta;
+    expect(texto(q(pinta("rango_sin_anchura"), "[data-margen]").nextElementSibling)).toMatch(new RegExp(`· fin hacia ${horas[rango.temprano].dia} \\(las medidas no varían\\)$`));
+  });
 });
 
 // --- la web no calcula (ADR-0009): si la vista dice otra cosa, pinta lo que dice ---
@@ -624,7 +643,7 @@ describe("K-108: tareas sin usuario de GitHub y fin sin rango", () => {
     for (const el of els) {
       expect(texto(el)).toContain("· Persona C: sin usuario de GitHub: no se mide.");
       expect(texto(el)).not.toContain("@Persona C");
-      expect(texto(q(el, ".hk-prov"))).toContain("declarado · equipo.md");
+      expect(texto(q(el, ".hk-prov"))).toContain("declarado · plan.md");
       expect(q(el, `time[datetime="${sin[0].observado_en}"]`).textContent).toBe("hace 14 h");
       DECLARADO_SIN_AUTOR(el);
     }
