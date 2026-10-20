@@ -189,7 +189,7 @@ export function CriterioPrueba({ task, conexion, result, source, label, age, at,
 const CHAIN = {
   franja: "franja del plan (declarado)", curso: "en curso", prevista: "fin estimado (estimación)",
   plazo_pasado: "su plazo ya pasó (hecho)", no_llega: "acaba después de la entrega (estimación)",
-  vieja: "dato viejo o sin señales",
+  vieja: "dato viejo",
 };
 const MARK = { ahora: "ahora", hito: "hito del plan", entrega: "entrega (equipo.md)" };
 

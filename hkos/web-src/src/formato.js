@@ -132,14 +132,28 @@ export function zonaM10(vista) {
   return 0;
 }
 
-/** La zona de las horas de la ruta (issue #56): `ruta.zona.valor` de la vista, un desfase «±HH:MM» (en minutos) o un
+/** La zona de las horas de un bloque (issue #56): su `zona.valor` de la vista, un desfase «±HH:MM» (en minutos) o un
  *  nombre IANA («Europe/Madrid», que el navegador sabe pasar a cada hora con su horario de verano); sin ella o si no se
  *  entiende, la de zonaM10, como antes. */
-export function zonaRuta(vista) {
-  const v = vista?.ruta?.zona?.valor;
+function zonaDe(bloque, vista) {
+  const v = vista?.[bloque]?.zona?.valor;
   const m = /^([+-])(\d\d):(\d\d)$/.exec(v || "");
   if (m) return (m[1] === "-" ? -1 : 1) * (Number(m[2]) * 60 + Number(m[3]));
   return v && formatoIana(v) ? v : zonaM10(vista);
+}
+export const zonaRuta = (vista) => zonaDe("ruta", vista);
+/** La del jurado (issue #63), igual que la de la ruta con `jurado.zona`: las dos pantallas dicen la misma hora. */
+export const zonaJurado = (vista) => zonaDe("jurado", vista);
+
+// Controles bidi (U+202A–U+202E, U+2066–U+2069): un texto de un fichero del equipo podría reordenar lo que se ve
+// detrás de él (issue #63). Se quitan de todo lo que llega del demonio antes de pintarlo.
+const BIDI = /[\u202A-\u202E\u2066-\u2069]/g;
+export const quitaBidi = (s) => s.replace(BIDI, "");
+export function sinBidi(x) {
+  if (typeof x === "string") return quitaBidi(x);
+  if (Array.isArray(x)) return x.map(sinBidi);
+  if (x && typeof x === "object") return Object.fromEntries(Object.entries(x).map(([k, v]) => [quitaBidi(k), sinBidi(v)]));
+  return x;
 }
 
 const IANA = new Map();

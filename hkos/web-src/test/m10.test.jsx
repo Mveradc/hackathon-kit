@@ -1,6 +1,7 @@
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { App } from "../src/App.jsx";
+import { fechaHm, sinBidi, zonaJurado, zonaRuta } from "../src/formato.js";
 import { Jurado } from "../src/vistas/Jurado.jsx";
 import { Ruta } from "../src/vistas/Ruta.jsx";
 import { caso, casosM10, demonioFalso, diceAntiguedad, movimientoReducido } from "./ayuda.js";
@@ -81,13 +82,23 @@ describe.each(JURADO)("jurado · $nombre", ({ respuesta, antiguedades: edades, h
       const n = x.nota, el = q(container, `[data-nota="${n.clave}"]`);
       expect(el.dataset.cobertura).toBe(x.cobertura.valor);
       expect(q(el, "[data-dijo]").textContent).toBe(n.dijo);
-      expect(texto(q(el, ".hk-crit__quote"))).toBe(n.literal ? `«${n.dijo}»` : `(paráfrasis) ${n.dijo}`);
+      // Texto libre de criterios.md (issue #63): siempre entre «», también en paráfrasis, y la nota con su
+      // «declarado por … · criterios.md».
+      expect(texto(q(el, ".hk-crit__quote"))).toBe(n.literal ? `«${n.dijo}»` : `(paráfrasis) «${n.dijo}»`);
+      expect(texto(q(el, ".hk-crit__said .hk-prov"))).toContain("· criterios.md");
       expect(q(el, "[data-quien]").textContent).toBe(n.quien ?? "sin nombre");
+      expect(texto(q(el, ".hk-crit__who"))).toBe(`${n.quien != null ? `«${n.quien}»` : "sin nombre"} (${n.papel})`);
       expect(q(el, "[data-papel]").textContent).toBe(n.papel);
-      if (n.donde) expect(q(el, "[data-donde-nota]").textContent).toBe(n.donde);
+      if (n.donde) {
+        expect(q(el, "[data-donde-nota]").textContent).toBe(n.donde);
+        expect(texto(q(el, ".hk-crit__where"))).toBe(`«${n.donde}»`);
+      }
       expect(q(el, "[data-fuerza]").textContent).toBe(n.fuerza.texto);
       expect(q(el, "[data-fuerza]").classList.contains(`hk-crit__force--${n.fuerza.tipo}`)).toBe(true);
-      if (n.afecta_a) expect(q(el, "[data-afecta]").textContent).toBe(n.afecta_a);
+      if (n.afecta_a) {
+        expect(q(el, "[data-afecta]").textContent).toBe(n.afecta_a);
+        expect(texto(q(el, "[data-afecta]").parentElement)).toBe(`Afecta a: «${n.afecta_a}»`);
+      }
       expect(q(el, "[data-anotado]").textContent).toBe(n.anotado_por);
       if (n.corrige) expect(q(el, "[data-corrige]").textContent).toBe(n.corrige);
       if (n.hora) compruebaHora(el, n.hora, horas, "fecha");
@@ -253,7 +264,10 @@ describe.each(RUTA)("ruta · $nombre", ({ respuesta, antiguedades: edades, horas
     const otras = [...container.querySelectorAll("[data-otra-entrega]")];
     expect(otras.map((el) => el.dataset.otraEntrega)).toEqual(r.otras_entregas.map((x) => x.donde));
     r.otras_entregas.forEach((x, i) => {
-      if (x.nombre) expect(q(otras[i], "[data-nombre]").textContent).toBe(x.nombre);
+      if (x.nombre) {
+        expect(q(otras[i], "[data-nombre]").textContent).toBe(x.nombre);
+        expect(texto(otras[i])).toContain(`«${x.nombre}»`);
+      }
       if (x.valor) compruebaHora(otras[i], x.valor, horas);
       if (x.donde !== "criterios.md") expect(q(otras[i], "[data-texto]").textContent).toBe(x.texto ?? "—");
       compruebaTiempo(otras[i], x.observado_en, edades);
@@ -353,6 +367,9 @@ describe.each(RUTA)("ruta · $nombre", ({ respuesta, antiguedades: edades, horas
       if (h.hito.valor) compruebaHora(hitos[i], h.hito.valor, horas);
       expect(q(hitos[i], "[data-pasado]").dataset.pasado).toBe(h.pasado ? "si" : "no");
       expect(texto(hitos[i])).toContain(`«${h.hito.texto}»`);
+      expect(q(hitos[i], "[data-nombre]").textContent).toBe(h.hito.nombre);
+      expect(texto(q(hitos[i], "[data-nombre]").parentElement)).toBe(`«${h.hito.nombre}»`);
+      expect(texto(hitos[i])).toContain(`declarado · ${h.hito.donde}`);
       expect(texto(hitos[i])).not.toMatch(/estimación|acaba/);
       compruebaTiempo(hitos[i], h.hito.observado_en, edades);
       DECLARADO_SIN_AUTOR(hitos[i]);
@@ -361,6 +378,8 @@ describe.each(RUTA)("ruta · $nombre", ({ respuesta, antiguedades: edades, horas
     expect(descansos.length).toBe(r.descansos.length);
     r.descansos.forEach((d, i) => {
       expect(q(descansos[i], "[data-texto]").textContent).toBe(d.texto);
+      expect(texto(q(descansos[i], "[data-texto]").parentElement)).toBe(`«${d.texto}»`);
+      expect(texto(descansos[i])).toContain("declarado · plan.md");
       expect(texto(descansos[i])).toContain(d.personas ? d.personas.map((p) => `@${p}`).join(", ") : "Todos");
       if (d.desde) {
         compruebaHora(descansos[i], d.desde, horas);
@@ -488,6 +507,114 @@ describe("la web pinta lo que dice el bloque y no lo recalcula (ADR-0009)", () =
       expect(p.horas, String(valor)).toEqual(["sáb 21:00", "dom 21:00"]);
       expect(p.zona, String(valor)).toBeUndefined();
       expect(p.cab, String(valor)).toContain("horas de equipo.md (UTC+00:00).");
+    }
+  });
+
+  it("jurado (issue #63): con `jurado.zona` IANA, la nota de 2026-10-24T19:00+02:00 sale «sáb 24 · 19:00», como en Ruta; sin ella, como antes", () => {
+    const NOTA = "2026-10-24T19:00:00+02:00";
+    const zona = { valor: "Europe/Madrid", fuente: "git", observado_en: "2026-09-18T18:05:00Z", declarado: true };
+    const vista = (conZona) => con((v) => {
+      v.ruta.objetivo.valor = "2026-10-25T12:00:00+01:00";       // la entrega, ya con el horario de invierno
+      v.ruta.zona = zona;
+      v.ruta.otras_entregas = [{ nombre: null, valor: NOTA, texto: null, motivo: null, donde: "criterios.md",
+        cita: "2026-10-24 19:00", fuente: "git", observado_en: "2026-09-19T07:30:00Z", declarado: true }];
+      v.jurado.notas[0].nota.hora = NOTA;
+      if (conZona) v.jurado.zona = zona;
+      else delete v.jurado.zona;
+    });
+    const r = vista(true), clave = r.vista.jurado.notas[0].nota.clave;
+    const jur = render(<Jurado respuesta={r} />).container;
+    expect(q(jur, `[data-nota="${clave}"] [data-hora-nota]`).textContent).toBe("sáb 24 · 19:00");
+    expect(texto(q(jur, '[data-vista="jurado"] > div'))).toContain("horas en Europe/Madrid.");
+    const rut = render(<Ruta respuesta={r} />).container;
+    expect(q(rut, '[data-otra-entrega="criterios.md"] time').textContent).toBe("sáb 19:00");
+    // Las dos pantallas, con la misma zona: el mismo instante, la misma hora.
+    expect(fechaHm(NOTA, zonaJurado(r.vista))).toBe("sáb 24 · 19:00");
+    expect(fechaHm(NOTA, zonaRuta(r.vista))).toBe("sáb 24 · 19:00");
+    // Sin `jurado.zona`: el desfase de la entrega (+01:00), como antes.
+    const sin = vista(false);
+    const jur2 = render(<Jurado respuesta={sin} />).container;
+    expect(q(jur2, `[data-nota="${clave}"] [data-hora-nota]`).textContent).toBe("sáb 24 · 18:00");
+    expect(texto(q(jur2, '[data-vista="jurado"] > div'))).toContain("horas en la zona de equipo.md (UTC+01:00).");
+  });
+
+  it("ruta (issue #63, ADR-0009): «No llega» solo con el veredicto no_llega, y la barra `vieja` solo con `viejo`, nunca por sin_senales", () => {
+    const pinta = (veredicto, viejo) => {
+      const r = con((v) => {
+        const x = v.ruta, t = x.cadena[1].tarjeta;              // T06 (@ana), sin plazo pasado
+        x.veredicto = { ...x.veredicto, valor: veredicto, motivos: [], gravedad: "ambar" };
+        x.estimacion = { temprano: "2026-09-20T09:00:00Z", tarde: "2026-09-20T12:00:00Z", margen_min: -60, margen_max: 30 };
+        x.riesgos = [{ tarea: t.id, dueno: t.dueno, fin_tarde: "2026-09-20T12:00:00Z", en_cadena: true, viejo: false }];
+        x.hechos = [{ ...x.hechos.find((h) => h.tipo === "sin_senales"), persona: t.dueno }];
+        t.viejo = viejo;
+      });
+      const { container } = render(<Ruta respuesta={r} />);
+      const el = q(container, `[data-eslabon="${r.vista.ruta.cadena[1].tarjeta.id}"]`);
+      return { palabra: q(el, ".hk-pulse__label").textContent, vieja: !!el.querySelector(".hk-chain__bar--vieja"),
+        franja: !!el.querySelector(".hk-chain__bar--franja"), leyenda: texto(q(container, ".hk-chain__legend")) };
+    };
+    const justo = pinta("justo", false);
+    expect(justo.palabra).toBe("Riesgo (estimación)");
+    expect(justo).toMatchObject({ vieja: false, franja: true });
+    expect(justo.leyenda).not.toMatch(/sin señales|viejo/);
+    expect(pinta("a_tiempo", false).palabra).toBe("Riesgo (estimación)");
+    expect(pinta("no_llega", false).palabra).toBe("No llega (estimación)");
+    const vieja = pinta("justo", true);
+    expect(vieja).toMatchObject({ vieja: true, franja: false });
+    expect(vieja.leyenda).toContain("dato viejo");
+    expect(vieja.leyenda).not.toContain("sin señales");
+  });
+
+  it("los hitos, en la línea de tiempo, con su nombre entre «» y su fichero (issue #63)", () => {
+    const r = con((v) => {
+      v.ruta.estimacion = { temprano: "2026-09-20T09:00:00Z", tarde: "2026-09-20T12:00:00Z", margen_min: -60, margen_max: 30 };
+    });
+    const { container } = render(<Ruta respuesta={r} />);
+    const h = r.vista.ruta.hitos.find((x) => x.hito.valor);
+    expect([...container.querySelectorAll(".hk-chain__mark--hito")].map((m) => m.title)).toContain(`«${h.hito.nombre}» · declarado · ${h.hito.donde}`);
+  });
+});
+
+describe("controles bidi (issue #63)", () => {
+  const BIDI = /[\u202A-\u202E\u2066-\u2069]/;
+
+  it("sinBidi quita U+202A–U+202E y U+2066–U+2069 de todo texto, a cualquier profundidad, y nada más", () => {
+    const todos = "\u202A\u202B\u202C\u202D\u202E\u2066\u2067\u2068\u2069";
+    expect(sinBidi({ a: [`x${todos}y`, 3, null, { b: "a\u202eb" }], [`k\u2066`]: "\u200f«ok»" }))
+      .toEqual({ a: ["xy", 3, null, { b: "ab" }], k: "\u200f«ok»" });
+  });
+
+  it("la web no pinta ninguno: lo que llega del demonio sale sin ellos en Jurado, Ruta y la Cabina", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"] });
+    vi.setSystemTime(new Date("2026-11-25T18:30:00Z"));
+    movimientoReducido(false);
+    try {
+      const base = caso("G12");
+      const ej = structuredClone(CASOS.find((c) => c.nombre.startsWith("ejemplo")).respuesta.vista);
+      ej.jurado.notas[0].nota.dijo = "dice \u202Esolo esto\u202C ya";
+      ej.jurado.notas[0].nota.quien = "Marta\u2066 (Embat)\u2069";
+      ej.ruta.descansos[0].texto = "Todos\u202B: cena\u202C";
+      ej.ruta.hitos[0].hito.nombre = "Congela\u2067ción";
+      const d = demonioFalso();
+      render(<App token={TOKEN} fetchImpl={d.fetchImpl} />);
+      await flush();
+      d.vista({ ...base, vista: { ...base.vista, jurado: ej.jurado, ruta: ej.ruta } });
+      await flush();
+      const pintado = () => [document.body.textContent,
+        ...[...document.body.querySelectorAll("*")].flatMap((el) => [...el.attributes].map((a) => a.value))].join("\n");
+      expect(pintado()).not.toMatch(BIDI);
+      fireEvent.click(screen.getByRole("button", { name: "Jurado" }));
+      await flush();
+      expect(document.body.textContent).toContain("«dice solo esto ya»");
+      expect(document.body.textContent).toContain("«Marta (Embat)»");
+      expect(pintado()).not.toMatch(BIDI);
+      fireEvent.click(screen.getByRole("button", { name: "Ruta crítica" }));
+      await flush();
+      expect(document.body.textContent).toContain("«Todos: cena»");
+      expect(document.body.textContent).toContain("«Congelación»");
+      expect(pintado()).not.toMatch(BIDI);
+    } finally {
+      vi.useRealTimers();
     }
   });
 });

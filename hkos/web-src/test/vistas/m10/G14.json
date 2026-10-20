@@ -243,7 +243,7 @@
      "hitos": [
       {
        "hito": {
-        "nombre": "Contratos acordados: ventana de 24 meses, ficha motor → web y entregables (`docs/contratos.md`)",
+        "nombre": "Contratos acordados: ventana de 24 meses, ficha motor → web…",
         "valor": null,
         "texto": "H+1",
         "motivo": "sin_dato",
@@ -256,7 +256,7 @@
       },
       {
        "hito": {
-        "nombre": "Demo mínima de principio a fin: una empresa real con curva, desglose y acciones",
+        "nombre": "Demo mínima de principio a fin: una empresa real con curva,…",
         "valor": null,
         "texto": "H+17",
         "motivo": "sin_dato",
@@ -344,7 +344,7 @@
        "declarado": true
       }
      ],
-     "resumen": "ruta: sin estimación · sin plazo: 24 tareas · otra entrega: «dom 20 sep 09:30» (plan.md)"
+     "resumen": "ruta: sin estimación · sin plazo: 24 tareas · otra entrega: dom 09:30 (plan.md)"
     }
    },
    "antiguedades": {
@@ -612,7 +612,7 @@
      "hitos": [
       {
        "hito": {
-        "nombre": "Contratos acordados: ventana de 24 meses, ficha motor → web y entregables (`docs/contratos.md`)",
+        "nombre": "Contratos acordados: ventana de 24 meses, ficha motor → web…",
         "valor": "2026-09-18T20:00:00+02:00",
         "texto": "H+1",
         "motivo": null,
@@ -625,7 +625,7 @@
       },
       {
        "hito": {
-        "nombre": "Demo mínima de principio a fin: una empresa real con curva, desglose y acciones",
+        "nombre": "Demo mínima de principio a fin: una empresa real con curva,…",
         "valor": "2026-09-19T13:30:00+02:00",
         "texto": "sáb 13:30",
         "motivo": null,
@@ -713,7 +713,7 @@
        "declarado": true
       }
      ],
-     "resumen": "ruta: estimación a tiempo · fin 15:09–18:52 · entrega dom 10:00 · sin contar T28 (sin plazo) · otra entrega: «dom 20 se…"
+     "resumen": "ruta: estimación a tiempo · fin 15:09–18:52 · entrega dom 10:00 · sin contar T28 (sin plazo) · y más en la vista"
     }
    },
    "antiguedades": {
@@ -1388,7 +1388,7 @@
      "hitos": [
       {
        "hito": {
-        "nombre": "Contratos acordados: ventana de 24 meses, ficha motor → web y entregables (`docs/contratos.md`)",
+        "nombre": "Contratos acordados: ventana de 24 meses, ficha motor → web…",
         "valor": "2026-09-18T20:00:00+02:00",
         "texto": "H+1",
         "motivo": null,
@@ -1401,7 +1401,7 @@
       },
       {
        "hito": {
-        "nombre": "Demo mínima de principio a fin: una empresa real con curva, desglose y acciones",
+        "nombre": "Demo mínima de principio a fin: una empresa real con curva,…",
         "valor": "2026-09-19T13:30:00+02:00",
         "texto": "sáb 13:30",
         "motivo": null,
@@ -1489,7 +1489,7 @@
        "declarado": true
       }
      ],
-     "resumen": "ruta: estimación no llega · T04: plazo pasado 23:00 y 3 más · fin 09:32–09:32 · entrega dom 10:00 · sin contar T28 (sin…"
+     "resumen": "ruta: estimación no llega · T04: plazo pasado 23:00 y 3 más · fin 09:32–09:32 · entrega dom 10:00 · y más en la vista"
     }
    },
    "antiguedades": {
