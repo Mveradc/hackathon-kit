@@ -979,8 +979,9 @@ class Issue46(SinZoneinfo):
                               "declarado": True}])
         self.assertNotIn("prórroga", json.dumps(r["ruta"], ensure_ascii=False))
         con_jsonschema(self, estado_minimo(ruta=r["ruta"]))
-        # ruta.py ya saca de la cita la hora de la nota: no le hace falta el texto.
-        resumen = ruta_mod.calcular(r["ruta"], [], CT, personas=[])["resumen"]
+        # ruta.py ya saca de la cita la hora de la nota: no le hace falta el texto. Sin estimación, para que quepa: sin
+        # tareas, temprano = tarde y «fin hacia … (las medidas no varían)» la echaría del corte a 120 (K-108, 3).
+        resumen = ruta_mod.calcular(dict(r["ruta"], entrega=None), [], CT, personas=[])["resumen"]
         self.assertTrue(resumen.endswith(" · otra entrega: dom 09:00 (criterios.md, nota de 11:20)"), resumen)
 
     def test_6_evidencia_ultima_publicacion_con_su_hora_y_tipo(self):
