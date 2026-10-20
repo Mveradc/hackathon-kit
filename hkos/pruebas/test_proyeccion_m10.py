@@ -528,6 +528,33 @@ class Mcp(unittest.TestCase):
                 self.assertEqual(self.pide(f, "tools/list")["tools"], mcp.HERRAMIENTAS)
                 self.assertEqual(self.pide(f, "initialize")["instructions"], mcp.INSTRUCCIONES)
 
+    def test_k108_las_descripciones_dicen_como_leer_el_bloque(self):
+        """K-108 (criterio 7, sesión por MCP): la descripción de ruta dice qué es pocos_datos (menos de 3 medidas de
+        alguien con abiertas, no «nadie ha cerrado nada», con el «n de 3» en base), que franjas y Hasta son plazos
+        declarados y no una previsión, que sin estimación no hay margen, y que cada dato lleva su procedencia; la de
+        jurado, la cobertura y el desglose tal cual, con la hora y el autor de cada nota. Las dos, sin recomendaciones.
+        El bloque no cambia, y con los interruptores apagados tools/list es el de la 0.4.0."""
+        e = con_m10(estado_base())
+        f = self.deja(e, "activa: sí\nvista_jurado: sí\nruta_critica: sí\n")
+        d = {t["name"]: t["description"] for t in self.pide(f, "tools/list")["tools"]}
+        for trozo in ("pocos_datos", "menos de 3 tareas medidas", "no que nadie haya cerrado nada", "n de 3", "base",
+                      "plazos declarados en plan.md", "no una previsión", "no hay margen", "procedencia", "fuente",
+                      "observado_en", "sin recomendaciones"):
+            self.assertIn(trozo, d["ruta"])
+        for trozo in ("cobertura", "desglose", "tal cual", "hora", "autor", "procedencia", "sin recomendaciones"):
+            self.assertIn(trozo, d["jurado"])
+        v = p.vista(e, ahora=e["generado_en"])
+        self.assertEqual(json.loads(self.pide(f, "tools/call", "ruta")["content"][0]["text"])["ruta"], v["ruta"])
+        r = subprocess.run(["git", "-C", KIT, "show", "v0.4.0:hkos/mcp.py"], capture_output=True)
+        if r.returncode != 0:
+            self.skipTest("sin la etiqueta v0.4.0 (clon superficial)")
+        m040 = types.ModuleType("mcp_040")
+        m040.__dict__["__file__"] = os.path.join(HKOS, "mcp.py")
+        exec(compile(r.stdout.decode("utf-8"), "mcp_040.py", "exec"), m040.__dict__)
+        for os_md in (None, "activa: sí\nvista_jurado: no\nruta_critica: no\n"):
+            with self.subTest(os_md=os_md):
+                self.assertEqual(self.pide(self.deja(e, os_md), "tools/list")["tools"], m040.HERRAMIENTAS)
+
     def test_jurado_y_ruta_el_bloque_entero_de_la_vista(self):
         e = con_m10(estado_base())
         f = self.deja(e, "activa: sí\nvista_jurado: sí\nruta_critica: sí\n")
