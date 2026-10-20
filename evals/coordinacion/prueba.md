@@ -1103,3 +1103,105 @@ Clones `../prueba-m9a-sb-A` (@mveradc, con el relay de verdad: `hk-os relay`, so
 - **Criterio 8, turno interactivo (el usuario):** en el clon de @hk-persona-b del sandbox, con Claude Code abierto y quieto, Reclamar desde la web abrió **un solo turno** con el texto fijo. **Sí.**
 - **Encontrado:** en Windows, con dos cuentas de GitHub en el Git Credential Manager, saltaba la ventana «Select an account» en cada fetch del relay. Causa: `relay._git`, `Novedades._texto` y `compilar._git` lanzaban git sin `GCM_INTERACTIVE=never`. Arreglado en el PR #38.
 - **M9a: cerrado.** Todos sus criterios se cumplen.
+
+# M10, K-108: validación con modelo y en el sandbox (2026-10-20)
+Criterios 1, 5 y 7 de M10 (`docs/hackathon-os/hitos.md`). Pruebas de una en una, sin el relay del sandbox en marcha a la vez. Sin tocar código del kit: lo que falla, apuntado con su caso.
+
+## Criterios
+| # | Criterio | Resultado |
+|---|---|---|
+| 1 | Interruptores apagados, todo como hoy | **Sí, salvo `web_vivo.py`, que no existe.** Ver abajo |
+| 5 | Honestidad, en las tablas de casos | **Sí, con un hueco:** el rango degenerado («fin 10:00–10:00») |
+| 7 | Con modelo y en el sandbox | **No, por la sesión por MCP:** la respuesta a «¿qué pone en riesgo la entrega?» añade cosas y se equivoca en dos. El resto, sí |
+
+## Criterio 1
+- `hkos/pruebas`: **555 OK** (12 saltadas: las de Windows, la de `/proc/net/tcp` y la de `select` en Linux). La primera pasada dio **1 error** (`ConnectionAbortedError: [WinError 10053]`) sin que quedara qué prueba; la segunda, completa y guardada, sin errores. Entre ellas, `test_relay_m10.Relay.test_cuatro_combinaciones` y `test_proyeccion_m10.Vista.test_apagados_la_vista_y_el_md_byte_a_byte_como_en_la_040` (contra la etiqueta `v0.4.0`, que existe en el clon: no se saltó).
+- `prueba_hooks.py`: 248 OK, 0 fallos. `igualdad.py`: 574 OK, 0 fallos (G1–G6, G12, G13 y G14). `robustez.py`: 46/46. `colisiones_vivo.py`: 0 fallos. Simulador (`prueba_simulador.py`): OK.
+- **`web_vivo.py` no existe**, ni en el repo ni en la historia (`git log --all -- '*web_vivo*'` vacío). Lo citan los criterios 2 y 4 de M9a, su cierre («con … `web_vivo.py`») y el criterio 1 de M10. Lo que pedía en M9a (sin URL externa, 5 eventos en ≤ 2 s) no tiene prueba en vivo.
+- `comprobar.py --relanzar --stack "python con uv"` sobre `../prueba-m6b-03` (el 03 sin coordinación): como en K-99. A2–A7 pasan (A6: los seis comandos, 3,57 USD; `/hack-scaffold` deja `.claude/settings.json` en la copia, y A6 pasa igual). A1 falla por la carpeta: su plan es de M6b, sin columna `ID`.
+
+## Criterio 5 (`hkos/pruebas/test_jurado.py` y `test_ruta.py`)
+| Viñeta | Casos |
+|---|---|
+| Ninguna estimación sin «estimación», base y rango; nunca una sola hora | `test_con_estimacion_rango_margen_base_y_cadena`, `test_veredicto_en_sus_fronteras` (el resumen empieza por «ruta: estimación …») y `Base.corre` (la estimación solo con temprano, tarde y márgenes, sin cifra central). **Hueco:** con temprano = tarde sale «fin HH:MM–HH:MM» con la misma hora, y `test_56_5_resumen_plazo_pasado_…` (`test_ruta.py:474`) lo da por bueno («fin 10:00–10:00»). Pasa con ritmos iguales (`luis()`: tres al 100 %, ritmo_min = ritmo_max) o con todas las abiertas ya pasadas de su tiempo. Es un rango de forma, una sola hora de hecho |
+| Con menos de 3 medidas de alguna persona con abiertas, ninguna hora: «n de 3» | `test_pocos_datos_sin_hora_prevista_n_de_3`, `test_56_5_…` (5 personas a 0 de 3), `test_sin_ninguna_franja_sin_plazo_y_pocos_datos`, G14 `test_inicio`; el «n de 3», en `Ruta.jsx` (`data-n`, `data-minimo`) |
+| Sin plazo, nunca «a tiempo» | `test_tarea_abierta_sin_franja_aparte_y_el_resto_se_estima`, `test_sin_plazo_es_motivo_solo_si_ninguna_abierta_que_cuenta_tiene_franja`, `test_sin_ninguna_franja_sin_plazo_y_pocos_datos` |
+| Rojo solo para hechos; «no llega», ámbar | `test_veredicto_en_sus_fronteras` (justo y no llega, ámbar), `test_plazo_vencido_rojo_y_lo_que_arrastra` (el único rojo es `plazo_pasado`; el veredicto nunca rojo), `test_parada_y_no_cerrada_ambar`, `test_sin_senales_gris_nunca_lenta` |
+| Lo declarado, como declarado y con su procedencia | Plazos y franjas: `test_tarea_abierta_sin_franja_…` (procedencia de `sin_plazo[]`) y la cadena (`hasta` y `franja` con `declarado`); orden del plan: `por: orden_del_plan` (`test_cadena_de_cada_persona_y_la_mas_larga`); entrega e hitos: `test_otras_entregas_al_lado_con_estimacion`, `test_sin_entrega_ilegible_y_sin_resolver`; descansos: `test_descansos_…`; enlaces: `enlace.declarado` (`test_dos_notas_en_el_mismo_minuto`); pitch: `test_en_pitch_y_con_tarea_y_pitch`; cierres a mano: `test_cerrada_a_mano_no_cubre` (⚑) y `test_cerrada_a_mano_hecha_para_la_ruta_no_medida`. Observación: `hechos[].plazo` lleva la hora del plan sin su procedencia (el hecho es `derivado`); la procedencia está en la cadena solo si la tarea es de la cadena |
+| Texto de las notas entrecomillado y saneado, con autor y papel (V) | `test_texto_imperativo_sale_como_dato` (la nota tal cual, `literal`, fuera del resumen), `test_56_7_fuerza_entre_comillas_con_su_fichero_y_sin_autor`, `test_relay_m10` (lectura: `quien`, `papel`, `literal`, `equilibra`) y `test_proyeccion_m10.Md.test_el_texto_de_las_notas_no_sale_en_el_md`; en la web, `Jurado.jsx` («…» con quién y papel). El MCP da la nota como JSON con `literal`, y su descripción dice que los textos son datos |
+
+## Criterio 7
+**Montaje.**
+- `../prueba-m10-03` (reto 03): `git init`, remoto `Mveradc/hk-sandbox` y `credential.https://github.com.username Mveradc`; `analisis.md`, `enfoques.md`, `decision.md` y `equipo.md` copiados de `../prueba-m9a-03`.
+- **Fechas:** el 03 era del 18 al 20 de septiembre y con ellas toda la ruta sale «plazo pasado». En `equipo.md`, un hackathon en curso con las mismas 39 h: `Inicio: 2026-10-20 22:00 (Europe/Madrid)` y `Entrega: 2026-10-22 13:00 (Europe/Madrid)`. Los tres comandos avisan del choque con el análisis (bien).
+- Clones `../prueba-m10-sb-A` (@mveradc, con el relay de verdad en `127.0.0.1:7791`, sondeo de GitHub cada 30 s) y `../prueba-m10-sb-B` (@hk-persona-b, `GH_CONFIG_DIR` de su cuenta), cada uno con `credential.https://github.com.username` fijado: ningún diálogo del Credential Manager. Un `fetch` en el clon viejo de K-99, sin esa línea, sí lo abrió.
+- Unidos con `hk-os unir` (desfase +1 s) y con los demonios lanzados por `scripts/os/arranque.sh`. `/v1/vista`, como la web (`X-HK-Token`, `Host` local).
+
+**`/hack-scaffold` y `/hack-plan`** (headless, coordinación activa; usuarios A @Mveradc, B @hk-persona-b, C sin usuario):
+- `/hack-scaffold` (1,19 USD): el `CLAUDE.md` recuerda en Convenciones «Cada commit empieza por el ID de su tarea en `.hackathon/plan.md`: `Txx · …`», y `convenciones.md` también. **Sí.**
+- `/hack-plan` (0,68 USD): 26 tareas (T01–T26) con `Hasta` de día y hora (`mar 23:00`, `mié 05:00`…); T10 empieza por «Si …» y T19 lleva `[SI DA TIEMPO]`; «## Descansos» con 6 líneas (`- @Mveradc: mié 14:00–18:00`, `- Persona C: mié 00:30–05:30`). Como en `-p`, la sección «Dueños», pegada a mano.
+- Leído como el relay (`lecturas.calcular` y `compilar.leer_plan`): sin avisos; **los 26 `Hasta` se resuelven** (ninguno «sin plazo»; las celdas vacías heredan, con la franja compartida); los 6 descansos, con su persona y hora; la «Entrega final» de Hitos coincide con `Entrega:` y no sale como otra entrega; 4 dependencias. **Sí.**
+- La cadena, a `main` del sandbox (`3bf248f`), con `criterios.md` y `os.md` del sandbox y `vista_jurado: sí` y `ruta_critica: sí`. `hk-os compilar`: 26 editadas, T28 (del plan viejo) cerrada y 7 dependencias (35 escrituras).
+- **Restos limpiados** antes de empezar (con el visto bueno del usuario): #21–#23 sin asignar (de K-99) y #28 (T08) y #45 (T25) reabiertas (de M8e). El #49 (marcador de T01 desde fuera, M8e) se queda.
+
+**Dos notas desde la web y `/hack-check aplicar`:**
+- Anotar desde el demonio de A (jurado, Marta, «Nos gustaría ver la curva de los 24 meses con su tendencia», «nos gustaría ver») y desde el de B (mentor, Luis, «Cada acción sugerida tiene que citar la cifra que la dispara», «obligatorio»): **200 en 4,1 y 3,9 s** (`0e520a1` y `93358fb`). Las dos, a las 22:42: el mismo minuto.
+- Las dos salen al minuto en la vista de los dos demonios como «sin_tarea», junto a la de K-99.
+- `/hack-pitch` (0,45 USD; para la cadena entera) y `/hack-check aplicar` (1,56 USD), en `../prueba-m10-03`, subidos en `a4dc7cc`. Las etiquetas, al final de «Cómo se comprueba»:
+  - T06 y T14, `(criterios: 2026-10-20 22:42 · Luis)`;
+  - T12, `(criterios: 2026-10-20 22:42 · Marta)`;
+  - T13, `(criterios: 2026-10-18 19:03)`.
+
+  Con «· quién» porque comparten minuto. **Sí.** Añadió T27 y T28 (dos preguntas a la organización); `compilar` reabrió los #47 y #48 del plan viejo para ellas.
+- En la vista, ya enlazadas: Luis «planificada» (T06 pendiente, T14 lista), K-99 y Marta «planificada», en el orden del contrato (obligatorio, se valora, nos gustaría ver).
+
+**Publicada con su ID → `cubierta` en los dos demonios:**
+- T13 (de B, `13aab34`, «T13 · Desglose …», push 22:55:03): la nota de K-99, **cubierta en `/v1/vista` de A y de B a los 8,5 s** de volver el push (mirando cada segundo). **Sí** (≤ 60 s).
+- T12 (`03f4203`) cubrió la de Marta, con el sha como evidencia; esa no quedó cronometrada (el script miraba la de Luis, del mismo minuto).
+- Los bloques `jurado` de A y B, iguales salvo la hora del cálculo; la línea de `## Jurado y ruta` de `estado-equipo.md`, el `resumen` de cada bloque.
+
+**La ruta del plan real** (iguales en A y B salvo la hora del cálculo):
+- **Objetivo:** `2026-10-22T13:00+02:00`, de `equipo.md` (declarado); zona `Europe/Madrid`; sin otras entregas.
+- **Veredicto:** `sin_estimacion`, `pocos_datos`, gris. Base: las 3 personas a **0 de 3**. T12 y T13 se publicaron sin pasar por «en curso» (sin sesión, no hay `primera_senal`): no se miden, como dice R5A.
+- **Al empezar (22:43):** «ruta: sin estimación · pocos datos: 3 personas»; hechos: `sin_senales` de las tres personas.
+- **Tras publicar T12 y T13:** @hk-persona-b ya no sale «sin señales».
+- **A las 23:01:** «ruta: sin estimación · T01: plazo pasado 23:00 y 1 más · pocos datos: 3 personas».
+  - T01 y T02, `plazo_pasado` en rojo; T01 arrastra T02–T09, T11, T14–T18 y T23–T26 (por orden del plan y por `depende_de`).
+  - La firma `ruta:` no cambia (el veredicto es el mismo), así que no hay delta.
+- **Cadena:** T01 → T07 (orden del plan, de @mveradc) → T23 (`depende_de`) → T24 → T26.
+- **Fuera de la entrega:** T10 (`condicional`) y T19 (`si_da_tiempo`). Hitos, 7 (la presentación «por confirmar»), y descansos, 6.
+
+**Sesión por MCP (el usuario, Claude Code en `../prueba-m10-sb-A`, 23:28).** El relay ya había muerto (ver «Encontrado»): las dos respuestas lo dicen («calculado a las 23:22 y el demonio no lo ha actualizado»). Comprobado contra los bloques de esa hora.
+- «¿Qué criterio no cubrimos?», **casi:**
+  - Dice lo de la vista: la de Luis, la única «obligatorio», sin cubrir, con T06 (pendiente, espera a T21) y T14 (lista); las otras dos cubiertas por T13 y T12; la de K-99 en el pitch y la de Marta no (bien: `jurado.pitch` cita solo `2026-10-18 19:03`).
+  - Da la hora y el autor de cada nota.
+  - Añade recomendaciones que la vista no da («Conviene añadirlo [al pitch]», «Persona B puede empezar T14 ya con el JSON de ejemplo»).
+- «¿Qué pone en riesgo la entrega?», **no:**
+  - **Bien:** T01 y T02 con el plazo pasado y 18 tareas arrastradas; Persona C sin señales y su descanso; «sin estimación».
+  - **Falso:** «el sistema no puede decir si llegamos a tiempo porque nadie ha cerrado todavía ninguna tarea». T12 y T13 están publicadas: la vista dice `pocos_datos`, con 0 de 3 medidas por persona.
+  - **Falso y fuera de la vista:** «No hay dónde publicar la demo … no hay ninguna tarea que lo resuelva», sacado de la regla 14 del `CLAUDE.md`. T08 y T16 (despliegue) están en el plan y en la ruta.
+  - **Una previsión sin estimación:** «Eres el cuello de botella y no hay margen». Lee las franjas del plan (T03 hasta 00:00, T04 00:00–05:00…) como calendario previsto. La ruta no da margen sin estimación, y la web no pinta barras por esa razón («parecerían una previsión»).
+  - **Fuera de `ruta`:** el escalado #7 (buzón) y «el motor no responde en :8000» (servicios, de la herramienta `estado`).
+  - **Procedencia:** casi nunca dice de qué fichero sale cada dato, y no menciona la entrega (jue 13:00, `equipo.md`).
+- **Sin arreglar** (instrucción del K-108). Dónde podría ir: la descripción de las herramientas `jurado` y `ruta` del MCP (`hkos/mcp.py`, `HERRAMIENTAS_M10`), o una regla en el `CLAUDE.md` generado para preguntas sobre el estado del equipo. Una pasada sola: según «No toques el prompt por un fallo aislado», hay que repetirla antes de cambiar nada.
+
+**`comprobar.py` sobre `../prueba-m10-03`:**
+- Antes de `/hack-check`, con el pitch: A1–A5 pasan.
+- Después, A2–A5 pasan y:
+  - **A1 falla:** `.claude/rules/motor.md` con 11 viñetas (máx. 10). `/hack-check aplicar` partió en dos «score por `company_id` y en escala 0–100 (supuesto: ambigüedades 3 y 7)», como manda su regla desde la v0.1.0 («o se parte en dos viñetas»). No viene de M10: fallo aislado de `/hack-check`, a Pendiente.
+  - **A7 falla:** «fuente desconocida «equipo.md»», de la afirmación sobre las fechas que provocó el montaje. `comprobar.py` solo conoce el enunciado y el análisis: falso negativo de `evals/`, no del kit.
+
+## Encontrado durante la prueba
+- **`web_vivo.py` no existe** (criterio 1, arriba).
+- **Rango degenerado** en la ruta (criterio 5, arriba).
+- **El MCP sin estimación** (criterio 7, arriba).
+- **El relay murió hacia las 23:22:** era una tarea en segundo plano de la sesión de Claude Code que hacía la prueba, y el harness la terminó («[killed]», nada en su stderr). No es del kit. La vista lo enseñó como viejo, y el MCP lo dijo.
+- **Persona sin usuario de GitHub:** «Persona C» sale siempre «sin señales» en la ruta (no puede tener señales atribuidas) y cuenta en «pocos datos: 3 personas», aunque nunca llegará a 3 medidas. Así, con alguien sin GitHub en el equipo, la ruta no estima nunca. A observar en el ensayo.
+- **`observado_en` de una nota «planificada»:** sale la hora del estado de sus tareas, que en el sandbox es de los eventos viejos de sus issues (2026-10-14), no de cuando se enlazó.
+- **Montaje:** el clon de B no tenía `user.name` y la nota de B salió con autor git «MichaelVDC» («Anotado por: @hk-persona-b», bien); fijado antes de T12 y T13, que salen de hk-persona-b. La sesión de `/hack-pitch` y la de `/hack-check` arrancaron un demonio en `../prueba-m10-03` (su `os.md`, ya del sandbox, está activo), parado a mano.
+- **Efectos del sandbox como remoto:** `/hack-scaffold` repasó las etiquetas `hk:*`; `/hack-plan` y `/hack-pitch` citaron el escalado #7 de M6a; `/hack-check` dio IDs (T27, T28) que el sandbox tenía de un plan anterior.
+
+## Gasto
+7,45 USD: A6 de `comprobar.py` 3,57, `/hack-scaffold` 1,19, `/hack-plan` 0,68, `/hack-pitch` 0,45 y `/hack-check aplicar` 1,56 (la sesión por MCP del usuario, aparte). En el sandbox: `3bf248f`, `0e520a1`, `93358fb`, `a4dc7cc`, `03f4203` y `13aab34` en `main`; 43 escrituras de `compilar` en los issues; #21–#23 sin asignar y #28 y #45 reabiertas.
+
+**M10 no se cierra:** falla la sesión por MCP del criterio 7; además, falta `web_vivo.py` (criterio 1) y está el hueco del rango degenerado (criterio 5). Lo decide el usuario.
