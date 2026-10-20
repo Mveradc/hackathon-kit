@@ -331,6 +331,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     estimables = abiertas - aparte - nadie
     if aparte and not estimables:
         motivos.append("sin_plazo")
+    if nadie and not estimables:
+        motivos.append("sin_usuario")
     # Pocos datos, de quien tiene algo que estimar (o, si no hay nada estimable, de quien tiene algo abierto).
     pocos = [b for b in base_personas if b["n"] < MINIMO
              and b["persona"] in {cuentan[k]["dueno"] for k in (estimables or abiertas)}]
@@ -498,6 +500,7 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     else:
         partes.append({"sin_entrega": "sin hora de entrega", "ciclo": "ciclo " + " → ".join(ciclo or []),
                        "sin_plazo": "sin plazo: " + _cuantas(len(sin_plazo), "tarea"),
+                       "sin_usuario": "sin usuario: " + _cuantas(len(sin_usuario), "tarea"),
                        "pocos_datos": "pocos datos: " + _cuantas(len(pocos), "persona")}[motivos[0]])
     if otras:
         o = otras[0]

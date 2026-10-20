@@ -68,6 +68,9 @@ def errores(bloque):
     el esquema no traiga sin_usuario[] (K-108, 2), se valida sin él."""
     if "sin_usuario" not in VISTA.raiz["$defs"]["vista_ruta"]["properties"]:
         bloque = {k: v for k, v in bloque.items() if k != "sin_usuario"}
+    if "sin_usuario" not in json.dumps(VISTA.raiz["$defs"]["vista_ruta"]["properties"]["veredicto"]):
+        v = bloque["veredicto"]
+        bloque = dict(bloque, veredicto=dict(v, motivos=[x for x in v["motivos"] if x != "sin_usuario"]))
     e = VISTA.error(bloque)
     if e is None and JSONSCHEMA is not None:
         e = next(((list(x.absolute_path), x.message) for x in JSONSCHEMA.iter_errors(bloque)), None)
@@ -182,8 +185,12 @@ class Base(unittest.TestCase):
         self.assertLessEqual(len(bloque["resumen"]), 120)
         self.assertIsNone(re.search(r"(\d\d:\d\d)–\1\b", bloque["resumen"]), "un rango de una sola hora (K-108, 3)")
         self.assertNotIn("entrega_doble", bloque["veredicto"]["motivos"])
-        if "sin_plazo" in bloque["veredicto"]["motivos"]:      # decisión del usuario: solo sin nada con franja
-            self.assertFalse([t for t in tareas if _abierta_con_franja(t)])
+        # Decisión del usuario: sin_plazo y sin_usuario son motivo solo si no queda nada que estimar (K-108, 2).
+        usuarios = {p["persona"] for p in personas}
+        estimables = [t for t in tareas if _abierta_con_franja(t) and t["dueno"] in usuarios]
+        if {"sin_plazo", "sin_usuario"} & set(bloque["veredicto"]["motivos"]):
+            self.assertFalse(estimables)
+        self.assertEqual("sin_usuario" in bloque["veredicto"]["motivos"], bool(bloque["sin_usuario"]) and not estimables)
         self.assertEqual([r["fin_tarde"] for r in bloque["riesgos"]],
                          sorted((r["fin_tarde"] for r in bloque["riesgos"]), key=fecha, reverse=True))
         # Un rango, sin cifra central; la cadena, solo de abiertas; sin estimación, sin riesgos (#46, 3).
@@ -631,6 +638,65 @@ class Tabla(Base):
         self.assertEqual(([x["tarea"] for x in b["sin_usuario"]], b["sin_plazo"]), (["T33"], []))
         self.assertEqual(b["resumen"], "ruta: sin estimación · pocos datos: 1 persona")
         self.assertEqual([p["persona"] for p in b["base"]["personas"]], ["ana", "luis"])
+        self.assertEqual(b["veredicto"]["motivos"], ["pocos_datos"])       # queda algo estimable: sin_usuario no es motivo
+
+    def test_k108_2_todas_las_abiertas_de_personas_sin_usuario(self):
+        """K-108, punto 2 (añadido del usuario): si no queda ninguna abierta que cuenta y se pueda estimar (todas sin
+        plazo o de personas sin usuario), sin estimación, con los motivos que apliquen entre sin_plazo y sin_usuario, en
+        el orden sin_entrega, ciclo, sin_plazo, sin_usuario, pocos_datos; en el resumen, «sin usuario: <n> tareas».
+        Antes salía «estimación a tiempo» sin nada estimado."""
+        c = [tarea("T30", "Persona C", "lista", 1, franja=(0, 60), ultima=None),
+             tarea("T31", "Persona C", "en_curso", 2, franja=(60, 120), primera=-30, ultima=None)]
+        b = self.corre(ruta_de(240), ana()[:3] + c)
+        self.assertEqual(b["veredicto"], {"valor": "sin_estimacion", "motivos": ["sin_usuario"], "gravedad": "gris",
+                                          "fuente": "derivado", "observado_en": iso(T0)})
+        self.assertIsNone(b["estimacion"])
+        self.assertEqual([x["tarea"] for x in b["sin_usuario"]], ["T30", "T31"])
+        self.assertEqual(b["resumen"], "ruta: sin estimación · sin usuario: 2 tareas")
+        self.assertEqual(self.corre(ruta_de(240), ana()[:3] + c[:1])["resumen"], "ruta: sin estimación · sin usuario: 1 tarea")
+        # Con una sin plazo de Ana, los dos motivos, sin_plazo primero; y sin entrega, sin_entrega delante.
+        b = self.corre(ruta_de(240), ana()[:3] + c + [tarea("T06", "ana", "lista", 6)])
+        self.assertEqual(b["veredicto"]["motivos"], ["sin_plazo", "sin_usuario"])
+        self.assertEqual(b["resumen"], "ruta: sin estimación · sin plazo: 1 tarea")
+        b = self.corre(ruta_de(None), ana()[:3] + c + [tarea("T06", "ana", "lista", 6)])
+        self.assertEqual(b["veredicto"]["motivos"], ["sin_entrega", "sin_plazo", "sin_usuario"])
+        # Con Luis a 1 de 3 y su abierta sin plazo: pocos_datos detrás de sin_usuario.
+        b = self.corre(ruta_de(240), ana()[:3] + c + luis(n=1)[:1] + [tarea("T12", "luis", "lista", 2)])
+        self.assertEqual(b["veredicto"]["motivos"], ["sin_plazo", "sin_usuario", "pocos_datos"])
+
+    def test_k108_2_sin_usuario_en_medio_de_una_cadena_cuenta_0_min(self):
+        """K-108, punto 2 (añadido del usuario): en el grafo, una tarea de persona sin usuario es como una sin plazo
+        (ajuste 1): sigue en el grafo y cuenta 0 min, y sus sucesoras empiezan al acabar sus predecesoras abiertas; no
+        sale con fin, ni en la cadena estimada, ni en riesgos. T12 (Luis, fin 11:00) → T30 (Persona C) → T04 (Ana)."""
+        tareas = ana() + luis() + [tarea("T30", "Persona C", "lista", 1, franja=(0, 600), deps=["T12"], ultima=None)]
+        por_id(tareas, "T04")["depende_de"] = ["T30"]
+        b = self.corre(ruta_de(300), tareas)
+        # T04 empieza al acabar T12 (T0 + 60), no tras las 10 h de franja de T30: 90–150; T05 detrás, 120–240.
+        self.assertEqual(b["estimacion"], {"temprano": iso(T0 + timedelta(minutes=120)),
+                                           "tarde": iso(T0 + timedelta(minutes=240)), "margen_min": 60, "margen_max": 180})
+        self.assertEqual([(e["tarjeta"]["id"], e["por"], e["fin_temprano"], e["fin_tarde"]) for e in b["cadena"]],
+                         [("T12", "inicio", iso(T0 + timedelta(minutes=60)), iso(T0 + timedelta(minutes=60))),
+                          ("T04", "depende_de", iso(T0 + timedelta(minutes=90)), iso(T0 + timedelta(minutes=150))),
+                          ("T05", "orden_del_plan", iso(T0 + timedelta(minutes=120)), iso(T0 + timedelta(minutes=240)))])
+        self.assertEqual([x["tarea"] for x in b["sin_usuario"]], ["T30"])
+        self.assertNotIn("T30", {r["tarea"] for r in b["riesgos"]})
+        # Con la entrega antes del fin lento: en riesgos, las estimadas, nunca T30.
+        b = self.corre(ruta_de(200), tareas)
+        self.assertEqual([r["tarea"] for r in b["riesgos"]], ["T05"])
+
+    def test_k108_2_sin_usuario_con_su_plazo_vencido_es_un_hecho(self):
+        """K-108, punto 2 (añadido del usuario): el plazo pasado de una tarea de persona sin usuario y lo que arrastra se
+        mantienen (son hechos), aunque no se estime; el resto se estima igual."""
+        tareas = ana() + [tarea("T30", "Persona C", "lista", 1, franja=(-120, -10), ultima=None)]
+        por_id(tareas, "T04")["depende_de"] = ["T30"]
+        b = self.corre(ruta_de(240), tareas)
+        self.assertEqual(self.hechos(b, "plazo_pasado"), [
+            {"tipo": "plazo_pasado", "gravedad": "rojo", "tarea": "T30", "persona": "Persona C", "plazo": m(-10),
+             "arrastra": ["T04", "T05"], "fuente": "derivado", "observado_en": iso(T0), "viejo": False}])
+        self.assertEqual(b["estimacion"], self.corre(ruta_de(240), ana())["estimacion"])
+        self.assertNotIn("T30", {e["tarjeta"]["id"] for e in b["cadena"]} | {r["tarea"] for r in b["riesgos"]})
+        self.assertTrue(b["resumen"].startswith("ruta: estimación a tiempo · T30: plazo pasado 09:50 · fin 11:00–13:00 "),
+                        b["resumen"])
 
     def test_cadena_de_cada_persona_y_la_mas_larga(self):
         tareas = ana() + luis()
