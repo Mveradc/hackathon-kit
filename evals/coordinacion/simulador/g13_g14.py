@@ -1043,8 +1043,12 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True, viejo_de=lambda fuente: F
     riesgos = [{"tarea": t, "tipo": "estimacion", "fin_tarde": z(fin[t][1]), "dueno": duenos[t],
                 "en_cadena": t in eslabones, "viejo": viejo_de(fuente[t])} for t in riesgos]
 
+    # K-103 (decisión del usuario en R5): en la base sale quien tiene alguna medida y las dueñas con usuario de tareas
+    # que cuentan; una persona del equipo sin tareas no sale.
     base = {}
     for p in personas:
+        if not medidas.get(p) and not any(duenos[t] == p for t in cuentan):
+            continue
         hechas = []
         for t, _ in medidas.get(p, []):
             primera = next((e["ts"] for e in f["atribuidos"] if e.get("tarea") == t and e["actor"]["persona"] == p), None)
@@ -1232,6 +1236,9 @@ def reglas(nombre, esperado, real):
         comprueba(f"{nombre}: «sin señales», las mismas personas que salen (también quien no ha dado ninguna señal, con "
                   "desde null; #56)", set(esperado["sin_senales"]) == set(real["sin_senales"]),
                   f"{sorted(esperado['sin_senales'])} ≠ {sorted(real['sin_senales'])}")
+    if esperado.get("base") == {}:      # una base vacía en la espera: no sale nadie (difiere solo mira sus claves)
+        comprueba(f"{nombre}: la base, vacía (nadie con medidas ni dueña con usuario de tareas que cuentan; K-103)",
+                  real["base"] == {}, sorted(real["base"]))
     if "resumen" in esperado:
         r = esperado["resumen"]
         comprueba(f"{nombre}: el resumen son partes enteras, en su orden (veredicto, plazo pasado, fin y entrega o el "
@@ -1466,6 +1473,8 @@ def vivo_g14(cambia=None, solo=None):
             if "ruta" in v:
                 real = m10.ruta_hechos(v["ruta"], v, [p["persona"] for p in tabla], r.estado)
                 compara_vivo(nombre, m10.ruta_esperada(esperado), real)
+                if esperado.get("base") == {}:
+                    comprueba(f"{nombre}: la base, vacía, como en los hechos (K-103)", real["base"] == {}, sorted(real["base"]))
                 if caso.get("relee_plan"):      # R5: una persona del plan sin @ no sale en base ni en sin_senales
                     de_mas = sorted((set(real["base"]) | set(real["sin_senales"])) - {p["persona"] for p in tabla})
                     comprueba(f"{nombre}: base y sin_senales, solo de personas de la tabla (ninguna sin @)", not de_mas,
@@ -1686,6 +1695,8 @@ CONTROLES = [
      lambda r: r.replace("fin hacia 09:35 (las medidas no varían)", "fin 09:35–09:35")),
     ("R5: todas sin usuario, con T28 contada como «sin_plazo»", g14, C14("todas_sin_usuario") + ["cifra", "motivos"],
      ["sin_plazo", "sin_usuario"]),
+    ("K-103: todas sin usuario, con las personas de la tabla sin tareas en la base (0 de 3)", g14,
+     C14("todas_sin_usuario") + ["base"], {p: {"n": 0, "ritmo": None} for p in ("persona-a", "persona-b", "persona-c")}),
     ("R5: la tarea sin usuario rompe la cadena (T27 sin T08 ni T09 delante)", g14,
      C14("sin_usuario_en_la_cadena") + ["cadena"], lambda c: [dict(c[-1], por="inicio")]),
     ("R5: el plazo pasado de una tarea sin usuario no arrastra a nadie", g14,

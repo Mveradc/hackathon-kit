@@ -1656,7 +1656,7 @@
   },
   {
    "id": "todas_sin_usuario",
-   "que": "todas las abiertas que cuentan son de personas del plan sin @ (las tres secciones, renombradas a Persona X, Y y Z, fuera de la tabla): no queda nada que estimar, sin_estimacion con el motivo «sin_usuario» (T28, sin plazo, va a sin_usuario, no a sin_plazo) y en el resumen «sin usuario: 8 tareas»; nadie en pocos_datos ni en sin_senales (R5, K-108)",
+   "que": "todas las abiertas que cuentan son de personas del plan sin @ (las tres secciones, renombradas a Persona X, Y y Z, fuera de la tabla): no queda nada que estimar, sin_estimacion con el motivo «sin_usuario» (T28, sin plazo, va a sin_usuario, no a sin_plazo) y en el resumen «sin usuario: 8 tareas»; nadie en pocos_datos ni en sin_senales, y la base, vacía: las personas de la tabla no tienen tareas que cuenten ni medidas (K-103; R5, K-108)",
    "base": "mitad bien",
    "relee_plan": true,
    "plan.md": [
@@ -1682,20 +1682,7 @@
      ],
      "rango": null
     },
-    "base": {
-     "persona-a": {
-      "n": 0,
-      "ritmo": null
-     },
-     "persona-b": {
-      "n": 0,
-      "ritmo": null
-     },
-     "persona-c": {
-      "n": 0,
-      "ritmo": null
-     }
-    },
+    "base": {},
     "sin_plazo": {},
     "sin_usuario": [
      {
