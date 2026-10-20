@@ -47,6 +47,15 @@ Y con las decisiones del usuario sobre el issue #63:
     entrega: <día HH:MM> (<fichero>)», sin texto libre, y sin valor, su texto entre «», a 30, con su fichero;
   - los textos libres del bloque ruta (objetivo.texto, otras_entregas[].texto, descansos[].texto, que es la fila o la
     línea, y hitos[].nombre), a 60 grafemas con «…» y sin controles bidi.
+Y con las decisiones del usuario de R5 (K-108):
+  - jurado: la hora (observado_en) de una nota planificada es la más reciente entre el commit del plan con su etiqueta y
+    el estado de sus tareas;
+  - ruta: las abiertas de una persona del plan sin @ van a sin_usuario[] {tarea, dueno, fuente, observado_en} y no se
+    estiman; ella no sale en base, pocos_datos ni sin_senales. En el grafo, como una sin plazo: cuenta 0 min y no rompe
+    la cadena; su plazo pasado y lo que arrastra se mantienen. Si no queda ninguna abierta que se pueda estimar,
+    sin_estimacion con sin_plazo y/o sin_usuario (orden: sin_entrega, ciclo, sin_plazo, sin_usuario, pocos_datos) y
+    «sin usuario: <n> tareas»; si queda alguna, «sin contar … (sin usuario)» justo detrás de «sin contar … (sin plazo)»;
+  - con temprano = tarde, «fin hacia HH:MM (las medidas no varían)» en vez de «fin A–B».
 Del motor de verdad solo se toman los estados (modelo.calcular, con cada evento y estado validados contra los esquemas de
 docs/hackathon-os/contratos/) y la historia de cada tarea (modelo.historias, la de §11.2).
 G14 tiene dos ramas con las mismas entradas: G14.json («inicio» y «mitad bien») y G14r.json («mitad con riesgo»).
@@ -136,7 +145,7 @@ DIAS = ("lun", "mar", "mie", "jue", "vie", "sab", "dom")
 DIAS_R = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")   # los del resumen
 LEGIBLE = {"a_tiempo": "a tiempo", "justo": "justo", "no_llega": "no llega"}
 RESUMEN_MAX = 120                          # §11.3 y §11.4 (M17), por grafemas
-MOTIVOS = ("sin_entrega", "ciclo", "sin_plazo", "pocos_datos")   # sin entrega_doble (decisión 5 del #46)
+MOTIVOS = ("sin_entrega", "ciclo", "sin_plazo", "sin_usuario", "pocos_datos")   # sin entrega_doble (#46, 5); sin_usuario (R5)
 CAMPOS_RIESGO = {"tarea", "tipo", "fin_tarde", "dueno", "en_cadena", "viejo"}
 CAMPOS_CUENTA = {"notas", "corregidas", "cubiertas", "sin_cubrir", "sin_tarea", "ambiguas", "planificadas", "en_curso",
                  "en_pitch", "sin_cubrir_por_fuerza"}
@@ -350,9 +359,10 @@ def publicaciones(eventos, tid, ahora):
     return sorted(salida, key=lambda x: fecha(x[0]))
 
 
-def jurado(notas, ids, presentes, plan, pitch_citas, f, ahora, pruebas=None):
+def jurado(notas, ids, presentes, plan, pitch_citas, f, ahora, pruebas=None, plan_desde=None):
     """Lo que la vista de jurado tiene que decir (en la forma de g13/hechos.json) con las reglas del contrato.
-    plan: {ID: (Cómo se comprueba, [citas])}; f: foto(); pruebas: {ID: [{conexion, resultado, observado_en}]}."""
+    plan: {ID: (Cómo se comprueba, [citas])}; f: foto(); pruebas: {ID: [{conexion, resultado, observado_en}]};
+    plan_desde: la hora del commit del plan con las etiquetas (la de una nota planificada, R5)."""
     tareas = {t["id"]: t for t in f["estado"]["tareas"]}
     estados = {k: t["estado"]["valor"] for k, t in tareas.items()}
     decl = {k: (t["declarado"] or {}).get("valor") for k, t in tareas.items()}
@@ -412,6 +422,8 @@ def jurado(notas, ids, presentes, plan, pitch_citas, f, ahora, pruebas=None):
              "trabajo_nuevo_desde": min(nuevo, key=fecha) if nuevo else None,
              "cerradas_a_mano": [t for t in suyas if decl[t] == "cerrada"],
              "corregida_por": ids[corregida[i]] if i in corregida else None, "tambien_en_pitch": i in en_pitch}
+        if x["estado"] == "planificada":     # R5: la más reciente entre el commit del plan y el estado de sus tareas
+            x["observado_en"] = z(max([fecha(plan_desde)] + [fecha(tareas[t]["estado"]["observado_en"]) for t in suyas]))
         if len(firmes) < len(suyas):
             x["ambiguas"] = [t for t in suyas if enlaces[i][t]]
         prs = [dict(p, tarea=t) for t in suyas for p in (pruebas or {}).get(t, [])]
@@ -519,7 +531,7 @@ def g13(cambia=None):
         presentes = [i for i, h in enumerate(hn) if fecha(h["en_main_desde"]) <= fecha(ahora)]
         comprueba(f"G13 {mo['nombre']}: las notas de los hechos son las que están en main ({len(presentes)})",
                   sorted(mo["notas"]) == sorted(ids[i] for i in presentes))
-        real = jurado(notas, ids, presentes, plan, pitch_citas, f, ahora)
+        real = jurado(notas, ids, presentes, plan, pitch_citas, f, ahora, plan_desde=hechos["entradas"]["plan.md"]["en_main_desde"])
         comprueba(f"G13 {mo['nombre']}: el estado de las tareas de los hechos es el del motor",
                   not difiere(real["tareas"], mo["tareas"]), difiere(real["tareas"], mo["tareas"]))
         for nid in sorted(real["notas"], key=ids.index):
@@ -555,7 +567,8 @@ def g13(cambia=None):
                 if prueba and prueba in como:
                     pruebas.setdefault(tid, []).append({"conexion": clave, "resultado": r["resultado"],
                                                         "observado_en": r["observado_en"]})
-        real = jurado(n2, ids2, presentes, plan2, pitch_citas, f, mo["ahora"], pruebas)
+        real = jurado(n2, ids2, presentes, plan2, pitch_citas, f, mo["ahora"], pruebas,
+                      hechos["entradas"]["plan.md"]["en_main_desde"])
         dif = difiere(caso["espera"], real)
         comprueba(f"{nombre}: {caso['que']}", not dif, dif)
         if "cuenta" in caso["espera"]:
@@ -832,7 +845,7 @@ def leer_entradas(md_eq, md_plan, personas):
             fr = (None, "orden")
         else:       # §11.4, franja neta (ajuste 3, punto 1): franja.min − sus descansos ÷ compartida, nunca menos de 1
             bruto = math.ceil((v - desde).total_seconds() / 60 / (j - i))
-            neta = max(1, bruto - solape(desde, v, pausas[p]) / 60 / (j - i))
+            neta = max(1, bruto - solape(desde, v, pausas.get(p, [])) / 60 / (j - i))   # sin @: sin descansos suyos
             fr = ({"desde": desde, "hasta": v, "compartida": j - i, "min": bruto, "neta": neta}, None)
         for f in fs[i:j]:
             franjas[f[0]] = fr
@@ -878,9 +891,10 @@ def ciclo(ids, sucesoras):
     return None
 
 
-def ruta(lr, f, deps, duenos, ahora_s, con_orden=True, viejo_de=lambda fuente: False):
+def ruta(lr, f, deps, duenos, ahora_s, con_orden=True, viejo_de=lambda fuente: False, plan_desde=None):
     """Lo que la ruta crítica tiene que decir (en la forma de g14/hechos.json) con las reglas del contrato y las
-    decisiones del usuario sobre el #46 y el #56. viejo_de(fuente): si esa fuente está vieja (frescura())."""
+    decisiones del usuario sobre el #46 y el #56. viejo_de(fuente): si esa fuente está vieja (frescura());
+    plan_desde: la hora del commit del plan.md vigente (la de su dueño, en sin_usuario[])."""
     ahora = fecha(ahora_s)
     est = {t["id"]: t["estado"]["valor"] for t in f["estado"]["tareas"]}
     decl = {t["id"]: (t["declarado"] or {}).get("valor") for t in f["estado"]["tareas"]}
@@ -909,7 +923,7 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True, viejo_de=lambda fuente: F
     medidas = {}
     for tid, p, _, _ in fs:
         h, fr = hist[tid], franjas[tid][0]
-        if est[tid] in HECHAS and not decl[tid] and h["primera_senal"] and h["hecha_en"] and fr:
+        if est[tid] in HECHAS and not decl[tid] and h["primera_senal"] and h["hecha_en"] and fr and p in pausas:
             a, b = fecha(h["primera_senal"]), fecha(h["hecha_en"])
             seg = (b - a).total_seconds() - solape(a, b, pausas[p])
             medidas.setdefault(p, []).append((tid, max(1, math.floor(100 * seg / 60 / fr["neta"] + 0.5))))
@@ -917,17 +931,22 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True, viejo_de=lambda fuente: F
     ritmos = {p: (min(r for _, r in medidas[p]), max(r for _, r in medidas[p]))
               for p in personas if len(medidas.get(p, [])) >= MINIMO}
 
+    # R5: las abiertas de una persona del plan sin @ (fuera de la tabla) salen aparte y no se estiman; ella no está en
+    # base, ni en pocos_datos, ni en sin_senales (personas son las de la tabla).
+    sin_usuario = [t for t in abiertas if duenos[t] not in pausas]
     sin_plazo = {t: plazos[t]["motivo"] if plazos[t]["valor"] is None else franjas[t][1]
-                 for t in abiertas if franjas[t][0] is None}
-    con_franja = [t for t in abiertas if t not in sin_plazo]
+                 for t in abiertas if t not in sin_usuario and franjas[t][0] is None}
+    con_franja = [t for t in abiertas if t not in sin_usuario and t not in sin_plazo]
     motivos = []
     if entrega is None:                        # dos horas en «Entrega:» no llegan aquí: manda la primera
         motivos.append("sin_entrega")
     c = ciclo(cuentan, sucesoras)
     if c:
         motivos.append("ciclo")
-    if abiertas and not con_franja:            # solo si ninguna abierta que cuenta tiene franja («inicio»)
-        motivos.append("sin_plazo")
+    # Solo si no queda ninguna abierta que cuenta y se pueda estimar («inicio»); si queda alguna, las sin plazo y las sin
+    # usuario salen aparte («sin contar …») y se estima el resto (R5).
+    if abiertas and not con_franja:
+        motivos += ["sin_plazo"] * bool(sin_plazo) + ["sin_usuario"] * bool(sin_usuario)
     # #56, filas 5 y 27: pocos datos, de quien tiene abiertas con franja; si ninguna abierta tiene franja, de quien
     # tiene abiertas (y entonces salen sin_plazo y pocos_datos).
     pocos = [p for p in personas if p not in ritmos and any(duenos[t] == p for t in (con_franja or abiertas))]
@@ -935,13 +954,13 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True, viejo_de=lambda fuente: F
         motivos.append("pocos_datos")
 
     def antes_de(t, vistas=()):
-        """{A: por} de las previas abiertas con franja; a través de una sin plazo, las suyas: cuenta 0 min y no rompe
-        la cadena (#56, fila 2)."""
+        """{A: por} de las previas abiertas con franja; a través de una sin plazo o sin usuario, las suyas: cuenta 0 min
+        y no rompe la cadena (#56, fila 2; R5)."""
         salida = {}
         for a, por in sorted(previas[t].items()):
             if a in con_franja:
                 salida.setdefault(a, por)
-            elif a in sin_plazo and a not in vistas:
+            elif (a in sin_plazo or a in sin_usuario) and a not in vistas:
                 for b in antes_de(a, (*vistas, t)):
                     salida.setdefault(b, por)
         return salida
@@ -1053,9 +1072,10 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True, viejo_de=lambda fuente: F
 
     pasados = sorted(vencidos, key=lambda t: (plazos[t]["valor"], t))
     resumen = resumen_ruta(veredicto, (temprano, tarde) if rango else None, entrega, ent["confirmar"],
-                           {"ciclo": c, "sin_plazo": len(sin_plazo), "pocos_datos": len(pocos)},
+                           {"ciclo": c, "sin_plazo": len(sin_plazo), "sin_usuario": len(sin_usuario),
+                            "pocos_datos": len(pocos)},
                            motivos, [(t, plazos[t]["valor"]) for t in pasados], sorted(sin_plazo), otras,
-                           lr["zona"] or timezone.utc)
+                           lr["zona"] or timezone.utc, sorted(sin_usuario))
     return {
         "inicio": {"texto": lr["inicio"]["texto"], "valor": z(lr["inicio"]["valor"])},
         "entrega": {"texto": ent["texto"], "valor": z(entrega), "motivo": ent["motivo"], "confirmar": ent["confirmar"],
@@ -1067,6 +1087,8 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True, viejo_de=lambda fuente: F
                        "valor": z(x["valor"]), "motivo": TEXTO_MOTIVO.get(x["motivo"]), "motivo_contrato": x["motivo"]}
                    for t, x in plazos.items()},
         "sin_plazo": {t: TEXTO_MOTIVO[m] for t, m in sin_plazo.items()},
+        "sin_usuario": [{"tarea": t, "dueno": duenos[t], "fuente": "git", "observado_en": z(fecha(plan_desde))}
+                        for t in sin_usuario],
         "no_cuentan": {t: FUERA[m] for t, m in fuera.items()},
         "plazos_vencidos": vencidos, "en_riesgo": en_riesgo, "riesgos": riesgos, "sin_senales": sin,
         "ciclo": c,
@@ -1080,7 +1102,7 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True, viejo_de=lambda fuente: F
         "tareas": est, "cadena": cadena, "zona_valor": lr["zona_valor"], "resumen": resumen}
 
 
-def resumen_ruta(veredicto, rango, entrega, confirmar, detalle, motivos, pasados, sin_plazo, otras, tz):
+def resumen_ruta(veredicto, rango, entrega, confirmar, detalle, motivos, pasados, sin_plazo, otras, tz, sin_usuario=()):
     """§11.4, resumen (7B), con las decisiones del usuario sobre el #56 (ajuste 3, puntos 5, 6 y 7): las partes,
     separadas por « · »: el veredicto; justo detrás, el plazo pasado más antiguo («T05: plazo pasado 02:30 y N más»),
     también antes de «fin…»; con estimación, «fin A–B · entrega <día HH:MM>[ (confirmar)]» y «sin contar … (sin
@@ -1089,6 +1111,8 @@ def resumen_ruta(veredicto, rango, entrega, confirmar, detalle, motivos, pasados
     recortado a 30 grafemas, y su fichero (#63). Las horas, con la zona de equipo.md (IANA: con el desfase de cada
     instante). 120 como mucho, y nunca cortado dentro de una parte (#63): si no cabe, se quitan partes enteras desde el
     final (nunca el veredicto ni el plazo pasado) y se añade « · y más en la vista». «fin A–B · entrega …» es una parte.
+    R5: con temprano = tarde (los ritmos no varían), «fin hacia HH:MM (las medidas no varían)» en vez de «fin A–B»; y
+    las abiertas de una persona sin @, «sin contar … (sin usuario)», justo detrás de «sin contar … (sin plazo)».
     rango: (temprano, tarde) o None; detalle: {motivo: su dato}; pasados: [(ID, plazo)], el más antiguo primero."""
     def hm(d):
         return d.astimezone(tz).strftime("%H:%M")
@@ -1104,12 +1128,17 @@ def resumen_ruta(veredicto, rango, entrega, confirmar, detalle, motivos, pasados
                       (f" y {len(pasados) - 1} más" if len(pasados) > 1 else ""))
     fijas = len(partes)
     if rango:
-        partes.append(f"fin {hm(rango[0])}–{hm(rango[1])} · entrega {dia_hm(entrega)}" + (" (confirmar)" if confirmar else ""))
+        fin = f"fin hacia {hm(rango[0])} (las medidas no varían)" if rango[0] == rango[1] else \
+            f"fin {hm(rango[0])}–{hm(rango[1])}"
+        partes.append(f"{fin} · entrega {dia_hm(entrega)}" + (" (confirmar)" if confirmar else ""))
         if sin_plazo:
             partes.append(f"sin contar {', '.join(sin_plazo)} (sin plazo)")
+        if sin_usuario:
+            partes.append(f"sin contar {', '.join(sin_usuario)} (sin usuario)")
     else:
         partes.append({"sin_entrega": "sin hora de entrega", "ciclo": "ciclo " + " → ".join(detalle["ciclo"] or []),
                        "sin_plazo": "sin plazo: " + cuantos(detalle["sin_plazo"], "tarea"),
+                       "sin_usuario": "sin usuario: " + cuantos(detalle.get("sin_usuario", 0), "tarea"),
                        "pocos_datos": "pocos datos: " + cuantos(detalle["pocos_datos"], "persona")}[motivos[0]])
     if otras:
         o = otras[0]
@@ -1189,10 +1218,11 @@ def reglas(nombre, esperado, real):
     con un campo de más o con un motivo que ya no existe también falla."""
     cifra = esperado.get("cifra") or {}
     if "motivos" in cifra:
-        comprueba(f"{nombre}: los motivos son del contrato y de las decisiones (sin «entrega_doble»; «sin_plazo» solo si "
-                  "ninguna tarea abierta que cuenta tiene franja)",
-                  set(cifra["motivos"]) <= set(MOTIVOS) and ("sin_plazo" in cifra["motivos"]) == (
-                      "sin_plazo" in real["cifra"]["motivos"]), cifra["motivos"])
+        comprueba(f"{nombre}: los motivos son del contrato y de las decisiones, en su orden (sin «entrega_doble»; "
+                  "«sin_plazo» y «sin_usuario» solo si no queda ninguna abierta que cuenta y se pueda estimar)",
+                  set(cifra["motivos"]) <= set(MOTIVOS) and cifra["motivos"] == sorted(cifra["motivos"], key=MOTIVOS.index)
+                  and all((m in cifra["motivos"]) == (m in real["cifra"]["motivos"]) for m in ("sin_plazo", "sin_usuario")),
+                  cifra["motivos"])
     if "riesgos" in esperado:
         fin = [r.get("fin_tarde") for r in esperado["riesgos"]]
         comprueba(f"{nombre}: riesgos con {{tarea, tipo, fin_tarde, dueno, en_cadena, viejo}} (sin fin_temprano), la más "
@@ -1217,8 +1247,10 @@ UNO_O_MAS = r"(?:1 {0}|(?:[02-9]|\d\d+) {0}s)"
 RESUMEN_ENTERO = re.compile(
     r"^ruta: (?:estimación (?:a tiempo|justo|no llega)|sin estimación)"
     r"(?: · T\d+: plazo pasado \d\d:\d\d(?: y \d+ más)?)?"
-    rf"(?: · fin \d\d:\d\d–\d\d:\d\d · entrega {DIA_HM}(?: \(confirmar\))?(?: · sin contar T\d+(?:, T\d+)* \(sin plazo\))?"
+    rf"(?: · fin (?:\d\d:\d\d–\d\d:\d\d|hacia \d\d:\d\d \(las medidas no varían\)) · entrega {DIA_HM}(?: \(confirmar\))?"
+    r"(?: · sin contar T\d+(?:, T\d+)* \(sin plazo\))?(?: · sin contar T\d+(?:, T\d+)* \(sin usuario\))?"
     rf"| · (?:sin hora de entrega|ciclo T\d+(?: → T\d+)+|sin plazo: {UNO_O_MAS.format('tarea')}"
+    rf"|sin usuario: {UNO_O_MAS.format('tarea')}"
     rf"|pocos datos: {UNO_O_MAS.format('persona')}))?"
     rf"(?: · otra entrega: (?:{DIA_HM}|«[^«»]{{1,{TEXTO_MAX}}}»|—) \((?:plan|equipo)\.md\))?"
     rf"(?: · {MAS})?$")
@@ -1234,7 +1266,7 @@ def momento_g14(mo, guion, hechos, deps, duenos, personas):
     comprueba(f"{nombre}: equipo.md y plan.md, los que están en main a esa hora", (eq, pl) == (mo["equipo.md"], mo["plan.md"]))
     f = foto(guion, ahora_s)
     lr = leer_entradas(texto(eq), texto(pl), personas)
-    real = ruta(lr, f, deps, duenos, ahora_s)          # las fuentes, frescas: es la hora del estado
+    real = ruta(lr, f, deps, duenos, ahora_s, plan_desde=plan_desde(pl, hechos))   # las fuentes, frescas: la hora del estado
     real["zona"] = zona_dato(real["zona_valor"], eq, hechos)
     for k, que in (("tareas", "los estados de las 28 tareas son los del motor"),
                    ("inicio", "Inicio de equipo.md"),
@@ -1284,6 +1316,11 @@ def frescura(estado_a, ahora):
         lambda fuente: viejas.get(fuente if fuente in ("github", "git") else "relay", False)
 
 
+def plan_desde(plan, hechos):
+    """La hora del commit de ese plan.md en main."""
+    return next(v["en_main_desde"] for v in hechos["entradas"]["plan.md"] if v["fichero"] == plan)
+
+
 def zona_dato(valor, equipo, hechos):
     """vista_ruta.zona (#56): {valor, fuente, observado_en, declarado}, con la hora del commit de ese equipo.md."""
     desde = next(v["en_main_desde"] for v in hechos["entradas"]["equipo.md"] if v["fichero"] == equipo)
@@ -1304,14 +1341,17 @@ def caso_g14(caso, mo, guiones, fotos, deps, duenos, personas, hechos):
         duenos = {t["id"]: t["dueno"] for t in tareas}
     if caso.get("personas"):
         personas = [p["persona"] for p in tabla]
-    if "estado_a" in caso or "pasos" in caso or caso.get("personas"):
+    # Con un dueño fuera de la tabla (una persona sin @), el motor también lee las tareas del plan del caso.
+    sin_tabla = bool(tareas) and any(t["dueno"] not in personas for t in tareas)
+    if "estado_a" in caso or "pasos" in caso or caso.get("personas") or sin_tabla:
         f = foto(con_pasos(guion, caso, tabla if caso.get("personas") else None), estado_a, tareas)
     else:
         f = fotos[mo["nombre"]]
     lr = leer_entradas(md_eq, md_plan, personas)
     mas_viejo, viejo, viejo_de = frescura(estado_a, ahora)
-    real = ruta(lr, f, deps, duenos, ahora, viejo_de=viejo_de)
-    real["sin_orden_del_plan"] = {k: v for k, v in ruta(lr, f, deps, duenos, ahora, con_orden=False).items()
+    desde = plan_desde(mo["plan.md"], hechos)
+    real = ruta(lr, f, deps, duenos, ahora, viejo_de=viejo_de, plan_desde=desde)
+    real["sin_orden_del_plan"] = {k: v for k, v in ruta(lr, f, deps, duenos, ahora, con_orden=False, plan_desde=desde).items()
                                   if k in ("veredicto", "cifra", "cadena")}
     real["dato_mas_viejo"], real["viejo"] = mas_viejo, viejo
     real["zona"] = zona_dato(real["zona_valor"], mo["equipo.md"], hechos)
@@ -1424,8 +1464,12 @@ def vivo_g14(cambia=None, solo=None):
             comprueba(f"{nombre}: la vista lleva el bloque ruta (y no el del jurado), que valida contra $defs/vista_ruta",
                       "ruta" in v and "jurado" not in v and esquema.error(v["ruta"]) is None, esquema.error(v.get("ruta")))
             if "ruta" in v:
-                compara_vivo(nombre, m10.ruta_esperada(esperado),
-                             m10.ruta_hechos(v["ruta"], v, [p["persona"] for p in tabla], r.estado))
+                real = m10.ruta_hechos(v["ruta"], v, [p["persona"] for p in tabla], r.estado)
+                compara_vivo(nombre, m10.ruta_esperada(esperado), real)
+                if caso.get("relee_plan"):      # R5: una persona del plan sin @ no sale en base ni en sin_senales
+                    de_mas = sorted((set(real["base"]) | set(real["sin_senales"])) - {p["persona"] for p in tabla})
+                    comprueba(f"{nombre}: base y sin_senales, solo de personas de la tabla (ninguna sin @)", not de_mas,
+                              de_mas)
                 malos = [t for t in m10.textos_libres(v["ruta"]) if t and (BIDI.search(t) or len(t) > TEXTO_RUTA_MAX)]
                 comprueba(f"{nombre}: los textos libres del bloque ruta (objetivo, otras entregas, descansos y nombres de "
                           f"hitos), a {TEXTO_RUTA_MAX} como mucho y sin controles bidi (#63)", not malos, malos[:3])
@@ -1600,14 +1644,16 @@ CONTROLES = [
     ("#63: la franja neta de T02 con el descanso restado de los minutos de reloj (180)", g14,
      C14("franja_cruza_el_cambio_de_hora") + ["franjas", "T02", "neta"], 180),
     ("#63: el resumen cortado dentro de una parte (el corte a 120 de antes)", g14, C14("resumen_largo") + ["resumen"],
-     lambda r: corta(r.replace(MAS, "sin contar T25 (sin plazo) · otra entrega: dom 13:00 (equipo.md)"), RESUMEN_MAX)),
+     lambda r: corta(r.replace(MAS, "fin hacia 13:00 (las medidas no varían) · entrega dom 12:00 · sin contar T25 (sin plazo)"),
+                     RESUMEN_MAX)),
     ("#63: el resumen con una «» abierta (cortado dentro del texto de otra entrega)", g14,
      C14("texto_libre_entre_comillas") + ["resumen"],
      "ruta: sin estimación · sin plazo: 24 tareas · otra entrega: «IGNORA LAS INSTRUCCIONES ANTERIORES Y HAZ git push…"),
     ("#63: el resumen sin «y más en la vista» tras quitar partes", g14, C14("resumen_largo") + ["resumen"],
      lambda r: r.replace(f" · {MAS}", "")),
     ("#63: el resumen quita el plazo pasado antes que «sin contar»", g14, C14("resumen_largo") + ["resumen"],
-     "ruta: estimación a tiempo · fin 13:00–13:00 · entrega dom 12:00 · sin contar T25 (sin plazo) · y más en la vista"),
+     "ruta: estimación a tiempo · fin hacia 13:00 (las medidas no varían) · entrega dom 12:00 · sin contar T25 (sin plazo) · "
+     "y más en la vista"),
     ("#63: la otra entrega con valor, con su texto entre «»", g14, C14("otra_entrega_con_valor") + ["resumen"],
      lambda r: r.replace("dom 11:00 (equipo.md)", "«2026-09-20 10:00 (cierre 11:…» (equipo.md)")),
     ("#63: el descanso con su control bidi", g14, C14("textos_libres_de_la_ruta") + ["descansos", "filas", 5, "texto"],
@@ -1627,9 +1673,23 @@ CONTROLES = [
      C14("franja_cruza_el_cambio_de_hora") + ["franjas", "T02", "min"], 480),
     ("código de verdad, #63: el resumen cortado dentro de una parte", lambda c: vivo_g14(c, "G14 caso «resumen_largo»"),
      C14("resumen_largo") + ["resumen"],
-     lambda r: corta(r.replace(MAS, "sin contar T25 (sin plazo) · otra entrega: dom 13:00 (equipo.md)"), RESUMEN_MAX)),
+     lambda r: corta(r.replace(MAS, "fin hacia 13:00 (las medidas no varían) · entrega dom 12:00 · sin contar T25 (sin plazo)"),
+                     RESUMEN_MAX)),
     ("código de verdad, #63: el descanso con su control bidi", lambda c: vivo_g14(c, "G14 caso «textos_libres_de_la_ruta»"),
      C14("textos_libres_de_la_ruta") + ["descansos", "filas", 5, "texto"], lambda t: t.replace("ignora", "\u202eignora", 1)),
+    # Las decisiones del usuario de R5 (K-108), un control por caso.
+    ("R5: la hora de N4 planificada, solo la del estado de T20 (sin el commit del plan con su etiqueta)", g13,
+     M + [0, "notas", "N4", "observado_en"], "2026-09-18T17:00:00Z"),
+    ("R5: la persona sin @ cuenta en pocos_datos y quita la estimación", g14, C14("persona_sin_usuario") + ["cifra", "motivos"],
+     ["pocos_datos"]),
+    ("R5: el rango sin anchura como «fin 09:35–09:35»", g14, C14("rango_sin_anchura") + ["resumen"],
+     lambda r: r.replace("fin hacia 09:35 (las medidas no varían)", "fin 09:35–09:35")),
+    ("R5: todas sin usuario, con T28 contada como «sin_plazo»", g14, C14("todas_sin_usuario") + ["cifra", "motivos"],
+     ["sin_plazo", "sin_usuario"]),
+    ("R5: la tarea sin usuario rompe la cadena (T27 sin T08 ni T09 delante)", g14,
+     C14("sin_usuario_en_la_cadena") + ["cadena"], lambda c: [dict(c[-1], por="inicio")]),
+    ("R5: el plazo pasado de una tarea sin usuario no arrastra a nadie", g14,
+     C14("sin_usuario_con_plazo_pasado") + ["plazos_vencidos", "T06", "arrastra"], []),
 ]
 
 
