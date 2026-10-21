@@ -253,6 +253,21 @@ Abierto el 2026-10-19 por decisión del usuario, para la 0.5.0: decididas las ta
 
   **No se recortan:** el apagado sin coste, la igualdad de ADR-0009, la honestidad (con pocos datos lo dice; nunca «cubierta» porque algo lo declare; rojo solo para hechos) y la constitución V para las notas.
 
+*Estado: **cerrado el 2026-10-21.***
+- **Criterios 2, 3, 4 y 6:** con las pruebas sin modelo y el CI de K-102–K-107: G13 y G14, `igualdad.py`, Vitest y las tablas de casos.
+- **Criterios 1, 5 y 7:** en K-108 (PR #70, `evals/coordinacion/prueba.md`, «M10, K-108»).
+  - El criterio 1, con `comprueba_compilado.mjs` y `pestanas_chrome.mjs` en lugar de `web_vivo.py`, que no existía.
+  - El 5, con el rango sin anchura del ajuste 5 de ADR-0013 («fin hacia HH:MM (las medidas no varían)»).
+  - El 7 falló el 2026-10-20 por la sesión por MCP (añadía recomendaciones, datos de fuera de la vista y una previsión sin estimación).
+- **El ajuste 5** (PR #72–#74 y #71) se hizo sobre lo encontrado en K-108:
+  - las descripciones de `jurado` y `ruta` en el MCP;
+  - la regla del estado del equipo en el `CLAUDE.md` de `/hack-scaffold`;
+  - Persona sin usuario en `sin_usuario`;
+  - el rango sin anchura.
+- **La repetición de la sesión por MCP** (2026-10-21, «M10, K-108, repetición del MCP»): tres pasadas en el sandbox, sin nada falso, sin añadidos y sin previsiones sin estimación, con `pocos_datos`, `sin_usuario` y los plazos pasados bien explicados, y la procedencia en la mayoría de los datos.
+- **Validación sin datos reales:** guiones del simulador y sandbox (`docs/limitaciones.md`). El ensayo con un equipo revisa después el 3 y los umbrales del veredicto.
+- **Siguiente:** la 0.5.0, que la decide el usuario.
+
 ---
 
 ## Después del M8 (Pendiente)

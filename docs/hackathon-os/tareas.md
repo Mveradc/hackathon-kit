@@ -373,3 +373,9 @@ Hecho cuando:
 ### K-108 · Validación con modelo y en sandbox
 Depende de: todo lo anterior · Puedes tocar: `evals/coordinacion/` (incluido un `jurado_ruta_vivo.py` nuevo), `docs/limitaciones.md` (validación sin datos reales), carpetas de prueba en `../`
 Hecho cuando: criterios 1, 5 y 7 de M10, con los resultados en `evals/coordinacion/prueba.md` («M10»). El cierre se anota en `hitos.md` y en `docs/historial.md`, y la 0.5.0 la decide el usuario. El ensayo con un equipo, después (revisa el 3 y los umbrales del veredicto).
+**Hecha (2026-10-21):**
+- La primera pasada, el 2026-10-20 (PR #70): el criterio 7 falló por la sesión por MCP.
+- El ajuste 5, en los PR #71–#74.
+- La sesión por MCP, repetida tres veces el 2026-10-21, pasa.
+
+Resultados en `evals/coordinacion/prueba.md` («M10, K-108» y «M10, K-108, repetición del MCP»).

@@ -314,6 +314,30 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Decisión del usuario:** se publica sin el ensayo con un equipo real (criterio 4 de M8h, aplazado), y así lo dicen el README y `docs/limitaciones.md`.
 - **Siguiente:** la 0.5.0 (vista de jurado y ruta crítica, R-35 y R-36, entre lo de «Después del M8» en `hitos.md`).
 
+## M10 — Vista de jurado y ruta crítica (2026-10-19 a 2026-10-21)
+- **Qué hay:** dos vistas detrás de `vista_jurado:` y `ruta_critica:` en `os.md` (R-35 y R-36; ADR-0012 y ADR-0013). Salen en la web de trabajo, en `estado-equipo.md` (una línea cada una) y en el MCP (`jurado` y `ruta`).
+  - El jurado: qué tarea o evidencia cubre cada nota de `criterios.md`.
+  - La ruta: los plazos pasados y lo que arrastran, la cadena, y si se llega a la `Entrega:` de `equipo.md`. Con menos de 3 tareas medidas por persona, «n de 3» y ninguna hora.
+- **Cómo se hizo:** K-100 (Paso 0) y K-101 (ADR y contratos), y dos tandas de tres terminales en paralelo (K-102–K-104 y K-105–K-107). Después, K-108 con modelo y en `Mveradc/hk-sandbox`.
+- **Validación (K-108):**
+  - La primera pasada (2026-10-20, PR #70) falló en el criterio 7. La sesión por MCP:
+    - añadía recomendaciones y datos de fuera de la vista (la regla 14 del `CLAUDE.md`, el buzón, los servicios);
+    - decía que nadie había cerrado ninguna tarea;
+    - leía las franjas del plan como calendario («no hay margen») sin estimación.
+  - Encontró también que `web_vivo.py` no existía, el rango «fin 10:00–10:00» y que una persona sin usuario de GitHub impedía estimar siempre.
+- **Ajuste 5 tras congelar** (decisiones del usuario, PR #71–#74):
+  - las descripciones de `jurado` y `ruta` en el MCP;
+  - una viñeta en el `CLAUDE.md` de `/hack-scaffold`: contestar el estado del equipo solo con esas herramientas, con fichero y hora, sin recomendaciones ni previsiones sin estimación;
+  - `sin_usuario` aparte;
+  - «fin hacia HH:MM (las medidas no varían)».
+- **Repetición de la sesión por MCP (2026-10-21):** tres pasadas, todas buenas.
+  - Nada falso ni añadido, y ninguna previsión.
+  - `pocos_datos` como «0 de 3», `sin_usuario` y los plazos pasados, con su fichero y su hora en la mayoría de los datos.
+  - Cada sesión llamó solo a `jurado` y `ruta`.
+- **Validación sin datos reales:** guiones del simulador y el sandbox; el ensayo con un equipo, después (`docs/limitaciones.md`).
+- **Resultados** en `evals/coordinacion/prueba.md` («M10, K-108» y «M10, K-108, repetición del MCP»).
+- **Siguiente:** la 0.5.0, que la decide el usuario.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

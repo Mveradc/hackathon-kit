@@ -33,6 +33,19 @@ Salen de la validación de M4 con cinco retos reales (`evals/rubrica.md`, result
   - Cada edición, también con el OS apagado, lanza un hook síncrono más (≈2 ms sobre el arranque de bash con el OS apagado; ≈47 ms con 51 reservas, en Windows).
 - **El token del Hackathon OS viaja en claro (desde la v0.4.0).** El relay (`hk-os relay`) y el remoto del equipo sin GitHub (`hk-os remoto`) hablan HTTP, sin cifrar: el token del equipo va en una cabecera, y cualquiera que escuche la wifi del evento puede leerlo, igual que los metadatos del relay y, con el remoto, el código que se sube y se baja. Solo escuchan en una IP privada o de Tailscale, nunca en una pública. En una red que no sea de confianza (la de un evento suele no serlo), usad Tailscale o ZeroTier y la IP de esa red. En el modo sin GitHub, además, cada persona declara quién es (`hk-os unir … --persona`): con el token, alguien podría hacerse pasar por otra persona. Cuando gh vuelve a responder, la sesión avisa si no coincide.
 - **Hackathon OS sin ensayo con un equipo real (v0.4.0).** Se ha validado sin modelo (más de 400 pruebas y las evals de `evals/coordinacion/`) y con modelo en `Mveradc/hk-sandbox` con una persona simulando al equipo (`evals/coordinacion/prueba.md`, M8 y M9a), pero no en un hackathon con varias personas: el criterio 4 de M8h (el ensayo) está aplazado. No sabemos todavía si reduce de verdad las preguntas en voz alta ni qué estados se ven mal con gente real.
+- **Vista de jurado y ruta crítica, validadas sin datos reales (M10, `vista_jurado:` y `ruta_critica:`).**
+  - **Cómo se han validado:**
+    - con guiones largos del simulador (G13, el jurado; G14, la ruta con el plan del reto 03 y el reloj simulado);
+    - con el sandbox `Mveradc/hk-sandbox`, con una persona simulando a dos y una tercera sin usuario de GitHub (`evals/coordinacion/prueba.md`, «M10, K-108»).
+  - **Lo que nunca se ha usado:** ningún equipo real las ha usado en un hackathon.
+  - **Lo que está sin probar con datos reales:**
+    - el mínimo de 3 tareas medidas por persona antes de dar una hora;
+    - los umbrales del veredicto (`a_tiempo`, `justo`, `no_llega`);
+    - el ritmo medido.
+
+    En el sandbox, la ruta no llegó a estimar: nadie tenía 3 tareas medidas. Lo revisa el ensayo con un equipo.
+  - **Sin usuario de GitHub:** las tareas de quien no tiene usuario no se miden ni se estiman, y salen aparte. Con ellas, la estimación del resto puede salir antes de lo que será.
+  - **El MCP:** las respuestas de una sesión de Claude Code se comprobaron contra la vista en tres pasadas. Que se ciña a la vista depende de la descripción de las herramientas y de una viñeta del `CLAUDE.md` generado; no es una garantía.
 - **Web de trabajo (desde la v0.4.0, `web_nueva: sí`).** Solo se abre en el portátil de cada persona (el demonio escucha en `127.0.0.1`) y con `hk-os web`: al recargar o al volver con Atrás a una pestaña que ha sido líder, otra vez `hk-os web`. Lo que llega por un push (servicios, notas) tarda unos 15–20 s en salir: la vuelta de git del demonio es de 15 s. Riesgos aceptados, con su motivo, en ADR-0010 y ADR-0011 (`docs/hackathon-os/adr/`); entre otros:
   - una entrada `commit:` escrita a mano en el reflog de un clon hace pasar por propio un commit ajeno, y los commits hechos en un worktree que no es de worker no confirman nada;
   - un `reclamo_fallido` cuenta para el tope de Reclamar también con GitHub caído;
