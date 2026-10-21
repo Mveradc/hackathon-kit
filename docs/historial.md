@@ -338,6 +338,11 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Resultados** en `evals/coordinacion/prueba.md` («M10, K-108» y «M10, K-108, repetición del MCP»).
 - **Siguiente:** la 0.5.0, que la decide el usuario.
 
+## v0.5.0 — Vista de jurado y ruta crítica (2026-10-21)
+- **Qué sale:** M10 (vista de jurado y ruta crítica, R-35 y R-36), opcional y experimental, detrás de `vista_jurado:` y `ruta_critica:` en `os.md`.
+- **Decisión del usuario:** se publica sin ensayo con un equipo real y sin que la ruta haya estimado con datos reales; así lo dicen el README y `docs/limitaciones.md`.
+- **Siguiente:** el ensayo con un equipo (revisa el criterio 3 de M10, los umbrales del veredicto y el criterio 4 de M8h), y lo de «Después del M8» en `hitos.md`.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.

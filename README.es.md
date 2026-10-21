@@ -81,7 +81,7 @@ claude --agent hackathon-kit:orquestador
 
 ## Hackathon OS (opcional, experimental, desde la 0.4.0)
 
-> **Experimental.** Validado sin modelo (más de 400 pruebas y las evals de `evals/coordinacion/`) y en un repo de prueba con una persona simulando al equipo. **Todavía sin ensayo con un equipo real.**
+> **Experimental.** Validado sin modelo (más de 550 pruebas y las evals de `evals/coordinacion/`) y en un repo de prueba con una persona simulando al equipo. **Todavía sin ensayo con un equipo real.**
 
 Que todo el equipo sepa quién hace qué, qué está ya en `main` y dónde vais a chocar, sin preguntarlo en voz alta. Se enciende con `activa: sí` en `.hackathon/os.md`; apagado, todo funciona como en la 0.3.2.
 
@@ -89,6 +89,7 @@ Que todo el equipo sepa quién hace qué, qué está ya en `main` y dónde vais 
 - **Avisos de colisión, nunca bloqueos:** dos personas en el mismo fichero, cambios incompatibles antes de fusionar (opcional, con `publicar_wip: sí`) y contratos tocados por quien no es su dueño.
 - **Web de trabajo** (`web_nueva: sí`): la sirve el demonio de cada persona en `127.0.0.1` y la abre `hk-os web`. Cuatro vistas (cabina, red, tablero y servicios) y dos acciones: **Anotar** (añade una nota a `criterios.md` de `origin/main` sin tocar tu copia) y **Reclamar** (asigna el issue con tu `gh` y abre un turno en tu sesión). Nadie instala Node: la web va compilada.
 - **`.hackathon/servicios.md`**: puertos, rutas de salud y conexiones entre piezas. Una fila solo sale confirmada si su dueño la subió en un commit hecho en su portátil.
+- **Vista de jurado y ruta crítica** (desde la 0.5.0, cada una con su interruptor en `.hackathon/os.md`: `vista_jurado: sí`, `ruta_critica: sí`): qué tarea o evidencia cubre cada nota de `criterios.md`, y si se llega a la `Entrega:` de `equipo.md` (los plazos pasados y lo que arrastran, la cadena y una estimación con rango solo a partir de 3 tareas medidas por persona). Salen en la web de trabajo, en una línea cada una del estado del equipo y en las herramientas `jurado` y `ruta` del MCP. Apagadas, todo es byte a byte como en la 0.4.0.
 - **Sin GitHub:** un remoto del equipo en el portátil de quien coordina y las tareas desde `plan.md`.
 - **Requisitos:** uv, Git (2.38 o más en el portátil de quien coordina), `gh` con la cuenta de cada persona y, en macOS, bash 5 (`brew install bash`). El relay habla HTTP sin cifrar: en una red que no sea de confianza, Tailscale o ZeroTier.
 - Guion de arranque en 10 minutos: [docs/hackathon-os/arranque.md](docs/hackathon-os/arranque.md). Diseño, contratos y decisiones: [docs/hackathon-os/](docs/hackathon-os/).
@@ -109,7 +110,7 @@ Lo generado es un punto de partida, no un plan cerrado. Las más importantes:
 - **Enunciados por URL.** Con una URL, el análisis trabaja sobre un resumen de la página, no sobre el texto literal. Pega el texto si puedes.
 - **Un servidor MCP `os` en `/mcp`.** El servidor del estado del equipo del Hackathon OS lo declara el plugin, así que sale en `/mcp` en toda sesión, también con el OS apagado. Entonces no ofrece herramientas, no usa red y no necesita uv.
 - **`publicar_wip: sí` sube tu trabajo sin commit.** En el Hackathon OS, esa opción de `.hackathon/os.md` sube al remoto lo versionado cambiado y lo nuevo que `.gitignore` no ignora. Excluye `.env*`, claves comunes, carpetas de datos y ficheros grandes, pero ninguna lista es completa: revisa el `.gitignore` antes. Borrar la ref no borra lo subido; una clave que suba hay que rotarla. Viene apagada.
-- **El Hackathon OS no se ha ensayado con un equipo real.** Se ha validado sin modelo y en un repo de prueba con una persona simulando al equipo. Usadlo como un experimento y seguid hablando entre vosotros.
+- **El Hackathon OS no se ha ensayado con un equipo real.** Se ha validado sin modelo y en un repo de prueba con una persona simulando al equipo. Usadlo como un experimento y seguid hablando entre vosotros. La estimación de la ruta crítica (3 tareas medidas por persona, los umbrales del veredicto y el ritmo medido) tampoco se ha probado con datos reales, y las tareas de quien no tiene cuenta de GitHub no se miden.
 
 Lista completa: [docs/limitaciones.md](docs/limitaciones.md).
 
