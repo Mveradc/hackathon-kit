@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 — 2026-10-21
+
+Vista de jurado y ruta crítica (opcionales, experimentales), dentro del Hackathon OS. Cada una se enciende con su interruptor en `.hackathon/os.md` (`vista_jurado: sí`, `ruta_critica: sí`); apagadas, `estado.json`, la vista, `estado-equipo.md`, el MCP y la web son byte a byte los de la 0.4.0.
+
+- **Vista de jurado** (R-35, ADR-0012): por cada nota de `criterios.md`, qué tarea la recoge (la etiqueta `(criterios: <fecha hora>[ · quién])` que pone `/hack-plan` o `/hack-check aplicar` en «Cómo se comprueba») y su cobertura: sin tarea, ambigua, planificada, en curso, en el pitch, cubierta (todas sus tareas publicadas, con el último sha como evidencia) o corregida. Nunca «cubierta» porque algo lo declare.
+- **Ruta crítica** (R-36, ADR-0013): los plazos pasados (en rojo, el único rojo) y lo que arrastran por dependencias y por el orden del plan, la cadena hasta la entrega y, con 3 o más tareas medidas por persona, una estimación con rango, margen y base contra la `Entrega:` de `equipo.md`: `a_tiempo`, `justo` o `no_llega` (los dos últimos en ámbar). Con menos, «sin estimación · pocos datos» y ninguna hora. Los descansos no hunden el ritmo; las horas van con la zona del equipo, también a través del cambio de hora. Las tareas sin plazo y las de quien no tiene usuario de GitHub salen aparte y no se miden.
+- **Dónde sale:** dos pantallas nuevas en la web de trabajo, una línea cada una en `## Jurado y ruta` de `estado-equipo.md` (el delta solo la inyecta cuando cambia la cobertura o el veredicto) y las herramientas `jurado` y `ruta` del MCP `os`, que solo aparecen con su interruptor encendido.
+- **Constitución V:** ningún texto de un fichero del equipo llega al md, al MCP o a la web sin «», su fichero y su recorte; el resumen nunca se corta dentro de una parte y los controles bidi se quitan.
+- `/hack-scaffold` recuerda `Txx ·` al inicio de cada commit y, con la coordinación activa, que las preguntas sobre el estado del equipo se contestan solo con lo que digan `jurado` y `ruta`, con fichero y hora.
+- Validado sin modelo (más de 550 pruebas, los guiones G13 y G14 del simulador y la igualdad web, md y MCP) y con modelo en el sandbox: [evals/coordinacion/prueba.md](evals/coordinacion/prueba.md) (M10). **Sin datos reales:** en el sandbox la ruta no llegó a estimar, así que el mínimo de 3 medidas, los umbrales del veredicto y el ritmo medido están sin probar con un equipo. Ver [docs/limitaciones.md](docs/limitaciones.md).
+
 ## 0.4.0 — 2026-10-18
 
 Hackathon OS (opcional, experimental): el equipo ve en todo momento quién hace qué, qué está en `main` y dónde va a chocar, sin preguntarlo en voz alta. Se enciende con `activa: sí` en `.hackathon/os.md`; apagado, la cadena se comporta como en la 0.3.2.

@@ -268,6 +268,8 @@ Abierto el 2026-10-19 por decisión del usuario, para la 0.5.0: decididas las ta
 - **Validación sin datos reales:** guiones del simulador y sandbox (`docs/limitaciones.md`). El ensayo con un equipo revisa después el 3 y los umbrales del veredicto.
 - **Siguiente:** la 0.5.0, que la decide el usuario.
 
+*Nota (M10, decisión del usuario, 2026-10-21, tras cerrar M10):* **la 0.5.0 sale sin ensayo**, como la 0.4.0: README, CHANGELOG y `plugin.json` en 0.5.0; lo que no se ha probado con datos reales está en `docs/limitaciones.md`.
+
 ---
 
 ## Después del M8 (Pendiente)

@@ -1,7 +1,7 @@
 {
   "name": "hackathon-kit",
-  "version": "0.4.0",
-  "description": "From a hackathon challenge statement to a team ready to code: analysis, approaches to choose from, repo scaffolding, a per-person plan, a pitch outline and a check against the source. Optional Hackathon OS: shared team status, collision warnings and a local work web for each person.",
+  "version": "0.5.0",
+  "description": "From a hackathon challenge statement to a team ready to code: analysis, approaches to choose from, repo scaffolding, a per-person plan, a pitch outline and a check against the source. Optional Hackathon OS: shared team status, collision warnings, a local work web for each person and, optionally, jury coverage and critical-path views.",
   "author": {
     "name": "Mveradc"
   },

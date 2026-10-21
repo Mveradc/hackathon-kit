@@ -81,7 +81,7 @@ claude --agent hackathon-kit:orquestador
 
 ## Hackathon OS (optional, experimental, since 0.4.0)
 
-> **Experimental.** Validated without a model (400+ tests and the evals in `evals/coordinacion/`) and in a sandbox with one person simulating the team. **Not yet rehearsed with a real team.**
+> **Experimental.** Validated without a model (550+ tests and the evals in `evals/coordinacion/`) and in a sandbox with one person simulating the team. **Not yet rehearsed with a real team.**
 
 Keeps the whole team aware of who is doing what, what is already in `main` and where you are about to collide, without asking out loud. Turn it on with `activa: sí` in `.hackathon/os.md`; off, everything behaves as in 0.3.2.
 
@@ -89,6 +89,7 @@ Keeps the whole team aware of who is doing what, what is already in `main` and w
 - **Collision warnings, never blocks:** two people in the same file, incompatible changes before merging (opt-in with `publicar_wip: sí`) and contracts touched by someone who doesn't own them.
 - **Work web** (`web_nueva: sí`): each person's daemon serves it on `127.0.0.1`. `hk-os web` opens it. Four views (cockpit, team graph, board, services), plus two actions: **Anotar** (adds a note to `criterios.md` in `origin/main` without touching your copy) and **Reclamar** (assigns the issue with your `gh` and opens one turn in your session). Nobody installs Node: the web ships built.
 - **`.hackathon/servicios.md`**: ports, health checks and connections between pieces. A row only shows as confirmed if its owner committed it from their own laptop.
+- **Jury coverage and critical path** (since 0.5.0, each with its own switch in `.hackathon/os.md`: `vista_jurado: sí`, `ruta_critica: sí`): which task or evidence covers each note in `criterios.md`, and whether the team reaches the `Entrega:` in `equipo.md` (overdue deadlines and what they drag, the chain, and an estimate with a range only after 3 measured tasks per person). Shown in the work web, as one line each in the team status and through the `jurado` and `ruta` MCP tools. Off, everything is byte for byte as in 0.4.0.
 - **Without GitHub:** a team remote on the coordinator's laptop and tasks from `plan.md`.
 - **Requirements:** uv, Git (2.38+ on the coordinator's laptop), `gh` signed in with each person's account, bash 5 on macOS (`brew install bash`). The relay speaks plain HTTP: on an untrusted network use Tailscale or ZeroTier.
 - Ten-minute startup guide (in Spanish): [docs/hackathon-os/arranque.md](docs/hackathon-os/arranque.md). Design, contracts and decisions: [docs/hackathon-os/](docs/hackathon-os/).
@@ -109,7 +110,7 @@ What it generates is a starting point, not a finished plan. The most important l
 - **Statements given as a URL.** With a URL, the analysis works on a summary of the page, not the literal text. Paste the text if you can.
 - **An `os` MCP server in `/mcp`.** The team-status server of the Hackathon OS is declared by the plugin, so it shows up in `/mcp` in every session, even with the OS off. Then it offers no tools, uses no network and does not need uv.
 - **`publicar_wip: sí` uploads your uncommitted work.** In the Hackathon OS, this option in `.hackathon/os.md` pushes tracked changes and new files that `.gitignore` doesn't ignore to the remote. It excludes `.env*`, common keys, data folders and large files, but no list is complete: check your `.gitignore` first. Deleting the ref doesn't delete what was uploaded; rotate any key that gets pushed. It's off by default.
-- **The Hackathon OS has not been rehearsed with a real team.** It has been validated without a model and in a sandbox with one person simulating the team. Use it as an experiment and keep talking to each other.
+- **The Hackathon OS has not been rehearsed with a real team.** It has been validated without a model and in a sandbox with one person simulating the team. Use it as an experiment and keep talking to each other. The critical-path estimate (3 measured tasks per person, verdict thresholds, measured pace) has not been tried with real data either, and tasks of people without a GitHub account are not measured.
 
 Full list (in Spanish): [docs/limitaciones.md](docs/limitaciones.md).
 
