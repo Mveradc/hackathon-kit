@@ -1296,3 +1296,37 @@ Sin tocar código del kit.
 En el sandbox, `600793d` en `main`.
 
 **M10 se cierra** (criterios 1 y 5, con el ajuste 5 y lo decidido el 2026-10-20; criterio 7, con esta repetición).
+
+# M11, Paso 0: P12, Mergiraf fuera de una fusión de git (2026-10-21)
+P12 (`docs/hackathon-os/preguntas-abiertas.md`): «¿Mergiraf se puede ejecutar sobre tres versiones de un fichero fuera de una fusión de git y devuelve si quedan conflictos?». El 2026-10-14 quedó sin comprobar por decisión del usuario (no se instala nada, `docs/coordinacion.md`). Para especificar M11 (ADR-0014, «Propuesto») se ha comprobado **fuera del repo del kit**: Mergiraf no se ha instalado en el repo ni en el sistema, ni es dependencia de nada.
+
+**Entorno.** Contenedor Linux (x86_64), Git 2.43.0. **Mergiraf 0.20.0**, compilado con `cargo install --locked --root <scratchpad>/inst mergiraf@0.20.0` (1 min 31 s; Codeberg, donde están los binarios oficiales, no era accesible desde el entorno). Todo en el scratchpad de la sesión; nada en `../`. Sin modelo: 0 USD.
+
+**Respuesta: sí.** `mergiraf merge <base> <izq> <der> [-o <salida>]` funciona con tres ficheros sueltos, sin repo ni fusión de git, y **el código de salida dice si quedan conflictos**: `0` sin conflictos, `1` con conflictos (deja los marcadores en la salida, como `git merge-file`). No toca ninguno de los tres ficheros de entrada. Sin `-o`, escribe el resultado por la salida estándar.
+
+| Caso | `git merge-file` | `mergiraf merge` | Notas |
+|---|---|---|---|
+| Python: dos `import` añadidos en la misma línea | conflicto | **rc 0**, «Solved 1 conflict» (9–31 ms) | El caso típico de 2b |
+| JSON: dos claves nuevas al final de un objeto | conflicto | **rc 0** | |
+| CRLF (el mismo caso de Python con fin de línea de Windows) | conflicto | **rc 0** | |
+| Python: la misma línea con valores distintos (`return 2` / `return 3`) | conflicto | rc 1 | Conflicto de verdad: sigue rojo |
+| JavaScript: dos funciones nuevas al final del fichero | conflicto | rc 1 | Mergiraf no ordena hermanos que no conmutan: no todo lo que parece compatible baja |
+| `add/add` (base vacía, dos `import` distintos) | conflicto | rc 1 | |
+| Python con un error de sintaxis en un lado | conflicto | rc 1 | Con `--allow-parse-errors`, rc 0: **no se usa esa opción** |
+| `.txt` y extensión desconocida (`.xyz`) | conflicto | rc 1, sin aviso | Fichero que no sabe analizar: cae a la fusión por líneas de git y da el mismo resultado |
+| Fichero no UTF-8 (latin-1) | conflicto | rc 1, «input files are not UTF-8, falling back to Git» | |
+| Binario | — | rc 1, «cannot merge binary files» | |
+| Una entrada que no existe | — | **rc 255**, «Could not read …» | Error de uso: distinto de 0 y 1 |
+| Python de 148 KB (3.000 funciones), con `-t 5000` | conflicto | rc 0 en **4,7 s** | |
+| El mismo, con `-t 100` | — | rc 1 en 0,4 s, «structured merge … took too long, falling back to Git» | Al pasar el plazo, vuelve a git y da conflicto: **un plazo vencido nunca baja a amarillo** |
+
+**Lenguajes.** `mergiraf languages` lista 49 en la 0.20.0, entre ellos Python, JavaScript (`.js`, `.jsx`, `.mjs`, `.cjs`), TypeScript (`.ts`, `.tsx`), JSON, YAML, TOML, `pyproject.toml`, HTML, XML, Markdown, Java, Kotlin, Go, Rust, C, C++, C#, PHP, Ruby, Lua, Dart, Scala, bash (`.sh`), Makefile, CMake y `requirements*.txt`. **No** están CSS, SQL, `.txt`, `.csv` ni los cuadernos `.ipynb`. El lenguaje sale de la **extensión** del nombre: con ficheros temporales sin extensión, rc 1 (no lo reconoce); con `-p <ruta del repo>` (o `-L <lenguaje>`) lo reconoce y rc 0.
+
+**Flujo que usaría el relay**, comprobado con un repo de prueba y tres ficheros en conflicto (`m.py`, `v.py`, `c.json`):
+1. `git merge-tree --write-tree --no-messages <izq> <der>` (sin `--name-only`) da rc 1 y, tras el árbol, una línea `<modo> <blob> <etapa>\t<ruta>` por etapa: 1 (base), 2 (izq) y 3 (der). Así salen los tres blobs exactos que usó git, con los renombrados ya resueltos.
+2. `git cat-file blob` de cada etapa a un directorio temporal fuera del clon.
+3. `mergiraf merge 1 2 3 -p <ruta> -t 5000 -o salida`: `m.py` rc 0, `c.json` rc 0, `v.py` rc 1.
+
+**Hallazgo que afecta a la constitución IX y a la limpieza.** Cada vez que resuelve un conflicto, Mergiraf **guarda una copia** de la base, los dos lados y el resultado en `$XDG_DATA_HOME/mergiraf/merges/<nombre>_<aleatorio>/` (por defecto `~/.local/share/…`), para `mergiraf review` y `mergiraf report`. No sale del portátil, pero deja contenido de código de otras personas en disco sin que nadie lo sepa. Con `XDG_DATA_HOME` apuntando a un directorio temporal, la copia va allí y se puede borrar. En los casos con rc 1 no guardó nada. **En Windows y macOS no se ha comprobado** dónde la guarda ni si se puede redirigir: queda como P17.
+
+**Qué no se ha comprobado:** Windows y macOS (binario oficial, dónde guarda las copias, tiempos), versiones anteriores a la 0.20.0, y ficheros reales de un reto (solo casos sintéticos). Mergiraf también llama a `git merge-file` por dentro (lo dicen sus mensajes), así que necesita git en el `PATH`, que el relay ya tiene.
