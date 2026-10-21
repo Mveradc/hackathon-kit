@@ -1205,3 +1205,94 @@ Criterios 1, 5 y 7 de M10 (`docs/hackathon-os/hitos.md`). Pruebas de una en una,
 7,45 USD: A6 de `comprobar.py` 3,57, `/hack-scaffold` 1,19, `/hack-plan` 0,68, `/hack-pitch` 0,45 y `/hack-check aplicar` 1,56 (la sesión por MCP del usuario, aparte). En el sandbox: `3bf248f`, `0e520a1`, `93358fb`, `a4dc7cc`, `03f4203` y `13aab34` en `main`; 43 escrituras de `compilar` en los issues; #21–#23 sin asignar y #28 y #45 reabiertas.
 
 **M10 no se cierra:** falla la sesión por MCP del criterio 7; además, falta `web_vivo.py` (criterio 1) y está el hueco del rango degenerado (criterio 5). Lo decide el usuario.
+
+# M10, K-108, repetición del MCP (2026-10-21)
+Solo la sesión por MCP del criterio 7, con `main` en `7941b4e`, que trae el ajuste 5:
+- las descripciones de `jurado` y `ruta` en el MCP;
+- la regla del estado del equipo en la plantilla del `CLAUDE.md` de `/hack-scaffold`;
+- las personas sin usuario aparte (`sin_usuario`);
+- el rango sin anchura («fin hacia HH:MM»).
+
+Sin tocar código del kit.
+
+**Montaje.**
+- `../prueba-m10-sb-A` (@mveradc) y `../prueba-m10-sb-B` (@hk-persona-b), con el sandbox `Mveradc/hk-sandbox`; los dos con `credential.https://github.com.username` fijado.
+- No quedaba ningún proceso del kit viejo. El relay de verdad, en A (`127.0.0.1:7791`, mismo token, sondeo de GitHub cada 30 s), en una ventana de PowerShell propia.
+  - El primer intento, con `Start-Process` desde la herramienta PowerShell de la sesión de prueba, murió al arrancar.
+  - Lanzado con `Win32_Process.Create`, fuera del árbol de procesos de la sesión, aguantó toda la prueba. No es del kit.
+- Los demonios, con `scripts/os/arranque.sh` (A en 47616, B en 47359).
+- **La regla nueva en el `CLAUDE.md` del sandbox**, tal cual la plantilla de `main`, en un commit propio (`600793d`, en `main` del sandbox). Va en «Contexto», detrás de «Reglas por carpeta», donde la pone la plantilla (la petición decía Convenciones).
+- `/v1/vista` de A, con el kit nuevo: los dos bloques. `ruta.sin_usuario` = T20–T28 (Persona C). `base.personas` = `hk-persona-b` y `mveradc`, a 0 de 3, sin Persona C. Los resúmenes:
+  - «ruta: sin estimación · T01: plazo pasado 23:00 y 10 más · pocos datos: 2 personas»;
+  - «jurado: 1 sin cubrir · 1 «obligatorio» (criterios.md) · 2 cubiertas de 3».
+- Antes y después de cada pasada, los bloques `jurado` y `ruta` de `/v1/vista` de A, con su hora, en una carpeta temporal fuera de los repos: 10:12:21 y 10:17:16 (pasada 1); 10:17:45 y 10:24:46 (pasada 2); 10:24:46 y 10:26:35 (pasada 3).
+  - Entre el antes y el después, los bloques no cambian, salvo la hora del cálculo.
+  - Ningún plazo venció durante las pasadas: el siguiente era el hito de la demo mínima, a las 13:30.
+
+**Las tres pasadas** (el usuario: tres sesiones nuevas de Claude Code en `../prueba-m10-sb-A`, con `--plugin-dir` al kit, cada una con las dos preguntas).
+- En los transcritos, cada sesión llama a `jurado` y a `ruta` del MCP y a nada más: ni ficheros, ni `estado`, ni `gh`.
+
+| Pasada | Hora | a) falso | b) añade | c) previsión sin estimación | d) `pocos_datos`, `sin_usuario`, plazos pasados | e) procedencia |
+|---|---|---|---|---|---|---|
+| 1 | 10:16 | No | No | No | Sí | En la mayoría |
+| 2 | 10:23–10:24 | No | No | No | Sí | En la mayoría |
+| 3 | 10:25 | No | No | No | Sí | En casi todos |
+
+**Pasada 1.**
+- «¿Qué criterio no cubrimos?»:
+  - la nota de Luis (mentor, ronda de mentores, 22:42, anotada por @hk-persona-b, «obligatorio»), `planificada` y sin evidencia;
+  - T06, pendiente, espera a T21 (Persona C, lista), issue #26, «dato de GitHub»; T14, lista, #34;
+  - las otras dos, cubiertas: Marta por T12 (`03f4203`) y K-99 por T13 (`13aab34`) y en pitch.md, la única nota con `pitch`.
+
+  Dice de qué herramienta sale («lee criterios.md y plan.md», 10:16). Sin recomendaciones: en la pasada del 20, «Conviene añadirlo…».
+- «¿Qué pone en riesgo la entrega?»:
+  - «no da una estimación … no puedo decirte cuánto margen hay»;
+  - `pocos_datos`: «0 tareas medidas de las 3 que necesita», de las dos personas con usuario;
+  - `riesgos` vacío;
+  - la entrega, «2026-10-22 13:00, según equipo.md»;
+  - los 11 plazos pasados, con dueño, plazo y lo que arrastra (los números coinciden con `hechos[].arrastra`), «los plazos salen de plan.md, leído ayer a las 22:50»;
+  - hitos: el pasado y los dos siguientes;
+  - sin señales: @hk-persona-b desde las 22:54, @mveradc sin ninguna;
+  - `sin_usuario`: T20–T28, «porque Persona C no tiene usuario de GitHub»;
+  - fuera de la entrega: T10 y T19.
+
+  En la tabla pegada, la fila de T11 y la de T04 salen cortadas (de pegarla; el total, «once», cuadra). Sin procedencia: sin señales y fuera de la entrega.
+
+**Pasada 2.**
+- La primera pregunta, como la pasada 1, con más horas:
+  - «enlazada en plan.md y el cálculo es de las 22:50», el `observado_en` de la cobertura;
+  - T06 «observado el 14-oct a las 23:25», el de la tarjeta;
+  - el cálculo, a las 10:23.
+- La segunda: «sin estimación por pocos datos … hacen falta 3 por persona. Sin estimación no hay margen ni previsión que dar».
+  - La entrega, con equipo.md.
+  - Los 11 plazos, con T20, T27 y T28 en una fila («13 a 15 tareas cada una»: 15, 14 y 13), y la fila de T01 resumida como «(T02…T26)».
+  - Los siete hitos.
+  - Sin señales y `sin_usuario`, como en la pasada 1. No dice lo de fuera de la entrega (omisión, no error).
+  - Al final, «Fuentes: herramientas ruta y jurado, generadas el 21-oct a las 10:23–10:24».
+
+**Pasada 3.**
+- La primera, con más procedencia:
+  - el `observado_en` de T14 (23:25 del 14) y el de cada evidencia (`13aab34` a las 22:54, `03f4203` a las 22:51);
+  - «sala 2», «mesa de Embat» y la fuerza de cada nota.
+- La segunda:
+  - la entrega con equipo.md y «dato tomado de git ayer a las 22:01» (`objetivo.observado_en`);
+  - los 11 plazos completos, con lo que arrastra cada uno (T20, «15, entre ellas T21, T27, T28», sale de `arrastra`);
+  - sin señales, `sin_usuario` y fuera de la entrega;
+  - la cadena, `T01 → … → T26`, igual que `ruta.cadena`, con los próximos plazos declarados de sus tareas abiertas (T06 mié 13:00, espera a T21; T07 mié 13:30; T23 mié 18:00, espera a T07). Son los `hasta` del plan, no una previsión: no da hora de fin ni margen.
+- Abre con «Lo que más pone en riesgo la entrega son 11 tareas con el plazo vencido». Es un orden suyo, pero no un dato falso: la vista no da otro riesgo (`riesgos` vacío) y los hechos rojos son esos.
+
+**Comparado con la pasada del 20** (sin la regla y con las descripciones viejas), no se repite nada de lo de entonces:
+- «nadie ha cerrado todavía ninguna tarea»;
+- la regla 14 del `CLAUDE.md`;
+- «eres el cuello de botella y no hay margen»;
+- el escalado #7 y el motor en `:8000`;
+- la falta de procedencia y de la entrega.
+
+**Resultado:** pasa. En las tres pasadas, a, b y c son «no» y d es «sí»; e, en la mayoría de los datos (en las tres, la entrega con su fichero).
+
+## Gasto
+0 USD de ejecuciones con modelo de la sesión que monta y compara (sin `claude -p`). Las tres sesiones del usuario (Opus 5.5), estimadas con los tokens de sus transcritos y los precios de la API (4 / 20 USD por millón de tokens, lectura de caché a 0,20 y escritura a 5 u 8 según el TTL): **unos 0,9–1,2 USD** las tres. Por sesión, unos 2.100–2.400 tokens de salida, 318–325 k leídos de caché y 33–41 k escritos.
+
+En el sandbox, `600793d` en `main`.
+
+**M10 se cierra** (criterios 1 y 5, con el ajuste 5 y lo decidido el 2026-10-20; criterio 7, con esta repetición).
