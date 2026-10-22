@@ -2,7 +2,7 @@
 
 Cada hito construye solo lo que exige su validación (regla del kit). Un hito se cierra cuando se cumplen sus criterios, se anota el resultado en `evals/coordinacion/prueba.md` (sección «M8x») y el detalle en `docs/historial.md`. Entre paréntesis, los requisitos que cubre.
 
-Dependencias: `M8.0 → M8a → M8b → (M8c ∥ M8d) → M8e → M8f → M8g → M8h (fase 1) → M9a → M8h (fases 2 y 3)` (M9a se adelanta al ensayo por decisión del usuario, 2026-10-17; el ensayo, la fase 2 de M8h, queda aplazado sin fecha por decisión del usuario, 2026-10-18). M10 (0.5.0, abierto el 2026-10-19) va detrás de M9a y no espera al ensayo. M11 (nivel 2b, propuesto el 2026-10-21) va detrás de M10 y solo se abre si el usuario acepta ADR-0014. M8c y M8d se pueden hacer en paralelo una vez congelados los contratos.
+Dependencias: `M8.0 → M8a → M8b → (M8c ∥ M8d) → M8e → M8f → M8g → M8h (fase 1) → M9a → M8h (fases 2 y 3)` (M9a se adelanta al ensayo por decisión del usuario, 2026-10-17; el ensayo, la fase 2 de M8h, queda aplazado sin fecha por decisión del usuario, 2026-10-18). M10 (0.5.0, abierto el 2026-10-19) va detrás de M9a y no espera al ensayo. M11 (nivel 2b, ADR-0014 aceptado el 2026-10-22) va detrás de M10; cuándo se abre lo decide el usuario. M8c y M8d se pueden hacer en paralelo una vez congelados los contratos.
 
 Corte para una versión reducida: con M8a–M8f hay OS (estado común sin colisiones). M8g es el diferencial. M8h es obligatorio antes de usarlo con un equipo real.
 
@@ -273,9 +273,9 @@ Abierto el 2026-10-19 por decisión del usuario, para la 0.5.0: decididas las ta
 ---
 
 ## M11 · Nivel 2b de colisiones con Mergiraf (R-34; ADR-0014)
-**Propuesto el 2026-10-21**, solo como especificación: no se abre hasta que el usuario decida la tabla de ADR-0014 («Propuesto») en el PR de esta especificación. Hasta entonces sigue en pie la decisión del 2026-10-14 (P12 en `docs/coordinacion.md`: no se instala nada). P12, respondida en Linux en el Paso 0 (`evals/coordinacion/prueba.md`, «M11, Paso 0»): `mergiraf merge base izq der` da rc 0 sin conflictos y rc 1 con ellos, fuera de una fusión de git. Mismo método que M10: Paso 0, ADR y contratos, servidor y datos, vistas, validación en vivo.
+Especificado el 2026-10-21 y decidido el 2026-10-22: el usuario aceptó las siete recomendaciones de ADR-0014 en el PR #78. La decisión del 2026-10-14 (P12 en `docs/coordinacion.md`: no se instala nada) se revoca **solo para el portátil del coordinador**: allí Mergiraf se instala a mano y es opcional, y el kit nunca lo instala ni lo pide. Cuándo se abre lo decide el usuario; empieza por K-109. P12, respondida en Linux en el Paso 0 (`evals/coordinacion/prueba.md`, «M11, Paso 0»): `mergiraf merge base izq der` da rc 0 sin conflictos y rc 1 con ellos, fuera de una fusión de git. Mismo método que M10: Paso 0, ADR y contratos, servidor y datos, vistas, validación en vivo.
 
-**Alcance (propuesto)**
+**Alcance (decidido, ADR-0014)**
 - Un interruptor en el `os.md` del relay, `fusion_estructural:`, apagado por defecto. Solo cuenta con `publicar_wip: sí` y Git ≥ 2.38 (el nivel 2). Mergiraf solo hace falta en el portátil del coordinador; el kit no lo instala ni lo pide.
 - En cada ciclo del nivel 2 (30 s), el relay intenta Mergiraf sobre cada fichero en conflicto con base, izquierda y derecha: rc 0 baja a amarillo (`2b:<a>+<b>`); lo demás (rc 1, error, plazo vencido, sin las tres etapas) sigue rojo (`2:<a>+<b>`). Caché por contenido y plazos de 5 s por fichero, 10 s por proceso y 20 s por ciclo.
 - La colisión `2b` sale en `estado.json`, `/v1/vista`, `estado-equipo.md` («fusión estructural sin conflictos»), el MCP y las dos webs, con el esquema sin cambios. En `api.md`, solo notas «tras congelar, M11» en §0, §3, §5 y §6.
@@ -316,7 +316,7 @@ Abierto el 2026-10-19 por decisión del usuario, para la 0.5.0: decididas las ta
   - **Que Reclamar pase la tarea al orquestador** si está activo (en M9a, el turno lo abre el monitor de la sesión).
   - **Nivel B, solo como idea (fuera de alcance por ahora):** la web como cabina, con el demonio lanzando sesiones en segundo plano (`claude -p` o el Agent SDK) por tarea y worktree; permisos, preguntas, gasto y fallos, en la web. Es lo que hace Vibe Kanban; el kit se diferencia por la sincronización del equipo. Se replantea cuando el nivel A esté probado.
   - **Orden:** después del ensayo y de la 0.4.0. Qué botones van primero lo decide lo que mida el ensayo (sección 7 de `evals/coordinacion/ensayo/hoja.md`, idas a la terminal), que se hace ya con la web de M9a.
-- Nivel 2b con Mergiraf (R-34). Especificado en M11 (arriba, propuesto; ADR-0014).
+- Nivel 2b con Mergiraf (R-34). En M11 (arriba; ADR-0014, aceptado).
 - Vista de jurado: cobertura de `criterios.md` por tareas y evidencias (R-35). En M10 (arriba).
 - Ruta crítica y riesgo de entrega (R-36). En M10 (arriba).
 - Relay alojado alternativo, guard en pre-commit, replay y post-mortem desde el registro de eventos.

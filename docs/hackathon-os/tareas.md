@@ -382,7 +382,7 @@ Resultados en `evals/coordinacion/prueba.md` («M10, K-108» y «M10, K-108, rep
 
 ## M11 · Nivel 2b de colisiones con Mergiraf
 
-**Propuesto el 2026-10-21** (ADR-0014, «Propuesto»; sección M11 de `hitos.md`). No se empieza ninguna tarea hasta que el usuario decida la tabla de ADR-0014; si elige mantener la decisión del 2026-10-14 (no instalar nada, opción 1C), M11 no se hace. Todo lo de M11 corre solo en el relay y solo con `fusion_estructural: sí`, `publicar_wip: sí` y Mergiraf en el `PATH`. Reparto en terminales: K-109 y K-110 seguidas; después K-111, K-112 y K-113 en paralelo (sus rutas no se pisan y cada una tiene su propio fichero de prueba nuevo); al final, K-114. La interfaz entre K-111 y K-112 es la de ADR-0014: `conflictos` = `[{personas, rutas, rutas_2b, desde, desde_2b}]`, con `rutas_2b` y `desde_2b` solo si 2b está activo.
+Especificado el 2026-10-21; ADR-0014 aceptado el 2026-10-22 (las siete recomendaciones, PR #78; sección M11 de `hitos.md`). Mergiraf solo se instala, a mano y opcional, en el portátil del coordinador; el kit nunca lo instala ni lo pide (decisión 1A, que revoca la del 2026-10-14 solo para ese portátil). Cuándo se empieza lo decide el usuario. Todo lo de M11 corre solo en el relay y solo con `fusion_estructural: sí`, `publicar_wip: sí` y Mergiraf en el `PATH`. Reparto en terminales: K-109 y K-110 seguidas; después K-111, K-112 y K-113 en paralelo (sus rutas no se pisan y cada una tiene su propio fichero de prueba nuevo); al final, K-114. La interfaz entre K-111 y K-112 es la de ADR-0014: `conflictos` = `[{personas, rutas, rutas_2b, desde, desde_2b}]`, con `rutas_2b` y `desde_2b` solo si 2b está activo.
 
 ### K-109 · Paso 0 de M11
 Cubre: R-34 · Puedes tocar: scratchpad (fuera del repo del kit), `evals/coordinacion/prueba.md` (solo «M11, Paso 0»), `docs/coordinacion.md` (las filas de P12 y P17), `docs/hackathon-os/preguntas-abiertas.md` (P17)
@@ -394,10 +394,10 @@ Hecho cuando: «M11, Paso 0» de `evals/coordinacion/prueba.md` tiene, además d
 Nada se instala en el repo ni se añade como dependencia. Sin modelo.
 
 ### K-110 · ADR y contratos
-Cubre: R-34 · Depende de: K-109 y las decisiones del usuario · Puedes tocar: `docs/hackathon-os/adr/0014-*.md`, `docs/hackathon-os/contratos/api.md`, `docs/hackathon-os/diseno.md` (§7), `docs/coordinacion.md` (la nota de la decisión 1 junto a P12)
+Cubre: R-34 · Depende de: K-109 · Puedes tocar: `docs/hackathon-os/adr/0014-*.md` (solo lo que cambie con P17), `docs/hackathon-os/contratos/api.md`, `docs/hackathon-os/diseno.md` (§7)
 Contratos que aplican: ADR-0007, ADR-0009, ADR-0014
 Hecho cuando:
-- ADR-0014 aceptado, con cada decisión y su porqué en «Decididas» (como ADR-0012 y ADR-0013) y lo que cambie con P17;
+- ADR-0014 (aceptado el 2026-10-22) con lo que cambie con P17 (Windows y macOS: copias de Mergiraf, binario, versión mínima), como ajuste fechado;
 - `api.md` con las notas «tras congelar, M11» de la decisión 6: §0 (`fusion_estructural:`), §3 (el nivel 2b en el párrafo de colisiones del relay), §5 (la frase de la descripción de `colisiones`) y §6 (la línea `2b` de ejemplo); `estado.schema.json` sin cambios (el valor `2b` ya estaba);
 - `diseno.md` §7 con la fila 2b al día y la definición de «Nivel 2b»;
 - R-34 no cambia; G15 se describe en `simulador.md` en K-112;
@@ -422,19 +422,19 @@ Contratos que aplican: ADR-0009, ADR-0014, `api.md` §0, §3, §5 y §6, `estado
 Hecho cuando:
 - `colisiones.calcular` da `2:<a>+<b>` rojo con `rutas` y `2b:<a>+<b>` amarillo con `rutas_2b` (cada una solo si tiene rutas), y las dos tapan el nivel 1 entre esas personas; sin `rutas_2b`, la salida es la de la 0.5.0 (`test_colisiones.py` sin cambios);
 - el relay lee `fusion_estructural:` de su `os.md` y se lo pasa al cálculo del nivel 2;
-- `estado-equipo.md` lleva `- AMARILLO · nivel 2b · fusión estructural sin conflictos · …` (o lo que diga la decisión 7) y la firma de colisiones cambia al bajar o subir de nivel;
+- `estado-equipo.md` lleva `- AMARILLO · nivel 2b · fusión estructural sin conflictos · …` (decisión 7) y la firma de colisiones cambia al bajar o subir de nivel;
 - la descripción de `colisiones` en el MCP lleva la frase de ADR-0014;
 - criterios 3 (la parte de datos: G15 e `igualdad.py` en G1–G6 y G12–G15) y 4 de M11 (delta y monitor con `delta.sh` y `escucha.sh` tal como están, que no se tocan);
 - con el interruptor apagado, `estado.json`, la vista y `estado-equipo.md` byte a byte como en la 0.5.0 (criterio 1 de M11, la parte sin relay vivo).
 
 ### K-113 · Web, cadena y documentación [P]
-Cubre: R-01, R-26, R-34 · Depende de: K-110 · Puedes tocar: `hkos/web-src/` (solo pruebas de Vitest y, con la decisión 7, el texto de la alerta), `hkos/web/nueva/`, `hkos/web/index.html` (solo con la decisión 7), `skills/hack-scaffold/templates/os.md`, `README.md` (la línea de Mergiraf), `docs/limitaciones.md`
+Cubre: R-01, R-26, R-34 · Depende de: K-110 · Puedes tocar: `hkos/web-src/` (solo pruebas de Vitest y el texto de la alerta, decisión 7), `hkos/web/nueva/`, `hkos/web/index.html` (solo el texto de la decisión 7), `skills/hack-scaffold/templates/os.md`, `README.md` (la línea de Mergiraf), `docs/limitaciones.md`
 Contratos que aplican: ADR-0009, ADR-0014 (decisiones 1, 2, 3 y 7)
 Hecho cuando:
 - Vitest pinta una colisión `2b` (la de G15 cuando K-112 la tenga; antes, una vista de ejemplo) y el texto sale en el DOM igual que en el md; la web no calcula nada nuevo;
 - sigue el criterio 2 de M9a: sin URL externa y compilado igual al fuente;
 - `os.md` de `/hack-scaffold` trae `fusion_estructural: no` con un comentario que dice que hace falta Mergiraf solo en el portátil del relay;
-- el README y `docs/limitaciones.md` dicen cómo se instala Mergiraf (decisión 3), que el kit no lo instala, qué lenguajes baja y que «amarillo» no quiere decir que la fusión funcione;
+- el README y `docs/limitaciones.md` dicen cómo se instala Mergiraf en el portátil del coordinador (decisión 3: binario oficial en Windows y Linux, `brew install mergiraf` en macOS y `cargo install --locked mergiraf` como alternativa, según lo que confirme P17), que el kit no lo instala ni lo pide, qué lenguajes baja y que «amarillo» no quiere decir que la fusión funcione;
 - `comprobar.py` sin regresiones con un reto, sin coordinación.
 
 ### K-114 · Validación en vivo

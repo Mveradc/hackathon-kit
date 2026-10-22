@@ -1,6 +1,6 @@
 # ADR-0014 · Nivel 2b de colisiones: fusión estructural con Mergiraf
 
-Estado: **propuesto** (2026-10-21, especificación de M11). Lo decide el usuario con la tabla «Decisiones pendientes» de abajo, en el PR de esta especificación. Hasta entonces sigue en pie la decisión del 2026-10-14 (`docs/coordinacion.md`, P12): Mergiraf no se instala y R-34 queda fuera de la v1. Concreta el «Nivel 2b» de ADR-0007, que no cambia.
+Estado: **aceptada** (2026-10-22, por el usuario al decidir la tabla del PR #78 con las siete recomendaciones; propuesta el 2026-10-21). Revoca la decisión del 2026-10-14 (`docs/coordinacion.md`, P12) **solo para el portátil del coordinador**: Mergiraf se instala a mano y es opcional; el kit nunca lo instala ni lo pide. Concreta el «Nivel 2b» de ADR-0007, que no cambia. Contratos en las notas «tras congelar, M11» de `api.md` (K-110).
 
 ## Contexto
 R-34: «DONDE el análisis estructural esté activo, el sistema DEBE rebajar a amarillo un conflicto de nivel 2 que una fusión estructural (Mergiraf) resuelva sin conflictos». Lo que hay hoy (0.5.0):
@@ -17,7 +17,7 @@ R-34: «DONDE el análisis estructural esté activo, el sistema DEBE rebajar a a
 
 Valen la constitución I (apagado, todo como en la 0.5.0), III, IV y ADR-0009 (las tres vistas igual), VI (solo avisos), VII (instalaciones de un comando), VIII (si falla, se degrada) y IX (el contenido no sale del portátil).
 
-## Decisión propuesta (común)
+## Decisión (común)
 - **Solo en el relay.** Mergiraf solo hace falta en el portátil del coordinador, que es quien calcula el nivel 2. Los demás portátiles no cambian: ni demonio, ni hooks, ni web.
 - **Detrás de su interruptor** `fusion_estructural:` en el `os.md` del relay (decisión 2), apagado por defecto. Solo cuenta con el nivel 2 activo (`publicar_wip: sí` y Git ≥ 2.38). **Con el interruptor apagado, sin `publicar_wip` o sin Mergiraf**, el relay no busca ni ejecuta nada nuevo, y `estado.json`, la vista, `estado-equipo.md`, el MCP y la web salen byte a byte como en la 0.5.0 (constitución I).
 - **Cómo se detecta**, una vez al arrancar el relay: `shutil.which("mergiraf")` y `mergiraf --version` (plazo de 5 s), que debe dar una versión ≥ la mínima (decisión 5). Si el interruptor está en `sí` y Mergiraf no está, no responde o es más viejo, el relay lo dice **una vez** al arrancar, como el aviso de Git < 2.38 («Nivel 2b desactivado: mergiraf no está en el PATH. Sigue el nivel 2.») y sigue como en la 0.5.0. Con Mergiraf bien: «Nivel 2b activo: mergiraf 0.20.0». No se vuelve a buscar hasta reiniciar el relay.
@@ -36,7 +36,7 @@ Valen la constitución I (apagado, todo como en la 0.5.0), III, IV y ADR-0009 (l
   - **`estado.json` y `/v1/vista`:** la colisión `2b` con los campos de siempre. **El esquema no cambia** (el valor ya estaba). Sin campo nuevo en `fuentes`: si 2b está apagado se sabe solo por el aviso del relay en su terminal, como con Git < 2.38 (decisión 6).
   - **`estado-equipo.md`** (`proyeccion.linea_colision`): `- AMARILLO · nivel 2b · fusión estructural sin conflictos · src/app.py · @ana, @luis (18:41)`. Empieza por `- AMARILLO`, así que `escucha.sh` no abre turno y `delta.sh` no la cuenta como roja (R-25b). La firma de colisiones ya incluye nivel y gravedad: **bajar de rojo a 2b da un delta** (≤ 600 caracteres) y **volver a rojo** (alguien cambia el fichero y Mergiraf ya no lo resuelve) es una roja nueva: delta y línea del monitor, como hoy.
   - **MCP:** `colisiones` devuelve los mismos objetos. Su descripción añade una frase: «nivel 2b: conflicto de git que la fusión estructural (Mergiraf) resuelve; amarillo, revisad la fusión igualmente».
-  - **Web** (nueva y clásica): ya pintan `NIVEL {nivel}` con su gravedad, así que `NIVEL 2b` sale en amarillo sin tocar el código. Solo se añade el caso a Vitest y, si se decide, el mismo texto «fusión estructural sin conflictos» que el md (decisión 7).
+  - **Web** (nueva y clásica): ya pintan `NIVEL {nivel}` con su gravedad, así que `NIVEL 2b` sale en amarillo sin tocar el código. Se añaden el caso a Vitest y el mismo texto «fusión estructural sin conflictos» que el md (decisión 7).
 - **Lo que no hace:** no fusiona nada, no escribe en el clon del relay ni en el de nadie, no propone la fusión resuelta ni la enseña. Amarillo quiere decir lo mismo que en el nivel 1: dos personas tocan el mismo fichero y hay que mirarlo. Mergiraf puede resolver sin conflictos algo que no compila o no hace lo que debe (R-34 no dice otra cosa).
 - **Constitución IX:** los blobs ya están en el clon del relay (llegaron con el `fetch` del nivel 2). Mergiraf corre en local, sin red, y sus copias quedan en el directorio temporal que se borra. Nada nuevo sale del portátil del coordinador.
 - **Prueba doble de ADR-0009:** `igualdad.py` con un guion nuevo **G15** (2b), y Vitest pinta una colisión `2b`.
@@ -51,17 +51,19 @@ Solo notas «tras congelar, M11», sin subir `v` (añaden una clave opcional y f
 - **`requisitos.md`:** R-34 no cambia.
 - **`diseno.md` §7:** la fila 2b («Mergiraf en el relay, sobre los ficheros con tres etapas») y la definición de «Nivel 2b» (tras K-110).
 
-## Decisiones pendientes (las decide el usuario)
+## Decididas (2026-10-22)
 
-| Decisión | Opciones | Propuesta | Por qué |
-|---|---|---|---|
-| **1. La decisión del 2026-10-14 (no instalar nada)** | **A.** Se revoca solo para el portátil del coordinador, a mano y opcional: el kit nunca instala Mergiraf ni lo pide. **B.** Se revoca y el kit lo instala (`hk-os` descarga el binario). **C.** Sigue en pie: M11 no se hace y R-34 queda fuera de la v1 | **A** | El nivel 2 ya es opt-in y solo en el relay: 2b añade un programa en un portátil, no en el equipo. B mete descargas de binarios en el kit (cadena de suministro, constitución VII). C es lo de hoy, y es razonable si el equipo no va a usar `publicar_wip` |
-| **2. Interruptor** | **A.** `fusion_estructural: no` en `os.md` (por defecto), y con `sí` solo si Mergiraf está. **B.** Sin interruptor: si Mergiraf está en el `PATH`, se usa | **A** | Como `vista_jurado:` y `ruta_critica:`: un programa que alguien tenga instalado por otra razón no cambia el comportamiento del equipo sin que nadie lo decida, y el apagado se prueba igual que en la 0.5.0 |
-| **3. Cómo lo instala el coordinador** | **A.** Binario de la release oficial (Codeberg), descomprimido en el `PATH`. **B.** `cargo install --locked mergiraf` (exige Rust). **C.** Gestor de paquetes (`brew install mergiraf` en macOS; los de Linux donde exista). Se documentan las que pasen P17 | **A** en Windows y Linux, **C** en macOS; B solo como alternativa | A es un comando (VII) y no exige Rust; B tardó 1,5 min en compilar aquí y no cumple VII en Windows. Qué binarios hay y si funcionan, lo comprueba K-109 (P17) |
-| **4. Plazos** | **A.** 5 s por fichero (`-t 5000`), 10 s por proceso, 20 s por ciclo, caché por contenido. **B.** Sin plazo por ciclo. **C.** Plazos en `os.md` | **A** | Un ciclo del nivel 2 dura 30 s: con 20 s de tope, 2b no lo retrasa. 5 s bastó para 148 KB de Python. Un fichero que no llega sigue rojo, que es lo seguro. Un plazo más en `os.md` es una cosa más que configurar sin datos |
-| **5. Versión mínima** | **A.** 0.20.0, la única probada. **B.** Cualquiera que dé rc 0/1 | **A** | Los códigos de salida y `-p` se han comprobado solo en la 0.20.0. Se baja si K-109 prueba otra |
-| **6. ¿Se cambia `api.md`?** | **A.** Notas «tras congelar» en §0, §3, §5 y §6; esquema sin cambios. **B.** Además, `fuentes.mergiraf` en `estado.json` (activo, versión o motivo de apagado), que cambia el esquema. **C.** Nada en `api.md`: interruptor y texto solo en el código | **A** | El valor `2b` ya estaba en el contrato: solo falta decir quién lo produce y cómo se lee. B se puede añadir después si el equipo no entiende por qué no hay 2b. C deja una clave de `os.md` y un texto del md sin contrato |
-| **7. Texto de la línea** | **A.** `nivel 2b · fusión estructural sin conflictos`, en el md y en la web. **B.** Solo `nivel 2b`, como las demás | **A** | Un modelo que lee «nivel 2b» no sabe qué quiere decir; la frase es corta y cabe en el presupuesto (R-24). Los demás niveles se entienden por sus rutas o su contrato |
+Las siete, como se recomendaban en el PR #78 (comentario del usuario del 2026-10-22). La tabla del PR numeraba distinto: allí, 2 era la instalación, 3 `api.md`, 4 el interruptor, 5 los plazos y 6 la versión.
+
+| Decisión | Elegida | Por qué |
+|---|---|---|
+| **1. La decisión del 2026-10-14 (no instalar nada)** | **A.** Se revoca solo para el portátil del coordinador, a mano y opcional: el kit nunca instala Mergiraf ni lo pide | El nivel 2 ya es opt-in y solo corre en el relay: 2b añade un programa en un portátil, no en el equipo. Que el kit lo instalara (B) metería descargas de binarios en el kit (cadena de suministro, constitución VII). Mantenerla (C) dejaba R-34 fuera de la v1 |
+| **2. Interruptor** | **A.** `fusion_estructural: no` en `os.md` (por defecto), y con `sí` solo si Mergiraf está | Como `vista_jurado:` y `ruta_critica:`: un programa que alguien tenga instalado por otra razón no cambia el comportamiento del equipo sin que nadie lo decida, y el apagado se prueba igual que en la 0.5.0. Sin interruptor (B) se usaría con solo estar en el `PATH` |
+| **3. Cómo lo instala el coordinador** | **A** en Windows y Linux: el binario de la release oficial (Codeberg), descomprimido en el `PATH`. **C** en macOS: `brew install mergiraf`. **B** (`cargo install --locked mergiraf`, exige Rust) solo como alternativa. Se documentan las que pasen P17 (K-109) | A es un comando (VII) y no exige Rust; B tardó 1,5 min en compilar en el Paso 0 y no cumple VII en Windows |
+| **4. Plazos** | **A.** 5 s por fichero (`-t 5000`), 10 s por proceso, 20 s por ciclo y caché por contenido | Un ciclo del nivel 2 dura 30 s: con 20 s de tope, 2b no lo retrasa. 5 s bastó para 148 KB de Python. Un fichero que no llega sigue rojo, que es lo seguro. Plazos en `os.md` (C) serían una cosa más que configurar sin datos |
+| **5. Versión mínima** | **A.** 0.20.0, la única probada | Los códigos de salida y `-p` se han comprobado solo en la 0.20.0. Se baja si K-109 prueba otra |
+| **6. ¿Se cambia `api.md`?** | **A.** Notas «tras congelar, M11» en §0, §3, §5 y §6 (K-110); `estado.schema.json` sin cambios | El valor `2b` ya estaba en el contrato: solo falta decir quién lo produce y cómo se lee. `fuentes.mergiraf` (B) se puede añadir después si el equipo no entiende por qué no hay 2b. Sin nada en `api.md` (C), una clave de `os.md` y un texto del md quedarían sin contrato |
+| **7. Texto de la línea** | **A.** `nivel 2b · fusión estructural sin conflictos`, en el md y en la web | Un modelo que lee «nivel 2b» no sabe qué quiere decir; la frase es corta y cabe en el presupuesto (R-24) |
 
 ## Alternativas descartadas
 - **Ejecutar Mergiraf en el demonio de cada persona:** exigiría instalarlo en todos los portátiles y que cada demonio tuviera el trabajo en curso de los demás, que solo trae el relay.
