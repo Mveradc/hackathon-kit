@@ -1038,7 +1038,8 @@ class Issue46(SinZoneinfo):
                         "estado": {"valor": "lista", "fuente": "derivado", "observado_en": CT}}, **r["tareas"][t])
                   for t in ("T01", "T02")]
         b = ruta_mod.calcular(r["ruta"], tareas, "2026-10-25T08:00:00Z", personas=PERSONAS)
-        self.assertIn("T01: plazo pasado 23:00", b["resumen"])                  # con el desfase fijo, «22:00»
+        # A11 (#77): el plazo es del sábado y ahora, domingo: con su día. Con el desfase fijo, «sáb 22:00».
+        self.assertIn("T01: plazo pasado sáb 23:00", b["resumen"])
         self.assertEqual(b["zona"], r["ruta"]["zona"])
 
     def test_56_desfase_iso_pegado_a_la_hora_es_zona(self):

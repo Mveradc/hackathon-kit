@@ -707,7 +707,7 @@
   },
   {
    "id": "cambio_de_hora",
-   "que": "un reto del sáb 24 oct 10:00 al dom 25 oct 12:00 (Europe/Madrid), que cruza el cambio de hora: los H+N son horas transcurridas (H+17 = dom 02:00 CET), el descanso de la noche acaba a las 07:30 CET y el resumen da las horas con la zona, no con el desfase de la entrega («T20: plazo pasado 12:00», en CEST) (#56, fila 8)",
+   "que": "un reto del sáb 24 oct 10:00 al dom 25 oct 12:00 (Europe/Madrid), que cruza el cambio de hora: los H+N son horas transcurridas (H+17 = dom 02:00 CET), el descanso de la noche acaba a las 07:30 CET y el resumen da las horas con la zona, no con el desfase de la entrega («T20: plazo pasado sáb 12:00», en CEST; con su día desde el issue #77, A11) (#56, fila 8)",
    "base": "inicio",
    "ahora": "2026-10-25T08:00:00Z",
    "equipo.md": [
@@ -849,7 +849,7 @@
       "desde": "2026-09-18T19:25:00Z"
      }
     },
-    "resumen": "ruta: sin estimación · T20: plazo pasado 12:00 y 21 más · pocos datos: 3 personas · otra entrega: dom 11:30 (plan.md)"
+    "resumen": "ruta: sin estimación · T20: plazo pasado sáb 12:00 y 21 más · pocos datos: 3 personas · y más en la vista"
    }
   },
   {
@@ -1028,7 +1028,7 @@
       "ritmo": null
      }
     },
-    "resumen": "ruta: sin estimación · T04: plazo pasado 23:00 y 3 más · pocos datos: 1 persona · otra entrega: dom 09:30 (plan.md)"
+    "resumen": "ruta: sin estimación · T04: plazo pasado vie 23:00 y 3 más · pocos datos: 1 persona · otra entrega: dom 09:30 (plan.md)"
    }
   },
   {
@@ -1651,7 +1651,7 @@
       }
      }
     },
-    "resumen": "ruta: estimación no llega · T04: plazo pasado 23:00 · fin hacia 09:35 (las medidas no varían) · entrega dom 10:00"
+    "resumen": "ruta: estimación no llega · T04: plazo pasado vie 23:00 · fin hacia 09:35 (las medidas no varían) · entrega dom 10:00"
    }
   },
   {

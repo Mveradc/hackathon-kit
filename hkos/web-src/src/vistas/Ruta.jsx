@@ -1,5 +1,5 @@
 import { Cadena, Panel, ProvenanceTag, StatusPulse, TaskCard } from "../componentes/componentes.jsx";
-import { arroba, canal, diaHm, duracion, hace, hm, minutosZona, ms, tarjetas, textoZona, zonaRuta } from "../formato.js";
+import { arroba, canal, diaHm, duracion, fechaHm, hace, hm, minutosZona, ms, tarjetas, textoZona, zonaRuta } from "../formato.js";
 import { Vacio } from "./comun.jsx";
 
 // Ruta crítica (pantallas/ruta-critica.dc.html; R-36, ADR-0013, api.md §11.4). Todo sale del bloque `ruta` de la
@@ -32,13 +32,17 @@ function Hora({ iso, zona, dia = true }) {
   return iso ? <time dateTime={iso}>{dia ? diaHm(iso, zona) : hm(iso, zona)}</time> : null;
 }
 
-// K-108, punto 2: si el fin temprano y el tarde son el mismo instante, no es un rango. La web solo compara las dos
-// horas que trae la vista para elegir el texto (y un punto en vez de una barra); no calcula nada.
-const igual = (temprano, tarde) => ms(temprano) === ms(tarde);
+// K-108, punto 2, e issue #77, A3: si el fin temprano y el tarde se escriben con la misma HH:MM en la zona del equipo,
+// no es un rango (ajuste 5, punto 2 de ADR-0013), como en el resumen de ruta.py. La web solo compara las dos horas que
+// trae la vista, como las escribe, para elegir el texto (y un punto en vez de una barra); no calcula nada.
+const igual = (temprano, tarde, zona) => hm(temprano, zona) === hm(tarde, zona);
+// A11 (#77, decisión del usuario): el plazo pasado, con el día solo si no es el de ahora en la zona del equipo, como el
+// resumen («plazo pasado vie 23:00»).
+const mismoDia = (a, b, zona) => fechaHm(a, zona).split(" · ")[0] === fechaHm(b, zona).split(" · ")[0];
 
 /** «entre X y Y» o, si X = Y, «hacia X (las medidas no varían)». */
 function Fin({ temprano, tarde, zona, marcas = false }) {
-  return igual(temprano, tarde)
+  return igual(temprano, tarde, zona)
     ? <>hacia <span {...(marcas ? { "data-temprano": "", "data-tarde": "" } : {})}><Hora iso={temprano} zona={zona} /></span> <span data-sin-rango="">(las medidas no varían)</span></>
     : <>entre <span {...(marcas ? { "data-temprano": "" } : {})}><Hora iso={temprano} zona={zona} /></span> y <span {...(marcas ? { "data-tarde": "" } : {})}><Hora iso={tarde} zona={zona} /></span></>;
 }
@@ -65,11 +69,11 @@ function Tarjeta({ t, servido }) {
   );
 }
 
-function Hecho({ h, tarjeta, zona, servido }) {
+function Hecho({ h, tarjeta, zona, servido, ahora }) {
   const [tono, tipo] = HECHO[h.tipo] || ["stale", h.tipo];
   let texto;
   if (h.tipo === "plazo_pasado") {
-    texto = <>Su plazo, <Hora iso={h.plazo} zona={zona} /> (plan.md), ya pasó y sigue abierta.{h.arrastra.length
+    texto = <>Su plazo, <Hora iso={h.plazo} zona={zona} dia={!mismoDia(h.plazo, ahora, zona)} /> (plan.md), ya pasó y sigue abierta.{h.arrastra.length
       ? <> Arrastra a <span data-arrastra="">{h.arrastra.join(", ")}</span>.</> : null}</>;
   } else if (h.tipo === "sin_senales") {
     texto = <>{h.desde ? <>Sin señales de {arroba(h.persona)} desde <Hora iso={h.desde} zona={zona} dia={false} /></> : <>Ninguna señal de {arroba(h.persona)}</>}. No quiere decir que vaya lenta: puede estar trabajando sin commits con ID.</>;
@@ -132,7 +136,7 @@ function Linea({ r, zona, servido, pasados, riesgos }) {
   const filas = r.cadena.map((e) => fila(e, zona, servido, pasados, riesgos, r.veredicto.valor, true));
   const [, , tono] = VEREDICTO[r.veredicto.valor] || VEREDICTO.sin_estimacion;
   const est = r.estimacion;
-  const uno = est && igual(est.temprano, est.tarde);
+  const uno = est && igual(est.temprano, est.tarde, zona);
   return (
     <Cadena layout="linea" min={min} max={max} ticks={marcasDeHora(min, max, zona)} marks={marcas} rows={filas}
       end={est ? { ...(uno ? { at: ms(est.temprano), sub: "una hora: las medidas no varían" } : { from: ms(est.temprano), to: ms(est.tarde) }),
@@ -166,7 +170,7 @@ function fila(e, zona, servido, pasados, riesgos, veredicto, linea) {
     ...(linea ? {
       kind: pasado ? "plazo_pasado" : t.viejo ? "vieja" : "franja",
       from: fr ? ms(fr.desde) : undefined, to: fr ? ms(fr.hasta) : undefined,
-      ...(e.fin_tarde ? (igual(e.fin_temprano, e.fin_tarde) ? { estAt: ms(e.fin_temprano) } : { est: [ms(e.fin_temprano), ms(e.fin_tarde)] }) : {}), estKind: riesgo ? "no_llega" : "prevista",
+      ...(e.fin_tarde ? (igual(e.fin_temprano, e.fin_tarde, zona) ? { estAt: ms(e.fin_temprano) } : { est: [ms(e.fin_temprano), ms(e.fin_tarde)] }) : {}), estKind: riesgo ? "no_llega" : "prevista",
       deadline: e.hasta.valor ? ms(e.hasta.valor) : undefined, deadlinePast: pasado,
     } : {}),
   };
@@ -213,7 +217,7 @@ export function Ruta({ respuesta }) {
               </span>
               <span className="hk-texto-sec">de margen sobre la entrega ({obj?.valor ? <Hora iso={obj.valor} zona={zona} /> : "—"}) ·
                 fin <Fin temprano={est.temprano} tarde={est.tarde} zona={zona} marcas /></span>
-              <span className="hk-texto">Con el ritmo medido de cada persona, la cadena acaba {igual(est.temprano, est.tarde) ? "a esa hora" : "en ese rango"}. Es una previsión, no un hecho.</span>
+              <span className="hk-texto">Con el ritmo medido de cada persona, la cadena acaba {igual(est.temprano, est.tarde, zona) ? "a esa hora" : "en ese rango"}. Es una previsión, no un hecho.</span>
             </>
           ) : (
             <>
@@ -290,7 +294,7 @@ export function Ruta({ respuesta }) {
         <div className="hk-col" style={{ flex: "999 1 720px" }}>
           <Panel title="Lo que la pone en riesgo" meta={`${r.hechos.length} hechos · ${r.riesgos.length} por estimación`}
             tone={pasados.size ? "fail" : r.riesgos.length || r.hechos.length ? "wait" : undefined}>
-            {r.hechos.map((h, i) => <Hecho key={`h${i}`} h={h} tarjeta={h.tarea ? porTarea.get(h.tarea) : null} zona={zona} servido={servido} />)}
+            {r.hechos.map((h, i) => <Hecho key={`h${i}`} h={h} tarjeta={h.tarea ? porTarea.get(h.tarea) : null} zona={zona} servido={servido} ahora={r.observado_en} />)}
             {r.riesgos.map((x) => <Riesgo key={`r${x.tarea}`} r={x} tarjeta={porTarea.get(x.tarea)} objetivo={obj} zona={zona} servido={servido} />)}
             {!r.hechos.length && !r.riesgos.length ? <Vacio>Nada: ningún plazo ha pasado sin cumplirse{est ? " y nada acaba después de la entrega ni con el ritmo más lento medido" : ""}.</Vacio> : null}
             <span className="hk-texto-sec">Primero los hechos (plazo pasado en rojo; parada o sin cerrar en ámbar; sin señales en gris). Después, ESTIMACIÓN: cada tarea abierta cuyo fin tarde pasa de la entrega, esté o no en la cadena. Es una previsión: nunca en rojo, y solo con su fin tarde.</span>

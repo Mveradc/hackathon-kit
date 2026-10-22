@@ -516,9 +516,10 @@ class Tabla(Base):
         b = self.corre(r, tareas, ahora="2026-10-24T08:00:00Z")
         self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 10:30–11:30 · entrega dom 12:00 · "
                                        "otra entrega: dom 13:00 (equipo.md)")
-        # Sin abiertas, temprano = tarde (K-108, 3): «fin hacia …» es más largo y la otra entrega ya no cabe.
+        # Sin abiertas, temprano = tarde (K-108, 3): «fin hacia …» es más largo y la otra entrega ya no cabe. El fin es
+        # el último hecha_en (#77, A2: T03, el 19 sep a las 06:40), no ahora.
         b = self.corre(r, ana()[:3], ahora="2026-10-24T08:00:00Z")
-        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin hacia 10:00 (las medidas no varían) · "
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin hacia 06:40 (las medidas no varían) · "
                                        "entrega dom 12:00 · y más en la vista")
         # La hora, en la zona del equipo (la IANA, a través del cambio de hora): una de antes del cambio, con +02:00.
         r["otras_entregas"] = [declarada("2026-10-24T21:00:00Z", "sáb 23:00", donde="plan.md", nombre="Entrega final")]
@@ -774,14 +775,15 @@ class Tabla(Base):
                 lecturas.ZONEINFO = zi
                 b = self.corre(ruta, copy.deepcopy(tareas), ahora="2026-10-25T08:00:00Z")      # dom 09:00 de invierno
                 self.assertEqual(b["veredicto"]["valor"], "a_tiempo")
-                for trozo in ("T05: plazo pasado 23:00", "fin 09:30–10:30", "entrega dom 12:00"):
+                # A11 (#77): un plazo de ayer, con su día.
+                for trozo in ("T05: plazo pasado sáb 23:00", "fin 09:30–10:30", "entrega dom 12:00"):
                     self.assertIn(trozo, b["resumen"])
                 self.assertEqual(b["zona"], ruta["zona"])
         # Con un desfase en equipo.md, la zona es ese desfase, y las horas, con él.
         fija = dict(ruta, zona=dato("+01:00"))
         b = self.corre(fija, copy.deepcopy(tareas), ahora="2026-10-25T08:00:00Z")
         self.assertEqual(b["zona"]["valor"], "+01:00")
-        self.assertIn("T05: plazo pasado 22:00", b["resumen"])
+        self.assertIn("T05: plazo pasado sáb 22:00", b["resumen"])
 
     def test_descansos_ni_en_el_ritmo_ni_en_el_fin_ni_sin_senales(self):
         # Ritmo: T03 (90 min) con 30 min de descanso de Ana dentro: 60 min de 60, 100 %.

@@ -293,7 +293,9 @@ describe.each(RUTA)("ruta · $nombre", ({ respuesta, antiguedades: edades, horas
       expect(cuerpo.classList.contains(`hk-riesgo__cuerpo--${{ rojo: "fail", ambar: "wait", gris: "stale" }[h.gravedad]}`), `${h.tipo}: ${h.gravedad}`).toBe(true);
       if (h.tarea) expect(texto(el)).toContain(h.tarea);
       if (h.tipo === "plazo_pasado") {
-        compruebaHora(cuerpo, h.plazo, horas);
+        // A11 (#77): con el día solo si no es el de ahora en la zona del equipo, como el resumen de ruta.py.
+        const dia = (iso) => horas[iso].fecha.split(" · ")[0];
+        compruebaHora(cuerpo, h.plazo, horas, dia(h.plazo) === dia(r.observado_en) ? "hm" : "dia");
         if (h.arrastra.length) expect(q(el, "[data-arrastra]").textContent).toBe(h.arrastra.join(", "));
       }
       if (h.tipo === "sin_senales") {
@@ -754,6 +756,60 @@ describe("K-108: tareas sin usuario de GitHub y fin sin rango", () => {
       expect(texto(q(el, "[data-fin-eslabon]"))).toMatch(/^estimación: acaba entre /);
       expect(el.querySelector(".hk-chain__bar--est")).not.toBeNull();
     }
+  });
+});
+
+describe("issue #77: rango sin anchura (A3) y plazo pasado con su día (A11), como ruta.py", () => {
+  const ej = CASOS.find((c) => c.nombre.startsWith("ejemplo")).respuesta;
+  const con = (cambia) => {
+    const v = structuredClone(ej.vista);
+    cambia(v.ruta);
+    return { ...ej, vista: v };
+  };
+
+  it("A3: dos instantes distintos con la misma HH:MM en la zona del equipo no son un rango: «hacia», como el resumen", () => {
+    // El caso del issue (G15 en igualdad.py; test_ruta_77): ritmos del 30 % al 90 % y una abierta de 1 min de franja.
+    // ruta.py escribe «fin hacia 10:00 (las medidas no varían)»; antes, la web comparaba milisegundos y pintaba
+    // «entre sáb 10:00 y sáb 10:00», la forma que prohíbe el ajuste 5, punto 2.
+    const resumen = "ruta: estimación a tiempo · fin hacia 10:00 (las medidas no varían) · entrega dom 10:00";
+    const r = con((x) => {
+      x.veredicto = { ...x.veredicto, valor: "a_tiempo", motivos: [], gravedad: "ninguna" };
+      x.estimacion = { temprano: "2026-09-19T08:00:18Z", tarde: "2026-09-19T08:00:54Z", margen_min: 1439, margen_max: 1439 };
+      x.cadena.forEach((e) => Object.assign(e, { fin_temprano: "2026-09-19T08:00:18Z", fin_tarde: "2026-09-19T08:00:54Z" }));
+      x.hechos = [];
+      x.riesgos = [];
+      x.resumen = resumen;
+    });
+    const { container } = render(<Ruta respuesta={r} />);
+    const v = q(container, "[data-veredicto]");
+    expect(texto(q(v, "[data-margen]").nextElementSibling)).toMatch(/· fin hacia sáb 10:00 \(las medidas no varían\)$/);
+    expect(q(container, "[data-resumen-ruta]").textContent).toContain(" · fin hacia 10:00 (las medidas no varían) · ");
+    expect(texto(q(q(container, ".hk-chain__fila[data-fin]"), ".hk-chain__end"))).toBe("hacia sáb 10:00 (las medidas no varían)");
+    for (const el of container.querySelectorAll("[data-eslabon]")) {
+      expect(texto(q(el, "[data-fin-eslabon]"))).toBe("estimación: acaba hacia sáb 10:00 (las medidas no varían)");
+    }
+    expect(texto(container)).not.toMatch(/entre sáb 10:00 y sáb 10:00/);
+    // Un minuto de diferencia sí es un rango.
+    const r2 = con((x) => {
+      x.veredicto = { ...x.veredicto, valor: "a_tiempo", motivos: [], gravedad: "ninguna" };
+      x.estimacion = { temprano: "2026-09-19T08:00:18Z", tarde: "2026-09-19T08:01:00Z", margen_min: 1439, margen_max: 1439 };
+      x.hechos = [];
+      x.riesgos = [];
+    });
+    const c2 = render(<Ruta respuesta={r2} />).container;
+    expect(texto(q(q(c2, "[data-veredicto]"), "[data-margen]").nextElementSibling)).toMatch(/· fin entre sáb 10:00 y sáb 10:01$/);
+  });
+
+  it("A11: el plazo pasado lleva el día solo si no es el de ahora en la zona del equipo («vie 23:00»; hoy, «02:30»)", () => {
+    const ayer = "2026-09-18T23:00:00+02:00";
+    const r = con((x) => {
+      const h = x.hechos.find((y) => y.tipo === "plazo_pasado");
+      x.hechos = [h, { ...h, tarea: "T04", plazo: ayer, arrastra: [] }];
+    });
+    const { container } = render(<Ruta respuesta={r} />);
+    const plazos = [...container.querySelectorAll('[data-hecho="plazo_pasado"]')].map((el) =>
+      q(el, ".hk-riesgo__cuerpo").querySelector("time").textContent);
+    expect(plazos).toEqual(["02:30", "vie 23:00"]);
   });
 });
 
