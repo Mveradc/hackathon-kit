@@ -650,9 +650,9 @@ class Agente:
                 except ValueError:
                     estado = None
                 if isinstance(estado, dict):
+                    self._escribe("estado.json", json.dumps(estado, ensure_ascii=False))    # antes que la memoria
                     self.estado = estado
                     self.etag = f'"{ident}"' if ident else None
-                    self._escribe("estado.json", json.dumps(estado, ensure_ascii=False))
                     cambio = True
             if cambio:
                 self.md_pendiente = True
@@ -904,7 +904,7 @@ class Agente:
         try:
             with urllib.request.urlopen(urllib.request.Request(url + "/v1/estado", headers=cabeceras), timeout=5) as r:
                 estado = json.loads(r.read())
-                self.etag = r.headers.get("ETag")
+                etag = r.headers.get("ETag")
         except urllib.error.HTTPError as ex:
             if ex.code == 304:
                 self.relay_caido_desde, self.relay_ultimo_bueno = None, self.ahora()
@@ -915,8 +915,10 @@ class Agente:
             self.relay_caido_desde = self.relay_caido_desde or self.ahora()
             return False
         self.relay_caido_desde, self.relay_ultimo_bueno = None, self.ahora()
-        self.estado = estado
+        # Issue #27: el ETag y el estado en memoria, solo con estado.json ya escrito. Si no se puede escribir, la
+        # siguiente petición no recibe un 304 y el disco (lo que lee el MCP) no se queda atrás del md.
         self._escribe("estado.json", json.dumps(estado, ensure_ascii=False))
+        self.estado, self.etag = estado, etag
         return True
 
     def escribir_md(self, nuevo):
@@ -937,12 +939,20 @@ class Agente:
 
     def _escribe(self, nombre, texto):
         """Escritura atómica: quien lee (sesion.sh, delta.sh, el MCP) nunca ve un fichero a medias. Los secretos, con
-        permisos.escribe_privado."""
+        permisos.escribe_privado. En Windows, con el destino abierto por un lector, se reintenta como en
+        permisos.reemplaza (issue #27); si no se consigue, la excepción, sin dejar el temporal."""
         ruta = os.path.join(self.dir, nombre)
         tmp = f"{ruta}.{os.getpid()}.tmp"
         with open(tmp, "w", encoding="utf-8", newline="\n") as f:
             f.write(texto)
-        os.replace(tmp, ruta)
+        try:
+            permisos.reemplaza(tmp, ruta)
+        except BaseException:
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
+            raise
 
     def latir_vivo(self):
         """agente.vivo = puerto y hora (época), renovada cada LATIDO_S. delta.sh da por muerto un demonio cuya hora

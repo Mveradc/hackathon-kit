@@ -39,7 +39,7 @@ import agente  # noqa: E402
 import compilar  # noqa: E402
 import relay  # noqa: E402
 import remoto as remoto_mod  # noqa: E402
-from permisos import escribe_privado, escribe_privados  # noqa: E402
+from permisos import escribe_privado, escribe_privados, reemplaza  # noqa: E402
 from red import equipo, web_nueva  # noqa: E402
 
 USO = __doc__.split("\n\n", 1)[1]
@@ -180,7 +180,14 @@ def estado_inicial(comun, principal, estado, persona):
         ruta = os.path.join(carpeta, nombre)
         with open(ruta + ".tmp", "w", encoding="utf-8", newline="\n") as f:
             f.write(texto)
-        os.replace(ruta + ".tmp", ruta)
+        try:
+            reemplaza(ruta + ".tmp", ruta)     # issue #27: en Windows, con el destino abierto, reintenta
+        except BaseException:
+            try:
+                os.remove(ruta + ".tmp")
+            except OSError:
+                pass
+            raise
 
 
 def unir(url, token, cwd=".", persona=None, remoto=None, salida=print):
