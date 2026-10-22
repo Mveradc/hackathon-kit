@@ -1330,3 +1330,73 @@ P12 (`docs/hackathon-os/preguntas-abiertas.md`): «¿Mergiraf se puede ejecutar 
 **Hallazgo que afecta a la constitución IX y a la limpieza.** Cada vez que resuelve un conflicto, Mergiraf **guarda una copia** de la base, los dos lados y el resultado en `$XDG_DATA_HOME/mergiraf/merges/<nombre>_<aleatorio>/` (por defecto `~/.local/share/…`), para `mergiraf review` y `mergiraf report`. No sale del portátil, pero deja contenido de código de otras personas en disco sin que nadie lo sepa. Con `XDG_DATA_HOME` apuntando a un directorio temporal, la copia va allí y se puede borrar. En los casos con rc 1 no guardó nada. **En Windows y macOS no se ha comprobado** dónde la guarda ni si se puede redirigir: queda como P17.
 
 **Qué no se ha comprobado:** Windows y macOS (binario oficial, dónde guarda las copias, tiempos), versiones anteriores a la 0.20.0, y ficheros reales de un reto (solo casos sintéticos). Mergiraf también llama a `git merge-file` por dentro (lo dicen sus mensajes), así que necesita git en el `PATH`, que el relay ya tiene.
+
+## K-109 (2026-10-22): P17, tiempos, `merge-tree` sin `--name-only` y versión mínima
+Sin modelo (0 USD). Nada instalado en el repo ni en el sistema, nada añadido como dependencia: Mergiraf, Git 2.38 y los ficheros de muestra, solo en el scratchpad de la sesión y en runners de GitHub Actions desechables. El mismo script de sondeo (`sondeo.py`, fuera del repo) en las cuatro máquinas: los 14 casos de P12, dónde quedan las copias, los tiempos y `merge-tree`.
+
+**Entornos.**
+- **Linux (contenedor):** x86_64, Git 2.43.0; Mergiraf 0.20.0, 0.19.1 y 0.16.3 compilados con `cargo install --locked --root <scratchpad>` (0.20.0 en 1 min 25 s). Codeberg (los binarios oficiales) y las descargas de Git (kernel.org, GitHub) no eran accesibles desde el contenedor: el binario oficial de Linux y Git 2.38 se probaron en el runner.
+- **Runners de GitHub Actions**, con un workflow temporal (`on: push` solo a la rama desechable `m11-p17-sondeo`; nunca PR ni fusión) que descargaba el binario de la release oficial v0.20.0 de Codeberg por su API, corría el sondeo y dejaba el informe en el log, como artifact y en el resumen del job:
+  - **Windows** Server 2025 (x86_64): `mergiraf_x86_64-pc-windows-gnu.zip` (7,0 MB); Git 2.56.0.windows.2 del runner, y MinGit 2.49.0 y 2.38.0 oficiales de Git for Windows;
+  - **macOS** 26 (arm64): `mergiraf_aarch64-apple-darwin.tar.gz` (7,8 MB) y `brew install mergiraf`; Git 2.56.0;
+  - **Linux** Ubuntu (x86_64): `mergiraf_x86_64-unknown-linux-gnu.tar.gz` (7,3 MB); Git 2.55.0 y Git 2.38.0 compilado desde su etiqueta.
+- **Assets de la release 0.20.0:** `aarch64-apple-darwin`, `x86_64-apple-darwin`, `x86_64-pc-windows-gnu` (zip), `aarch64`/`x86_64-unknown-linux-gnu` y `-musl`. **No hay binario para Windows en ARM.**
+
+**Resultado por plataforma.**
+
+| | Linux | Windows | macOS |
+|---|---|---|---|
+| Binario oficial | Sí (runner): se descomprime y arranca | **Sí**: `mergiraf.exe` en el zip, sin instalador | **Sí** (arm64 y x86_64); `brew install mergiraf` da también 0.20.0 en 4 s |
+| `mergiraf --version` | `mergiraf 0.20.0` | `mergiraf 0.20.0` | `mergiraf 0.20.0` (los dos) |
+| Casos de P12 (rc 0, 1, 255; sin lenguaje, no UTF-8, binario, error de sintaxis, `-t 100`) | Los 14, como el 2026-10-21 | **Los 14 iguales** | **Los 14 iguales** con brew y en la primera pasada del binario; en la segunda, el Python de 148 KB pasó del plazo (abajo) |
+| Dónde guarda las copias de lo que resuelve | `~/.local/share/mergiraf/merges/<fichero>_<8 aleatorios>/` | **`%APPDATA%\Mergiraf contributors\Mergiraf\data\merges\<fichero>_<8 aleatorios>\`** | **`~/.local/share/mergiraf/merges/…`**, como Linux (no en `~/Library/Application Support`) |
+| Qué variable las lleva a un temporal | `XDG_DATA_HOME` (6 de 6 ficheros dentro) | **`APPDATA`** (6 de 6 dentro). `XDG_DATA_HOME`, `LOCALAPPDATA` y `USERPROFILE`, **no**: las copias siguen en el `APPDATA` de la persona | `XDG_DATA_HOME` (6 de 6 dentro); `HOME` también |
+| Con rc 1 | No guarda nada | No guarda nada | No guarda nada |
+| La variable apuntando a un fichero (no se puede crear la carpeta) | rc 0 y **ninguna copia** | Con `APPDATA`: rc 0 y ninguna copia | rc 0 y ninguna copia |
+
+Cada copia son 6 ficheros: `Base`, `Left`, `Right`, `line_based`, `structured_resolution` (con la extensión del fichero) y `best_merge.txt`. El código fuente de la 0.20.0 lo confirma (`src/attempts.rs` y el crate `etcetera`): estrategia XDG en Linux y macOS y la de Windows (la variable `APPDATA`; sin ella, `%USERPROFILE%\AppData\Roaming`) en Windows; si no puede crear la carpeta, sigue sin copias (`AttemptsCache::new(…).ok()`); guarda como mucho 128 intentos y borra los más viejos. Sin opción ni variable para no guardar.
+
+**Tiempos.** Los retos 02 y 03 no tienen código versionado en el kit: se usaron los ficheros del árbol de `/hack-scaffold` de cada uno (`skills/hack-scaffold/examples/0{2,3}-*-arbol.txt`), con los `uv.lock` y el `package-lock.json` generados con las dependencias típicas de su pila (`uv lock` y `npm install --package-lock-only` en el scratchpad), y su `CLAUDE.md` y `plan.md` de ejemplo; y, como cota, el fichero más grande de cada lenguaje del propio kit. Cada fichero: dos personas añaden una línea distinta en el mismo sitio (conflicto para `git merge-file` en todos), `-p <ruta>`, `-t 5000`, 3 ejecuciones; mediana en segundos.
+
+| Fichero | KB | rc | Linux (contenedor) | Linux (runner) | Windows | macOS |
+|---|---|---|---|---|---|---|
+| reto 02 y 03: `pyproject.toml`, `package.json` | < 1 | 0 | 0,01 | 0,01 | 0,05–0,06 | 0,02 |
+| reto 03: `motor/src/motor/main.py` | < 1 | 0 | 0,04 | 0,04 | 0,08 | 0,04 |
+| reto 03: `web/src/App.jsx`, `vite.config.js`, `index.html` | < 1 | 1 | 0,08–0,10 | 0,17 | 0,13 | 0,08–0,09 |
+| reto 02 y 03: `CLAUDE.md`, `plan.md` | 5–8 | 1 | 0,08–0,09 | 0,13–0,15 | 0,13–0,15 | 0,09–0,10 |
+| reto 03: `web/package-lock.json` | 55 | 0 | 0,14 | 0,12 | 0,19 | 0,15 |
+| reto 02 y 03: `uv.lock` (sin lenguaje: va directo a git) | 92 y 291 | 1 | 0,01 | 0,01 | 0,05 | 0,02–0,03 |
+| kit: `evals/coordinacion/prueba_hooks.py` | 103 | 0 | 0,44 | 0,43 | 0,58 | 0,41 |
+| kit: `hkos/web-src/test/m10.test.jsx` | 50 | 1 | 0,66 | 0,68 | 0,81 | 0,47 |
+| kit: `hkos/web-src/test/vistas/G4.json` | 102 | 0 | 0,32 | 0,30 | 0,44 | 0,39 |
+| kit: `docs/hackathon-os/contratos/api.md` | 180 | 1 | 0,97 | 1,14 | 1,37 | 1,19 |
+| kit: `hkos/web/nueva/assets/index-*.js` (compilado) | 299 | 1 | **5,81** | **5,80** | **6,02** | **5,59** |
+| P12: Python sintético de 148 KB | 148 | 0 | 4,7 | 3,2 | 4,0 | 2,4 / **5,3 (rc 1)** / 4,9 (brew) |
+| **Suma de las 20 medianas** (todo en un ciclo) | | | 9,1 | 9,7 | 10,8 | 9,0 |
+
+- **Los ficheros de un reto tardan ≤ 0,2 s** en las tres plataformas; el `.md` más largo del kit, ≈ 1,4 s. Con los plazos de ADR-0014 (5 s por fichero, 10 s por proceso, 20 s por ciclo) caben de sobra: 20 ficheros en conflicto a la vez suman ≈ 10 s.
+- **`-t 5000` no es el tiempo total:** cubre la fusión estructural, no el análisis previo. El JS compilado de 299 KB agota el plazo, vuelve a git y da rc 1 en 5,6–6,0 s; por eso hace falta el plazo de 10 s del proceso por encima. Ninguno llegó a 10 s.
+- **El Python sintético de 148 KB está al filo:** 2,4–4,9 s, y en una de las dos pasadas del runner de macOS pasó de 5 s y dio rc 1 (sigue rojo, que es lo seguro: «un plazo vencido nunca baja a amarillo»). Como el «no resuelve» por plazo se guarda en la caché, ese fichero seguiría rojo hasta que cambie un lado. Con ficheros de reto (≤ 55 KB en los generados) no pasa.
+
+**`merge-tree --write-tree --no-messages` sin `--name-only`** (repo de prueba con tres ficheros en conflicto, `c.json`, `m.py` y `v.py`, y un par sin conflicto):
+
+| Git | Plataforma | Con `--name-only` | Sin `--name-only` | Sin conflicto | Flujo del relay (`cat-file` → `mergiraf`) | Clon sin cambios |
+|---|---|---|---|---|---|---|
+| **2.38.0** (compilado) | Linux | rc 1, árbol + 3 rutas | **rc 1**, árbol + 9 líneas `<modo> <blob> <etapa>\t<ruta>` (etapas 1, 2 y 3 de cada ruta) | rc 0, solo el árbol | `c.json` 0, `m.py` 0, `v.py` 1 | Sí |
+| 2.43.0 | Linux (contenedor) | igual | **igual** (mismos blobs y árbol) | igual | igual | Sí |
+| 2.55.0 | Linux (runner) | igual | igual | igual | igual | Sí |
+| **2.38.0.windows.1** (MinGit) | Windows | igual | **igual** | igual | igual | Sí |
+| **2.49.0.windows.1** (MinGit; la del portátil del usuario, P11) | Windows | igual | **igual** | igual | igual | Sí |
+| 2.56.0.windows.2 (runner) | Windows | igual | igual | igual | igual | Sí |
+| 2.56.0 | macOS | igual | igual | igual | igual | Sí |
+
+El mismo código de salida con y sin `--name-only` en todas, y las etapas desde la 2.38. (En Windows el árbol y los blobs tienen otro sha porque el script escribió los ficheros con CRLF; los modos, las etapas y los códigos, iguales.)
+
+**Versión mínima.** Con los 14 casos de P12 y las copias, en Linux:
+- **0.19.1:** los mismos códigos, las mismas copias y `XDG_DATA_HOME` igual;
+- **0.16.3:** **rc 129** (no 1) con un fichero no UTF-8 y **rc 129** (no 255) con una entrada que no existe; lo demás, igual. El relay seguiría bien (solo cuenta el rc 0), pero ya no se comporta como lo descrito en P12.
+- **Se queda 0.20.0** (decisión 5 de ADR-0014): es la única probada en las tres plataformas y la que dan la release oficial y brew. 0.19.1 sería admisible en Linux, pero no se ha probado en Windows ni en macOS.
+
+**Respuesta a P17: sí, en los dos.** Hay binario oficial para Windows (x86_64) y macOS (arm64 y x86_64) que arranca con un comando; los casos de P12 dan los mismos códigos; Mergiraf guarda las copias en `~/.local/share/mergiraf/merges` en macOS (como en Linux, con `XDG_DATA_HOME`) y en `%APPDATA%\Mergiraf contributors\Mergiraf\data\merges` en Windows, y **`APPDATA` (no `XDG_DATA_HOME`) las lleva a un directorio temporal** en Windows. No hace falta dejar 2b apagado en ningún sistema.
+
+**Qué no se ha comprobado:** un portátil real con Windows o macOS (solo runners de GitHub; el portátil del usuario, en K-114, criterio 6); Windows en ARM (sin binario oficial: quedaría `cargo install --locked mergiraf`); el código real de un equipo en un reto (solo el árbol de `/hack-scaffold` con lockfiles generados, y los ficheros del kit como cota); versiones distintas de 0.16.3, 0.19.1 y 0.20.0. La rama `m11-p17-sondeo` y su workflow (`.github/workflows/p17-sondeo.yml`, solo en esa rama) son desechables: no se fusionan ni llegan a `main`; su `on: push` solo vale para esa rama.
