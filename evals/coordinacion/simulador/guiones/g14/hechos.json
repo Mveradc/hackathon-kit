@@ -1648,7 +1648,7 @@
     },
     "que": "con solo depende_de, T06–T09 empezarían ya, en paralelo, y la entrega llegaría: la cadena de cada persona (R3 B) cambia el veredicto"
    },
-   "resumen": "ruta: estimación no llega · T04: plazo pasado 23:00 y 3 más · y más en la vista"
+   "resumen": "ruta: estimación no llega · T04: plazo pasado vie 23:00 y 3 más · y más en la vista"
   }
  ],
  "riesgos": "por estimación (api.md §11.4, ajuste 3): las tareas abiertas con plazo cuyo fin_tarde (con el ritmo más lento medido) es posterior a la entrega, estén o no en la cadena, con {tarea, tipo: estimacion, fin_tarde, dueno, en_cadena, viejo} y sin fin_temprano; la más tardía primero y, a igual hora, por tarea. Nunca las de quien no da señales por ir lenta, ni las «sin plazo»",

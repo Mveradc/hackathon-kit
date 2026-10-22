@@ -516,9 +516,10 @@ class Tabla(Base):
         b = self.corre(r, tareas, ahora="2026-10-24T08:00:00Z")
         self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin 10:30–11:30 · entrega dom 12:00 · "
                                        "otra entrega: dom 13:00 (equipo.md)")
-        # Sin abiertas, temprano = tarde (K-108, 3): «fin hacia …» es más largo y la otra entrega ya no cabe.
+        # Sin abiertas, temprano = tarde (K-108, 3): «fin hacia …» es más largo y la otra entrega ya no cabe. El fin es
+        # el último hecha_en (#77, A2: T03, el 19 sep a las 06:40), no ahora.
         b = self.corre(r, ana()[:3], ahora="2026-10-24T08:00:00Z")
-        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin hacia 10:00 (las medidas no varían) · "
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin hacia 06:40 (las medidas no varían) · "
                                        "entrega dom 12:00 · y más en la vista")
         # La hora, en la zona del equipo (la IANA, a través del cambio de hora): una de antes del cambio, con +02:00.
         r["otras_entregas"] = [declarada("2026-10-24T21:00:00Z", "sáb 23:00", donde="plan.md", nombre="Entrega final")]

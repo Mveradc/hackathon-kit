@@ -401,14 +401,16 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     if not motivos:
         for k in sorted(estimables):
             termina(k)
-        temprano = max([f[0] for f in fin.values()], default=t_ahora)
-        tarde = max([f[1] for f in fin.values()], default=t_ahora)
+        # #77, A2: con todo hecho, el fin es el último hecha_en de las que cuentan (no ahora): a tiempo si se acabó antes
+        # de la entrega y no llega si se acabó después.
+        acabado = max((fecha(h) for h in ((t.get("historia") or {}).get("hecha_en") for t in cuentan.values()) if h),
+                      default=t_ahora)
+        temprano = max([f[0] for f in fin.values()], default=acabado)
+        tarde = max([f[1] for f in fin.values()], default=acabado)
         estimacion = {"temprano": iso(temprano), "tarde": iso(tarde),
                       "margen_min": math.floor((t_entrega - tarde).total_seconds() / 60),
                       "margen_max": math.floor((t_entrega - temprano).total_seconds() / 60)}
         valor = "a_tiempo" if tarde <= t_entrega else "justo" if temprano <= t_entrega else "no_llega"
-        if not abiertas:        # #77, A2: con todo hecho, terminado: no llega tarde aunque la entrega haya pasado
-            valor = "a_tiempo"
     else:
         valor = "sin_estimacion"
     gravedad = {"a_tiempo": "ninguna", "justo": "ambar", "no_llega": "ambar"}.get(valor, "gris")

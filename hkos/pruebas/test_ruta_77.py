@@ -39,16 +39,25 @@ class A1SinNadaQueEstimar(Base):
 
 
 class A2TodoHecho(Base):
-    """A2: con todo hecho, terminado: el veredicto no es «no llega» aunque la entrega ya haya pasado."""
+    """A2: con todo hecho, el fin es el último hecha_en de las que cuentan, no ahora: «a tiempo» si se acabó antes de
+    la entrega, aunque ya haya pasado, y «no llega» si se acabó después."""
 
-    def test_todo_publicado_y_la_entrega_pasada(self):
+    def test_todo_publicado_antes_de_la_entrega_ya_pasada(self):
+        # La última, T22 de luis, se publica a T0 − 120 min (08:00 en Madrid); la entrega, a T0 − 60 min; ahora, T0.
         b = self.corre(ruta_de(-60), ana()[:3] + luis(abiertas=False))
         self.assertEqual([(p["persona"], p["n"]) for p in b["base"]["personas"]], [("ana", 3), ("luis", 3)])
-        self.assertEqual(b["veredicto"]["valor"], "a_tiempo")
-        self.assertEqual(b["veredicto"]["gravedad"], "ninguna")
-        self.assertNotEqual(firma(b), "no_llega")
-        self.assertNotIn("no llega", b["resumen"])
+        self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["gravedad"]), ("a_tiempo", "ninguna"))
+        self.assertEqual(firma(b), "a_tiempo")
+        self.assertEqual(b["estimacion"], {"temprano": iso(T0 - timedelta(minutes=120)), "tarde": iso(T0 - timedelta(minutes=120)), "margen_min": 60, "margen_max": 60})
+        self.assertEqual(b["resumen"], "ruta: estimación a tiempo · fin hacia 08:00 (las medidas no varían) · "
+                                       "entrega sáb 09:00")
         self.assertEqual((b["hechos"], b["cadena"], b["riesgos"]), ([], [], []))
+
+    def test_todo_publicado_pero_la_ultima_despues_de_la_entrega(self):
+        b = self.corre(ruta_de(-150), ana()[:3] + luis(abiertas=False))
+        self.assertEqual((b["veredicto"]["valor"], b["veredicto"]["gravedad"]), ("no_llega", "ambar"))
+        self.assertEqual(b["estimacion"], {"temprano": iso(T0 - timedelta(minutes=120)), "tarde": iso(T0 - timedelta(minutes=120)), "margen_min": -30, "margen_max": -30})
+        self.assertTrue(b["resumen"].startswith("ruta: estimación no llega · fin hacia 08:00 "), b["resumen"])
 
 
 class A3RangoSinAnchura(Base):

@@ -1079,7 +1079,7 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True, viejo_de=lambda fuente: F
                            {"ciclo": c, "sin_plazo": len(sin_plazo), "sin_usuario": len(sin_usuario),
                             "pocos_datos": len(pocos)},
                            motivos, [(t, plazos[t]["valor"]) for t in pasados], sorted(sin_plazo), otras,
-                           lr["zona"] or timezone.utc, sorted(sin_usuario))
+                           lr["zona"] or timezone.utc, sorted(sin_usuario), ahora)
     return {
         "inicio": {"texto": lr["inicio"]["texto"], "valor": z(lr["inicio"]["valor"])},
         "entrega": {"texto": ent["texto"], "valor": z(entrega), "motivo": ent["motivo"], "confirmar": ent["confirmar"],
@@ -1106,7 +1106,8 @@ def ruta(lr, f, deps, duenos, ahora_s, con_orden=True, viejo_de=lambda fuente: F
         "tareas": est, "cadena": cadena, "zona_valor": lr["zona_valor"], "resumen": resumen}
 
 
-def resumen_ruta(veredicto, rango, entrega, confirmar, detalle, motivos, pasados, sin_plazo, otras, tz, sin_usuario=()):
+def resumen_ruta(veredicto, rango, entrega, confirmar, detalle, motivos, pasados, sin_plazo, otras, tz, sin_usuario=(),
+                 ahora=None):
     """§11.4, resumen (7B), con las decisiones del usuario sobre el #56 (ajuste 3, puntos 5, 6 y 7): las partes,
     separadas por « · »: el veredicto; justo detrás, el plazo pasado más antiguo («T05: plazo pasado 02:30 y N más»),
     también antes de «fin…»; con estimación, «fin A–B · entrega <día HH:MM>[ (confirmar)]» y «sin contar … (sin
@@ -1117,6 +1118,8 @@ def resumen_ruta(veredicto, rango, entrega, confirmar, detalle, motivos, pasados
     final (nunca el veredicto ni el plazo pasado) y se añade « · y más en la vista». «fin A–B · entrega …» es una parte.
     R5: con temprano = tarde (los ritmos no varían), «fin hacia HH:MM (las medidas no varían)» en vez de «fin A–B»; y
     las abiertas de una persona sin @, «sin contar … (sin usuario)», justo detrás de «sin contar … (sin plazo)».
+    Issue #77: «fin hacia» si temprano y tarde dan la misma HH:MM en la zona (A3); el plazo pasado, con su día si no es
+    el de `ahora` en esa zona (A11).
     rango: (temprano, tarde) o None; detalle: {motivo: su dato}; pasados: [(ID, plazo)], el más antiguo primero."""
     def hm(d):
         return d.astimezone(tz).strftime("%H:%M")
@@ -1128,11 +1131,12 @@ def resumen_ruta(veredicto, rango, entrega, confirmar, detalle, motivos, pasados
         return f"{n} {que}" + "s" * (n != 1)
     partes = [f"ruta: estimación {LEGIBLE[veredicto]}" if rango else "ruta: sin estimación"]
     if pasados:
-        partes.append(f"{pasados[0][0]}: plazo pasado {hm(pasados[0][1])}" +
+        hoy = ahora is None or pasados[0][1].astimezone(tz).date() == ahora.astimezone(tz).date()
+        partes.append(f"{pasados[0][0]}: plazo pasado {hm(pasados[0][1]) if hoy else dia_hm(pasados[0][1])}" +
                       (f" y {len(pasados) - 1} más" if len(pasados) > 1 else ""))
     fijas = len(partes)
     if rango:
-        fin = f"fin hacia {hm(rango[0])} (las medidas no varían)" if rango[0] == rango[1] else \
+        fin = f"fin hacia {hm(rango[0])} (las medidas no varían)" if hm(rango[0]) == hm(rango[1]) else \
             f"fin {hm(rango[0])}–{hm(rango[1])}"
         partes.append(f"{fin} · entrega {dia_hm(entrega)}" + (" (confirmar)" if confirmar else ""))
         if sin_plazo:
@@ -1169,7 +1173,8 @@ def ejemplo_11_6():
     r = resumen_ruta("sin_estimacion", None, fecha("2026-09-20T10:00:00+02:00"), False,
                      {"ciclo": None, "sin_plazo": 1, "pocos_datos": 2}, ["pocos_datos"],     # ana 2 y marta 1 de 3
                      [("T05", fecha("2026-09-19T02:30:00+02:00"))], ["T21"],
-                     [{"texto": "dom 11:00", "valor": "2026-09-20T09:00:00Z", "donde": "plan.md"}], MADRID)
+                     [{"texto": "dom 11:00", "valor": "2026-09-20T09:00:00Z", "donde": "plan.md"}], MADRID,
+                     ahora=fecha("2026-09-19T11:00:00+02:00"))
     comprueba(f"api.md §11.6: el resumen de la ruta, «{r}»", r == "ruta: sin estimación · T05: plazo pasado 02:30 · "
               "pocos datos: 2 personas · otra entrega: dom 11:00 (plan.md)", r)
 
@@ -1253,7 +1258,7 @@ UNO_O_MAS = r"(?:1 {0}|(?:[02-9]|\d\d+) {0}s)"
 # «» abierta), no casa.
 RESUMEN_ENTERO = re.compile(
     r"^ruta: (?:estimación (?:a tiempo|justo|no llega)|sin estimación)"
-    r"(?: · T\d+: plazo pasado \d\d:\d\d(?: y \d+ más)?)?"
+    rf"(?: · T\d+: plazo pasado (?:\d\d:\d\d|{DIA_HM})(?: y \d+ más)?)?"
     rf"(?: · fin (?:\d\d:\d\d–\d\d:\d\d|hacia \d\d:\d\d \(las medidas no varían\)) · entrega {DIA_HM}(?: \(confirmar\))?"
     r"(?: · sin contar T\d+(?:, T\d+)* \(sin plazo\))?(?: · sin contar T\d+(?:, T\d+)* \(sin usuario\))?"
     rf"| · (?:sin hora de entrega|ciclo T\d+(?: → T\d+)+|sin plazo: {UNO_O_MAS.format('tarea')}"
@@ -1589,7 +1594,7 @@ CONTROLES = [
     ("#56 fila 9: «1 personas» en plural", g14, C14("pocos_datos_una_persona") + ["resumen"],
      lambda r: r.replace("pocos datos: 1 persona ·", "pocos datos: 1 personas ·")),
     ("#56 fila 8: las horas del resumen con el desfase de la entrega (CET), no con la zona", g14,
-     C14("cambio_de_hora") + ["resumen"], lambda r: r.replace("T20: plazo pasado 12:00", "T20: plazo pasado 11:00")),
+     C14("cambio_de_hora") + ["resumen"], lambda r: r.replace("T20: plazo pasado sáb 12:00", "T20: plazo pasado sáb 11:00")),
     ("#56: H+17 en horas de reloj (dom 03:00 CET), no transcurridas", g14,
      C14("cambio_de_hora") + ["plazos_vencidos", "T22", "plazo"], "2026-10-25T02:00:00Z"),
     ("#56: la zona como texto suelto, no {valor, fuente, observado_en, declarado}", g14, M + [1, "zona"],
@@ -1643,7 +1648,7 @@ CONTROLES = [
      lambda c: vivo_g14(c, "G14 «mitad con riesgo»"), M + [2, "cifra", "rango", "tarde"], "2026-09-21T23:59:24Z"),
     ("código de verdad, #56 fila 8: las horas del resumen con el desfase de la entrega",
      lambda c: vivo_g14(c, "G14 caso «cambio_de_hora»"), C14("cambio_de_hora") + ["resumen"],
-     lambda r: r.replace("T20: plazo pasado 12:00", "T20: plazo pasado 11:00")),
+     lambda r: r.replace("T20: plazo pasado sáb 12:00", "T20: plazo pasado sáb 11:00")),
     ("código de verdad, #56 fila 13: N5 sin corregir con «· Marta (Embat)»",
      lambda c: vivo_g13(c, "G13 caso «corrige_con_parentesis»"), C13("corrige_con_parentesis") + ["notas", "N5", "corregida_por"],
      lambda _: None),
