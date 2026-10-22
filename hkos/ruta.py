@@ -286,12 +286,14 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         if t["estado"]["valor"] in HECHAS and not t.get("declarado") and h.get("primera_senal") and h.get("hecha_en") \
                 and fr and con_usuario(t["dueno"]):
             a, b = fecha(h["primera_senal"]), fecha(h["hecha_en"])
+            if b < a:           # #77, A4: relojes desajustados entre quien da la primera señal y quien publica
+                continue
             seg = (b - a).total_seconds() - _solape(a, b, pausas(t["dueno"]))
             # Decisión 4 (#46): los descansos tampoco cuentan en la franja (la parte que le toca de ellos).
             ritmo = max(1, math.floor(100 * seg / 60 / libre(fr, t["dueno"]) + 0.5))
             medidas.setdefault(t["dueno"], []).append((ritmo, h["hecha_en"]))
     nadie = {k for k in abiertas if not con_usuario(cuentan[k]["dueno"])}
-    sin_usuario = [dict({"tarea": k, "dueno": cuentan[k]["dueno"]},
+    sin_usuario = [dict({"tarea": k, "dueno": texto_del_bloque(cuentan[k]["dueno"])},     # #77, A6
                         **_origen(cuentan[k], ahora, "orden_plan", "titulo_plan", "hasta", "franja"))
                    for k in ids if k in nadie]
     duenos_abiertos = {cuentan[k]["dueno"] for k in abiertas - nadie}
@@ -334,31 +336,56 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     if nadie and not estimables:
         motivos.append("sin_usuario")
     # Pocos datos, de quien tiene algo que estimar (o, si no hay nada estimable, de quien tiene algo abierto).
+    # #77, A1: sin nada abierto, de todas las personas de la base; sin ninguna, tampoco hay dato («a tiempo» sin haber
+    # medido nada, no).
     pocos = [b for b in base_personas if b["n"] < MINIMO
-             and b["persona"] in {cuentan[k]["dueno"] for k in (estimables or abiertas)}]
-    if pocos:
+             and (not abiertas or b["persona"] in {cuentan[k]["dueno"] for k in (estimables or abiertas)})]
+    if pocos or not (abiertas or base_personas):
         motivos.append("pocos_datos")
+
+    # #77, A5: en orden topológico (sin ciclo, que ya es motivo), con memoria y sin recursión.
+    previas_est = {}
 
     def previas_estimables(k):
         """{A: por} de las previas abiertas que se estiman; a través de una sin plazo o sin usuario, las suyas (no ocupa
         tiempo)."""
-        salida = {}
-        for a, por in sorted(previas[k].items()):
-            if a in estimables:
-                salida.setdefault(a, por)
-            elif a in aparte or a in nadie:
-                for b in previas_estimables(a):
-                    salida.setdefault(b, por)
-        return salida
+        if not previas_est:
+            pendientes = {b: len(previas[b]) for b in ids}
+            listas = [b for b in ids if not pendientes[b]]
+            while listas:
+                b = listas.pop()
+                salida = {}
+                for a, por in sorted(previas[b].items()):
+                    if a in estimables:
+                        salida.setdefault(a, por)
+                    elif a in aparte or a in nadie:
+                        for c in previas_est[a]:
+                            salida.setdefault(c, por)
+                previas_est[b] = salida
+                for c in sucesoras[b]:
+                    pendientes[c] -= 1
+                    if not pendientes[c]:
+                        listas.append(c)
+        return previas_est[k]
 
     # --- estimación: cada tarea abierta, tras sus previas abiertas, al ritmo de su dueño y saltando descansos ---
     fin, estimacion = {}, None
 
     def termina(k):
-        if k not in fin:
-            t = cuentan[k]
+        """Sin recursión (#77, A5): primero las previas que faltan, con una pila."""
+        pila = [k]
+        while pila:
+            x = pila[-1]
+            faltan = [a for a in previas_estimables(x) if a not in fin]
+            if faltan:
+                pila.extend(faltan)
+                continue
+            pila.pop()
+            if x in fin:
+                continue
+            t = cuentan[x]
             p, h, fr = t["dueno"], t.get("historia") or {}, _v(t["franja"])
-            antes = [termina(a) for a in previas_estimables(k)]
+            antes = [fin[a] for a in previas_estimables(x)]
             # #56, 9: tras volver a en_curso después de publicarse (6B), lo trabajado cuenta desde el trabajo nuevo.
             desde, trabajado = h.get("trabajo_nuevo_desde") or h.get("primera_senal"), 0.0
             if t["estado"]["valor"] in EMPEZADAS and desde and fecha(desde) < t_ahora:
@@ -367,8 +394,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
             par, minutos = [], libre(fr, p)       # #56, 1: sin descansos, que _avanza ya salta (una sola vez)
             for i, ritmo in enumerate(ritmos[p]):
                 seg = max(0, math.ceil(minutos * 60 * ritmo / 100 - trabajado))
-                par.append(_avanza(max([t_ahora] + [x[i] for x in antes]), seg, pausas(p)))
-            fin[k] = tuple(par)
+                par.append(_avanza(max([t_ahora] + [y[i] for y in antes]), seg, pausas(p)))
+            fin[x] = tuple(par)
         return fin[k]
 
     if not motivos:
@@ -380,6 +407,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
                       "margen_min": math.floor((t_entrega - tarde).total_seconds() / 60),
                       "margen_max": math.floor((t_entrega - temprano).total_seconds() / 60)}
         valor = "a_tiempo" if tarde <= t_entrega else "justo" if temprano <= t_entrega else "no_llega"
+        if not abiertas:        # #77, A2: con todo hecho, terminado: no llega tarde aunque la entrega haya pasado
+            valor = "a_tiempo"
     else:
         valor = "sin_estimacion"
     gravedad = {"a_tiempo": "ninguna", "justo": "ambar", "no_llega": "ambar"}.get(valor, "gris")
@@ -400,8 +429,8 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
         if k not in abiertas:
             continue
         plazo = _v(t.get("hasta"))
-        comun = {"tarea": k, "persona": t["dueno"], "plazo": plazo, "fuente": "derivado", "observado_en": ahora,
-                 "viejo": viejo_de(t["estado"]["fuente"])}
+        comun = {"tarea": k, "persona": texto_del_bloque(t["dueno"]), "plazo": plazo, "fuente": "derivado",   # #77, A6
+                 "observado_en": ahora, "viejo": viejo_de(t["estado"]["fuente"])}
         if plazo and fecha(plazo) < t_ahora:
             hechos.append(dict(comun, tipo="plazo_pasado", gravedad="rojo", arrastra=arrastra(k)))
         if t["estado"]["valor"] in ("parada", "no_cerrada"):
@@ -485,8 +514,10 @@ def calcular(ruta, tareas, ahora, personas=(), fuentes=None, tarjetas=None, umbr
     # la entrega; sin ella, el primer motivo, abreviado; «sin contar …»; y la primera otra entrega.
     partes = [f"ruta: estimación {LEGIBLE[valor]}" if estimacion else "ruta: sin estimación"]
     pasados = [x for x in hechos if x["tipo"] == "plazo_pasado"]
-    if pasados:
-        partes.append(f"{pasados[0]['tarea']}: plazo pasado {hm(pasados[0]['plazo'])}" +
+    if pasados:                 # A11 (#77): con el día si no es el de hoy en la zona del equipo
+        plazo = pasados[0]["plazo"]
+        mismo_dia = fecha(plazo).astimezone(tz).date() == t_ahora.astimezone(tz).date()
+        partes.append(f"{pasados[0]['tarea']}: plazo pasado {hm(plazo) if mismo_dia else dia_hm(plazo)}" +
                       (f" y {len(pasados) - 1} más" if len(pasados) > 1 else ""))
     if estimacion:
         temprano, tarde = hm(estimacion["temprano"]), hm(estimacion["tarde"])

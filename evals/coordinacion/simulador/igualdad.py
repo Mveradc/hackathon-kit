@@ -15,6 +15,9 @@ Desde M10 (K-105, criterio 4; nota de ADR-0009), también G13 (jurado) y G14 (ru
 interruptores (m10.py): los bloques `jurado` y `ruta` enteros son los mismos en la vista del relay, en la del demonio
 (/v1/vista) y en el MCP (`jurado`, `ruta`, con la misma hora), y la línea de «Jurado y ruta» de estado-equipo.md es el
 `resumen` del bloque, con su hora, su fuente y «viejo». En G1–G6 y G12 (sin los bloques), ni la sección ni las firmas.
+Issue #77, A3: en cada bloque `ruta` con estimación, el resumen dice «fin hacia» si y solo si temprano y tarde se
+escriben con la misma HH:MM en la zona del equipo (ajuste 5, punto 2 de ADR-0013), la regla con que la web elige
+«hacia» o «entre» (Ruta.jsx; m10.test.jsx). Y G15, el caso del issue: dos instantes distintos del mismo minuto.
 
 Uso: uv run --no-project evals/coordinacion/simulador/igualdad.py   (0 OK · 1 falla)
 """
@@ -37,6 +40,7 @@ import m10  # noqa: E402
 import mcp as mcp_mod  # noqa: E402
 import proyeccion  # noqa: E402
 import relay as relay_mod  # noqa: E402
+import ruta as ruta_mod  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from fixture import estado_5x20  # noqa: E402
 import g12  # noqa: E402
@@ -143,6 +147,64 @@ def lineas_jr(web):
     `resumen` de cada bloque, con su hora, su fuente y «viejo»."""
     return [f"- {b['resumen']} ({hhmm(b['observado_en'])} · {b['fuente']}" + (" · viejo" if b["viejo"] else "") + ")"
             for b in (web.get("jurado"), web.get("ruta")) if b]
+
+
+def rango_como_en_la_web(nombre, ruta):
+    """Issue #77, A3: «fin hacia» en el resumen si y solo si temprano y tarde dan la misma HH:MM en la zona del equipo,
+    la que usa la web (zonaRuta: la `zona` del bloque o, sin ella, el desfase de la entrega)."""
+    est = ruta.get("estimacion")
+    if not est or " · fin " not in ruta["resumen"]:
+        return
+    tz = ruta_mod._zona({"zona": ruta["zona"], "entrega": ruta["objetivo"]})
+    hm = [datetime.fromisoformat(est[k].replace("Z", "+00:00")).astimezone(tz).strftime("%H:%M")
+          for k in ("temprano", "tarde")]
+    comprueba(f"{nombre}: «fin hacia» en el resumen si y solo si temprano y tarde son la misma HH:MM en la zona del "
+              f"equipo, como en la web ({hm[0]}, {hm[1]})", (" · fin hacia " in ruta["resumen"]) == (hm[0] == hm[1]),
+              ruta["resumen"])
+
+
+def estado_g15():
+    """Issue #77, A3: ana con tres medidas (30 %, 60 % y 90 % de 60 min) y T04 abierta con 1 min de franja, a las 10:00
+    de Madrid: temprano 08:00:18Z y tarde 08:00:54Z, distintos pero los dos «10:00»."""
+    t0 = datetime(2026, 9, 19, 8, 0, tzinfo=timezone.utc)
+    obs = "2026-09-18T17:00:00Z"
+
+    def m(n):
+        return (t0 + timedelta(seconds=round(60 * n))).astimezone(timezone(timedelta(hours=2))).isoformat()
+
+    def dato(valor):
+        return {"valor": valor, "fuente": "git", "observado_en": obs, "declarado": True}
+
+    def declarada(valor, texto):
+        return {"valor": valor, "texto": texto, "motivo": None, "donde": "equipo.md", "fuente": "git",
+                "observado_en": obs, "declarado": True}
+
+    def tarea(tid, orden, desde, hasta, primera=None, hecha=None):
+        e = "publicada" if hecha is not None else "lista"
+        return {"id": tid, "titulo": f"Tarea {tid}", "dueno": "ana", "depende_de": [], "declarado": None,
+                "estado": {"valor": e, "fuente": "git" if hecha is not None else "derivado",
+                           "observado_en": m(hecha if hecha is not None else -1)},
+                "hasta": {"valor": m(hasta), "texto": "sáb", "motivo": None, "fuente": "git", "observado_en": obs,
+                          "declarado": True},
+                "franja": {"valor": {"desde": m(desde), "hasta": m(hasta), "compartida": 1, "min": hasta - desde},
+                           "motivo": None, "fuente": "derivado", "observado_en": obs, "declarado": True},
+                "orden_plan": dato(orden),
+                "historia": {"primera_senal": m(primera) if primera is not None else None,
+                             "hecha_en": m(hecha) if hecha is not None else None, "trabajo_nuevo_desde": None,
+                             "ultima_senal": m(-1), "fuente": "derivado", "observado_en": m(-1)}}
+    tareas = [tarea(f"T0{i + 1}", i + 1, -180 + 60 * i, -120 + 60 * i, -400 + 40 * i, -400 + 40 * i + 18 * (i + 1))
+              for i in range(3)] + [tarea("T04", 4, 0, 1)]
+    ahora = iso_utc(t0)
+    return {"v": 1, "generado_en": ahora,
+            "fuentes": {"relay": {"valor": "ok", "fuente": "derivado", "observado_en": ahora}},
+            "personas": [{"persona": "ana", "nombre": "Ana", "actores": []}], "tareas": tareas, "colisiones": [],
+            "ruta": {"equipo": dato("ok"), "zona": dato("Europe/Madrid"),
+                     "inicio": declarada("2026-09-18T19:00:00+02:00", "2026-09-18 19:00 (Europe/Madrid)"),
+                     "entrega": declarada(m(240), "entrega"), "otras_entregas": [], "hitos": [], "descansos": []}}
+
+
+def iso_utc(d):
+    return d.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def herramientas(repo):
@@ -262,6 +324,8 @@ def comparar(nombre, url, token, repo, personas, estado=None):
         if jr:
             comprueba(f"{nombre}, MCP de @{persona}: `estado` trae la misma sección «Jurado y ruta»",
                       secciones(mcp_estado(repo)).get("Jurado y ruta") == sec.get("Jurado y ruta"))
+    if web.get("ruta"):
+        rango_como_en_la_web(nombre, web["ruta"])
     if web.get("jurado") or web.get("ruta"):
         comparar_m10(nombre, web, repo, personas[0])
 
@@ -328,6 +392,19 @@ def main():
             plan = [f["plan.md"] for _, f in versiones if "plan.md" in f][-1]
             r = m10.relay(tmp, g14, versiones, mo["ahora"], tareas=m10.tareas_del_plan(g14, plan))
             servir_y_comparar(f"G14 ({mo['nombre']})", r, repo, [p["persona"] for p in r.personas])
+        # G15 (issue #77, A3): el rango sin anchura, con dos instantes distintos del mismo minuto.
+        e = estado_g15()
+        err = Esquema("estado.schema.json").error(e)
+        comprueba("G15 (#77, A3): valida contra estado.schema.json", err is None, str(err))
+        r = relay_mod.Relay(os.path.join(tmp, "relay-g15"), [], ahora=lambda: e["generado_en"])
+        with r.lock:
+            r.estado, r.vista, r.version = e, proyeccion.vista(e), r.version + 1
+            r.texto = json.dumps(e, ensure_ascii=False).encode("utf-8")
+        est = r.vista["ruta"]["estimacion"]
+        comprueba("G15 (#77, A3): temprano y tarde distintos, del mismo minuto",
+                  [iso_utc(datetime.fromisoformat(est[k].replace("Z", "+00:00"))) for k in ("temprano", "tarde")]
+                  == ["2026-09-19T08:00:18Z", "2026-09-19T08:00:54Z"], str(est))
+        servir_y_comparar("G15 (#77, A3: rango sin anchura)", r, repo, ["ana"])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print(f"\n{fallos} fallos")
