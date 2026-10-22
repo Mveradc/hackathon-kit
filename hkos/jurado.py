@@ -6,7 +6,7 @@ bloque(jurado, tareas, ahora, …) recibe lo que el relay deja en `estado.json` 
 fuente, observado_en}, historia), y devuelve `$defs/vista_jurado`, ya ordenado, con su `cuenta` y su `resumen`.
 - Nunca «cubierta» porque algo lo declare: una `cerrada` a mano (⚑), el pitch o una etiqueta ambigua no cubren.
 - La evidencia se enseña siempre que exista; la Prueba es evidencia, no condición (decisión 4A).
-- El texto de las notas es dato (constitución V): sale tal cual, sin interpretarlo.
+- El texto de las notas es dato (constitución V): sale sin interpretarlo y sin controles bidi (issue #77, A10).
 - «Sin cubrir» es todo lo no cubierto menos las corregidas: sin_tarea + ambiguas + planificadas + en_curso + en_pitch
   (#46, 2). Una ambigua cuenta solo en ambiguas.
 """
@@ -20,6 +20,9 @@ SIGUE_HECHA = ("en_curso", "en_revision", "integrada", "parada", "no_cerrada")
 PALABRAS = ("obligatorio", "se valora", "nos gustaría ver")
 LINEA_MAX = 120                                        # api.md §6 (#46, M17): deja sitio a « (HH:MM · fuente · viejo)»
 DE_FUENTE = {"git": "git", "github": "github"}         # fuente de una tarjeta → vista.fuentes; lo demás llega por el relay
+TEXTOS = ("quien", "papel", "donde", "dijo", "afecta_a", "anotado_por")   # texto libre de una nota (A10)
+# Sin tarea firme, la cobertura sale de criterios.md, plan.md y pitch.md, que llegan por git (issue #77, A8).
+DE_GIT = ("sin_tarea", "en_pitch", "ambigua")
 
 
 def _norma(texto):
@@ -112,13 +115,25 @@ def _evidencias(t, conexiones, viejas, ahora, umbral):
     return salida
 
 
+def _nota(n):
+    """Una copia de la nota con sus textos libres sin controles bidi (issue #77, A10: como sinBidi en la web), sin
+    recortarlos: `dijo` sigue hasta 500. Lo que casa (cita, quien) se compara antes, con la nota de estado.json."""
+    from ruta import sin_bidi
+    x = copy.deepcopy(n)
+    for k in TEXTOS:
+        if isinstance(x.get(k), str):
+            x[k] = sin_bidi(x[k])
+    return x
+
+
 def _resumen(fichero, cuenta, fuerte):
     """fuerte: la fuerza más alta entre las sin cubrir, {texto, n}, o None."""
     from ruta import entre_comillas, recorta
     if fichero == "sin fichero":
         return "jurado: sin criterios.md en main"
-    if not cuenta["notas"]:
-        return "jurado: sin notas en criterios.md"
+    if not cuenta["notas"]:      # issue #77, A9: mal formado y sin ninguna nota válida no es «sin notas»
+        return "jurado: criterios.md mal formado, sin notas válidas" if fichero == "mal formado" else \
+            "jurado: sin notas en criterios.md"
     # #56, 7 (§11.3 del contrato): la Fuerza es texto libre: detrás de « · », entre «», recortada a 30 grafemas, con su
     # fichero y sin autor.
     partes = [f"jurado: {cuenta['sin_cubrir']} sin cubrir"]
@@ -193,10 +208,11 @@ def bloque(jurado, tareas, ahora, fuentes=None, servicios=None, umbral_viejo_s=F
         nuevo = [t["historia"]["trabajo_nuevo_desde"] for t in firmes
                  if t["estado"]["valor"] in SIGUE_HECHA and hecha(t) and t["historia"].get("trabajo_nuevo_desde")]
         salida.append({
-            "nota": copy.deepcopy(n),
+            "nota": _nota(n),
             "cobertura": {"valor": valor, "fuente": "derivado", "observado_en": max(horas, key=fecha),
                           "viejo": any(f["tarjeta"]["viejo"] for f in filas)
-                          or any(e["viejo"] for e in evidencias if e["tipo"] != "prueba")},
+                          or any(e["viejo"] for e in evidencias if e["tipo"] != "prueba")
+                          or (valor in DE_GIT and viejas.get("git", False))},
             "corregida_por": corregida.get(n["clave"]),
             "trabajo_nuevo_desde": min(nuevo, key=fecha) if nuevo else None,
             "tareas": filas,

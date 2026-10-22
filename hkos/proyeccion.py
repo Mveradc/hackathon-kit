@@ -382,12 +382,17 @@ def jurado_y_ruta(v):
     return [(k, v[k]) for k in ("jurado", "ruta") if v.get(k)]
 
 
-def linea_jurado_ruta(b, tz):
+def linea_jurado_ruta(b, tz, v=None, clave=None):
     """«- jurado: 2 sin cubrir (1 «obligatorio») · 1 cubierta de 3 (18:41 · derivado)» (api.md §6, M10): el `resumen`
     del bloque tal cual (ya cortado a 120, M17) y detrás su hora, su fuente y «· viejo» si lo es. Así cabe en 160 sin
-    que el corte se lleve la hora, la fuente ni «viejo»."""
+    que el corte se lleve la hora, la fuente ni «viejo». Un bloque viejo lleva la hora de su último dato bueno, no la
+    del cálculo (issue #77, A7; constitución III): la de fuentes.git en el jurado y `dato_mas_viejo` en la ruta."""
     viejo = " · viejo" if b.get("viejo") else ""
-    return "- " + _linea(f"{b['resumen']} ({_hora(b['observado_en'], tz)} · {b['fuente']}{viejo})")
+    hora = b["observado_en"]
+    if b.get("viejo"):
+        git = ((v or {}).get("fuentes") or {}).get("git") if clave == "jurado" else None
+        hora = (git or {}).get("observado_en") or b.get("dato_mas_viejo") or hora
+    return "- " + _linea(f"{b['resumen']} ({_hora(hora, tz)} · {b['fuente']}{viejo})")
 
 
 def linea_novedad(n, tz):
@@ -438,10 +443,22 @@ def avisos(v, tz):
         if k == "github" and d["valor"] == "no":
             salida.append(f"> Sin GitHub: las tareas salen de plan.md de main ({_hora(d['observado_en'], tz)}); "
                           "sin asignar ni cerrar issues.")
-        elif d["viejo"] and k != "git":
+        elif d["viejo"] and k == "git":
+            if _git_leido(v, d):
+                por = "" if d["valor"] == "ok" else f" ({d['valor']})"
+                salida.append(f"> Git (remoto del equipo): sin leer desde {_hora(d['observado_en'], tz)}{por}.")
+        elif d["viejo"]:
             nombre = {"relay": "Relay (lo efímero: presencia, ficheros)", "github": "GitHub (tareas)"}.get(k, k)
             salida.append(f"> {nombre}: sin datos nuevos desde {_hora(d['observado_en'], tz)} ({d['valor']}).")
     return salida
+
+
+def _git_leido(v, d):
+    """¿Dice fuentes.git desde cuándo no se lee el remoto (issue #77, A7)? Con jurado o ruta (M10, decisión 8 del issue
+    #56) es la hora de la última lectura buena de origin/main; con servicios (M9a), solo cuando no se lee
+    (`sin fetch`, `sin leer servicios`). Sin ellos, o con «ok» en M9a, es la hora del último commit: que no haya commits
+    nuevos no es que el remoto no se lea, y el md sigue como en la 0.4.0 (constitución I)."""
+    return bool(jurado_y_ruta(v)) or (bool(v.get("servicios")) and d["valor"] != "ok")
 
 
 def markdown(v, persona, ruta_detalle, tz=None, epoch=None, relay=None, avisos_locales=None):
@@ -475,7 +492,7 @@ def markdown(v, persona, ruta_detalle, tz=None, epoch=None, relay=None, avisos_l
         lineas += [linea_servicio(x, tz) for x in servicios_de(v, persona)] or ["- todo cuadra"]
     if jurado_y_ruta(v):                       # M10 (api.md §6): para todo el equipo, una línea por bloque
         lineas.append("## Jurado y ruta")
-        lineas += [linea_jurado_ruta(b, tz) for _, b in jurado_y_ruta(v)]
+        lineas += [linea_jurado_ruta(b, tz, v, k) for k, b in jurado_y_ruta(v)]
     lineas.append("## Novedades")
     lineas += [linea_novedad(n, tz) for n in v["novedades"]] or ["- ninguna"]
     lineas.append("## Equipo")

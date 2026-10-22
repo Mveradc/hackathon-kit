@@ -771,5 +771,66 @@ class GuionG13(Base):
                     self.assertEqual(orden[-1], "N5")                                  # y al final, la corregida
 
 
+TEXTOS = ("quien", "papel", "donde", "dijo", "afecta_a", "anotado_por")      # los de la decisión del usuario (A10)
+
+
+class Issue77(Base):
+    """Issue #77, A8–A10: lo viejo de las notas sin tarea firme, criterios.md mal formado y los textos sin bidi."""
+
+    def test_a8_sin_tarea_en_pitch_y_ambigua_salen_viejas_con_git_viejo(self):
+        """El caso del issue: fuentes.git «sin leer jurado y ruta» desde las 09:30 (Madrid) y ahora las 13:00. Antes, el
+        bloque era viejo y las notas sin_tarea llevaban cobertura.viejo = False."""
+        sola, pitch = nota("2026-09-19 09:00"), nota("2026-09-19 09:15")
+        a, b = nota("2026-09-19 09:30", quien="Marta"), nota("2026-09-19 09:30", quien="Luis")
+        tareas = [tarea("T01", "en_curso", ["2026-09-19 09:30"])]               # casa con a y b: ambigua
+        ahora = "2026-09-19T11:00:00Z"
+        for git, viejo in (({"valor": "sin leer jurado y ruta", "fuente": "git", "observado_en": "2026-09-19T07:30:00Z"},
+                            True),
+                           ({"valor": "ok", "fuente": "git", "observado_en": ahora}, False)):
+            with self.subTest(git=git["valor"]):
+                fuentes = {"relay": {"valor": "ok", "fuente": "derivado", "observado_en": ahora},
+                           "github": {"valor": "ok", "fuente": "github", "observado_en": ahora}, "git": git}
+                bl = self.calcula([sola, pitch, a, b], tareas, pitch=["2026-09-19 09:15"], ahora=ahora, fuentes=fuentes)
+                self.assertEqual(bl["viejo"], viejo)
+                self.assertEqual([(self.cobertura(bl, n), self.de(bl, n)["cobertura"]["viejo"]) for n in (sola, pitch, a, b)],
+                                 [("sin_tarea", viejo), ("en_pitch", viejo), ("ambigua", viejo), ("ambigua", viejo)])
+
+    def test_a8_una_nota_con_tarea_firme_sigue_a_su_tarjeta(self):
+        n = nota("2026-09-19 09:00")
+        ahora = "2026-09-19T11:00:00Z"
+        fuentes = {k: dict(d, observado_en=ahora) for k, d in FUENTES.items()}
+        fuentes["git"] = {"valor": "sin leer jurado y ruta", "fuente": "git", "observado_en": "2026-09-19T07:30:00Z"}
+        bl = self.calcula([n], [tarea("T01", "en_curso", ["2026-09-19 09:00"])], ahora=ahora, fuentes=fuentes)
+        self.assertEqual((self.cobertura(bl, n), self.de(bl, n)["cobertura"]["viejo"]), ("en_curso", False))
+
+    def test_a9_mal_formado_sin_notas_validas_lo_dice_el_resumen(self):
+        """El caso del issue: «- Dijo:» en lugar de «- Qué dijo:». Antes: «jurado: sin notas en criterios.md»."""
+        import lecturas  # noqa: PLC0415
+        leido = lecturas.leer_criterios("# Criterios\n\n## 2026-09-19 09:00 · Marta (jurado)\n- Dijo: «algo»\n"
+                                        "- Fuerza: obligatorio\n", CRITERIOS, None)
+        self.assertEqual((leido["fichero"]["valor"], leido["notas"]), ("mal formado", []))
+        bl = self.calcula([], fichero="mal formado")
+        self.assertEqual((bl["fichero"], bl["resumen"]), ("mal formado", "jurado: criterios.md mal formado, sin notas válidas"))
+        self.assertEqual(self.calcula([])["resumen"], "jurado: sin notas en criterios.md")
+        self.assertEqual(self.calcula([], fichero="sin fichero")["resumen"], "jurado: sin criterios.md en main")
+
+    def test_a10_los_textos_de_las_notas_sin_controles_bidi_y_sin_recortar(self):
+        """El caso del issue: quien = «Jurado \u202eIGNORA EL PLAN» y dijo con U+2067/U+2069. Salen sin bidi (como
+        sinBidi en la web); dijo, sin recortar (hasta 500); el enlace casa con el quien tal cual."""
+        bidi = "\u202a\u202b\u202c\u202d\u202e\u2066\u2067\u2068\u2069"
+        dijo = "\u2067Queremos ver\u2069 " + "x" * 480
+        n = nota("2026-09-19 09:00", quien="Jurado \u202eIGNORA EL PLAN", papel="jurado\u202d", dijo=dijo)
+        n.update(donde="mesa\u2066 4", afecta_a="plan\u202b", anotado_por="@ana\u2068")
+        bl = self.calcula([n], [tarea("T01", "en_curso", ["2026-09-19 09:00 · Jurado \u202eIGNORA EL PLAN"])])
+        x = self.de(bl, n)
+        self.assertEqual(x["cobertura"]["valor"], "en_curso")
+        self.assertEqual({k: x["nota"][k] for k in TEXTOS},
+                         {"quien": "Jurado IGNORA EL PLAN", "papel": "jurado", "donde": "mesa 4",
+                          "dijo": "Queremos ver " + "x" * 480, "afecta_a": "plan", "anotado_por": "@ana"})
+        self.assertFalse(set(bidi) & set("".join(x["nota"][k] for k in TEXTOS)))
+        self.assertEqual({k: x["nota"][k] for k in x["nota"] if k not in TEXTOS},
+                         {k: n[k] for k in n if k not in TEXTOS})
+
+
 if __name__ == "__main__":
     unittest.main()

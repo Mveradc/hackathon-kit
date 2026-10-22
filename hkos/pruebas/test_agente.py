@@ -11,10 +11,12 @@ import sys
 import tempfile
 import threading
 import unittest
+from unittest import mock
 
 HKOS = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.insert(0, HKOS)
+sys.path[:0] = [HKOS, os.path.dirname(os.path.abspath(__file__))]
 import agente as agente_mod  # noqa: E402
+import permisos  # noqa: E402
 import relay as relay_mod  # noqa: E402
 from red import Servidor  # noqa: E402
 
@@ -267,6 +269,87 @@ class Proyeccion(Base):
             log = f.read()
         self.assertIn("arranca en 127.0.0.1", log)
         self.assertIn("se apaga", log)
+
+
+class ReemplazoFalso:
+    """os.replace que da PermissionError (el WinError 5 de Windows con el destino abierto por un lector: sesion.sh,
+    delta.sh o el MCP) las `veces` primeras que el destino se llama `nombre`; con veces=None, siempre."""
+
+    def __init__(self, nombre, veces=None):
+        self.nombre, self.veces, self.fallos, self.real = nombre, veces, 0, os.replace
+
+    def __call__(self, origen, destino, *a, **kw):
+        if os.path.basename(destino) == self.nombre and (self.veces is None or self.fallos < self.veces):
+            self.fallos += 1
+            raise PermissionError(13, "Acceso denegado (simulado)", destino)
+        return self.real(origen, destino, *a, **kw)
+
+
+class Windows(Base):
+    """Issue #77, parte B (#27 · os.replace en Windows): Agente._escribe y `hk-os unir` (estado_inicial) reintentan como
+    permisos.reemplaza, y en recibir_estado el ETag y el estado en memoria solo cambian con estado.json ya escrito."""
+
+    def os_dir(self, *nombre):
+        return os.path.join(self.repo, ".git", "hackathon", "os", *nombre)
+
+    def test_escribe_reintenta_con_el_destino_abierto_un_momento(self):
+        a = self.agente()
+        falso = ReemplazoFalso("estado-equipo.md", veces=3)
+        with mock.patch.object(permisos, "WINDOWS", True), mock.patch.object(os, "replace", falso):
+            a._escribe("estado-equipo.md", "nuevo\n")
+        self.assertEqual(falso.fallos, 3)
+        with open(self.os_dir("estado-equipo.md"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "nuevo\n")
+        self.assertFalse([n for n in os.listdir(self.os_dir()) if n.endswith(".tmp")])
+
+    def test_escribe_se_rinde_sin_dejar_temporal(self):
+        a = self.agente()
+        a._escribe("reservas.tsv", "viejo\n")
+        with mock.patch.object(permisos, "WINDOWS", True), mock.patch.object(permisos, "REEMPLAZO_S", 0.2), \
+                mock.patch.object(os, "replace", ReemplazoFalso("reservas.tsv")):
+            with self.assertRaises(PermissionError):
+                a._escribe("reservas.tsv", "nuevo\n")
+        with open(self.os_dir("reservas.tsv"), encoding="utf-8") as f:
+            self.assertEqual(f.read(), "viejo\n")
+        self.assertFalse([n for n in os.listdir(self.os_dir()) if n.endswith(".tmp")])
+
+    def test_un_fallo_al_escribir_estado_json_no_deja_el_disco_atrasado_tras_un_304(self):
+        """Por el código del issue: antes, self.etag y self.estado cambiaban antes de escribir estado.json; si ese
+        os.replace fallaba, la siguiente petición recibía un 304 y el disco se quedaba en la versión anterior."""
+        self.levantar_relay()
+        a = self.agente()
+        a.ciclo()
+        with open(self.os_dir("estado.json"), encoding="utf-8") as f:
+            primero = json.load(f)
+        etag, estado = a.etag, a.estado
+        self.escribe(crudo(1, "SessionStart", cwd=self.repo))
+        a.ciclo()                                      # envía el evento
+        self.relay.recalcular()
+        self.reloj.t += agente_mod.ESTADO_S
+        with mock.patch.object(os, "replace", ReemplazoFalso("estado.json")):
+            with self.assertRaises(PermissionError):
+                a.recibir_estado()
+        self.assertEqual((a.etag, a.estado), (etag, estado))       # la memoria, como el disco
+        with open(self.os_dir("estado.json"), encoding="utf-8") as f:
+            self.assertEqual(json.load(f), primero)
+        self.reloj.t += agente_mod.ESTADO_S
+        self.assertTrue(a.recibir_estado())                         # 200, no 304: se vuelve a escribir
+        with open(self.os_dir("estado.json"), encoding="utf-8") as f:
+            self.assertEqual(json.load(f), a.estado)
+        self.assertNotEqual(a.estado, primero)
+        self.assertEqual(a.estado["personas"][0]["actores"][0]["sesion"], "s1")
+
+    def test_estado_inicial_de_unir_reintenta(self):
+        import cli  # noqa: PLC0415
+        from test_proyeccion import estado_base  # noqa: PLC0415
+        falso = ReemplazoFalso("estado.json", veces=2)
+        with mock.patch.object(permisos, "WINDOWS", True), mock.patch.object(os, "replace", falso):
+            cli.estado_inicial(os.path.join(self.repo, ".git"), self.repo, estado_base(), "persona-b")
+        self.assertEqual(falso.fallos, 2)
+        with open(self.os_dir("estado.json"), encoding="utf-8") as f:
+            self.assertEqual(json.load(f), estado_base())
+        self.assertEqual(sorted(n for n in os.listdir(self.os_dir()) if n != "eventos"),
+                         ["estado-equipo.md", "estado.json", "reservas.tsv"])
 
 
 if __name__ == "__main__":
