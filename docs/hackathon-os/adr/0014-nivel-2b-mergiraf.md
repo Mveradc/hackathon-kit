@@ -13,7 +13,7 @@ R-34: «DONDE el análisis estructural esté activo, el sistema DEBE rebajar a a
   - no todo lo compatible baja: dos funciones nuevas al final de un `.js` siguen en conflicto;
   - **guarda una copia** de base, lados y resultado de cada fusión que resuelve en `$XDG_DATA_HOME/mergiraf/merges/` (por defecto, `~/.local/share`), y `XDG_DATA_HOME` la lleva a otro sitio;
   - 9–50 ms por fichero pequeño; 4,7 s con 148 KB de Python.
-- **Windows y macOS, sin comprobar** (P17): binario, dónde guarda las copias, tiempos.
+- **Windows y macOS, sin comprobar** (P17): binario, dónde guarda las copias, tiempos. Respondida en K-109: «Ajuste tras P17», abajo.
 
 Valen la constitución I (apagado, todo como en la 0.5.0), III, IV y ADR-0009 (las tres vistas igual), VI (solo avisos), VII (instalaciones de un comando), VIII (si falla, se degrada) y IX (el contenido no sale del portátil).
 
@@ -23,7 +23,7 @@ Valen la constitución I (apagado, todo como en la 0.5.0), III, IV y ADR-0009 (l
 - **Cómo se detecta**, una vez al arrancar el relay: `shutil.which("mergiraf")` y `mergiraf --version` (plazo de 5 s), que debe dar una versión ≥ la mínima (decisión 5). Si el interruptor está en `sí` y Mergiraf no está, no responde o es más viejo, el relay lo dice **una vez** al arrancar, como el aviso de Git < 2.38 («Nivel 2b desactivado: mergiraf no está en el PATH. Sigue el nivel 2.») y sigue como en la 0.5.0. Con Mergiraf bien: «Nivel 2b activo: mergiraf 0.20.0». No se vuelve a buscar hasta reiniciar el relay.
 - **Cuándo se ejecuta:** dentro del ciclo del nivel 2 (`Calculo.sondear`, cada 30 s), solo cuando `merge-tree` da conflictos para un par con shas nuevos. El `merge-tree` pasa a ejecutarse **sin `--name-only`** para leer las etapas (`<modo> <blob> <etapa>\t<ruta>`), con el mismo código de salida. Para cada ruta en conflicto:
   - solo se intenta si tiene **las tres etapas** (base, izquierda, derecha) y las tres son ficheros normales (modo `100644` o `100755`). Lo demás sigue rojo sin intentarlo: `add/add`, `modify/delete`, renombrados en conflicto, enlaces simbólicos, submódulos;
-  - los tres blobs (`git cat-file blob`) se escriben en un directorio temporal **fuera del clon** (`tempfile.mkdtemp`), y se ejecuta `mergiraf merge 1 2 3 -p <ruta> -t <plazo> -o salida`, sin `--allow-parse-errors` ni `--fast`, con `XDG_DATA_HOME` (y el equivalente de P17 en Windows y macOS) apuntando a ese directorio. El directorio se borra después, pase lo que pase;
+  - los tres blobs (`git cat-file blob`) se escriben en un directorio temporal **fuera del clon** (`tempfile.mkdtemp`), y se ejecuta `mergiraf merge 1 2 3 -p <ruta> -t <plazo> -o salida`, sin `--allow-parse-errors` ni `--fast`, con `XDG_DATA_HOME` y `APPDATA` apuntando a ese directorio (P17: `XDG_DATA_HOME` en Linux y macOS, `APPDATA` en Windows; ajuste del 2026-10-22). El directorio se borra después, pase lo que pase;
   - **rc 0** = la fusión estructural lo resuelve: la ruta baja a 2b. **Cualquier otra cosa** (rc 1, 255, plazo del proceso vencido, error al lanzarlo) = sigue roja. La salida no se lee ni se guarda: solo cuenta el código.
 - **Caché por contenido:** el resultado de cada ruta se guarda en memoria por `(blob base, blob izq, blob der, ruta)`, también el «no resuelve» y el plazo vencido. Mismos ficheros, mismo color: no parpadea entre rojo y amarillo con la carga del portátil. Se recorta como la caché de pares.
 - **Plazos** (decisión 4): `-t 5000` por fichero (el plazo de Mergiraf, que vuelve a git y da rc 1), 10 s por proceso (lo mata el relay) y **20 s por ciclo** para todos los ficheros de todos los pares. Lo que no se llega a intentar en un ciclo sigue rojo y se intenta en el siguiente. Un ciclo del nivel 2 nunca tarda más de su cadencia por culpa de 2b.
@@ -65,6 +65,21 @@ Las siete, como se recomendaban en el PR #78 (comentario del usuario del 2026-10
 | **6. ¿Se cambia `api.md`?** | **A.** Notas «tras congelar, M11» en §0, §3, §5 y §6 (K-110); `estado.schema.json` sin cambios | El valor `2b` ya estaba en el contrato: solo falta decir quién lo produce y cómo se lee. `fuentes.mergiraf` (B) se puede añadir después si el equipo no entiende por qué no hay 2b. Sin nada en `api.md` (C), una clave de `os.md` y un texto del md quedarían sin contrato |
 | **7. Texto de la línea** | **A.** `nivel 2b · fusión estructural sin conflictos`, en el md y en la web | Un modelo que lee «nivel 2b» no sabe qué quiere decir; la frase es corta y cabe en el presupuesto (R-24) |
 
+## Ajuste tras P17 (2026-10-22, K-109 y K-110)
+P17, respondida en K-109 (`evals/coordinacion/prueba.md`, «M11, Paso 0», «K-109»): binario oficial y casos de P12 en Windows y macOS (runners de GitHub Actions), tiempos con los ficheros de los retos 02 y 03 y `merge-tree` sin `--name-only` desde Git 2.38. Manda sobre lo de arriba donde lo contradiga. **Ninguna decisión cambia**; se concretan tres cosas que dependían de P17:
+
+| Punto | Queda | Por qué (K-109) |
+|---|---|---|
+| **Copias de Mergiraf** (constitución IX) | El relay ejecuta Mergiraf con **`XDG_DATA_HOME`** y **`APPDATA`** apuntando al directorio temporal, en todos los sistemas (cada una solo la lee el suyo). El directorio se borra siempre. 2b no se apaga en ningún sistema | Linux y macOS guardan las copias en `~/.local/share/mergiraf/merges/` (estrategia XDG también en macOS, no `~/Library`) y `XDG_DATA_HOME` las lleva al temporal. Windows las guarda en `%APPDATA%\Mergiraf contributors\Mergiraf\data\merges\` y solo **`APPDATA`** las lleva (con `XDG_DATA_HOME`, `LOCALAPPDATA` o `USERPROFILE` seguían en el `APPDATA` de la persona). Con rc 1 no guarda nada |
+| **Instalación** (decisión 3) | Igual: binario de la release oficial en Windows (x86_64) y Linux, `brew install mergiraf` en macOS, y `cargo install --locked mergiraf` como alternativa. En macOS el binario oficial (arm64 y x86_64) también vale. Windows en ARM no tiene binario: solo `cargo` | El zip de Windows trae `mergiraf.exe` y arranca sin instalar nada; brew da 0.20.0 en 4 s |
+| **Versión mínima** (decisión 5) | Igual: **0.20.0** | Es la única probada en las tres plataformas. 0.19.1 da lo mismo en Linux; 0.16.3, rc 129 donde la 0.20.0 da 1 o 255 |
+
+**Plazos** (decisión 4), sin cambios: los ficheros del árbol de los retos 02 y 03 tardan ≤ 0,2 s en las tres plataformas y 20 ficheros en conflicto a la vez suman ≈ 10 s. `-t 5000` no limita el tiempo total: un `.js` compilado de 299 KB volvió a git en 5,6–6,0 s, así que el plazo de 10 s por proceso es necesario. Un Python de 148 KB está al filo (2,4–5,3 s según la máquina): cuando pasa de 5 s, sigue rojo, y la caché lo deja rojo hasta que cambie un lado.
+
+**`merge-tree`:** sin `--name-only` da las etapas (`<modo> <blob> <etapa>\t<ruta>`) con el mismo código de salida en Git 2.38 (Linux y MinGit de Windows), 2.43, 2.49 (MinGit, la del portátil del usuario), 2.55 y 2.56 (Windows y macOS).
+
+Sigue sin probar en un portátil real de Windows o macOS: lo hace el criterio 6 de M11 (K-114).
+
 ## Alternativas descartadas
 - **Ejecutar Mergiraf en el demonio de cada persona:** exigiría instalarlo en todos los portátiles y que cada demonio tuviera el trabajo en curso de los demás, que solo trae el relay.
 - **Mergiraf como driver de fusión de git** (`merge.mergiraf.driver` en la configuración del clon del relay y `.gitattributes`): `merge-tree --write-tree` usa los drivers de `.gitattributes` del árbol, que escribe el equipo; depender de ese fichero (o tocarlo) es más frágil que llamar a Mergiraf por ruta, y no se ha comprobado con `merge-tree`.
@@ -75,6 +90,6 @@ Las siete, como se recomendaban en el PR #78 (comentario del usuario del 2026-10
 ## Riesgos aceptados
 - **«Amarillo» no es «fusiona bien»**: Mergiraf puede dar una fusión sin conflictos que no funciona. Se dice en la línea («revisad la fusión igualmente» en el MCP) y en `docs/limitaciones.md`.
 - **Lo que no baja**: lenguajes que Mergiraf no conoce (CSS, SQL, `.ipynb`), hermanos que no conmutan (dos funciones al final de un `.js`), ficheros con errores de sintaxis. Siguen rojos, como en la 0.5.0.
-- **Solo Linux probado** hasta K-109 (P17). Si en Windows o macOS no se puede llevar la copia de Mergiraf a un directorio temporal, en ese sistema 2b queda apagado con un aviso, o se borra la carpeta tras cada llamada (lo decide el usuario con el resultado de P17).
+- **Solo Linux probado** hasta K-109 (P17). Respondida (ajuste del 2026-10-22): en Windows la copia se lleva al temporal con `APPDATA`, y en macOS con `XDG_DATA_HOME`, como en Linux; 2b no se apaga en ningún sistema. Falta un portátil real de Windows o macOS (K-114).
 - **Un programa más en el portátil del coordinador**, fuera del control del kit: la versión se comprueba al arrancar, pero no su procedencia.
 - **Coste:** con 5 personas hay 10 pares; en el peor ciclo, 20 s de CPU en el portátil del coordinador cada 30 s. La caché por contenido lo deja en casi nada cuando nadie cambia los ficheros en conflicto.

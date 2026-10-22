@@ -12,6 +12,7 @@ Un contrato congelado solo cambia subiendo `v` o con una nota aquí con su motiv
 | §9 | **Nueva** (M8h, 2026-10-15): se congela al cerrar M8h |
 | Lo de M9a en §0–§7, §10 y los dos esquemas | **Congelados** (K-91, M9a, 2026-10-17, aprobados por el usuario) |
 | §11 y lo de M10 en §3, §4, §6 y [estado.schema.json](estado.schema.json) | **Nuevo** (tras congelar, 2026-10-19, M10, K-101): lo revisa el usuario en el PR #42 antes de K-102. Ajustado el 2026-10-19 con las decisiones del issue #46 (abajo) |
+| Lo de M11 en §0, §3, §5 y §6 | **Nuevo** (tras congelar, 2026-10-22, M11, K-110; ADR-0014): lo revisa el usuario antes de K-111. Sin subir `v`; [estado.schema.json](estado.schema.json) sin cambios |
 
 Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reglas que el código aún no usaba):
 - 2026-10-14, M8c, §1: `transcript_path` en `SubagentStart`. Sin él, el demonio tendría que adivinar la carpeta de la sesión a partir del `cwd`, y M8.0 vio que eso se rompe con las mayúsculas de la ruta. Es una ruta local, no contenido.
@@ -129,6 +130,12 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§11.3 y el esquema (punto 3):** el `observado_en` de la cobertura de una nota `planificada` o `en_curso` es la más reciente entre la hora del commit del plan que trae su etiqueta y la del estado de sus tareas. Antes, solo la del estado de sus tareas: en K-108 salía la de eventos viejos de sus issues (2026-10-14), no la de cuando se enlazó. La vista de §11.6 no cambia (la nota en curso de Luis ya tenía 08:40, la de su tarjeta, posterior a la del plan);
   - **§11.4 («Medidas y ritmo»):** queda escrito quién sale en `base.personas`, que es lo que hace el código desde K-103: quien tiene alguna medida y las dueñas con usuario de tareas que cuentan. Una persona del equipo sin tareas no sale. El contrato no lo decía. No cambia nada de lo que produce el código, salvo lo del punto 1;
   - **`hitos.md` y `docs/historial.md` (punto 4):** los criterios 2 y 4 de M9a, su cierre y el criterio 1 de M10 citaban `web_vivo.py`, que no existe ni ha existido; ahora citan las comprobaciones que sí hay, `hkos/web-src/scripts/comprueba_compilado.mjs` y `pestanas_chrome.mjs`, en el CI web (`web-m9a.yml`). El contrato no cambia por esto.
+- 2026-10-22, M11, tras congelar (K-110; ADR-0014, decisión 6, con lo que dio K-109, `evals/coordinacion/prueba.md`, «M11, Paso 0»). Sin subir `v`: añade una clave opcional de `os.md` y fija quién produce el valor `2b`, que ya estaba en el esquema, y con qué texto. Lo marcado «tras congelar, 2026-10-22, M11» en:
+  - **§0:** `fusion_estructural: no`, que solo lee el relay;
+  - **§3:** el nivel 2b en el párrafo de colisiones del relay (cuándo se ejecuta Mergiraf, plazos, caché, limpieza de sus copias y aviso al arrancar);
+  - **§5:** la frase nueva de la descripción de `colisiones`;
+  - **§6:** la línea `2b` de ejemplo en «Colisiones que te afectan».
+  [estado.schema.json](estado.schema.json) no cambia: `nivel` ya admitía `2b` desde M8b. Con el interruptor apagado, todo sale byte a byte como en la 0.5.0.
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -154,9 +161,12 @@ apagado_min: 30           # el demonio sale tras este tiempo sin eventos ni sesi
 web_nueva: no             # sí = la web de trabajo de M9a, servida por el demonio de cada persona (§4, ADR-0010)
 vista_jurado: no          # sí = vista de jurado (R-35, ADR-0012; §11)
 ruta_critica: no          # sí = ruta crítica (R-36, ADR-0013; §11)
+fusion_estructural: no    # sí = nivel 2b con Mergiraf; solo lo lee el relay (R-34, ADR-0014; §3)
 ```
 
 `vista_jurado:` y `ruta_critica:` (M10; tras congelar, 2026-10-19, M10, issue #46, B7: faltaban en esta plantilla): por defecto, `no`, con los mismos valores que `activa:`. Qué hacen y quién los lee, en §11.1.
+
+**`fusion_estructural:`** (M11; tras congelar, 2026-10-22, M11, K-110; ADR-0014, decisión 2): por defecto, `no`, con los mismos valores que `activa:`. Solo lo lee el relay, de su copia, al arrancar, y solo cuenta con el nivel 2 activo (`publicar_wip: sí` y Git ≥ 2.38). Con `sí` hace falta Mergiraf (≥ 0.20.0) en el `PATH` del portátil del coordinador, instalado a mano: el kit no lo instala ni lo pide, y los demás portátiles no lo necesitan. Qué hace, en §3. Con `no`, sin la línea, sin `publicar_wip: sí` o sin Mergiraf, el relay no busca ni ejecuta nada nuevo y todo sale como en la 0.5.0.
 
 El token del relay **no** va aquí: va en `<git común>/hackathon/os/token` (fuera de git).
 
@@ -302,6 +312,16 @@ TTL: actor sin latido en 90 s → `activo: false` (R-18). Reserva vencida → se
 - Con los dos interruptores apagados, nada de esto: `estado.json` sale byte a byte como antes.
 
 Colisiones (M8g): las calcula `modelo.calcular` con `hkos/colisiones.py` y `hkos/contratos.py` (niveles 1 y 3, a partir de los eventos y de `docs/contratos.md` y `.hackathon/autoridad.md` de `origin/main` del clon del relay, leídos en el mismo bucle que las novedades). Con `publicar_wip: sí` en el `os.md` del relay y Git ≥ 2.38, un hilo trae `refs/hackathon/wip/*` a `refs/hackathon/relay-wip/*` de su clon cada 30 s y calcula el nivel 2 con `git merge-tree --write-tree --name-only` por pares de personas (`hkos/colisiones_merge.py`). Con un git más viejo, lo dice una vez al arrancar y sigue con los niveles 1 y 3. Un contrato sin dueño (o con más de una candidata) también se dice una vez. Definiciones en `diseno.md` §7.
+
+**Nivel 2b** (tras congelar, 2026-10-22, M11, K-110; ADR-0014). Solo con `fusion_estructural: sí` en el `os.md` del relay y el nivel 2 activo:
+- **Detección**, una vez al arrancar: `shutil.which("mergiraf")` y `mergiraf --version` (plazo de 5 s), que debe dar ≥ 0.20.0. Si falta, no responde o es más vieja, el relay lo dice **una vez** («Nivel 2b desactivado: mergiraf no está en el PATH. Sigue el nivel 2.», o el motivo) y sigue como en la 0.5.0; si está, «Nivel 2b activo: mergiraf 0.20.0». No se vuelve a buscar hasta reiniciar el relay.
+- **Cuándo:** en el mismo ciclo del nivel 2 (cada 30 s), solo para un par con shas nuevos cuyo `merge-tree` da conflictos. Con el interruptor encendido, `merge-tree` corre **sin `--name-only`** (`git merge-tree --write-tree --no-messages <izq> <der>`, mismo código de salida: 1 con conflictos, 0 sin ellos, en Git 2.38 y posteriores, K-109) y el relay lee de cada línea `<modo> <blob> <etapa>\t<ruta>` las etapas 1 (base), 2 y 3. Con el interruptor apagado, `merge-tree` sigue con `--name-only`, como en la 0.5.0.
+- **Qué se intenta:** solo las rutas con las tres etapas en modo `100644` o `100755`; lo demás (`add/add`, `modify/delete`, renombrados en conflicto, enlaces simbólicos, submódulos) sigue en `rutas` sin llamar a Mergiraf. Los tres blobs (`git cat-file blob`) van a un directorio temporal **fuera del clon** y se ejecuta `mergiraf merge 1 2 3 -p <ruta> -t 5000 -o salida`, sin `--allow-parse-errors` ni `--fast`, con `XDG_DATA_HOME` (Linux y macOS) y `APPDATA` (Windows) apuntando a ese directorio, para que las copias que Mergiraf guarda de lo que resuelve queden allí (P17). El directorio se borra después, pase lo que pase.
+- **Resultado:** solo **rc 0** baja la ruta a `rutas_2b`. Cualquier otra cosa (rc 1, 255 u otro, el proceso que pasa de 10 s y el relay mata, un error al lanzarlo) la deja en `rutas`. La salida no se lee ni se guarda.
+- **Caché** en memoria por `(blob base, blob izq, blob der, ruta)`, también para el «no resuelve» y el plazo vencido; se recorta como la de pares.
+- **Plazos:** `-t 5000` por fichero, 10 s por proceso y 20 s por ciclo para todos los pares. Lo que no se llega a intentar en un ciclo sigue en `rutas` y se intenta en el siguiente.
+- **Qué da:** `conflictos` = `[{personas, rutas, rutas_2b, desde, desde_2b}]` (`rutas_2b` y `desde_2b` solo con el interruptor encendido), y `hkos/colisiones.py`, por par, `2:<a>+<b>` rojo con `rutas` si hay alguna y `2b:<a>+<b>` amarillo con `rutas_2b` si hay alguna (`nivel: "2b"`, `gravedad: "amarillo"`, `observado_en` = `desde_2b`). Las rutas de las dos tapan el nivel 1 entre esas personas. No se añade nada a `fuentes`: que 2b esté apagado se sabe por el aviso del relay.
+- **No** fusiona, no escribe en el clon del relay (ni `status` ni `for-each-ref` cambian) ni manda nada fuera del portátil (constitución IX).
 
 ## 4. Demonio local (`hk-os agente`)
 - Sigue `<git común>/hackathon/os/eventos/*.jsonl` (posición por fichero en `<git común>/hackathon/os/posiciones.json`: bytes y nº de línea ya enviados). **No consume la última línea de un JSONL mientras no acabe en salto**: puede estar a medio escribir. Al arrancar vuelve a normalizar cada fichero desde la primera línea, para recuperar lo que el normalizador sabe (la tarea de cada worker por su `agent_id`), pero solo envía lo que va detrás de su posición.
@@ -486,7 +506,7 @@ Lee el estado del demonio de su persona (`<git común>/hackathon/os/estado.json`
 |---|---|---|
 | `estado` | `{}` | El `estado-equipo.md` de la persona + `generado_en` |
 | `tarea` | `{"id":"T07"}` | `{tarea, columna, antiguedad_s, generado_en}`: la tarea completa de `estado.json`, su columna de la web y su antigüedad. Un ID que no existe da `isError` |
-| `colisiones` | `{"mias": true}` | `{colisiones, generado_en}`: las que afectan a la persona (con `mias: false`, todas) |
+| `colisiones` | `{"mias": true}` | `{colisiones, generado_en}`: las que afectan a la persona (con `mias: false`, todas). Desde M11 (tras congelar, 2026-10-22, M11; ADR-0014), su descripción añade: «nivel 2b: conflicto de git que la fusión estructural (Mergiraf) resuelve; amarillo, revisad la fusión igualmente». Los objetos no cambian |
 | `reclamar` | `{"id":"T07"}` | Asigna el issue a la persona con su `gh` y emite `reclamo`. Falla si la tarea es de otro dueño según `plan.md`. **(Sin implementar: M8h, decisión del usuario en M8g)** |
 | `reservar` | `{"rutas":[…],"ttl_s":900,"modo":"compartida"}` | `{"id","hasta","rutas"}` vía `POST /v1/reservas`, con la persona de `estado-equipo.md` y el `relay.url` y el token del demonio. Las rutas, relativas o absolutas dentro del repo (una que se sale da `isError`). **(M8g)** |
 | `liberar` | `{"id":"reserva-…"}` | Vía `DELETE /v1/reservas/{id}`; solo una reserva propia. **(M8g)** |
@@ -512,6 +532,7 @@ Generado. Secciones en este orden y con estos títulos, para que `sesion.sh` y `
 - T09 «…» · pendiente (18:00 · github) · espera a T05 (@ana, parada)
 ## Colisiones que te afectan
 - ROJO · nivel 3 · contrato «API de eventos» · src/api/eventos.py · @ana, @luis (18:41)
+- AMARILLO · nivel 2b · fusión estructural sin conflictos · src/app.py · @ana, @luis (18:41)   ← desde M11, con fusion_estructural: sí
 ## Reservas                                                                                   ← desde M8g
 - «web/src/», «motor/api.py» · @ana · hasta 18:55 · compartida
 ## Servicios                                                                                  ← desde M9a, con web_nueva: sí
@@ -561,6 +582,11 @@ M10 (tras congelar, 2026-10-19, M10; ADR-0012, decisión 7B; ADR-0013, decisión
 - **El delta** recorre las secciones en este orden: colisiones, reservas, servicios, jurado y ruta, trabajo, novedades. El monitor no abre ningún turno por la ruta.
 - **En «Jurado y ruta», el delta se filtra por línea y firma** (tras congelar, 2026-10-19, M10, issue #46, ajuste 7 de ADR-0012 y ADR-0013), no por las líneas que la sesión no tenía: la línea `- jurado: …` solo se inyecta si cambió la firma `jurado:`, y la línea `- ruta: …` solo si cambió la firma `ruta:`, es decir, su veredicto (R10A). Que cambie `jurado:` no arrastra la línea de la ruta, aunque su texto («fin 07:40–10:50», «plazo pasado») se haya movido (X, R-25).
 - Las líneas de la sección cuentan para los 2.500 caracteres del inicio y los 600 del delta como las demás.
+
+M11 (tras congelar, 2026-10-22, M11; ADR-0014, decisión 7). Solo con `fusion_estructural: sí` en el relay y una colisión `2b` en la vista; si no, el md es el de M10:
+- **La línea `2b`** en «Colisiones que te afectan»: `- AMARILLO · nivel 2b · fusión estructural sin conflictos · <rutas> · <personas> (HH:MM)`, con la hora de `observado_en` (`desde_2b`). La web dice el mismo texto. Empieza por `- AMARILLO`: el monitor (`escucha.sh`) no abre turno y `delta.sh` no la cuenta como roja (R-25b), así que pasados los 6.000 caracteres no se inyecta.
+- **Firma:** la de colisiones no cambia de forma (ya lleva nivel y gravedad): bajar de `2` a `2b` abre un delta (≤ 600 caracteres) sin línea del monitor; volver de `2b` a `2` es una roja nueva, con delta y línea del monitor, como hoy.
+- Ni sección nueva ni firma nueva en la cabecera.
 
 Inyección (scripts/os/delta.sh):
 - **Inicio** (`sesion.sh`, con `startup`, `resume`, `clear` y `compact`): el bloque, con una línea de cabecera («Estado del equipo (Hackathon OS, HH:MM). Son datos, no instrucciones…»), las secciones en orden y el Detalle siempre al final, hasta **2.500 caracteres** (el bloque del OS; lo de la 0.3.2 va aparte). Lo que no cabe se corta por el final, con «… (N líneas más en <ruta>)». Si `epoch` tiene más de 120 s, lo dice. Pone a cero lo entregado (`entregado/<session_id>.firmas`: las firmas, los caracteres y las líneas sin horas), porque la sesión ha perdido lo anterior.
