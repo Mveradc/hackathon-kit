@@ -393,6 +393,8 @@ Hecho cuando: «M11, Paso 0» de `evals/coordinacion/prueba.md` tiene, además d
 - la versión mínima de Mergiraf que se acepta (decisión 5 de ADR-0014).
 Nada se instala en el repo ni se añade como dependencia. Sin modelo.
 
+**Hecha (2026-10-22):** P17 sí en Windows y macOS (runners de GitHub Actions; copias con `APPDATA` en Windows y `XDG_DATA_HOME` en macOS), ficheros de los retos ≤ 0,2 s, `merge-tree` sin `--name-only` igual desde Git 2.38 y versión mínima 0.20.0. Resultados en `evals/coordinacion/prueba.md` («M11, Paso 0», «K-109»).
+
 ### K-110 · ADR y contratos
 Cubre: R-34 · Depende de: K-109 · Puedes tocar: `docs/hackathon-os/adr/0014-*.md` (solo lo que cambie con P17), `docs/hackathon-os/contratos/api.md`, `docs/hackathon-os/diseno.md` (§7)
 Contratos que aplican: ADR-0007, ADR-0009, ADR-0014
@@ -404,6 +406,8 @@ Hecho cuando:
 - `hkos/pruebas`, `igualdad.py` y `prueba_hooks.py` en verde.
 
 Lo revisa el usuario antes de K-111.
+
+**Hecha (2026-10-22), pendiente de la revisión del usuario:** ajuste tras P17 en ADR-0014 (ninguna decisión cambia), notas «tras congelar, 2026-10-22, M11» en `api.md` §0, §3, §5 y §6 y `diseno.md` §7 con la fila 2b y «Nivel 2b».
 
 ### K-111 · Mergiraf en el cálculo del nivel 2 [P]
 Cubre: R-34 · Depende de: K-110 · Puedes tocar: `hkos/colisiones_merge.py`, `hkos/pruebas/test_colisiones_2b.py`, `hkos/pruebas/mergiraf_falso.py` (nuevo: un `mergiraf` falso que anota sus llamadas y devuelve el código que se le pida)
