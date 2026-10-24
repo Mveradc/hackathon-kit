@@ -30,8 +30,9 @@ jobs:
           curl -fsSL -o "${{ matrix.asset }}" "$url"
           case "${{ matrix.asset }}" in *.zip) unzip -o -q "${{ matrix.asset }}" ;; *) tar xzf "${{ matrix.asset }}" ;; esac
           bin=$(dirname "$(find "$PWD" -type f \( -name mergiraf -o -name mergiraf.exe \) | head -1)")
-          echo "$bin" >> "$GITHUB_PATH"
           "$bin/mergiraf" --version
+          if [ "$RUNNER_OS" = Windows ]; then bin=$(cygpath -w "$bin"); fi
+          echo "$bin" >> "$GITHUB_PATH"
       - name: colisiones_2b_vivo.py
         run: |
           set -o pipefail
