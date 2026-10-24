@@ -1400,3 +1400,61 @@ El mismo código de salida con y sin `--name-only` en todas, y las etapas desde 
 **Respuesta a P17: sí, en los dos.** Hay binario oficial para Windows (x86_64) y macOS (arm64 y x86_64) que arranca con un comando; los casos de P12 dan los mismos códigos; Mergiraf guarda las copias en `~/.local/share/mergiraf/merges` en macOS (como en Linux, con `XDG_DATA_HOME`) y en `%APPDATA%\Mergiraf contributors\Mergiraf\data\merges` en Windows, y **`APPDATA` (no `XDG_DATA_HOME`) las lleva a un directorio temporal** en Windows. No hace falta dejar 2b apagado en ningún sistema.
 
 **Qué no se ha comprobado:** un portátil real con Windows o macOS (solo runners de GitHub; el portátil del usuario, en K-114, criterio 6); Windows en ARM (sin binario oficial: quedaría `cargo install --locked mergiraf`); el código real de un equipo en un reto (solo el árbol de `/hack-scaffold` con lockfiles generados, y los ficheros del kit como cota); versiones distintas de 0.16.3, 0.19.1 y 0.20.0. La rama `m11-p17-sondeo` y su workflow (`.github/workflows/p17-sondeo.yml`, solo en esa rama) son desechables: no se fusionan ni llegan a `main`; su `on: push` solo vale para esa rama.
+
+# M11, K-114: validación en vivo del nivel 2b (2026-10-24)
+Criterios 1 (la parte con el relay vivo), 5, 6 y 7 de M11 (`docs/hackathon-os/hitos.md`), y el hallazgo de K-112 (PR #84) sobre el criterio 4. Sin modelo (0 USD) y sin relay contra el repo del kit: remotos `bare` y clones temporales. Mergiraf 0.20.0 no se ha instalado en el repo ni en el sistema: en Linux, compilado en el scratchpad de la sesión (`cargo install --locked --root <scratchpad> mergiraf@0.20.0`) y puesto en el `PATH` solo para la prueba; en Windows y macOS, el binario de la release oficial de Codeberg, en un runner de GitHub Actions.
+
+**Montaje (`evals/coordinacion/colisiones_2b_vivo.py`, nuevo).** Como `colisiones_vivo.py`: un remoto `bare` local, dos clones (persona A y persona B) con los hooks reales del plugin, un demonio por clon y el relay en el clon de A con `publicar_wip: sí` y `fusion_estructural: sí`. Además, el monitor de cada persona (`scripts/coordinacion/escucha.sh`, con un `gh` falso que no devuelve nada y `yo-fijo`) y seis relays más, cada uno en su clon del mismo remoto, para el criterio 1. `app.py` de partida tiene `import os`, `import sys` y dos funciones.
+- **Paso 1:** A añade `import json` y B `import re`, los dos detrás de `import sys`. A cambia además `return 2` por `return 20`, más abajo. Para git es un conflicto (`merge-tree` de los dos trabajos en curso da 1 con `app.py`); para Mergiraf, no (rc 0).
+- **Paso 2:** B cambia también `return 2`, por `return 30`: conflicto de verdad (Mergiraf da 1).
+- Los tiempos se miden desde que el trabajo en curso de las dos personas (en el paso 2, el de B) tiene en el remoto el `app.py` de la edición, hasta que la línea sale en el `estado-equipo.md` de las dos y en su monitor.
+
+**Resultados.** 0 fallos en las tres plataformas:
+
+| | Linux (contenedor) | Windows (runner) | macOS (runner) |
+|---|---|---|---|
+| Sistema | x86_64, Git 2.43.0, Python de uv | Windows Server 2025, Git 2.56.0.windows.2, Git Bash | macOS 26 arm64, Git 2.56.0, bash 5 de Homebrew |
+| Mergiraf | 0.20.0 compilado (cargo) | `mergiraf_x86_64-pc-windows-gnu.zip` oficial | `mergiraf_aarch64-apple-darwin.tar.gz` oficial |
+| Aviso al arrancar | «Nivel 2b activo: mergiraf 0.20.0», una vez | igual | igual |
+| Paso 1: amarillo `2b` en el md de A y de B | 30 s (y 30 s en la segunda pasada) | 31 s | 23 s |
+| Paso 1: rojo o nivel 1 de `app.py` en el relay con 2b | ninguno | ninguno | ninguno |
+| Paso 1: líneas del monitor | ninguna | ninguna | ninguna |
+| Paso 2: rojo de nivel 2 en el md de A y de B | 30–31 s (49–50 s desde la edición) | 29 s (45 s) | 25 s (77 s) |
+| Paso 2: línea del monitor de A y de B | 31 s; una sola, `hk-os · colisión ROJA nueva · nivel 2 · app.py · @persona-a, @persona-b (…)` | 29 s, igual | 24 y 26 s, igual |
+| Paso 2: el 2b se va | sí | sí | sí |
+| Ficheros, índice, `status`, stash y HEAD de las dos copias en cada paso | sin cambios | sin cambios | sin cambios |
+| Refs del clon del relay (salvo `refs/hackathon/relay-wip/`) | sin cambios | sin cambios | sin cambios |
+| `hk-2b-*` en el temporal del relay al acabar | ninguno | ninguno | ninguno |
+| Copias nuevas en el sitio de Mergiraf | ninguna (`~/.local/share/mergiraf/merges`) | ninguna (`%APPDATA%\Mergiraf contributors\Mergiraf\data\merges`) | ninguna (`~/.local/share/mergiraf/merges`) |
+
+La cadencia es la del nivel 2: el demonio publica cada 60 s y el relay calcula cada 30 s, así que el tiempo desde la edición depende de dónde caiga en el ciclo de publicación (77 s en macOS). El plazo de 90 s del criterio 5 cuenta desde la publicación, y ahí el peor caso fue 31 s.
+
+**Criterio 1 con el relay vivo.** Los seis relays se arrancan cuando los dos trabajos en curso del paso 1 ya están en el remoto, con un `mergiraf` en el `PATH` que anota **todas** sus llamadas, también `--version`, y luego pasa la llamada a `hkos/pruebas/mergiraf_falso.py` (rc 0 por defecto: si el relay lo llamara, el conflicto bajaría a 2b). Igual en las tres plataformas:
+
+| `os.md` del relay y `PATH` | Llamadas a `mergiraf` | Aviso de 2b al arrancar | Colisión de `app.py` |
+|---|---|---|---|
+| sin `fusion_estructural:`, falso 0.20.0 en el `PATH` | ninguna | ninguno | `2:persona-a+persona-b` rojo |
+| `fusion_estructural: no`, falso 0.20.0 | ninguna | ninguno | `2` rojo |
+| `fusion_estructural: sí` y `publicar_wip: no`, falso 0.20.0 | ninguna | ninguno | ninguna (sin nivel 2) |
+| `sí`, sin ningún `mergiraf` en el `PATH` | ninguna | «Nivel 2b desactivado: mergiraf no está en el PATH. Sigue el nivel 2.», una vez | `2` rojo |
+| `sí`, falso que dice 0.19.1 | solo `--version`; ningún `merge` | «Nivel 2b desactivado: mergiraf 0.19.1 < 0.20.0. Sigue el nivel 2.», una vez | `2` rojo |
+| `sí`, falso 0.20.0 (control: el registro funciona) | `--version` y un `merge` de `app.py` | — | `2b` amarillo |
+
+Con 0.19.1 el relay tiene que llamar a `--version` para saber la versión (ADR-0014, detección); lo que no hace es ejecutar Mergiraf sobre ningún fichero. Lo de «byte a byte como en la 0.5.0» con los mismos datos no se repite en vivo (los relays de la 0.5.0 y los de ahora tendrían horas distintas): lo comprueba `test_proyeccion_m11.py` (K-112) con el `modelo` y la `proyeccion` de la etiqueta v0.5.0, en verde en esta rama.
+
+**Criterio 4: volver de 2b a rojo da una línea del monitor (hallazgo de K-112, PR #84).** `escucha.sh` guardaba para siempre las rojas vistas (`rojas_vistas`), así que una roja que bajaba a 2b, o se iba, y volvía con el mismo texto no abría turno. Ahora solo recuerda las rojas que siguen en «Colisiones que te afectan»; las demás se olvidan. Un md sin esa sección (no lo escribe el demonio) no hace olvidar nada. Lo demás no cambia: la misma roja con otra hora no es nueva, las amarillas no abren turno y las que había al arrancar tampoco. `hkos/pruebas/test_escucha_m11.py`, con el `escucha.sh` de verdad: roja → 2b → roja, una línea; roja que se va y vuelve, una línea; dos vueltas, dos líneas; y lo de siempre, ninguna. Con el `escucha.sh` de `main` fallan las tres primeras («0 != 1»); con el nuevo pasan las cuatro. En vivo, el paso 2 da la línea del monitor en las tres plataformas.
+
+**Criterio 7: `comprobar.py`.** No se puede generar un reto con la cadena sin modelo (`/hack-scaffold` y los demás son skills). Como en K-113, con una carpeta montada con los ejemplos del reto 03 de las skills (`CLAUDE.md`, análisis, enfoques, decisión, plan, pitch y verificación), y además con `.hackathon/os.md` de la plantilla de `/hack-scaffold` y `docs/contratos.md` de su plantilla, en un repo git. Se corre `comprobar.py … --enunciado evals/retos/01-movilidad-sintetico.md --sin-arranque` dos veces: con el kit de esta rama (la plantilla trae `fusion_estructural: no`) y con el de la etiqueta v0.5.0 entera (su `comprobar.py`, sus skills y su plantilla, sin la línea). **La salida es idéntica** salvo el nombre de la carpeta: A1, A3, A5 y A7 fallan igual por la carpeta sintética (sin `.claude/rules`, `.env` sin ignorar, los ejemplos copiados, otro enunciado), A4 pasa y A2 y A6 son N/A. No es una pasada con un reto generado de verdad.
+
+**Encontrado durante la prueba (en la propia prueba, no en el kit).**
+- En macOS, con el `/bin/bash` 3.2 de serie primero en el `PATH`, los hooks y el monitor dejan el OS apagado y el monitor no dice nada: es lo previsto (el OS pide bash 5; `arranque.md` y `arranque.sh` lo dicen). Con el bash de Homebrew primero, pasa. `colisiones_2b_vivo.py` ahora lo comprueba al empezar y se para con el motivo.
+- En Windows, el log del relay redirigido a un fichero sale en cp1252 (`está` → `est�`) y la comparación del aviso fallaba; la prueba lanza los procesos con `PYTHONIOENCODING=utf-8`. El aviso del relay era el correcto.
+- El temporal del relay tiene el `.lock` de uv: la prueba solo mira los `hk-2b-*`.
+
+**Runners.** Workflow temporal `.github/workflows/k114-sondeo.yml` en la rama desechable `m11-k114-sondeo` (`on: push` solo a esa rama; nunca PR ni fusión): descarga el binario oficial de Mergiraf 0.20.0 por la API de Codeberg, en macOS instala bash con brew, y corre `colisiones_2b_vivo.py`; la salida, en el resumen del job, como anotaciones, en el log y como artifact. Pasada buena: run 40117219305 (las cuatro anteriores fallaron por el propio workflow: la carpeta `mergiraf` tomada por el binario, el tarball en `--version`, el `PATH` de Windows en formato MSYS y el bash 3.2 de macOS).
+
+**Pruebas de la rama:** `python -m unittest discover -s hkos/pruebas` (642, OK, 20 saltadas), `prueba_hooks.py` (0 fallos), `colisiones_vivo.py` (0 fallos), `robustez.py` (46/46), `simulador/igualdad.py` (0 fallos) y `colisiones_2b_vivo.py` (0 fallos, dos pasadas en Linux, una en Windows y otra en macOS).
+
+**Qué no se ha comprobado:** un portátil real con Windows o macOS (solo runners de GitHub); Claude Code de verdad lanzando los hooks y el monitor (los lanza la prueba, con las entradas que daría Claude Code); el código de un equipo en un reto real (un `app.py` de once líneas); más de dos personas a la vez con 2b.
+
+**M11 se cierra** con los siete criterios: 2 en K-111; 3 en K-112 y, para «Vitest pinta G15», el PR #85 (hasta que se fusione, Vitest pinta la vista 2b hecha a mano de K-113); 4 con K-112 y el arreglo de `escucha.sh` de aquí; 1, 5, 6 y 7 aquí.
