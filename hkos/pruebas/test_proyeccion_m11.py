@@ -139,6 +139,49 @@ class Calcular(unittest.TestCase):
                                  json.dumps(viejo.calcular(EVENTOS, PERSONAS, AHORA, conflictos=conflictos)[0]))
 
 
+class Modelo(unittest.TestCase):
+    """La forma de K-111 (ADR-0014): `desde` es None en un par solo 2b, y `desde_2b`, en un par solo rojo.
+    modelo.calcular (y el relay) no revienta y filtra por la más antigua de las dos que no sea None."""
+
+    def estado(self, conflictos, ahora=AHORA):
+        return modelo.calcular([], {}, EVENTOS, PERSONAS, ahora, conflictos=conflictos)
+
+    def test_un_par_solo_2b_y_otro_solo_rojo(self):
+        solo_2b = {"personas": AB, "rutas": [], "rutas_2b": ["src/app.py"], "desde": None,
+                   "desde_2b": "2026-11-20T10:05:00Z"}
+        solo_2 = {"personas": ["persona-a", "persona-c"], "rutas": ["README.md"], "rutas_2b": [],
+                  "desde": "2026-11-20T10:06:00Z", "desde_2b": None}
+        e = self.estado([solo_2b, solo_2])
+        self.assertIsNone(ESTADO.error(e))
+        por_id = {c["id"]: c for c in e["colisiones"]}
+        self.assertEqual(por_id["2b:persona-a+persona-b"]["observado_en"], "2026-11-20T10:05:00Z")
+        self.assertEqual(por_id["2:persona-a+persona-c"]["observado_en"], "2026-11-20T10:06:00Z")
+        self.assertNotIn("2:persona-a+persona-b", por_id)
+        self.assertNotIn("2b:persona-a+persona-c", por_id)
+        # Antes de que se vieran, no cuentan.
+        ids = {c["id"] for c in self.estado([solo_2b, solo_2], "2026-11-20T10:05:30Z")["colisiones"]}
+        self.assertIn("2b:persona-a+persona-b", ids)
+        self.assertNotIn("2:persona-a+persona-c", ids)
+        self.assertFalse({c["id"] for c in self.estado([solo_2b, solo_2], "2026-11-20T10:04:00Z")["colisiones"]}
+                         & {"2b:persona-a+persona-b", "2:persona-a+persona-c"})
+
+    def test_con_las_dos_cuenta_la_mas_antigua(self):
+        par = {"personas": AB, "rutas": ["web/App.jsx"], "rutas_2b": ["src/app.py"], "desde": "2026-11-20T10:10:00Z",
+               "desde_2b": "2026-11-20T10:05:00Z"}
+        ids = {c["id"] for c in self.estado([par], "2026-11-20T10:07:00Z")["colisiones"]}
+        self.assertTrue({"2:persona-a+persona-b", "2b:persona-a+persona-b"} <= ids)
+
+    def test_el_relay_con_un_par_solo_2b(self):
+        tmp = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, tmp, True)
+        r = relay_mod.Relay(tmp, PERSONAS, ahora=lambda: AHORA, contratos=[],
+                            wip=Wip([{"personas": AB, "rutas": [], "rutas_2b": ["src/app.py"], "desde": None,
+                                      "desde_2b": "2026-11-20T10:05:00Z"}]))
+        r.recibir({"eventos": EVENTOS})
+        r.recalcular()
+        self.assertIn("2b:persona-a+persona-b", [c["id"] for c in r.estado["colisiones"]])
+
+
 # ================================================ 2. relay: el interruptor y, apagado, todo byte a byte como la 0.5.0
 class CalculoFalso:
     """Anota cómo lo construye el relay. Sin `fusion_estructural` en la firma, como el Calculo de la 0.5.0."""
@@ -218,7 +261,7 @@ class Apagado(unittest.TestCase):
                 conf = simula.conflictos_de(guion, ts, punto["tras"])
                 if conf is not None:      # G15 con el interruptor apagado: lo de 2b, en rojo y sin rutas_2b
                     conf = [{"personas": c["personas"], "rutas": sorted(c["rutas"] + c.get("rutas_2b", [])),
-                             "desde": c["desde"]} for c in conf]
+                             "desde": min(d for d in (c["desde"], c.get("desde_2b")) if d)} for c in conf]
                 yield f"{g} t={punto['tras']}", personas, eventos, ts(punto["tras"]), contratos, conf
 
     def relay(self, nombre, personas, eventos, ahora, contratos, conf):

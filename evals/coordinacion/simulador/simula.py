@@ -73,8 +73,8 @@ def contratos_de(guion, base):
 def conflictos_de(guion, ts, tras):
     """M11 (G15): los `conflictos` del nivel 2 que tendría el Calculo del relay a `tras`, o None si el guion no trae.
     El guion da lo que sale en cada ciclo, `{t, pares: [{personas, rutas, rutas_2b?}]}`; como el Calculo, `desde`
-    (y `desde_2b`) es el primer ciclo desde el que ese par tiene seguidas las mismas `rutas` (`rutas_2b`). Un par sin
-    `rutas` lleva en `desde` la hora de `desde_2b` (modelo.calcular filtra por `desde`)."""
+    (y `desde_2b`) es el primer ciclo desde el que ese par tiene seguidas las mismas `rutas` (`rutas_2b`), y None si
+    su lista está vacía, como en K-111."""
     if "conflictos" not in guion:
         return None
     ciclos = [c for c in guion["conflictos"] if c["t"] <= tras]
@@ -96,8 +96,8 @@ def conflictos_de(guion, ts, tras):
                 c = {"personas": list(k), "rutas": sorted(par["rutas"])}
                 if "rutas_2b" in par:
                     c["rutas_2b"] = sorted(par["rutas_2b"])
-                    c["desde_2b"] = desde.get((k, "rutas_2b"), (None, ts(ciclo["t"])))[1]
-                c["desde"] = desde[(k, "rutas")][1] if (k, "rutas") in desde else c.get("desde_2b", ts(ciclo["t"]))
+                    c["desde_2b"] = desde[(k, "rutas_2b")][1] if (k, "rutas_2b") in desde else None
+                c["desde"] = desde[(k, "rutas")][1] if (k, "rutas") in desde else None
                 if c["rutas"] or c.get("rutas_2b"):
                     salida.append(c)
     return salida
