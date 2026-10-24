@@ -29,7 +29,7 @@ jobs:
           echo "$url"
           curl -fsSL -o "${{ matrix.asset }}" "$url"
           case "${{ matrix.asset }}" in *.zip) unzip -o -q "${{ matrix.asset }}" ;; *) tar xzf "${{ matrix.asset }}" ;; esac
-          bin=$(dirname "$(find "$PWD" -name 'mergiraf' -o -name 'mergiraf.exe' | grep -v '\.zip$\|\.tar' | head -1)")
+          bin=$(dirname "$(find "$PWD" -type f \( -name mergiraf -o -name mergiraf.exe \) | head -1)")
           echo "$bin" >> "$GITHUB_PATH"
           "$bin"/mergiraf* --version
       - name: colisiones_2b_vivo.py
