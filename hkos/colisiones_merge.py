@@ -5,7 +5,8 @@ Dos piezas, solo biblioteca estándar y git:
     copia principal hecho con un índice temporal, sin tocar el índice, el árbol, HEAD ni el `git status` de la persona,
     y un push forzado **solo** a refs/hackathon/wip/<persona>, solo si cambió el árbol.
   - Calculo (en el relay): `git fetch` de refs/hackathon/wip/* a refs/hackathon/relay-wip/* de su clon y
-    `git merge-tree --write-tree` por pares de personas (Git ≥ 2.38).
+    `git merge-tree --write-tree` por pares de personas (Git ≥ 2.38). Desde M11, con `fusion_estructural=True` y
+    Mergiraf en el PATH, el nivel 2b: lo que Mergiraf fusiona sin conflictos baja a amarillo (ADR-0014).
 
 Qué se publica (decisiones del usuario en M8g, cerrado ante la duda):
   - lo versionado cambiado y lo nuevo sin ignorar (`git add -A` respeta .gitignore e info/exclude);
@@ -23,7 +24,9 @@ import fnmatch
 import json
 import os
 import re
+import shutil
 import subprocess
+import tempfile
 import time
 from datetime import datetime, timezone
 
@@ -350,19 +353,68 @@ def version_git(repo="."):
     return (int(m.group(1)), int(m.group(2))) if m else None
 
 
+MERGIRAF_MIN = (0, 20, 0)
+MODOS_2B = ("100644", "100755")
+
+
+def version_mergiraf(programa, timeout=5):
+    """(mayor, menor, parche) de `mergiraf --version`, o None si no responde (ADR-0014: plazo de 5 s)."""
+    try:
+        r = subprocess.run([programa, "--version"], capture_output=True, stdin=subprocess.DEVNULL, timeout=timeout)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    m = re.search(r"(\d+)\.(\d+)\.(\d+)", r.stdout.decode("utf-8", "replace")) if r.returncode == 0 else None
+    return tuple(int(x) for x in m.groups()) if m else None
+
+
 class Calculo:
     """El nivel 2 en el relay: trae las refs WIP y calcula los conflictos por pares. `conflictos` =
-    [{personas, rutas, desde}], lo que recibe modelo.calcular."""
-    CADA_S = 30
+    [{personas, rutas, desde}], lo que recibe modelo.calcular.
 
-    def __init__(self, repo, equipo, aviso=print, ahora=ahora_iso, version=None):
-        self.repo, self.equipo, self.aviso, self.ahora = repo, set(equipo), aviso, ahora
+    Nivel 2b (M11, ADR-0014), solo con `fusion_estructural=True` y Mergiraf ≥ 0.20.0 en el PATH: merge-tree sin
+    `--name-only`, y cada ruta con las tres etapas en modo normal se intenta con `mergiraf merge`; con rc 0 pasa de
+    `rutas` a `rutas_2b`. Entonces `conflictos` = [{personas, rutas, rutas_2b, desde, desde_2b}] (`desde` o `desde_2b`
+    a None si su lista está vacía). Sin 2b, todo como en la 0.5.0."""
+    CADA_S = 30
+    PLAZO_FICHERO_MS = 5000      # -t de Mergiraf: pasado, vuelve a la fusión de git y da rc 1
+    PLAZO_PROCESO_S = 10         # lo mata el relay
+    PLAZO_CICLO_S = 20           # todos los ficheros de todos los pares en un ciclo
+
+    def __init__(self, repo, equipo, aviso=print, ahora=ahora_iso, version=None, fusion_estructural=False,
+                 reloj=time.monotonic):
+        self.repo, self.equipo, self.aviso, self.ahora, self.reloj = repo, set(equipo), aviso, ahora, reloj
         v = version if version is not None else version_git(repo)
         self.activo = v is not None and v >= VERSION_MIN
         if not self.activo:
             texto = f"{v[0]}.{v[1]}" if v else "desconocida"
             aviso(f"Nivel 2 desactivado: git {texto} < 2.38 (merge-tree --write-tree). Siguen los niveles 1 y 3.")
         self.conflictos, self._cache, self._desde = [], {}, {}
+        self.mergiraf = None                      # ruta del programa si el nivel 2b está activo
+        self._cache_2b, self._desde_2b = {}, {}
+        if self.activo and fusion_estructural:
+            self.mergiraf = self._detectar_mergiraf()
+
+    @property
+    def fusion_estructural(self):
+        return self.mergiraf is not None
+
+    def _detectar_mergiraf(self):
+        """Una vez, al arrancar: shutil.which y `mergiraf --version` (≥ 0.20.0). Avisa una vez en cualquier caso."""
+        minima = ".".join(map(str, MERGIRAF_MIN))
+        programa = shutil.which("mergiraf")
+        if not programa:
+            motivo = "mergiraf no está en el PATH"
+        else:
+            v = version_mergiraf(programa)
+            if v is None:
+                motivo = "mergiraf --version no responde"
+            elif v < MERGIRAF_MIN:
+                motivo = f"mergiraf {'.'.join(map(str, v))} < {minima}"
+            else:
+                self.aviso(f"Nivel 2b activo: mergiraf {'.'.join(map(str, v))}")
+                return programa
+        self.aviso(f"Nivel 2b desactivado: {motivo}. Sigue el nivel 2.")
+        return None
 
     def sondear(self):
         """True si cambió la lista de conflictos."""
@@ -379,11 +431,18 @@ class Calculo:
                 refs[persona] = sha
         nuevos = []
         personas = sorted(refs)
+        self._inicio_2b = None                    # el plazo del ciclo empieza con la primera llamada a Mergiraf
         for i, a in enumerate(personas):
             for b in personas[i + 1:]:
                 clave = (refs[a], refs[b])
                 if clave not in self._cache:
-                    self._cache[clave] = self._merge_tree(refs[a], refs[b])
+                    self._cache[clave] = self._merge_tree(refs[a], refs[b]) if self.mergiraf is None \
+                        else self._etapas(refs[a], refs[b])
+                if self.mergiraf is not None:
+                    conflicto = self._con_2b(a, b, self._cache[clave])
+                    if conflicto:
+                        nuevos.append(conflicto)
+                    continue
                 rutas = self._cache[clave]
                 if rutas:
                     previo = self._desde.get((a, b))
@@ -394,6 +453,8 @@ class Calculo:
                     self._desde.pop((a, b), None)
         if len(self._cache) > 500:
             self._cache = {k: v for k, v in list(self._cache.items())[-100:]}
+        if len(self._cache_2b) > 500:
+            self._cache_2b = {k: v for k, v in list(self._cache_2b.items())[-100:]}
         cambio = nuevos != self.conflictos
         self.conflictos = nuevos
         return cambio
@@ -410,3 +471,95 @@ class Calculo:
             if linea not in rutas:
                 rutas.append(linea)
         return sorted(rutas, key=str.lower)
+
+    def _etapas(self, a, b):
+        """Como _merge_tree, sin `--name-only`: {ruta: {etapa: (modo, blob)}} de los ficheros en conflicto."""
+        c, out, _ = ejecutar(self.repo, "merge-tree", "--write-tree", "--no-messages", a, b)
+        if c != 1:
+            return {}
+        etapas = {}
+        for linea in out.splitlines()[1:]:
+            if not linea.strip():
+                break
+            meta, _, ruta = linea.partition("\t")
+            partes = meta.split(" ")
+            if len(partes) == 3 and ruta:
+                etapas.setdefault(ruta, {})[partes[2]] = (partes[0], partes[1])
+        return dict(sorted(etapas.items(), key=lambda x: x[0].lower()))
+
+    def _con_2b(self, a, b, etapas):
+        """El conflicto del par con el nivel 2b: las rutas que Mergiraf resuelve (rc 0) van a `rutas_2b`."""
+        if not etapas:
+            self._desde.pop((a, b), None)
+            self._desde_2b.pop((a, b), None)
+            return None
+        rutas, rutas_2b = [], []
+        for ruta, e in etapas.items():
+            (rutas_2b if self._resuelve(ruta, e) else rutas).append(ruta)
+        desdes = []
+        for lista, memoria in ((rutas, self._desde), (rutas_2b, self._desde_2b)):
+            previo = memoria.get((a, b))
+            if not lista:
+                memoria.pop((a, b), None)
+                desdes.append(None)
+                continue
+            desde = previo[1] if previo and previo[0] == lista else self.ahora()
+            memoria[(a, b)] = (lista, desde)
+            desdes.append(desde)
+        return {"personas": [a, b], "rutas": rutas, "rutas_2b": rutas_2b, "desde": desdes[0], "desde_2b": desdes[1]}
+
+    def _resuelve(self, ruta, etapas):
+        """¿Resuelve Mergiraf esta ruta sin conflictos? Solo con las tres etapas en modo normal; si no, ni se intenta.
+        Caché por (blobs, ruta), también para el «no». Lo que no cabe en el plazo del ciclo sigue rojo y no se guarda."""
+        if set(etapas) != {"1", "2", "3"} or any(etapas[n][0] not in MODOS_2B for n in "123"):
+            return False
+        clave = (etapas["1"][1], etapas["2"][1], etapas["3"][1], ruta)
+        if clave in self._cache_2b:
+            return self._cache_2b[clave]
+        if self._inicio_2b is None:
+            self._inicio_2b = self.reloj()
+        queda = self.PLAZO_CICLO_S - (self.reloj() - self._inicio_2b)
+        if queda <= 0:
+            return False                          # se intenta en el ciclo siguiente
+        plazo = min(self.PLAZO_PROCESO_S, queda)
+        resultado = self._mergiraf(ruta, [etapas[n][1] for n in "123"], plazo)
+        if resultado is None or (resultado == "plazo" and plazo < self.PLAZO_PROCESO_S):
+            return False                          # no se pudo lanzar, o lo cortó el plazo del ciclo: no se guarda
+        self._cache_2b[clave] = resultado is True
+        return resultado is True
+
+    def _mergiraf(self, ruta, blobs, plazo):
+        """True (rc 0), False (otro rc), «plazo» (lo mata el relay) o None (no se pudo lanzar o leer un blob). Los
+        blobs van a un directorio temporal fuera del clon, con XDG_DATA_HOME y APPDATA allí (las copias de Mergiraf,
+        P12 y P17), que se borra siempre. La salida no se lee."""
+        tmp = tempfile.mkdtemp(prefix="hk-2b-")
+        try:
+            nombres = []
+            for n, blob in zip("123", blobs):
+                nombre = os.path.join(tmp, n)
+                if not self._blob(blob, nombre):
+                    return None
+                nombres.append(nombre)
+            env = dict(os.environ, XDG_DATA_HOME=tmp, APPDATA=tmp)
+            try:
+                r = subprocess.run([self.mergiraf, "merge", *nombres, "-p", ruta, "-t", str(self.PLAZO_FICHERO_MS),
+                                    "-o", os.path.join(tmp, "salida")], stdin=subprocess.DEVNULL,
+                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env, timeout=plazo)
+            except subprocess.TimeoutExpired:
+                return "plazo"
+            except (OSError, subprocess.SubprocessError):
+                return None
+            return r.returncode == 0
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
+
+    def _blob(self, blob, destino):
+        """`git cat-file blob` a un fichero, en bytes."""
+        env = dict(os.environ, **ENTORNO)
+        try:
+            with open(destino, "wb") as f:
+                r = subprocess.run(["git", *SIN_CREDENCIALES, "-C", self.repo, "cat-file", "blob", blob], stdout=f,
+                                   stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=env, timeout=60)
+        except (OSError, subprocess.SubprocessError):
+            return False
+        return r.returncode == 0
