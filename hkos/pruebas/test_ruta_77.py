@@ -63,7 +63,7 @@ class A2TodoHecho(Base):
 class A3RangoSinAnchura(Base):
     """A3: el rango sin anchura se decide por lo que se muestra, HH:MM en la zona del equipo (ajuste 5, punto 2). Ritmos
     de ana del 30 % al 90 % y una abierta de 1 min de franja: temprano 08:00:18Z y tarde 08:00:54Z, las dos «10:00». La
-    web hace lo mismo (Vitest, m10.test.jsx, y igualdad.py, G15)."""
+    web hace lo mismo (Vitest, m10.test.jsx, e igualdad.py, «#77, A3»)."""
 
     def test_dos_instantes_del_mismo_minuto(self):
         tareas = ana(ritmos=(18, 36, 54))[:3] + [tarea("T04", "ana", "lista", 4, franja=(0, 1))]

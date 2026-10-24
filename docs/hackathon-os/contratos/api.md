@@ -136,6 +136,9 @@ Cambios tras congelar (sin subir `v`: solo añaden campos opcionales o fijan reg
   - **§5:** la frase nueva de la descripción de `colisiones`;
   - **§6:** la línea `2b` de ejemplo en «Colisiones que te afectan».
   [estado.schema.json](estado.schema.json) no cambia: `nivel` ya admitía `2b` desde M8b. Con el interruptor apagado, todo sale byte a byte como en la 0.5.0.
+- 2026-10-24, M11, tras congelar (decisión del usuario; ADR-0014, «Ajuste del 2026-10-24»). Sin subir `v`: deja escrito lo que ya hace el código desde K-112 (PR #84, `hkos/mcp.py` y `red.fusion_estructural`). Lo marcado «tras congelar, 2026-10-24, M11» en:
+  - **§0:** `fusion_estructural:` no lo lee solo el relay: el relay, de su copia, para el cálculo del nivel 2b, y el MCP de cada persona, del `os.md` de su copia principal, solo para la descripción de `colisiones`;
+  - **§5:** la frase del nivel 2b en la descripción de `colisiones` sale **solo con `fusion_estructural: sí`** en ese `os.md`, como `jurado` y `ruta` con sus interruptores (§11.5). Apagado, `tools/list` es byte a byte el de la 0.5.0 (constitución I).
 - 2026-10-14, M8d, §4 y §7: `<git común>/hackathon/os/agente.vivo` (el puerto, mientras el demonio escucha) y `…/arranque.log` (una línea por `SessionStart`: qué hizo el arranque y cuántos ms). En Windows, conectar a un puerto local cerrado tarda ≈2 s, y sin `agente.vivo` el arranque no cabía en el segundo del criterio 6 de M8d.
 
 Los estados de tarea son identificadores sin espacios (`en_curso`, `en_revision`, `no_cerrada`…); la web y el markdown muestran la etiqueta legible («en curso»).
@@ -161,12 +164,14 @@ apagado_min: 30           # el demonio sale tras este tiempo sin eventos ni sesi
 web_nueva: no             # sí = la web de trabajo de M9a, servida por el demonio de cada persona (§4, ADR-0010)
 vista_jurado: no          # sí = vista de jurado (R-35, ADR-0012; §11)
 ruta_critica: no          # sí = ruta crítica (R-36, ADR-0013; §11)
-fusion_estructural: no    # sí = nivel 2b con Mergiraf; solo lo lee el relay (R-34, ADR-0014; §3)
+fusion_estructural: no    # sí = nivel 2b con Mergiraf; lo lee el relay (y el MCP, la descripción) (R-34, ADR-0014; §3, §5)
 ```
 
 `vista_jurado:` y `ruta_critica:` (M10; tras congelar, 2026-10-19, M10, issue #46, B7: faltaban en esta plantilla): por defecto, `no`, con los mismos valores que `activa:`. Qué hacen y quién los lee, en §11.1.
 
 **`fusion_estructural:`** (M11; tras congelar, 2026-10-22, M11, K-110; ADR-0014, decisión 2): por defecto, `no`, con los mismos valores que `activa:`. Solo lo lee el relay, de su copia, al arrancar, y solo cuenta con el nivel 2 activo (`publicar_wip: sí` y Git ≥ 2.38). Con `sí` hace falta Mergiraf (≥ 0.20.0) en el `PATH` del portátil del coordinador, instalado a mano: el kit no lo instala ni lo pide, y los demás portátiles no lo necesitan. Qué hace, en §3. Con `no`, sin la línea, sin `publicar_wip: sí` o sin Mergiraf, el relay no busca ni ejecuta nada nuevo y todo sale como en la 0.5.0.
+
+Tras congelar, 2026-10-24, M11 (decisión del usuario; ADR-0014): no lo lee solo el relay. El relay lo lee de su copia para el cálculo del nivel 2b (lo de arriba); el MCP de cada persona lo lee del `os.md` de su copia principal, como `vista_jurado:` y `ruta_critica:`, **solo** para añadir la frase del nivel 2b a la descripción de `colisiones` (§5). No necesita Mergiraf ni el nivel 2 activo: con `sí`, la frase sale aunque el relay no produzca ninguna `2b`. Con `no` o sin la línea, el MCP es byte a byte el de la 0.5.0.
 
 El token del relay **no** va aquí: va en `<git común>/hackathon/os/token` (fuera de git).
 
@@ -506,7 +511,7 @@ Lee el estado del demonio de su persona (`<git común>/hackathon/os/estado.json`
 |---|---|---|
 | `estado` | `{}` | El `estado-equipo.md` de la persona + `generado_en` |
 | `tarea` | `{"id":"T07"}` | `{tarea, columna, antiguedad_s, generado_en}`: la tarea completa de `estado.json`, su columna de la web y su antigüedad. Un ID que no existe da `isError` |
-| `colisiones` | `{"mias": true}` | `{colisiones, generado_en}`: las que afectan a la persona (con `mias: false`, todas). Desde M11 (tras congelar, 2026-10-22, M11; ADR-0014), su descripción añade: «nivel 2b: conflicto de git que la fusión estructural (Mergiraf) resuelve; amarillo, revisad la fusión igualmente». Los objetos no cambian |
+| `colisiones` | `{"mias": true}` | `{colisiones, generado_en}`: las que afectan a la persona (con `mias: false`, todas). Desde M11 (tras congelar, 2026-10-22, M11; ADR-0014), su descripción añade: «nivel 2b: conflicto de git que la fusión estructural (Mergiraf) resuelve; amarillo, revisad la fusión igualmente», **solo con `fusion_estructural: sí`** en el `os.md` de la copia principal (tras congelar, 2026-10-24, M11: como `jurado` y `ruta`; apagado, `tools/list` es byte a byte el de la 0.5.0). Los objetos no cambian |
 | `reclamar` | `{"id":"T07"}` | Asigna el issue a la persona con su `gh` y emite `reclamo`. Falla si la tarea es de otro dueño según `plan.md`. **(Sin implementar: M8h, decisión del usuario en M8g)** |
 | `reservar` | `{"rutas":[…],"ttl_s":900,"modo":"compartida"}` | `{"id","hasta","rutas"}` vía `POST /v1/reservas`, con la persona de `estado-equipo.md` y el `relay.url` y el token del demonio. Las rutas, relativas o absolutas dentro del repo (una que se sale da `isError`). **(M8g)** |
 | `liberar` | `{"id":"reserva-…"}` | Vía `DELETE /v1/reservas/{id}`; solo una reserva propia. **(M8g)** |

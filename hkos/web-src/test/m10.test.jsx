@@ -768,7 +768,7 @@ describe("issue #77: rango sin anchura (A3) y plazo pasado con su día (A11), co
   };
 
   it("A3: dos instantes distintos con la misma HH:MM en la zona del equipo no son un rango: «hacia», como el resumen", () => {
-    // El caso del issue (G15 en igualdad.py; test_ruta_77): ritmos del 30 % al 90 % y una abierta de 1 min de franja.
+    // El caso del issue («#77, A3» en igualdad.py; test_ruta_77): ritmos del 30 % al 90 % y una abierta de 1 min de franja.
     // ruta.py escribe «fin hacia 10:00 (las medidas no varían)»; antes, la web comparaba milisegundos y pintaba
     // «entre sáb 10:00 y sáb 10:00», la forma que prohíbe el ajuste 5, punto 2.
     const resumen = "ruta: estimación a tiempo · fin hacia 10:00 (las medidas no varían) · entrega dom 10:00";
