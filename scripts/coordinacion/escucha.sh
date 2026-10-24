@@ -90,24 +90,32 @@ fin_backoff() {
 # Hackathon OS (M8g, K-73): una colisión ROJA nueva para esta persona abre un turno (una línea) una sola vez. Las
 # amarillas no: llegan en el siguiente delta (delta.sh). Mira estado-equipo.md, que escribe el demonio, solo con
 # builtins; sin .hackathon/os.md activo no lee nada. Al arrancar da por vistas las rojas que ya hay (van en el bloque
-# de inicio de sesion.sh).
+# de inicio de sesion.sh). Solo recuerda las rojas que siguen en el md (M11, K-114): una que se va o baja a amarilla
+# (nivel 2b) se olvida, y si vuelve a rojo con el mismo texto es una roja nueva (criterio 4 de M11).
 . "$(dirname "$0")/../os/comun.sh"
 declare -A rojas_vistas=()
 rojas_listas=0
 os_rojas() {
   os_activo || return 0
-  local md=$OS_COMUN/hackathon/os/estado-equipo.md l sec= clave nuevas=() ver
+  local md=$OS_COMUN/hackathon/os/estado-equipo.md l sec= clave nuevas=() ver con_seccion=0
+  local -A siguen=()
   [[ -f $md ]] || return 0
   while IFS= read -r l || [[ -n $l ]]; do
     l=${l%$'\r'}
-    if [[ $l == '## '* ]]; then sec=$l; continue; fi
+    if [[ $l == '## '* ]]; then sec=$l; [[ $l == '## Colisiones que te afectan' ]] && con_seccion=1; continue; fi
     [[ $sec == '## Colisiones que te afectan' && $l == '- ROJO'* ]] || continue
     clave=$l   # sin horas, como en delta.sh: la misma colisión con otra hora no es nueva
     while [[ $clave =~ \ \([0-9][0-9]:[0-9][0-9]( · [^\)]*)?\) ]]; do clave=${clave/"${BASH_REMATCH[0]}"/}; done
+    siguen[$clave]=1
     [[ -n ${rojas_vistas[$clave]} ]] && continue
     rojas_vistas[$clave]=1
     (( rojas_listas )) && nuevas+=("${l#- ROJO · }")
   done < "$md"
+  if (( con_seccion )); then   # un md sin la sección (no lo escribe el demonio) no hace olvidar nada
+    for clave in "${!rojas_vistas[@]}"; do
+      [[ -n ${siguen[$clave]} ]] || unset 'rojas_vistas[$clave]'
+    done
+  fi
   rojas_listas=1
   (( ${#nuevas[@]} )) || return 0
   os_ruta_ver "$md"; ver=$OS_V
