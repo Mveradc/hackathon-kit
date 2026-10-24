@@ -93,7 +93,7 @@ def libre():
 
 def lanza(args, log, env=None):
     p = subprocess.Popen([UV, "run", "--no-project", "--quiet", *args], stdout=open(log, "w"), stderr=subprocess.STDOUT,
-                         env=dict(env or os.environ, PYTHONUNBUFFERED="1"))
+                         env=dict(env or os.environ, PYTHONUNBUFFERED="1", PYTHONIOENCODING="utf-8"))
     procesos.append(p)
     return p
 
@@ -252,6 +252,10 @@ def main():
     for flujo in (sys.stdout, sys.stderr):  # en Windows, con la salida redirigida, cp1252 no sabe escribir «≤» (issue #18)
         if hasattr(flujo, "reconfigure"):
             flujo.reconfigure(encoding="utf-8", errors="replace")
+    v = subprocess.run([BASH, "-c", "echo ${BASH_VERSINFO[0]}"], capture_output=True, text=True).stdout.strip()
+    if not v.isdigit() or int(v) < 5:   # el OS (hooks y monitor) pide bash 5; en macOS, el de Homebrew
+        print(f"Hace falta bash ≥ 5 primero en el PATH para esta prueba ({BASH}: {v or '?'}).", flush=True)
+        return 1
     real = shutil.which("mergiraf")
     if not real:
         print("Hace falta mergiraf (≥ 0.20.0) en el PATH para esta prueba.", flush=True)
@@ -299,7 +303,7 @@ def monitor(tmp, repo, persona, gh):
     salida = os.path.join(tmp, f"escucha-{persona}.out")
     env = {k: v for k, v in os.environ.items() if k != "CLAUDE_PROJECT_DIR"}
     p = subprocess.Popen([BASH, "-c", f"bash '{ESCUCHA}'; :"], cwd=repo, stdout=open(salida, "wb"),
-                         stderr=subprocess.DEVNULL, env=dict(env, HK_GH=gh, HK_ESCUCHA_PASO_S="1"))
+                         stderr=open(salida + ".err", "wb"), env=dict(env, HK_GH=gh, HK_ESCUCHA_PASO_S="1"))
     procesos.append(p)
     return salida
 
@@ -464,24 +468,32 @@ def prueba(tmp):
     sb.edita("app.py", APP_B2)
     t_edicion = time.time()
     fotos = {p: foto(c) for p, c in clones.items()}
-    t_pub = [None]
-    linea = {}
+    t_pub, t_rojo, linea = [None], [None], {}
 
     def paso2():
+        ahora = time.time()
         if t_pub[0] is None and en_wip(remoto, "persona-b", APP_B2):
-            t_pub[0] = time.time()
+            t_pub[0] = ahora
+        if t_rojo[0] is None and con_rojo(a) and con_rojo(b):
+            t_rojo[0] = ahora
         for p, s in salidas.items():
             if p not in linea and "colisión ROJA nueva" in leer(s):
-                linea[p] = time.time()
-        return t_pub[0] is not None and con_rojo(a) and con_rojo(b) and len(linea) == 2
+                linea[p] = ahora
+        return t_pub[0] is not None and t_rojo[0] is not None and len(linea) == 2
 
-    ok = espera(paso2, 240, 0.25)
-    t_rojo = time.time() - t_pub[0] if t_pub[0] else None
-    comprueba(f"C5: rojo de nivel 2 con app.py y la línea del monitor de A y de B a los "
-              f"{'?' if t_rojo is None else f'{t_rojo:.0f}'} s de la publicación de B (≤ {PLAZO} s; "
-              f"{time.time() - t_edicion:.0f} s desde la edición)",
-              ok and t_rojo is not None and t_rojo <= PLAZO, f"A: {colisiones_md(a)} · B: {colisiones_md(b)} · "
-                                                             f"monitor: {[leer(s) for s in salidas.values()]}")
+    espera(paso2, 240, 0.25)
+    pub = t_pub[0] or t_edicion
+    d_rojo = None if t_rojo[0] is None else t_rojo[0] - pub
+    comprueba(f"C5: rojo de nivel 2 con app.py en el md de A y de B a los "
+              f"{'?' if d_rojo is None else f'{d_rojo:.0f}'} s de la publicación de B (≤ {PLAZO} s; "
+              f"{'?' if t_rojo[0] is None else f'{t_rojo[0] - t_edicion:.0f}'} s desde la edición)",
+              t_pub[0] is not None and d_rojo is not None and d_rojo <= PLAZO,
+              f"A: {colisiones_md(a)} · B: {colisiones_md(b)}")
+    d_linea = {p: linea[p] - pub for p in linea}
+    comprueba(f"C5: la línea del monitor de A y de B a los "
+              f"{', '.join(f'{d:.0f}' for d in d_linea.values()) or '?'} s de la publicación de B (≤ {PLAZO} s)",
+              len(d_linea) == 2 and all(d <= PLAZO for d in d_linea.values()),
+              f"monitor: {[leer(s) for s in salidas.values()]} · stderr: {[leer(s + '.err')[-600:] for s in salidas.values()]}")
     print("        " + "\n        ".join(colisiones_md(b)), flush=True)
     time.sleep(3)
     for p, s in salidas.items():
