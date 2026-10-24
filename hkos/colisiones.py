@@ -8,6 +8,9 @@
 - Nivel 2 (rojo, R-20): los conflictos de `git merge-tree` entre las refs de trabajo en curso (los calcula
   colisiones_merge.py en el relay; aquí llegan hechos). Un fichero en conflicto entre dos personas deja de salir en su
   amarillo.
+- Nivel 2b (amarillo, R-34, M11, ADR-0014): con `fusion_estructural: sí` en el relay, las rutas del conflicto que
+  Mergiraf resuelve llegan aparte (`rutas_2b`, desde `desde_2b`) y salen como `2b:<a>+<b>`. También tapan el nivel 1.
+  Sin `rutas_2b` (el interruptor apagado), todo como en la 0.5.0.
 - Nivel 3 (rojo, R-21): contrato tocado por quien no es su dueño (contratos.py).
 - Reservas (R-22): eventos `reserva` y `liberacion`; vencen con `ts + ttl_s`.
 Dentro de una persona no hay colisiones (criterio 6 de M8g): el orquestador ya serializa a sus workers.
@@ -89,8 +92,8 @@ def ficheros(eventos, equipo):
 
 def nivel1(conjuntos, conflictos=()):
     """Una colisión amarilla por conjunto de personas que comparten ficheros. Un fichero en conflicto de nivel 2 entre
-    exactamente esas personas no sale aquí (ya sale en rojo)."""
-    tapadas = {(frozenset(c["personas"]), r.lower()) for c in conflictos for r in c["rutas"]}
+    exactamente esas personas no sale aquí (ya sale en rojo, o en el amarillo del nivel 2b)."""
+    tapadas = {(frozenset(c["personas"]), r.lower()) for c in conflictos for r in c["rutas"] + c.get("rutas_2b", [])}
     por_ruta = {}
     for persona, p in conjuntos.items():
         for k, (ruta, desde) in p["rutas"].items():
@@ -115,12 +118,18 @@ def nivel1(conjuntos, conflictos=()):
 
 
 def nivel2(conflictos):
-    """Los conflictos de merge-tree (colisiones_merge.py) como colisiones rojas: [{personas, rutas, desde}]."""
+    """Los conflictos de merge-tree (colisiones_merge.py) como colisiones: [{personas, rutas, rutas_2b?, desde,
+    desde_2b?}]. Por par, `2:` rojo con `rutas` y, con 2b (M11), `2b:` amarillo con `rutas_2b`, cada una solo si tiene
+    rutas. Sin `rutas_2b`, la roja sale siempre, como en la 0.5.0."""
     salida = []
     for c in conflictos:
         orden = sorted(c["personas"])
-        salida.append({"id": "2:" + "+".join(orden), "nivel": "2", "gravedad": "rojo", "personas": orden,
-                       "rutas": sorted(c["rutas"], key=str.lower), "observado_en": c["desde"]})
+        if c["rutas"] or "rutas_2b" not in c:
+            salida.append({"id": "2:" + "+".join(orden), "nivel": "2", "gravedad": "rojo", "personas": orden,
+                           "rutas": sorted(c["rutas"], key=str.lower), "observado_en": c["desde"]})
+        if c.get("rutas_2b"):
+            salida.append({"id": "2b:" + "+".join(orden), "nivel": "2b", "gravedad": "amarillo", "personas": orden,
+                           "rutas": sorted(c["rutas_2b"], key=str.lower), "observado_en": c["desde_2b"]})
     return salida
 
 
@@ -147,7 +156,8 @@ def reservas(eventos, equipo, ahora):
 
 def calcular(eventos, personas, ahora, contratos=None, conflictos=None):
     """(colisiones, reservas) de estado.json. `contratos`: los bloques con dueño de contratos.duenos (el relay los lee
-    de origin/main); `conflictos`: los de merge-tree [{personas, rutas, desde}]."""
+    de origin/main); `conflictos`: los de merge-tree [{personas, rutas, desde}] y, con 2b (M11), también `rutas_2b` y
+    `desde_2b`."""
     equipo = {p["persona"] for p in personas}
     conjuntos = ficheros(eventos, equipo)
     conflictos = [c for c in (conflictos or []) if len(set(c["personas"]) & equipo) == 2]

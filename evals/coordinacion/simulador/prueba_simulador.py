@@ -2,7 +2,7 @@
 # requires-python = ">=3.10"
 # dependencies = []
 # ///
-"""Criterio 3 de M8b: los guiones G1–G4 corren de principio a fin, cada evento valida contra eventos.schema.json y
+"""Criterio 3 de M8b: los guiones G1–G4 (y G5, G6 y G15, el nivel 2b de M11) corren de principio a fin, cada evento valida contra eventos.schema.json y
 cada estado.json contra estado.schema.json, y coinciden con lo esperado de cada guion.
 
 jsonschema solo hace falta aquí (el OS no depende de él):
@@ -26,7 +26,7 @@ sys.path.insert(0, AQUI)
 from simula import carga, ejecutar  # noqa: E402
 
 CONTRATOS = os.path.join(KIT, "docs", "hackathon-os", "contratos")
-GUIONES = ["G1", "G2", "G3", "G4", "G5", "G6"]
+GUIONES = ["G1", "G2", "G3", "G4", "G5", "G6", "G15"]     # G15: nivel 2b (M11, K-112)
 
 
 def validador(nombre):

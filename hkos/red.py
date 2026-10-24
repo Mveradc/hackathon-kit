@@ -65,6 +65,12 @@ def ruta_critica(os_md):
     return bool(os_md) and es_si(conf(os_md, "ruta_critica"))
 
 
+def fusion_estructural(os_md):
+    """M11 (api.md §0, ADR-0014): `fusion_estructural: sí` en os.md. Sin la línea, no. Lo lee el relay (y el MCP, para
+    la descripción de `colisiones`)."""
+    return bool(os_md) and es_si(conf(os_md, "fusion_estructural"))
+
+
 def equipo(ruta):
     """Las personas de la tabla de coordinacion.md: [{persona, nombre}], con el usuario de GitHub en minúsculas.
     Las filas sin GitHub («—») no cuentan."""

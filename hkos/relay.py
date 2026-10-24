@@ -9,6 +9,7 @@ y el evento SSE `vista`) y las novedades (decisiones y criterios de origin/main)
 
 Desde M8g, las colisiones (colisiones.py: niveles 1 y 3 en modelo.calcular, nivel 2 con colisiones_merge.Calculo si
 os.md tiene `publicar_wip: sí`) y las reservas (`POST /v1/reservas`, `DELETE /v1/reservas/{id}`).
+Desde M11 (ADR-0014), con `fusion_estructural: sí` además, el nivel 2b: el relay solo pasa el interruptor a Calculo.
 
 Uso normal: `hk-os relay` (cli.py). Directo, para pruebas:
   uv run --no-project hkos/relay.py --dir <carpeta> --equipo <coordinacion.md> [--ip 127.0.0.1] [--puerto 7777]
@@ -40,7 +41,7 @@ import servicios as servicios_mod  # noqa: E402
 from esquema import Esquema  # noqa: E402
 from estados import fecha, iso  # noqa: E402
 from modelo import calcular, historias  # noqa: E402
-from red import Servidor, ahora_iso, conf, equipo, ruta_critica, vista_jurado, web_nueva  # noqa: E402
+from red import Servidor, ahora_iso, conf, equipo, fusion_estructural, ruta_critica, vista_jurado, web_nueva  # noqa: E402
 
 LOTE_MAX = 200
 CUERPO_MAX = 2 * 1024 * 1024
@@ -1037,6 +1038,16 @@ def umbrales(os_md):
     return umbral, viejo
 
 
+def nivel2(repo, os_md, personas, aviso):
+    """El Calculo del nivel 2 (M8g) con `publicar_wip: sí`, o None. Con `fusion_estructural: sí` (M11, ADR-0014), con
+    el nivel 2b; con el interruptor apagado, la llamada de la 0.5.0, sin el parámetro."""
+    if not (os_md and colisiones_merge.modo_publicar(conf(os_md, "publicar_wip"))[0]):
+        return None
+    m11 = {"fusion_estructural": True} if fusion_estructural(os_md) else {}
+    wip = colisiones_merge.Calculo(repo, {p["persona"] for p in personas}, aviso=aviso, **m11)
+    return wip if wip.activo else None
+
+
 def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=True):
     if not ip_permitida(ip):
         raise SystemExit(f"hk-os relay: {ip} no es 127.0.0.1, una IP privada de LAN ni una de Tailscale; "
@@ -1053,10 +1064,7 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
     jurado, ruta = vista_jurado(os_md), ruta_critica(os_md)     # M10 (api.md §11.1)
     novedades = Novedades(repo, viejo, aviso=aviso, web_nueva=nueva, vista_jurado=jurado, ruta_critica=ruta) \
         if es_repo else None
-    wip = None
-    if es_repo and os_md and colisiones_merge.modo_publicar(conf(os_md, "publicar_wip"))[0]:
-        wip = colisiones_merge.Calculo(repo, {p["persona"] for p in personas}, aviso=aviso)
-        wip = wip if wip.activo else None
+    wip = nivel2(repo, os_md, personas, aviso) if es_repo else None
     relay = Relay(carpeta, personas, sondeo=sondeo, umbral_parada_s=umbral, novedades=novedades, umbral_viejo_s=viejo,
                   wip=wip, web_nueva=nueva, vista_jurado=jurado, ruta_critica=ruta)
     if nueva:
