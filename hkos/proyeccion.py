@@ -347,6 +347,8 @@ def lineas_tarea(t, v, tz):
 
 def linea_colision(c, tz):
     que = f" · contrato «{corta(c['contrato'], 40)}»" if c.get("contrato") else ""
+    if c["nivel"] == "2b":                  # M11 (api.md §6, ADR-0014, decisión 7)
+        que = " · fusión estructural sin conflictos"
     rutas = ", ".join(c["rutas"][:3]) + (f" (+{len(c['rutas']) - 3})" if len(c["rutas"]) > 3 else "")
     personas = ", ".join("@" + p for p in c["personas"])
     return "- " + _linea(f"{c['gravedad'].upper()} · nivel {c['nivel']}{que} · {rutas} · {personas} "

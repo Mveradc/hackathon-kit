@@ -10,6 +10,7 @@ IV). Desde M8g, `reservar` y `liberar` (R-22): las únicas que hablan con el rel
 ninguna escribe en GitHub. `reclamar` queda para M8h.
 Desde M10 (api.md §11.5), `jurado` y `ruta`: el bloque entero de la vista, cada una listada solo con su interruptor
 (`vista_jurado:`, `ruta_critica:`) en el os.md de la copia principal. Con los dos apagados, tools/list es el de la 0.4.0.
+Desde M11 (ADR-0014), con `fusion_estructural: sí`, la descripción de `colisiones` explica el nivel 2b.
 Lo lanza scripts/os/mcp.sh con el OS activo:
   uv run --no-project hkos/mcp.py --repo <copia principal>
 """
@@ -52,6 +53,10 @@ HERRAMIENTAS = [
     {"name": "liberar", "description": "Libera antes de tiempo una reserva tuya, por su id.",
      "inputSchema": {"type": "object", "properties": {"id": {"type": "string"}}, "required": ["id"]}},
 ]
+# M11 (api.md §5, ADR-0014): la frase del nivel 2b en la descripción de `colisiones`, solo con `fusion_estructural: sí`
+# en os.md; con el interruptor apagado, tools/list sigue siendo el de la 0.4.0 (constitución I).
+FRASE_2B = (" Nivel 2b: conflicto de git que la fusión estructural (Mergiraf) resuelve; amarillo, revisad la fusión "
+            "igualmente.")
 # M10 (api.md §11.5): cada una, solo con su interruptor encendido en os.md (su lector, de red.py, y la herramienta).
 HERRAMIENTAS_M10 = [
     (red.vista_jurado, {"name": "jurado", "description": "Vista de jurado: cada nota de criterios.md con su cobertura "
@@ -98,8 +103,12 @@ class Fuente:
         self.os_md = os.path.join(principal, ".hackathon", "os.md")
 
     def herramientas(self):
-        """tools/list: las de siempre y las de M10 cuyo interruptor está encendido (api.md §11.5)."""
-        return HERRAMIENTAS + [h for activa, h in HERRAMIENTAS_M10 if activa(self.os_md)]
+        """tools/list: las de siempre (con la frase del 2b en `colisiones` si `fusion_estructural: sí`, M11) y las de
+        M10 cuyo interruptor está encendido (api.md §11.5)."""
+        base = HERRAMIENTAS
+        if red.fusion_estructural(self.os_md):
+            base = [dict(h, description=h["description"] + FRASE_2B) if h["name"] == "colisiones" else h for h in base]
+        return base + [h for activa, h in HERRAMIENTAS_M10 if activa(self.os_md)]
 
     def instrucciones(self):
         """Las de la 0.4.0 y, con alguna herramienta de M10 listada, el aviso de sus textos (#63, 5)."""

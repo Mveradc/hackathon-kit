@@ -10,7 +10,8 @@ Casi todo el M8 se puede probar sin personas: un simulador reproduce lo que har�
 - **Guion**: JSON (la biblioteca estándar no lee YAML). Pasos con `t` en segundos desde el inicio:
   - un **evento normalizado abreviado**, `{t, persona, papel, tipo, tarea?, rutas?, datos?, fuente, agente?, sesion?}`: el simulador lo completa con `v`, `id`, `ts` y el objeto `actor`, y lo valida contra `eventos.schema.json`;
   - un **cambio en GitHub**, `{t, github: asignar|cerrar|reabrir, tarea, por}`.
-- **Esperado**: lista de `{tras, tareas?, declarado?, activos?, sin_tarea?, discrepancias?}`: los campos que importan del `estado.json` calculado con `ahora` = `tras` (puede ser posterior al último paso, para que pase el tiempo).
+- **Esperado**: lista de `{tras, tareas?, declarado?, activos?, sin_tarea?, discrepancias?}`: los campos que importan del `estado.json` calculado con `ahora` = `tras` (puede ser posterior al último paso, para que pase el tiempo). Desde M8g, también `colisiones?` y `reservas?`; desde M11, `observado_en?` (`{id de colisión: hora}`).
+- **Conflictos del nivel 2** (M11, opcional): `conflictos` = `[{t, pares: [{personas, rutas, rutas_2b?}]}]`, lo que daría el `Calculo` del relay en cada ciclo. El simulador pone `desde` y `desde_2b` como el Calculo: la hora del primer ciclo desde el que el par tiene seguidas las mismas rutas.
 
 En M8b (`evals/coordinacion/simulador/`) el simulador trabaja con eventos ya normalizados y los pasa al motor de estados; reproducir entradas de hooks por los scripts del plugin, con repos y `gh-falso.sh`, llega en M8c y M8e.
 
@@ -50,6 +51,7 @@ En M8b (`evals/coordinacion/simulador/`) el simulador trabaja con eventos ya nor
 | G11 | Carga: 5 personas, 3 actores cada una, 50 eventos/s durante 2 min | R-26, M8d |
 | G13 | Vista de jurado (M10, criterio 2): notas de `criterios.md` y etiquetas `(criterios: …)` del plan y del pitch, con las tareas avanzando hasta `publicada` | R-35, R-28 |
 | G14 | Ruta crítica (M10, criterio 3): el plan del reto 03 en sus 39 h, con commits, descansos y un ajuste del plan, en dos ramas (bien y con riesgo) | R-36, R-28 |
+| G15 | Nivel 2b (M11, criterio 3): un conflicto que baja a 2b, otro que sigue rojo y uno que pasa de 2b a rojo | R-34, R-28 |
 
 ### G13 y G14 (M10, K-105)
 Ficheros en `evals/coordinacion/simulador/guiones/` (`G13.json`, `G14.json`, `G14r.json` y las carpetas `g13/` y `g14/`, con las entradas, `hechos.json` y `casos.json`). Lo que tiene que salir son **hechos** por momento (la hora del reloj simulado) y **casos**: cada caso parte de un momento y cambia una entrada con reemplazos de texto `[de, a, veces]`.
@@ -65,6 +67,16 @@ Cada parte tiene sus controles: con un hecho cambiado, el script tiene que falla
 `igualdad.py` (criterio 4) corre G13 y G14 con los dos interruptores por el mismo camino: los bloques `jurado` y `ruta` enteros, iguales en la vista del relay, en la del demonio y en el MCP (con la misma hora), y la línea de `## Jurado y ruta` de `estado-equipo.md` de cada persona, el `resumen` de cada bloque con su hora, su fuente y «viejo». En G1–G6 y G12, sin los bloques: ni la sección ni las firmas, y `tools/list` del MCP es el de la 0.4.0.
 
 G10 ampliado (criterio 6 de M10) está en `hkos/pruebas/test_proyeccion_m10.py`: 30 minutos con el reloj corriendo, la hora estimada y el margen moviéndose y ni la cobertura ni el veredicto cambiando, `delta.sh` no inyecta nada.
+
+### G15 (M11, K-112)
+`guiones/G15.json`, con `fusion_estructural: sí` en el relay: los `conflictos` de cada ciclo del nivel 2 llegan escritos en el guion con la forma de ADR-0014 (`[{personas, rutas, rutas_2b, desde, desde_2b}]`), sin Mergiraf ni el Calculo de verdad (los prueba `test_colisiones_2b.py`, K-111). Tres personas:
+- A y B tocan `motor/imports.py`, `motor/config.json`, `web/src/App.jsx` y `README.md`. En el primer ciclo, los tres primeros en rojo (`2:`); en el segundo, Mergiraf resuelve los dos de `motor/` (`2b:` amarillo) y `App.jsx` sigue rojo. `README.md`, sin conflicto, se queda en el nivel 1; lo del 2 y el 2b, no.
+- A y C chocan en `datos/carga.py`: baja a 2b y, cuando C vuelve a cambiar una línea de A, vuelve a rojo.
+- `desde_2b` no se mueve mientras el conjunto de rutas no cambia, aunque llegue en otro orden (`observado_en` en el esperado).
+
+`simula.py` y `prueba_simulador.py` lo corren con los demás. `igualdad.py` (criterio 3 de M11) lo pasa por el relay de verdad, con un Calculo fijo que devuelve los `conflictos` del ciclo: la colisión `2b` es la misma en la vista del relay, en la del demonio y en el MCP, y en `estado-equipo.md` de cada persona sale como `- AMARILLO · nivel 2b · fusión estructural sin conflictos · …`. En G1–G6 y G12–G14, ninguna `2b`. El caso del issue #77, A3, que `igualdad.py` llamaba G15, pasa a llamarse «#77, A3».
+
+El criterio 4 de M11 (delta y monitor, con `delta.sh` y `escucha.sh` tal como están) y el 1 sin relay vivo (apagado, byte a byte como en la 0.5.0) están en `hkos/pruebas/test_proyeccion_m11.py`.
 
 ## Qué mide cada pasada
 - Estados correctos frente a los esperados (% y lista de discrepancias).

@@ -17,7 +17,12 @@ interruptores (m10.py): los bloques `jurado` y `ruta` enteros son los mismos en 
 `resumen` del bloque, con su hora, su fuente y «viejo». En G1–G6 y G12 (sin los bloques), ni la sección ni las firmas.
 Issue #77, A3: en cada bloque `ruta` con estimación, el resumen dice «fin hacia» si y solo si temprano y tarde se
 escriben con la misma HH:MM en la zona del equipo (ajuste 5, punto 2 de ADR-0013), la regla con que la web elige
-«hacia» o «entre» (Ruta.jsx; m10.test.jsx). Y G15, el caso del issue: dos instantes distintos del mismo minuto.
+«hacia» o «entre» (Ruta.jsx; m10.test.jsx). Y «#77, A3», el caso del issue: dos instantes distintos del mismo minuto
+(se llamaba G15 hasta M11, que da ese nombre al guion del nivel 2b).
+Desde M11 (K-112, criterio 3; ADR-0014), G15: el nivel 2b, con los `conflictos` de cada ciclo del guion en el relay de
+verdad (como los daría su Calculo con `fusion_estructural: sí`). La colisión `2b` sale igual en la vista del relay, en
+la del demonio y en el MCP, y en estado-equipo.md como «- AMARILLO · nivel 2b · fusión estructural sin conflictos · …».
+En G1–G6 y G12–G14, ninguna `2b`.
 
 Uso: uv run --no-project evals/coordinacion/simulador/igualdad.py   (0 OK · 1 falla)
 """
@@ -45,7 +50,8 @@ from esquema import Esquema  # noqa: E402
 from fixture import estado_5x20  # noqa: E402
 import g12  # noqa: E402
 from red import Servidor  # noqa: E402
-from simula import carga, contratos_de, montar  # noqa: E402
+from simula import carga, conflictos_de, contratos_de, montar  # noqa: E402
+from simula import comparar as simula_comparar  # noqa: E402
 
 DE_ETIQUETA = {v: k for k, v in proyeccion.ETIQUETAS.items()}
 fallos = 0
@@ -163,7 +169,14 @@ def rango_como_en_la_web(nombre, ruta):
               ruta["resumen"])
 
 
-def estado_g15():
+class WipFijo:
+    """Hace del Calculo del nivel 2 del relay (colisiones_merge.py) con los `conflictos` del guion a esa hora (M11)."""
+
+    def __init__(self, conflictos):
+        self.conflictos = conflictos
+
+
+def estado_a3():
     """Issue #77, A3: ana con tres medidas (30 %, 60 % y 90 % de 60 min) y T04 abierta con 1 min de franja, a las 10:00
     de Madrid: temprano 08:00:18Z y tarde 08:00:54Z, distintos pero los dos «10:00»."""
     t0 = datetime(2026, 9, 19, 8, 0, tzinfo=timezone.utc)
@@ -256,6 +269,11 @@ def comparar(nombre, url, token, repo, personas, estado=None):
     comprueba(f"{nombre}: web y MCP, mismos estados, dueños y antigüedades en las {len(tarjetas)} tareas", not dif, str(dif))
     comprueba(f"{nombre}: web y MCP, mismas colisiones ({len(web['colisiones'])})", col_mcp == web["colisiones"],
               f"{col_mcp} / {web['colisiones']}")
+    if not nombre.startswith("G15"):          # M11: sin fusion_estructural, ninguna 2b
+        comprueba(f"{nombre}: ninguna colisión 2b", all(c["nivel"] != "2b" for c in web["colisiones"]))
+    demonio = a.vista_web()["vista"]["colisiones"]
+    comprueba(f"{nombre}: web y vista del demonio, mismas colisiones", demonio == web["colisiones"],
+              f"{demonio} / {web['colisiones']}")
     # Web frente al md de cada persona (lo escribe su demonio): «Tu trabajo», «Colisiones que te afectan» y la línea
     # de cada persona en «Equipo».
     for persona in personas:
@@ -290,13 +308,18 @@ def comparar(nombre, url, token, repo, personas, estado=None):
                   real == esperado, f"{real} / {esperado}")
         col_web = [(c["gravedad"].upper(), c["nivel"], sorted(c["personas"]), hhmm(c["observado_en"]))
                    for c in web["colisiones"] if persona in c["personas"]]
-        col_md = []
+        col_md, texto_2b = [], True
         for l in sec.get("Colisiones que te afectan", []):
+            if " · nivel 2b · " in l:            # M11 (decisión 7 de ADR-0014): el texto de la línea
+                texto_2b &= l.startswith("- AMARILLO · nivel 2b · fusión estructural sin conflictos · ")
             m = re.match(r"^- (ROJO|AMARILLO) · nivel (\S+) · .* · ((?:@[\w-]+(?:, )?)+) \((\d\d:\d\d)\)$", l)
             if m:
                 col_md.append((m.group(1), m.group(2), sorted(p.strip()[1:] for p in m.group(3).split(",")), m.group(4)))
         comprueba(f"{nombre}, md de @{persona}: sus colisiones como en la web ({len(col_web)})", col_md == col_web,
                   f"{col_md} / {col_web}")
+        if any(c[1] == "2b" for c in col_web):
+            comprueba(f"{nombre}, md de @{persona}: la línea 2b dice «AMARILLO · nivel 2b · fusión estructural sin "
+                      "conflictos»", texto_2b, str(sec.get("Colisiones que te afectan")))
         equipo_md = {}
         for l in sec.get("Equipo", []):
             m = re.match(r"^- @([\w-]+) \(", l)
@@ -336,19 +359,24 @@ def main():
         repo = os.path.join(tmp, "clon").replace("\\", "/")
         subprocess.run(["git", "init", "-q", repo], check=True)
         os.makedirs(os.path.join(repo, ".git", "hackathon", "os"), exist_ok=True)
-        for g in ("G1", "G2", "G3", "G4", "G5", "G6"):
+        for g in ("G1", "G2", "G3", "G4", "G5", "G6", "G15"):
             guion = carga(os.path.join(AQUI, "guiones", f"{g}.json"))
             tareas, personas, issues, eventos, ts = montar(guion, AQUI)
             contratos = contratos_de(guion, AQUI)
             for punto in guion["esperado"]:
                 ahora = ts(punto["tras"])
+                conflictos = conflictos_de(guion, ts, punto["tras"])        # M11: solo G15 los trae
                 r = relay_mod.Relay(os.path.join(tmp, f"relay-{g}-{punto['tras']}"), personas, ahora=lambda a=ahora: a,
                                     sondeo=SondeoFijo(tareas, issues, datetime.fromisoformat(ahora.replace("Z", "+00:00")).timestamp()),
-                                    umbral_parada_s=guion.get("umbral_parada_s", 1200), contratos=contratos)
+                                    umbral_parada_s=guion.get("umbral_parada_s", 1200), contratos=contratos,
+                                    wip=WipFijo(conflictos) if conflictos is not None else None)
                 vistos = [e for e in eventos if e["ts"] <= ahora]
                 for i in range(0, len(vistos), 200):
                     r.recibir({"eventos": vistos[i:i + 200]})
                 r.recalcular()
+                if conflictos is not None:
+                    dif = simula_comparar(r.estado, punto)
+                    comprueba(f"{g} (t={punto['tras']} s): las colisiones de estado.json, las del guion", not dif, str(dif))
                 servir_y_comparar(f"{g} (t={punto['tras']} s)", r, repo, [p["persona"] for p in personas])
         e = estado_5x20()
         err = Esquema("estado.schema.json").error(e)
@@ -392,19 +420,19 @@ def main():
             plan = [f["plan.md"] for _, f in versiones if "plan.md" in f][-1]
             r = m10.relay(tmp, g14, versiones, mo["ahora"], tareas=m10.tareas_del_plan(g14, plan))
             servir_y_comparar(f"G14 ({mo['nombre']})", r, repo, [p["persona"] for p in r.personas])
-        # G15 (issue #77, A3): el rango sin anchura, con dos instantes distintos del mismo minuto.
-        e = estado_g15()
+        # Issue #77, A3 (G15 hasta M11): el rango sin anchura, con dos instantes distintos del mismo minuto.
+        e = estado_a3()
         err = Esquema("estado.schema.json").error(e)
-        comprueba("G15 (#77, A3): valida contra estado.schema.json", err is None, str(err))
-        r = relay_mod.Relay(os.path.join(tmp, "relay-g15"), [], ahora=lambda: e["generado_en"])
+        comprueba("#77, A3: valida contra estado.schema.json", err is None, str(err))
+        r = relay_mod.Relay(os.path.join(tmp, "relay-a3"), [], ahora=lambda: e["generado_en"])
         with r.lock:
             r.estado, r.vista, r.version = e, proyeccion.vista(e), r.version + 1
             r.texto = json.dumps(e, ensure_ascii=False).encode("utf-8")
         est = r.vista["ruta"]["estimacion"]
-        comprueba("G15 (#77, A3): temprano y tarde distintos, del mismo minuto",
+        comprueba("#77, A3: temprano y tarde distintos, del mismo minuto",
                   [iso_utc(datetime.fromisoformat(est[k].replace("Z", "+00:00"))) for k in ("temprano", "tarde")]
                   == ["2026-09-19T08:00:18Z", "2026-09-19T08:00:54Z"], str(est))
-        servir_y_comparar("G15 (#77, A3: rango sin anchura)", r, repo, ["ana"])
+        servir_y_comparar("#77, A3 (rango sin anchura)", r, repo, ["ana"])
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
     print(f"\n{fallos} fallos")

@@ -1,0 +1,450 @@
+{
+ "nombre": "G15-nivel-2b",
+ "descripcion": "Nivel 2b (R-34, M11, ADR-0014), con fusion_estructural: sí en el relay: los conflictos del Calculo del nivel 2 llegan por ciclo, como los daría K-111. A y B chocan en tres ficheros: en el primer ciclo, los tres rojos; en el segundo, Mergiraf resuelve motor/imports.py y motor/config.json (2b amarillo) y web/src/App.jsx sigue rojo. A y C chocan en datos/carga.py: baja a 2b y, cuando C cambia otra vez una línea de A, vuelve a rojo. README.md, sin conflicto, sigue en el nivel 1; lo que está en el 2 o en el 2b no. desde_2b no se mueve mientras el conjunto de rutas no cambia (aunque llegue en otro orden).",
+ "tareas": "tareas-03.json",
+ "pasos": [
+  {
+   "t": 0,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "sesion.inicio",
+   "datos": {
+    "source": "startup"
+   }
+  },
+  {
+   "t": 0,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "sesion.inicio",
+   "datos": {
+    "source": "startup"
+   }
+  },
+  {
+   "t": 0,
+   "persona": "persona-c",
+   "papel": "principal",
+   "sesion": "s-c",
+   "fuente": "hook",
+   "tipo": "sesion.inicio",
+   "datos": {
+    "source": "startup"
+   }
+  },
+  {
+   "t": 10,
+   "persona": "persona-a",
+   "papel": "principal",
+   "sesion": "s-a",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/imports.py",
+    "motor/config.json",
+    "web/src/App.jsx",
+    "README.md",
+    "datos/carga.py"
+   ]
+  },
+  {
+   "t": 20,
+   "persona": "persona-b",
+   "papel": "principal",
+   "sesion": "s-b",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "motor/imports.py",
+    "motor/config.json",
+    "web/src/App.jsx",
+    "README.md"
+   ]
+  },
+  {
+   "t": 25,
+   "persona": "persona-c",
+   "papel": "principal",
+   "sesion": "s-c",
+   "fuente": "hook",
+   "tipo": "edicion",
+   "rutas": [
+    "datos/carga.py"
+   ]
+  }
+ ],
+ "conflictos": [
+  {
+   "t": 60,
+   "pares": [
+    {
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "motor/imports.py",
+      "motor/config.json",
+      "web/src/App.jsx"
+     ],
+     "rutas_2b": []
+    },
+    {
+     "personas": [
+      "persona-a",
+      "persona-c"
+     ],
+     "rutas": [
+      "datos/carga.py"
+     ],
+     "rutas_2b": []
+    }
+   ]
+  },
+  {
+   "t": 90,
+   "pares": [
+    {
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "web/src/App.jsx"
+     ],
+     "rutas_2b": [
+      "motor/config.json",
+      "motor/imports.py"
+     ]
+    },
+    {
+     "personas": [
+      "persona-a",
+      "persona-c"
+     ],
+     "rutas": [],
+     "rutas_2b": [
+      "datos/carga.py"
+     ]
+    }
+   ]
+  },
+  {
+   "t": 120,
+   "pares": [
+    {
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "web/src/App.jsx"
+     ],
+     "rutas_2b": [
+      "motor/imports.py",
+      "motor/config.json"
+     ]
+    },
+    {
+     "personas": [
+      "persona-a",
+      "persona-c"
+     ],
+     "rutas": [],
+     "rutas_2b": [
+      "datos/carga.py"
+     ]
+    }
+   ]
+  },
+  {
+   "t": 150,
+   "pares": [
+    {
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "web/src/App.jsx"
+     ],
+     "rutas_2b": [
+      "motor/config.json",
+      "motor/imports.py"
+     ]
+    },
+    {
+     "personas": [
+      "persona-a",
+      "persona-c"
+     ],
+     "rutas": [
+      "datos/carga.py"
+     ],
+     "rutas_2b": []
+    }
+   ]
+  }
+ ],
+ "esperado": [
+  {
+   "tras": 30,
+   "colisiones": [
+    {
+     "id": "1:persona-a+persona-b",
+     "nivel": "1",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "motor/config.json",
+      "motor/imports.py",
+      "README.md",
+      "web/src/App.jsx"
+     ]
+    },
+    {
+     "id": "1:persona-a+persona-c",
+     "nivel": "1",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-c"
+     ],
+     "rutas": [
+      "datos/carga.py"
+     ]
+    }
+   ]
+  },
+  {
+   "tras": 60,
+   "colisiones": [
+    {
+     "id": "1:persona-a+persona-b",
+     "nivel": "1",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "README.md"
+     ]
+    },
+    {
+     "id": "2:persona-a+persona-b",
+     "nivel": "2",
+     "gravedad": "rojo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "motor/config.json",
+      "motor/imports.py",
+      "web/src/App.jsx"
+     ]
+    },
+    {
+     "id": "2:persona-a+persona-c",
+     "nivel": "2",
+     "gravedad": "rojo",
+     "personas": [
+      "persona-a",
+      "persona-c"
+     ],
+     "rutas": [
+      "datos/carga.py"
+     ]
+    }
+   ],
+   "observado_en": {
+    "2:persona-a+persona-b": "2026-09-18T17:01:00Z",
+    "2:persona-a+persona-c": "2026-09-18T17:01:00Z"
+   }
+  },
+  {
+   "tras": 100,
+   "colisiones": [
+    {
+     "id": "1:persona-a+persona-b",
+     "nivel": "1",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "README.md"
+     ]
+    },
+    {
+     "id": "2:persona-a+persona-b",
+     "nivel": "2",
+     "gravedad": "rojo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "web/src/App.jsx"
+     ]
+    },
+    {
+     "id": "2b:persona-a+persona-b",
+     "nivel": "2b",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "motor/config.json",
+      "motor/imports.py"
+     ]
+    },
+    {
+     "id": "2b:persona-a+persona-c",
+     "nivel": "2b",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-c"
+     ],
+     "rutas": [
+      "datos/carga.py"
+     ]
+    }
+   ],
+   "observado_en": {
+    "2:persona-a+persona-b": "2026-09-18T17:01:30Z",
+    "2b:persona-a+persona-b": "2026-09-18T17:01:30Z",
+    "2b:persona-a+persona-c": "2026-09-18T17:01:30Z"
+   }
+  },
+  {
+   "tras": 130,
+   "colisiones": [
+    {
+     "id": "1:persona-a+persona-b",
+     "nivel": "1",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "README.md"
+     ]
+    },
+    {
+     "id": "2:persona-a+persona-b",
+     "nivel": "2",
+     "gravedad": "rojo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "web/src/App.jsx"
+     ]
+    },
+    {
+     "id": "2b:persona-a+persona-b",
+     "nivel": "2b",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "motor/config.json",
+      "motor/imports.py"
+     ]
+    },
+    {
+     "id": "2b:persona-a+persona-c",
+     "nivel": "2b",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-c"
+     ],
+     "rutas": [
+      "datos/carga.py"
+     ]
+    }
+   ],
+   "observado_en": {
+    "2:persona-a+persona-b": "2026-09-18T17:01:30Z",
+    "2b:persona-a+persona-b": "2026-09-18T17:01:30Z",
+    "2b:persona-a+persona-c": "2026-09-18T17:01:30Z"
+   }
+  },
+  {
+   "tras": 160,
+   "colisiones": [
+    {
+     "id": "1:persona-a+persona-b",
+     "nivel": "1",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "README.md"
+     ]
+    },
+    {
+     "id": "2:persona-a+persona-b",
+     "nivel": "2",
+     "gravedad": "rojo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "web/src/App.jsx"
+     ]
+    },
+    {
+     "id": "2b:persona-a+persona-b",
+     "nivel": "2b",
+     "gravedad": "amarillo",
+     "personas": [
+      "persona-a",
+      "persona-b"
+     ],
+     "rutas": [
+      "motor/config.json",
+      "motor/imports.py"
+     ]
+    },
+    {
+     "id": "2:persona-a+persona-c",
+     "nivel": "2",
+     "gravedad": "rojo",
+     "personas": [
+      "persona-a",
+      "persona-c"
+     ],
+     "rutas": [
+      "datos/carga.py"
+     ]
+    }
+   ],
+   "observado_en": {
+    "2b:persona-a+persona-b": "2026-09-18T17:01:30Z",
+    "2:persona-a+persona-c": "2026-09-18T17:02:30Z"
+   }
+  }
+ ]
+}

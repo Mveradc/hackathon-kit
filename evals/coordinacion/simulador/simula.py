@@ -70,6 +70,39 @@ def contratos_de(guion, base):
     return contratos_mod.duenos(leer(c["contratos"]), leer(c["autoridad"]))[0]
 
 
+def conflictos_de(guion, ts, tras):
+    """M11 (G15): los `conflictos` del nivel 2 que tendría el Calculo del relay a `tras`, o None si el guion no trae.
+    El guion da lo que sale en cada ciclo, `{t, pares: [{personas, rutas, rutas_2b?}]}`; como el Calculo, `desde`
+    (y `desde_2b`) es el primer ciclo desde el que ese par tiene seguidas las mismas `rutas` (`rutas_2b`), y None si
+    su lista está vacía, como en K-111."""
+    if "conflictos" not in guion:
+        return None
+    ciclos = [c for c in guion["conflictos"] if c["t"] <= tras]
+    desde, salida = {}, []
+    for i, ciclo in enumerate(ciclos):
+        vivos = {}
+        for par in ciclo["pares"]:
+            k = tuple(sorted(par["personas"]))
+            for campo in ("rutas", "rutas_2b"):
+                if campo not in par:
+                    continue
+                rutas = sorted(par[campo])
+                previo = desde.get((k, campo))
+                vivos[(k, campo)] = previo if rutas and previo and previo[0] == rutas else (rutas, ts(ciclo["t"]))
+        desde = {k: x for k, x in vivos.items() if x[0]}
+        if i == len(ciclos) - 1:
+            for par in ciclo["pares"]:
+                k = tuple(sorted(par["personas"]))
+                c = {"personas": list(k), "rutas": sorted(par["rutas"])}
+                if "rutas_2b" in par:
+                    c["rutas_2b"] = sorted(par["rutas_2b"])
+                    c["desde_2b"] = desde[(k, "rutas_2b")][1] if (k, "rutas_2b") in desde else None
+                c["desde"] = desde[(k, "rutas")][1] if (k, "rutas") in desde else None
+                if c["rutas"] or c.get("rutas_2b"):
+                    salida.append(c)
+    return salida
+
+
 def comparar(estado, esperado):
     """Lista de diferencias entre estado.json y los campos que el guion fija en un punto de control."""
     dif = []
@@ -101,6 +134,10 @@ def comparar(estado, esperado):
                        for c in estado.get("colisiones", [])), key=lambda c: c["id"])
         if real != sorted(esperado["colisiones"], key=lambda c: c["id"]):
             dif.append(f"colisiones: {real}, se esperaban {esperado['colisiones']}")
+    for cid, cuando in esperado.get("observado_en", {}).items():     # M11 (G15): desde y desde_2b
+        real = next((c["observado_en"] for c in estado.get("colisiones", []) if c["id"] == cid), None)
+        if real != cuando:
+            dif.append(f"{cid} observado_en: {real}, se esperaba {cuando}")
     if "reservas" in esperado:
         real = sorted([r["persona"], r["rutas"]] for r in estado.get("reservas", []))
         if real != sorted(esperado["reservas"]):
@@ -125,7 +162,7 @@ def ejecutar(ruta, valida_evento=None, valida_estado=None):
             valida_evento(e)
     for punto in guion["esperado"]:
         estado = calcular(tareas, issues, eventos, personas, ts(punto["tras"]), guion.get("umbral_parada_s", 1200),
-                          contratos=contratos)
+                          contratos=contratos, conflictos=conflictos_de(guion, ts, punto["tras"]))
         if valida_estado:
             valida_estado(estado)
         resultado.append((punto["tras"], comparar(estado, punto)))

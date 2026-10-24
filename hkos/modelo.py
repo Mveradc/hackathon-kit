@@ -187,6 +187,13 @@ def _personas(personas, eventos, ahora):
     return salida
 
 
+def _visto(conflicto, t_ahora):
+    """Un conflicto del nivel 2 cuenta a `t_ahora` si ya se veía: la más antigua de `desde` y `desde_2b` (M11: la que
+    no sea None) no es posterior."""
+    horas = [fecha(d) for d in (conflicto.get("desde"), conflicto.get("desde_2b")) if d]
+    return bool(horas) and min(horas) <= t_ahora
+
+
 def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, fuentes=None, discrepancias=(),
              novedades=None, contratos=None, conflictos=None):
     """estado.json a `ahora` con los eventos e issues observados hasta entonces.
@@ -195,7 +202,8 @@ def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, fue
     personas: [{persona, nombre}] de coordinacion.md (el equipo); fuentes: {relay|github|git: dato}; discrepancias: las de GitHub, sin agrupar (M8e);
     novedades: decisiones y criterios de origin/main (M8f, las lee el relay), hasta `ahora`;
     contratos: bloques de docs/contratos.md con su dueño (contratos.duenos, M8g); conflictos: los de merge-tree entre
-    las refs de trabajo en curso (colisiones_merge.py, M8g), [{personas, rutas, desde}].
+    las refs de trabajo en curso (colisiones_merge.py, M8g), [{personas, rutas, desde}]; con el nivel 2b (M11,
+    ADR-0014), [{personas, rutas, rutas_2b, desde, desde_2b}], con `desde` o `desde_2b` a None si su lista está vacía.
     """
     t_ahora = fecha(ahora)
     equipo = {p["persona"] for p in personas}
@@ -250,7 +258,7 @@ def calcular(tareas, issues, eventos, personas, ahora, umbral_parada_s=1200, fue
               "personas": _personas(personas, eventos, ahora), "tareas": salida_tareas,
               "sin_tarea": list(ultimo_sin_tarea.values()), "discrepancias": _agrupar(disc), "colisiones": []}
     estado["colisiones"], reservas = colisiones.calcular(eventos, personas, ahora, contratos,
-                                                         [c for c in conflictos or [] if fecha(c["desde"]) <= t_ahora])
+                                                         [c for c in conflictos or [] if _visto(c, t_ahora)])
     if reservas or any(e["tipo"] in ("reserva", "liberacion") for e in eventos):
         estado["reservas"] = reservas
     if novedades is not None:
