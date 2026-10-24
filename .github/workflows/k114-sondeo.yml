@@ -1,0 +1,48 @@
+# Desechable (K-114, criterio 6 de M11): solo en la rama m11-k114-sondeo, nunca en main ni en un PR.
+name: k114-sondeo
+on:
+  push:
+    branches: [m11-k114-sondeo]
+jobs:
+  vivo-2b:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            asset: mergiraf_x86_64-pc-windows-gnu.zip
+          - os: macos-latest
+            asset: mergiraf_aarch64-apple-darwin.tar.gz
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - name: Mergiraf 0.20.0 de la release oficial (Codeberg)
+        run: |
+          mkdir -p "$RUNNER_TEMP/mergiraf" && cd "$RUNNER_TEMP/mergiraf"
+          url=$(curl -fsSL https://codeberg.org/api/v1/repos/mergiraf/mergiraf/releases/tags/v0.20.0 \
+            | python3 -c "import json,sys; print(next(a['browser_download_url'] for a in json.load(sys.stdin)['assets'] if a['name']=='${{ matrix.asset }}'))")
+          echo "$url"
+          curl -fsSL -o "${{ matrix.asset }}" "$url"
+          case "${{ matrix.asset }}" in *.zip) unzip -o -q "${{ matrix.asset }}" ;; *) tar xzf "${{ matrix.asset }}" ;; esac
+          bin=$(dirname "$(find "$PWD" -name 'mergiraf' -o -name 'mergiraf.exe' | grep -v '\.zip$\|\.tar' | head -1)")
+          echo "$bin" >> "$GITHUB_PATH"
+          "$bin"/mergiraf* --version
+      - name: colisiones_2b_vivo.py
+        run: |
+          set -o pipefail
+          { echo "## ${{ matrix.os }}"; echo; echo '```'; git --version; uname -a; } >> "$GITHUB_STEP_SUMMARY"
+          rc=0
+          uv run --no-project evals/coordinacion/colisiones_2b_vivo.py 2>&1 | tee salida.txt || rc=$?
+          { cat salida.txt; echo "rc=$rc"; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          grep -E '^(OK|FALLO) |fallos$' salida.txt | while IFS= read -r l; do echo "::notice title=${{ matrix.os }}::$l"; done
+          exit $rc
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: salida-${{ matrix.os }}
+          path: salida.txt
