@@ -43,7 +43,7 @@ Valen la constitución I (apagado, todo como en la 0.5.0), III, IV y ADR-0009 (l
 
 ## Qué cambia en los contratos
 Solo notas «tras congelar, M11», sin subir `v` (añaden una clave opcional y fijan un texto):
-- **`api.md` §0:** la clave `fusion_estructural: no` en `os.md`, que solo lee el relay.
+- **`api.md` §0:** la clave `fusion_estructural: no` en `os.md`, que lee el relay (y el MCP, para la descripción de `colisiones`: ajuste del 2026-10-24).
 - **`api.md` §3:** el párrafo de colisiones del relay, con el nivel 2b (cuándo se ejecuta, plazos, caché, aviso).
 - **`api.md` §5:** la frase nueva de la descripción de `colisiones`.
 - **`api.md` §6:** el ejemplo de la línea `2b` en «Colisiones que te afectan».
@@ -79,6 +79,9 @@ P17, respondida en K-109 (`evals/coordinacion/prueba.md`, «M11, Paso 0», «K-1
 **`merge-tree`:** sin `--name-only` da las etapas (`<modo> <blob> <etapa>\t<ruta>`) con el mismo código de salida en Git 2.38 (Linux y MinGit de Windows), 2.43, 2.49 (MinGit, la del portátil del usuario), 2.55 y 2.56 (Windows y macOS).
 
 Sigue sin probar en un portátil real de Windows o macOS: lo hace el criterio 6 de M11 (K-114).
+
+## Ajuste del 2026-10-24 (decisión del usuario, tras K-112)
+Arriba, «Solo en el relay» habla de Mergiraf y del cálculo, y la descripción del MCP «añade una frase» sin decir cuándo. Queda así, que es lo que hace el código desde K-112 (PR #84, `hkos/mcp.py`): la frase de la descripción de `colisiones` sale **solo con `fusion_estructural: sí`** en el `os.md` de la copia principal de cada persona, como las herramientas `jurado` y `ruta` con sus interruptores (ADR-0012, ADR-0013). Así el MCP con el interruptor apagado es byte a byte el de la 0.5.0 (constitución I), como dice «Detrás de su interruptor». Por eso `fusion_estructural:` lo leen el relay (el cálculo) y el MCP (solo la descripción): `api.md` §0 y §5, notas «tras congelar, 2026-10-24, M11». Ninguna decisión cambia.
 
 ## Alternativas descartadas
 - **Ejecutar Mergiraf en el demonio de cada persona:** exigiría instalarlo en todos los portátiles y que cada demonio tuviera el trabajo en curso de los demás, que solo trae el relay.

@@ -28,7 +28,13 @@ escrita en la zona con que la enseña la web, {bloque: {hora: {hm, dia, fecha}}}
 la ruta, #63 para el jurado: el nombre IANA de equipo.md o el desfase) y, sin ella, como ruta.py en el resumen (el
 desfase de la entrega; sin ella, el de las notas; si no, UTC).
 
-Uso (desde hkos/web-src): uv run --no-project scripts/vistas_ejemplo.py   → test/vistas/*.json y test/vistas/m10/*.json
+M11 (K-112, K-113; R-34, ADR-0014, decisión 7; api.md §6): en test/vistas/m11/G15.json, cada punto de control de
+G15 (el nivel 2b) con el relay de verdad y los `conflictos` del guion en cada ciclo (WipFijo de igualdad.py, como los
+daría su Calculo con `fusion_estructural: sí`), con lo mismo que G1–G6 más `md`: las líneas de «Colisiones que te
+afectan» de cada persona, de proyeccion.linea_colision (en Europe/Madrid).
+
+Uso (desde hkos/web-src): uv run --no-project scripts/vistas_ejemplo.py   → test/vistas/*.json, test/vistas/m10/*.json y
+test/vistas/m11/G15.json
 """
 import json
 import os
@@ -51,11 +57,13 @@ from esquema import Esquema  # noqa: E402
 from fixture import estado_5x20  # noqa: E402
 import g12  # noqa: E402
 import g13_g14  # noqa: E402
-from igualdad import SondeoFijo  # noqa: E402
-from simula import carga, contratos_de, montar  # noqa: E402
+from igualdad import SondeoFijo, WipFijo  # noqa: E402
+from simula import carga, conflictos_de, contratos_de, montar  # noqa: E402
 
 SALIDA = os.path.join(WEB, "test", "vistas")
 SALIDA_M10 = os.path.join(SALIDA, "m10")
+SALIDA_M11 = os.path.join(SALIDA, "m11")
+MADRID = lecturas.zona("Europe/Madrid")
 ESQUEMA = Esquema("estado.schema.json")
 API = os.path.join(KIT, "docs", "hackathon-os", "contratos", "api.md")
 DIAS = ("lun", "mar", "mié", "jue", "vie", "sáb", "dom")          # los de ruta.DIAS
@@ -218,28 +226,42 @@ def bloques(v):
     return {k: v[k] for k in ("jurado", "ruta") if k in v}
 
 
+def casos_guion(g, tmp):
+    """Cada punto de control del guion g con el relay de verdad, como en igualdad.py: con los `conflictos` del guion
+    en cada ciclo si los trae (M11, solo G15)."""
+    guion = carga(os.path.join(SIM, "guiones", f"{g}.json"))
+    tareas, personas, issues, eventos, ts = montar(guion, SIM)
+    contratos = contratos_de(guion, SIM)
+    casos = []
+    for punto in guion["esperado"]:
+        ahora = ts(punto["tras"])
+        visto = datetime.fromisoformat(ahora.replace("Z", "+00:00")).timestamp()
+        conflictos = conflictos_de(guion, ts, punto["tras"])
+        r = relay_mod.Relay(os.path.join(tmp, f"relay-{g}-{punto['tras']}"), personas, ahora=lambda a=ahora: a,
+                            sondeo=SondeoFijo(tareas, issues, visto),
+                            umbral_parada_s=guion.get("umbral_parada_s", 1200), contratos=contratos,
+                            wip=WipFijo(conflictos) if conflictos is not None else None)
+        vistos = [e for e in eventos if e["ts"] <= ahora]
+        for i in range(0, len(vistos), 200):
+            r.recibir({"eventos": vistos[i:i + 200]})
+        r.recalcular()
+        casos.append(dict(respuesta(r.estado, personas[0]["persona"]), tras=punto["tras"]))
+    return casos
+
+
+def md_colisiones(v):
+    """M11: las líneas de «Colisiones que te afectan» de cada persona (proyeccion.linea_colision, en Europe/Madrid)."""
+    return {p["persona"]: [proyeccion.linea_colision(c, MADRID) for c in proyeccion.colisiones_de(v, p["persona"])]
+            for p in v["personas"]}
+
+
 def main():
     os.makedirs(SALIDA, exist_ok=True)
     escribe("tablas.json", {"ETIQUETAS": proyeccion.ETIQUETAS, "TRABAJO": list(proyeccion.TRABAJO)})
     tmp = tempfile.mkdtemp(prefix="hk-vistas-")
     try:
         for g in ("G1", "G2", "G3", "G4", "G5", "G6"):
-            guion = carga(os.path.join(SIM, "guiones", f"{g}.json"))
-            tareas, personas, issues, eventos, ts = montar(guion, SIM)
-            contratos = contratos_de(guion, SIM)
-            casos = []
-            for punto in guion["esperado"]:
-                ahora = ts(punto["tras"])
-                visto = datetime.fromisoformat(ahora.replace("Z", "+00:00")).timestamp()
-                r = relay_mod.Relay(os.path.join(tmp, f"relay-{g}-{punto['tras']}"), personas, ahora=lambda a=ahora: a,
-                                    sondeo=SondeoFijo(tareas, issues, visto),
-                                    umbral_parada_s=guion.get("umbral_parada_s", 1200), contratos=contratos)
-                vistos = [e for e in eventos if e["ts"] <= ahora]
-                for i in range(0, len(vistos), 200):
-                    r.recibir({"eventos": vistos[i:i + 200]})
-                r.recalcular()
-                casos.append(dict(respuesta(r.estado, personas[0]["persona"]), tras=punto["tras"]))
-            guarda(g, casos)
+            guarda(g, casos_guion(g, tmp))
         e = estado_5x20()
         guarda("5x20", [respuesta(e, p["persona"]) for p in e["personas"][:2]])
         repo_g12, eventos = g12.montar(tmp)
@@ -259,6 +281,8 @@ def main():
         guarda("G13", g13, SALIDA_M10)
         guarda("G14", g14, SALIDA_M10)
         guarda("casos-G14", casos_g14(tmp), SALIDA_M10)
+        os.makedirs(SALIDA_M11, exist_ok=True)
+        guarda("G15", [dict(c, md=md_colisiones(c["vista"])) for c in casos_guion("G15", tmp)], SALIDA_M11)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 
