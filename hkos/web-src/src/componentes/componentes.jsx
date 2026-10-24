@@ -291,13 +291,17 @@ export function Cadena({ layout = "linea", rows = [], min = 0, max = 1, ticks = 
   );
 }
 
+// Lo que dice cada nivel detrás de su número, con el mismo texto que la línea de estado-equipo.md (api.md §6). Solo 2b
+// lleva texto (ADR-0014, decisión 7): «nivel 2b» a secas no dice qué es.
+const LEVEL_TEXT = { "2b": "fusión estructural sin conflictos" };
+
 export function CollisionAlert({ severity = "amarillo", level = 1, path, contract, people = [], age, actions, className, ...p }) {
   const rojo = severity === "rojo";
   return (
     <div className={cx("hk-alert", `hk-alert--${severity}`, className)} role={rojo ? "alert" : "status"} {...resto(p, [])}>
       <div className="hk-alert__head">
         <StatusPulse state={rojo ? "fail" : "wait"} label={rojo ? "Colisión roja" : "Colisión amarilla"} />
-        <span className="hk-alert__level">NIVEL {level}</span>
+        <span className="hk-alert__level">NIVEL {level}{LEVEL_TEXT[level] ? ` · ${LEVEL_TEXT[level]}` : ""}</span>
       </div>
       <span className="hk-alert__path">{path}</span>
       <span className="hk-alert__detail">

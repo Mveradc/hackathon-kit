@@ -17,3 +17,5 @@ apagado_min: 30           # el demonio sale tras este tiempo sin eventos ni sesi
 web_nueva: no             # sí = la web de trabajo de M9a, servida por el demonio de cada persona (api.md §4, ADR-0010)
 vista_jurado: no          # sí = qué tarea o evidencia cubre cada nota de criterios.md (R-35, ADR-0012, api.md §11)
 ruta_critica: no          # sí = si se llega a la Entrega de equipo.md con el ritmo real y qué la pone en riesgo (R-36, ADR-0013)
+fusion_estructural: no    # sí = nivel 2b de colisiones: amarillo si Mergiraf fusiona sin conflictos (R-34, ADR-0014). Solo con publicar_wip: sí
+# Mergiraf (≥ 0.20.0) solo hace falta en el portátil del relay, instalado a mano: el kit no lo instala ni lo pide.

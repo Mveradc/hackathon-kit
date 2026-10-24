@@ -1,0 +1,617 @@
+{
+ "nombre": "2b",
+ "nota": "Vista de ejemplo de K-113, a mano: el estado 5×20 de fixture.py con colisiones 2 y 2b puestas a mano, validado contra estado.schema.json y proyectado con proyeccion.vista. `md`: las líneas de «Colisiones que te afectan» de cada persona (api.md §6, M11, en Europe/Madrid). Se cambia por G15 cuando K-112 lo tenga.",
+ "casos": [
+  {
+   "servido_en": "2026-09-19T10:30:00Z",
+   "persona": "persona-a",
+   "relay": {
+    "conectado": true,
+    "desde": "2026-09-19T10:30:00Z"
+   },
+   "vista": {
+    "v": 1,
+    "generado_en": "2026-09-19T10:30:00Z",
+    "ahora": "2026-09-19T10:30:00Z",
+    "fuentes": {
+     "git": {
+      "valor": "ok",
+      "observado_en": "2026-09-19T10:26:00Z",
+      "viejo": false
+     },
+     "github": {
+      "valor": "ok",
+      "observado_en": "2026-09-19T10:29:40Z",
+      "viejo": false
+     },
+     "relay": {
+      "valor": "ok",
+      "observado_en": "2026-09-19T10:30:00Z",
+      "viejo": false
+     }
+    },
+    "umbrales": {
+     "presencia_s": 180,
+     "fuente_s": 300
+    },
+    "columnas": {
+     "haciendo": [
+      {
+       "id": "T01",
+       "titulo": "Tarea 1: implementar el módulo 1 con su comprobación, sus casos límite y la integración con lo que entrega la persona B",
+       "dueno": "persona-a",
+       "estado": "en_curso",
+       "etiqueta": "en curso",
+       "fuente": "hook",
+       "observado_en": "2026-09-19T09:00:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 1"
+      },
+      {
+       "id": "T11",
+       "titulo": "Tarea 11: implementar el módulo 11 con su comprobación, sus casos límite y la integración con lo que entrega la persona B",
+       "dueno": "persona-a",
+       "estado": "en_curso",
+       "etiqueta": "en curso",
+       "fuente": "hook",
+       "observado_en": "2026-09-19T09:30:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T12"
+       ],
+       "espera": [],
+       "bloque": "Bloque 3"
+      },
+      {
+       "id": "T08",
+       "titulo": "Tarea 8: implementar el módulo 8 con su comprobación, sus casos límite y la integración con lo que entrega la persona D",
+       "dueno": "persona-c",
+       "estado": "parada",
+       "etiqueta": "parada",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T09:21:00Z",
+       "depende_de": [
+        "T07"
+       ],
+       "bloquea_a": [
+        "T09"
+       ],
+       "espera": [],
+       "bloque": "Bloque 2"
+      },
+      {
+       "id": "T18",
+       "titulo": "Tarea 18: implementar el módulo 18 con su comprobación, sus casos límite y la integración con lo que entrega la persona D",
+       "dueno": "persona-c",
+       "estado": "parada",
+       "etiqueta": "parada",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T09:51:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T19"
+       ],
+       "espera": [],
+       "bloque": "Bloque 4"
+      },
+      {
+       "id": "T07",
+       "titulo": "Tarea 7: implementar el módulo 7 con su comprobación, sus casos límite y la integración con lo que entrega la persona C",
+       "dueno": "persona-b",
+       "estado": "no_cerrada",
+       "etiqueta": "no cerrada",
+       "fuente": "hook",
+       "observado_en": "2026-09-19T09:18:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T08"
+       ],
+       "espera": [],
+       "bloque": "Bloque 2",
+       "declarado": "cerrada"
+      },
+      {
+       "id": "T17",
+       "titulo": "Tarea 17: implementar el módulo 17 con su comprobación, sus casos límite y la integración con lo que entrega la persona C",
+       "dueno": "persona-b",
+       "estado": "no_cerrada",
+       "etiqueta": "no cerrada",
+       "fuente": "hook",
+       "observado_en": "2026-09-19T09:48:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 4"
+      },
+      {
+       "id": "T05",
+       "titulo": "Tarea 5: implementar el módulo 5 con su comprobación, sus casos límite y la integración con lo que entrega la persona A",
+       "dueno": "persona-e",
+       "estado": "en_revision",
+       "etiqueta": "en revisión",
+       "fuente": "hook",
+       "observado_en": "2026-09-19T09:12:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 1"
+      },
+      {
+       "id": "T15",
+       "titulo": "Tarea 15: implementar el módulo 15 con su comprobación, sus casos límite y la integración con lo que entrega la persona A",
+       "dueno": "persona-e",
+       "estado": "en_revision",
+       "etiqueta": "en revisión",
+       "fuente": "hook",
+       "observado_en": "2026-09-19T09:42:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T16"
+       ],
+       "espera": [],
+       "bloque": "Bloque 3"
+      },
+      {
+       "id": "T06",
+       "titulo": "Tarea 6: implementar el módulo 6 con su comprobación, sus casos límite y la integración con lo que entrega la persona B",
+       "dueno": "persona-a",
+       "estado": "reclamada",
+       "etiqueta": "reclamada",
+       "fuente": "github",
+       "observado_en": "2026-09-19T09:15:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 2"
+      },
+      {
+       "id": "T16",
+       "titulo": "Tarea 16: implementar el módulo 16 con su comprobación, sus casos límite y la integración con lo que entrega la persona B",
+       "dueno": "persona-a",
+       "estado": "reclamada",
+       "etiqueta": "reclamada",
+       "fuente": "github",
+       "observado_en": "2026-09-19T09:45:00Z",
+       "depende_de": [
+        "T15"
+       ],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 4"
+      }
+     ],
+     "hecho": [
+      {
+       "id": "T03",
+       "titulo": "Tarea 3: implementar el módulo 3 con su comprobación, sus casos límite y la integración con lo que entrega la persona D",
+       "dueno": "persona-c",
+       "estado": "integrada",
+       "etiqueta": "integrada (sin subir)",
+       "fuente": "git",
+       "observado_en": "2026-09-19T09:06:00Z",
+       "depende_de": [],
+       "bloquea_a": [
+        "T04"
+       ],
+       "espera": [],
+       "bloque": "Bloque 1"
+      },
+      {
+       "id": "T13",
+       "titulo": "Tarea 13: implementar el módulo 13 con su comprobación, sus casos límite y la integración con lo que entrega la persona D",
+       "dueno": "persona-c",
+       "estado": "integrada",
+       "etiqueta": "integrada (sin subir)",
+       "fuente": "git",
+       "observado_en": "2026-09-19T09:36:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 3"
+      },
+      {
+       "id": "T10",
+       "titulo": "Tarea 10: implementar el módulo 10 con su comprobación, sus casos límite y la integración con lo que entrega la persona A",
+       "dueno": "persona-e",
+       "estado": "publicada",
+       "etiqueta": "publicada",
+       "fuente": "git",
+       "observado_en": "2026-09-19T09:27:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 2"
+      },
+      {
+       "id": "T20",
+       "titulo": "Tarea 20: implementar el módulo 20 con su comprobación, sus casos límite y la integración con lo que entrega la persona A",
+       "dueno": "persona-e",
+       "estado": "publicada",
+       "etiqueta": "publicada",
+       "fuente": "git",
+       "observado_en": "2026-09-19T09:57:00Z",
+       "depende_de": [
+        "T19"
+       ],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 4"
+      },
+      {
+       "id": "T04",
+       "titulo": "Tarea 4: implementar el módulo 4 con su comprobación, sus casos límite y la integración con lo que entrega la persona E",
+       "dueno": "persona-d",
+       "estado": "cerrada",
+       "etiqueta": "cerrada",
+       "fuente": "github",
+       "observado_en": "2026-09-19T09:09:00Z",
+       "depende_de": [
+        "T03"
+       ],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 1"
+      },
+      {
+       "id": "T14",
+       "titulo": "Tarea 14: implementar el módulo 14 con su comprobación, sus casos límite y la integración con lo que entrega la persona E",
+       "dueno": "persona-d",
+       "estado": "cerrada",
+       "etiqueta": "cerrada",
+       "fuente": "github",
+       "observado_en": "2026-09-19T09:39:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 3"
+      }
+     ],
+     "falta": [
+      {
+       "id": "T02",
+       "titulo": "Tarea 2: implementar el módulo 2 con su comprobación, sus casos límite y la integración con lo que entrega la persona C",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T09:03:00Z",
+       "depende_de": [],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 1"
+      },
+      {
+       "id": "T12",
+       "titulo": "Tarea 12: implementar el módulo 12 con su comprobación, sus casos límite y la integración con lo que entrega la persona C",
+       "dueno": "persona-b",
+       "estado": "lista",
+       "etiqueta": "lista",
+       "fuente": "derivado",
+       "observado_en": "2026-09-19T09:33:00Z",
+       "depende_de": [
+        "T11"
+       ],
+       "bloquea_a": [],
+       "espera": [],
+       "bloque": "Bloque 3"
+      },
+      {
+       "id": "T09",
+       "titulo": "Tarea 9: implementar el módulo 9 con su comprobación, sus casos límite y la integración con lo que entrega la persona E",
+       "dueno": "persona-d",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-19T09:24:00Z",
+       "depende_de": [
+        "T08"
+       ],
+       "bloquea_a": [],
+       "espera": [
+        {
+         "id": "T08",
+         "dueno": "persona-c",
+         "estado": "parada"
+        }
+       ],
+       "bloque": "Bloque 2"
+      },
+      {
+       "id": "T19",
+       "titulo": "Tarea 19: implementar el módulo 19 con su comprobación, sus casos límite y la integración con lo que entrega la persona E",
+       "dueno": "persona-d",
+       "estado": "pendiente",
+       "etiqueta": "pendiente",
+       "fuente": "github",
+       "observado_en": "2026-09-19T09:54:00Z",
+       "depende_de": [
+        "T18"
+       ],
+       "bloquea_a": [
+        "T20"
+       ],
+       "espera": [
+        {
+         "id": "T18",
+         "dueno": "persona-c",
+         "estado": "parada"
+        }
+       ],
+       "bloque": "Bloque 4"
+      }
+     ]
+    },
+    "colisiones": [
+     {
+      "id": "2:persona-a+persona-b",
+      "nivel": "2",
+      "gravedad": "rojo",
+      "personas": [
+       "persona-a",
+       "persona-b"
+      ],
+      "rutas": [
+       "web/src/App.jsx"
+      ],
+      "observado_en": "2026-09-19T10:27:00Z"
+     },
+     {
+      "id": "n3-contrato-ficha",
+      "nivel": "3",
+      "gravedad": "rojo",
+      "personas": [
+       "persona-b",
+       "persona-c"
+      ],
+      "rutas": [
+       "motor/ficha.py"
+      ],
+      "contrato": "Ficha de empresa (GET /api/ficha)",
+      "observado_en": "2026-09-19T10:29:00Z"
+     },
+     {
+      "id": "2b:persona-a+persona-b",
+      "nivel": "2b",
+      "gravedad": "amarillo",
+      "personas": [
+       "persona-a",
+       "persona-b"
+      ],
+      "rutas": [
+       "motor/api.py",
+       "pyproject.toml"
+      ],
+      "observado_en": "2026-09-19T10:28:30Z"
+     },
+     {
+      "id": "2b:persona-d+persona-e",
+      "nivel": "2b",
+      "gravedad": "amarillo",
+      "personas": [
+       "persona-d",
+       "persona-e"
+      ],
+      "rutas": [
+       "datos/esquema.json"
+      ],
+      "observado_en": "2026-09-19T10:25:00Z"
+     }
+    ],
+    "sin_tarea": [
+     {
+      "persona": "persona-d",
+      "que": "commit: experimento",
+      "observado_en": "2026-09-19T10:21:00Z"
+     }
+    ],
+    "personas": [
+     {
+      "persona": "persona-a",
+      "nombre": "A",
+      "activos": 1,
+      "papeles": {
+       "principal": 1
+      },
+      "haciendo": [
+       "T01",
+       "T11",
+       "T06",
+       "T16"
+      ],
+      "ultima_senal": "2026-09-19T10:29:30Z",
+      "viejo": false
+     },
+     {
+      "persona": "persona-b",
+      "nombre": "B",
+      "activos": 3,
+      "papeles": {
+       "orquestador": 1,
+       "worker": 2
+      },
+      "haciendo": [
+       "T07",
+       "T17"
+      ],
+      "ultima_senal": "2026-09-19T10:29:40Z",
+      "viejo": false
+     },
+     {
+      "persona": "persona-c",
+      "nombre": "C",
+      "activos": 1,
+      "papeles": {
+       "principal": 1
+      },
+      "haciendo": [
+       "T08",
+       "T18"
+      ],
+      "ultima_senal": "2026-09-19T10:29:30Z",
+      "viejo": false
+     },
+     {
+      "persona": "persona-d",
+      "nombre": "D",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [],
+      "ultima_senal": "2026-09-19T10:26:10Z",
+      "viejo": true
+     },
+     {
+      "persona": "persona-e",
+      "nombre": "E",
+      "activos": 0,
+      "papeles": {},
+      "haciendo": [
+       "T05",
+       "T15"
+      ],
+      "ultima_senal": null,
+      "viejo": true
+     }
+    ],
+    "nombres": {
+     "persona-a": "A",
+     "persona-b": "B",
+     "persona-c": "C",
+     "persona-d": "D",
+     "persona-e": "E"
+    },
+    "novedades": [
+     {
+      "tipo": "criterio",
+      "resumen": "#26: acuerdo o nota número 6 con un texto largo que sigue y sigue para ocupar sitio en el presupuesto del bloque",
+      "autor": "Persona C",
+      "observado_en": "2026-09-19T10:00:00Z"
+     },
+     {
+      "tipo": "decision",
+      "resumen": "#25: acuerdo o nota número 5 con un texto largo que sigue y sigue para ocupar sitio en el presupuesto del bloque",
+      "autor": "@persona-a ↔ @persona-b",
+      "observado_en": "2026-09-19T09:50:00Z"
+     },
+     {
+      "tipo": "criterio",
+      "resumen": "#24: acuerdo o nota número 4 con un texto largo que sigue y sigue para ocupar sitio en el presupuesto del bloque",
+      "autor": "Persona C",
+      "observado_en": "2026-09-19T09:40:00Z"
+     },
+     {
+      "tipo": "decision",
+      "resumen": "#23: acuerdo o nota número 3 con un texto largo que sigue y sigue para ocupar sitio en el presupuesto del bloque",
+      "autor": "@persona-a ↔ @persona-b",
+      "observado_en": "2026-09-19T09:30:00Z"
+     },
+     {
+      "tipo": "criterio",
+      "resumen": "#22: acuerdo o nota número 2 con un texto largo que sigue y sigue para ocupar sitio en el presupuesto del bloque",
+      "autor": "Persona C",
+      "observado_en": "2026-09-19T09:20:00Z"
+     }
+    ],
+    "reservas": []
+   },
+   "esperado": {
+    "persona-a": {
+     "trabajo": [
+      "T01",
+      "T11",
+      "T06",
+      "T16"
+     ],
+     "servicios": []
+    },
+    "persona-b": {
+     "trabajo": [
+      "T07",
+      "T17",
+      "T02",
+      "T12"
+     ],
+     "servicios": []
+    },
+    "persona-c": {
+     "trabajo": [
+      "T08",
+      "T18",
+      "T03",
+      "T13"
+     ],
+     "servicios": []
+    },
+    "persona-d": {
+     "trabajo": [
+      "T09",
+      "T19"
+     ],
+     "servicios": []
+    },
+    "persona-e": {
+     "trabajo": [
+      "T05",
+      "T15"
+     ],
+     "servicios": []
+    }
+   },
+   "antiguedades": {
+    "2026-09-19T09:00:00Z": 5400,
+    "2026-09-19T09:03:00Z": 5220,
+    "2026-09-19T09:06:00Z": 5040,
+    "2026-09-19T09:09:00Z": 4860,
+    "2026-09-19T09:12:00Z": 4680,
+    "2026-09-19T09:15:00Z": 4500,
+    "2026-09-19T09:18:00Z": 4320,
+    "2026-09-19T09:20:00Z": 4200,
+    "2026-09-19T09:21:00Z": 4140,
+    "2026-09-19T09:24:00Z": 3960,
+    "2026-09-19T09:27:00Z": 3780,
+    "2026-09-19T09:30:00Z": 3600,
+    "2026-09-19T09:33:00Z": 3420,
+    "2026-09-19T09:36:00Z": 3240,
+    "2026-09-19T09:39:00Z": 3060,
+    "2026-09-19T09:40:00Z": 3000,
+    "2026-09-19T09:42:00Z": 2880,
+    "2026-09-19T09:45:00Z": 2700,
+    "2026-09-19T09:48:00Z": 2520,
+    "2026-09-19T09:50:00Z": 2400,
+    "2026-09-19T09:51:00Z": 2340,
+    "2026-09-19T09:54:00Z": 2160,
+    "2026-09-19T09:57:00Z": 1980,
+    "2026-09-19T10:00:00Z": 1800,
+    "2026-09-19T10:21:00Z": 540,
+    "2026-09-19T10:25:00Z": 300,
+    "2026-09-19T10:26:00Z": 240,
+    "2026-09-19T10:27:00Z": 180,
+    "2026-09-19T10:28:30Z": 90,
+    "2026-09-19T10:29:00Z": 60,
+    "2026-09-19T10:29:40Z": 20,
+    "2026-09-19T10:30:00Z": 0
+   },
+   "md": {
+    "persona-a": [
+     "- ROJO · nivel 2 · web/src/App.jsx · @persona-a, @persona-b (12:27)",
+     "- AMARILLO · nivel 2b · fusión estructural sin conflictos · motor/api.py, pyproject.toml · @persona-a, @persona-b (12:28)"
+    ],
+    "persona-b": [
+     "- ROJO · nivel 2 · web/src/App.jsx · @persona-a, @persona-b (12:27)",
+     "- ROJO · nivel 3 · contrato «Ficha de empresa (GET /api/ficha)» · motor/ficha.py · @persona-b, @persona-c (12:29)",
+     "- AMARILLO · nivel 2b · fusión estructural sin conflictos · motor/api.py, pyproject.toml · @persona-a, @persona-b (12:28)"
+    ],
+    "persona-c": [
+     "- ROJO · nivel 3 · contrato «Ficha de empresa (GET /api/ficha)» · motor/ficha.py · @persona-b, @persona-c (12:29)"
+    ],
+    "persona-d": [
+     "- AMARILLO · nivel 2b · fusión estructural sin conflictos · datos/esquema.json · @persona-d, @persona-e (12:25)"
+    ],
+    "persona-e": [
+     "- AMARILLO · nivel 2b · fusión estructural sin conflictos · datos/esquema.json · @persona-d, @persona-e (12:25)"
+    ]
+   }
+  }
+ ]
+}
