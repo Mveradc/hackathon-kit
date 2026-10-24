@@ -306,6 +306,12 @@ Especificado el 2026-10-21 y decidido el 2026-10-22: el usuario aceptó las siet
 
 **No se recortan:** el apagado sin coste, que nada baje a amarillo por un fallo o un plazo vencido, la limpieza de las copias de Mergiraf (constitución IX) y la igualdad de ADR-0009.
 
+*Estado: **cerrado el 2026-10-24**, con el PR #85 (Vitest con las vistas de G15) fusionado antes o a la vez que el de K-114.*
+- **Criterio 2:** `test_colisiones_2b.py` (K-111, PR #83), con el falso y con Mergiraf 0.20.0 de verdad.
+- **Criterio 3:** G15 en el simulador e `igualdad.py` (K-112, PR #84); Vitest con las vistas de G15 en el PR #85 (con la vista a mano de K-113 hasta entonces).
+- **Criterio 4:** `test_proyeccion_m11.py` (K-112) y, para volver de 2b a rojo con el mismo texto, el arreglo de `escucha.sh` de K-114 (`test_escucha_m11.py`).
+- **Criterios 1, 5, 6 y 7:** en K-114 (`evals/coordinacion/prueba.md`, «M11, K-114»): `colisiones_2b_vivo.py` en Linux, Windows y macOS (estos dos, runners de GitHub Actions con el binario oficial), y `comprobar.py` idéntico al de la v0.5.0 con una carpeta montada con los ejemplos del reto 03 (no con un reto generado: hace falta el modelo).
+
 ---
 
 ## Después del M8 (Pendiente)
