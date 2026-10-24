@@ -59,6 +59,10 @@ def main(args):
     if conf.get("real"):
         return subprocess.run([conf["real"], *args]).returncode
     time.sleep(conf.get("espera", {}).get(ruta, 0))
+    if not all(os.path.isfile(e) for e in entradas):
+        # Lo mataron por el plazo y ya se borró su directorio. En Windows, matar el lanzador .cmd no mata este
+        # proceso (el real es un solo .exe): no escribe nada, como si hubiera muerto.
+        return 1
     rc = conf.get("rc", {}).get(ruta, conf.get("por_defecto", 0))
     if rc == 0:
         for var, sub in (("XDG_DATA_HOME", ("mergiraf", "merges")), ("APPDATA", ("Mergiraf", "merges"))):
