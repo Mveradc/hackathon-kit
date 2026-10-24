@@ -172,7 +172,9 @@ function pintar(v) {
     d.dataset.id = c.id;
     d.dataset.gravedad = c.gravedad;
     const que = c.contrato ? ` · contrato «${c.contrato}»` : "";
-    d.append(el("strong", "", `${c.gravedad.toUpperCase()} · nivel ${c.nivel}`),
+    // Nivel 2b (ADR-0014, decisión 7): el mismo texto que la línea de estado-equipo.md.
+    const nivel = c.nivel === "2b" ? "nivel 2b · fusión estructural sin conflictos" : `nivel ${c.nivel}`;
+    d.append(el("strong", "", `${c.gravedad.toUpperCase()} · ${nivel}`),
              `${que} · ${c.rutas.join(", ")} · ${c.personas.map(p => "@" + p).join(", ")} · `, edad(c.observado_en));
     col.append(d);
   }
