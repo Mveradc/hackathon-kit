@@ -45,6 +45,8 @@ if os.name == "nt":
     BASH = next((b for b in (os.path.join(raiz, "bin", "bash.exe"), os.path.join(raiz, "usr", "bin", "bash.exe"))
                  if os.path.exists(b)), BASH)
 UV = shutil.which("uv")
+sys.path.insert(0, PRUEBAS)
+import mergiraf_falso  # noqa: E402
 BASE = '"""App de prueba."""\nimport os\nimport sys\n\n\ndef uno():\n    return 1\n\n\ndef dos():\n    return 2\n'
 APP_A = BASE.replace("import sys\n", "import sys\nimport json\n").replace("return 2\n", "return 20\n")
 APP_B = BASE.replace("import sys\n", "import sys\nimport re\n")
@@ -224,9 +226,8 @@ def falso(directorio, registro, version):
                 f"with open({registro!r}, 'a', encoding='utf-8') as f:\n"
                 "    f.write(json.dumps(sys.argv[1:]) + '\\n')\n"
                 "sys.exit(mergiraf_falso.main(sys.argv[1:]))\n")
-    if os.name == "nt":
-        with open(os.path.join(directorio, "mergiraf.cmd"), "w", encoding="utf-8") as f:
-            f.write(f'@"{sys.executable}" "{py}" %*\r\n')
+    if os.name == "nt":                         # el relay solo acepta un mergiraf.exe (#88)
+        mergiraf_falso.exe(os.path.join(directorio, "mergiraf.exe"), py)
     else:
         lanzador = os.path.join(directorio, "mergiraf")
         with open(lanzador, "w", encoding="utf-8") as f:
@@ -451,7 +452,8 @@ def prueba(tmp):
                       f"{hechas} · {avisos} · {niveles}")
         else:
             comprueba("C1 (control, el falso en 0.20.0): --version y un merge de app.py anotados, y 2b",
-                      hechas[:1] == [["--version"]] and len(merges) == 1 and "app.py" in merges[0]
+                      hechas[:1] == [["--version"]] and len(merges) == 1
+                      and mergiraf_falso.ruta_de(merges[0]) == "app.py"
                       and niveles == {"2b"}, f"{hechas} · {avisos} · {niveles}")
         if nombre in ("ausente", "no"):
             print(f"        relay {nombre}: " + next((f"{c['id']} {c['gravedad']}" for c in
