@@ -343,6 +343,15 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Decisión del usuario:** se publica sin ensayo con un equipo real y sin que la ruta haya estimado con datos reales; así lo dicen el README y `docs/limitaciones.md`.
 - **Siguiente:** el ensayo con un equipo (revisa el criterio 3 de M10, los umbrales del veredicto y el criterio 4 de M8h), y lo de «Después del M8» en `hitos.md`.
 
+## M11 — Nivel 2b de colisiones con Mergiraf (2026-10-21 a 2026-10-24)
+- **Qué es:** con `fusion_estructural: sí` en el `os.md` del relay, `publicar_wip: sí` y Mergiraf ≥ 0.20.0 en el `PATH` del portátil de quien coordina, un conflicto del nivel 2 que Mergiraf fusiona sin conflictos baja a amarillo (`2b`, «fusión estructural sin conflictos»). R-34; ADR-0014, aceptado el 2026-10-22 con las siete recomendaciones. El kit no instala Mergiraf ni lo pide.
+- **Cómo se hizo:** Paso 0 y P17 (K-109: binario oficial, códigos de salida, dónde guarda las copias y `APPDATA` en Windows), contratos (K-110), el cálculo en `colisiones_merge.py` (K-111, PR #83), el modelo, el relay, la proyección, el MCP y G15 (K-112, PR #84), las dos webs, la plantilla `os.md` y la instalación (K-113, PR #82), los remates con G15 en Vitest (PR #85) y la validación en vivo (K-114).
+- **K-114:** `evals/coordinacion/colisiones_2b_vivo.py` (dos personas, un `import` distinto en el mismo sitio de un `.py`: amarillo `2b` a los 23–31 s de la publicación; la misma línea con valores distintos: rojo y la línea del monitor a los 24–31 s), en Linux y en runners de Windows y macOS con el binario oficial. Con 2b apagado, sin `publicar_wip` o sin Mergiraf (o con 0.19.1), el relay vivo no ejecuta `mergiraf merge` ni una vez. Arreglado `escucha.sh`: recordaba para siempre las rojas vistas, y una roja que bajaba a 2b y volvía a rojo con el mismo texto no abría turno (criterio 4; `test_escucha_m11.py`).
+- **Aprendido:** en macOS, el monitor y los hooks con el bash 3.2 de serie dejan el OS apagado sin decir nada en el monitor (lo previsto; `arranque.sh` avisa). En Windows, un log de Python redirigido a un fichero sale en cp1252 si no se pide UTF-8.
+- **Validación sin datos reales:** ni un reto real, ni un portátil real de Windows o macOS (`docs/limitaciones.md`). `comprobar.py`, idéntico al de la v0.5.0 con una carpeta montada con ejemplos (un reto generado exige el modelo).
+- **Resultados** en `evals/coordinacion/prueba.md` («M11, Paso 0» y «M11, K-114»).
+- **Siguiente:** la versión que lo lleve, que la decide el usuario.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.
