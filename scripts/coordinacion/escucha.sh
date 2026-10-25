@@ -94,8 +94,9 @@ fin_backoff() {
 # 1. Una roja vista solo se olvida si ya no está y su par sale en una línea `nivel 2b` (bajó a 2b): si vuelve a rojo,
 #    es una roja nueva (criterio 4 de M11). Cualquier otra desaparición (el relay que se reinicia, un ref WIP borrado
 #    un momento) no la olvida, como en la 0.5.0.
-# 2. Una roja de nivel 2 con un subconjunto de los ficheros de una roja vista del mismo par (un fichero bajó a 2b o se
-#    resolvió) no es nueva: es una buena noticia y no abre turno.
+# 2. Una roja de nivel 2 con un subconjunto de los ficheros de una roja vista del mismo par, cuando ese par sale en una
+#    línea `nivel 2b` (un fichero bajó a 2b), no es nueva: es una buena noticia y no abre turno.
+# Sin líneas `nivel 2b` (el 2b apagado), ninguna de las dos actúa y el monitor es el de la 0.5.0 (constitución I).
 . "$(dirname "$0")/../os/comun.sh"
 declare -A rojas_vistas=()
 rojas_listas=0
@@ -116,35 +117,35 @@ os_subconjunto() {
 }
 os_rojas() {
   os_activo || return 0
-  local md=$OS_COMUN/hackathon/os/estado-equipo.md l sec= clave nuevas=() ver vista rutas par
+  local md=$OS_COMUN/hackathon/os/estado-equipo.md l sec= clave nuevas=() ver vista rutas par i rojas=() claves=()
   local -A siguen=() en_2b=()
   [[ -f $md ]] || return 0
   while IFS= read -r l || [[ -n $l ]]; do
     l=${l%$'\r'}
     if [[ $l == '## '* ]]; then sec=$l; continue; fi
     [[ $sec == '## Colisiones que te afectan' ]] || continue
-    if [[ $l == '- '*' · nivel 2b · '* ]]; then   # regla 1: este par está (al menos en parte) en 2b
-      clave=$l
-      while [[ $clave =~ \ \([0-9][0-9]:[0-9][0-9]( · [^\)]*)?\) ]]; do clave=${clave/"${BASH_REMATCH[0]}"/}; done
-      en_2b[${clave##* · }]=1
-      continue
-    fi
-    [[ $l == '- ROJO'* ]] || continue
+    [[ $l == '- ROJO'* || $l == '- '*' · nivel 2b · '* ]] || continue
     clave=$l   # sin horas, como en delta.sh: la misma colisión con otra hora no es nueva
     while [[ $clave =~ \ \([0-9][0-9]:[0-9][0-9]( · [^\)]*)?\) ]]; do clave=${clave/"${BASH_REMATCH[0]}"/}; done
+    if [[ $l == '- ROJO'* ]]; then rojas+=("$l") claves+=("$clave")
+    else en_2b[${clave##* · }]=1                       # este par está (al menos en parte) en 2b
+    fi
+  done < "$md"
+  for i in "${!claves[@]}"; do   # después de leer todo: la línea 2b de un par puede ir detrás de su roja
+    clave=${claves[i]}
     siguen[$clave]=1
     [[ -n ${rojas_vistas[$clave]} ]] && continue
     rojas_vistas[$clave]=1
     (( rojas_listas )) || continue
-    if os_partes_2 "$clave"; then                    # regla 2: ¿la misma roja con menos ficheros?
+    if os_partes_2 "$clave" && [[ -n ${en_2b[$OS_PAR]} ]]; then   # regla 2: ¿la misma roja con menos ficheros?
       rutas=$OS_RUTAS par=$OS_PAR
       for vista in "${!rojas_vistas[@]}"; do
         [[ $vista != "$clave" ]] && os_partes_2 "$vista" && [[ $OS_PAR == "$par" ]] \
           && os_subconjunto "$rutas" "$OS_RUTAS" && continue 2
       done
     fi
-    nuevas+=("${l#- ROJO · }")
-  done < "$md"
+    nuevas+=("${rojas[i]#- ROJO · }")
+  done
   if (( ${#en_2b[@]} )); then   # regla 1: solo olvida las de nivel 2 que se han ido de un par que ahora está en 2b
     for clave in "${!rojas_vistas[@]}"; do
       [[ -z ${siguen[$clave]} ]] && os_partes_2 "$clave" && [[ -n ${en_2b[$OS_PAR]} ]] && unset 'rojas_vistas[$clave]'

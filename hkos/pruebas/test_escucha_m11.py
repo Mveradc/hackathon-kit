@@ -6,7 +6,9 @@ Issue #88 (decisiones del usuario del 2026-10-25), dos reglas:
 1. Una roja solo se olvida cuando su par pasa a 2b (sale una línea `nivel 2b` de las mismas personas). Si se va por
    otra cosa (el relay que se reinicia y publica un md sin ella, un ref WIP borrado un momento), al volver no abre
    turno, como en la 0.5.0. Por eso `test_roja_que_se_va_y_vuelve_...` ha cambiado de sentido: antes daba 1 línea.
-2. Una roja de nivel 2 con un subconjunto de los ficheros de una roja ya vista del mismo par no abre turno.
+2. Una roja de nivel 2 con un subconjunto de los ficheros de una roja ya vista del mismo par no abre turno, si ese par
+   sale en una línea `nivel 2b`. Sin 2b (`x.py` se resuelve y no hay 2b) abre turno, como en la 0.5.0: con el 2b
+   apagado, el monitor es el de la 0.5.0 (constitución I).
 
 Con el escucha.sh de verdad y el md que escribe proyeccion.markdown, como `Monitor` en test_proyeccion_m11.py.
 
@@ -70,10 +72,17 @@ class Escucha(m11._Md):
         self.assertEqual(len(salida), 1, salida)
         self.assertIn("colisión ROJA nueva · nivel 2 · src/x.py, src/y.py · @persona-a, @persona-b", salida[0])
 
-    def test_roja_con_otros_ficheros_una_linea(self):
-        """Regla 2: solo vale un subconjunto; con un fichero que no estaba es una roja nueva."""
+    def test_roja_con_menos_ficheros_sin_2b_una_linea(self):
+        """Regla 2: sin una línea 2b del par (x.py se resuelve, o el 2b está apagado), como en la 0.5.0."""
         self.deja([DOS])
-        salida = self.escucha([lambda: self.deja([dict(ROJA, rutas=["src/y.py", "src/z.py"])])])
+        salida = self.escucha([lambda: self.deja([SOLO_Y])])
+        self.assertEqual(len(salida), 1, salida)
+        self.assertIn("colisión ROJA nueva · nivel 2 · src/y.py · @persona-a, @persona-b", salida[0])
+
+    def test_roja_con_otros_ficheros_una_linea(self):
+        """Regla 2: solo vale un subconjunto; con un fichero que no estaba es una roja nueva, aunque haya 2b."""
+        self.deja([DOS])
+        salida = self.escucha([lambda: self.deja([dict(ROJA, rutas=["src/y.py", "src/z.py"]), X_EN_2B])])
         self.assertEqual(len(salida), 1, salida)
         self.assertIn("nivel 2 · src/y.py, src/z.py", salida[0])
 
