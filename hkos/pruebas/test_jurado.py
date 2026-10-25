@@ -831,6 +831,16 @@ class Issue77(Base):
         self.assertEqual({k: x["nota"][k] for k in x["nota"] if k not in TEXTOS},
                          {k: n[k] for k in n if k not in TEXTOS})
 
+    def test_fuerza_texto_sin_controles_bidi(self):
+        """Restos de la 0.6.0, punto 2 (PR #79, «fuera de mi alcance»): `fuerza.texto` también sale sin bidi en el
+        bloque, y en `cuenta.sin_cubrir_por_fuerza`, como ya salía en el resumen. Su tipo y estado.json, tal cual."""
+        n = nota("2026-09-19 09:00", fuerza="obli‮gatorio⁩")
+        bl = self.calcula([n])
+        self.assertEqual(self.de(bl, n)["nota"]["fuerza"], {"tipo": "palabra", "texto": "obligatorio"})
+        self.assertEqual(bl["cuenta"]["sin_cubrir_por_fuerza"], [{"texto": "obligatorio", "n": 1}])
+        self.assertIn("«obligatorio» (criterios.md)", bl["resumen"])
+        self.assertEqual(n["fuerza"]["texto"], "obli‮gatorio⁩")
+
 
 if __name__ == "__main__":
     unittest.main()

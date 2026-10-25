@@ -82,6 +82,41 @@ export function Fuentes({ respuesta }) {
   );
 }
 
+/** La hora con que estado-equipo.md escribe la línea de un bloque de «Jurado y ruta» (proyeccion.linea_jurado_ruta):
+ *  la del cálculo y, si el bloque llega viejo, la de su último dato bueno: `fuentes.git` en el jurado y
+ *  `dato_mas_viejo` en la ruta (issue #77, A7; constitución III y IV). El «viejo» lo trae el bloque. */
+export function horaDeLinea(vista, clave) {
+  const b = vista[clave];
+  if (!b.viejo) return b.observado_en;
+  return (clave === "jurado" ? vista.fuentes?.git?.observado_en : null) || b.dato_mas_viejo || b.observado_en;
+}
+
+/** La línea de «## Jurado y ruta» del md sin el «- »: el `resumen` del bloque tal cual y detrás su hora (la del
+ *  portátil, como el md), su fuente y «· viejo» si lo es. */
+export function LineaDelMd({ vista, clave }) {
+  const b = vista[clave];
+  return (
+    <span className="hk-mono hk-dato" {...{ [`data-linea-${clave}`]: "" }}>
+      <span {...{ [`data-resumen-${clave}`]: "" }}>{b.resumen}</span>
+      {" "}({hora(horaDeLinea(vista, clave))} · {b.fuente}{b.viejo ? " · viejo" : ""})
+    </span>
+  );
+}
+
+/** «Git (remoto del equipo): sin leer desde HH:MM (valor).», la línea «>» que escribe proyeccion.avisos cuando
+ *  `fuentes.git` está viejo y dice desde cuándo no se lee el remoto (_git_leido: con jurado o ruta en la vista, o con
+ *  servicios y git distinto de «ok»; issue #77, A7). Sin eso, nada, como en la 0.4.0. */
+export function AvisoGit({ vista }) {
+  const d = vista.fuentes?.git;
+  const leido = !!(vista.jurado || vista.ruta) || (!!vista.servicios && d?.valor !== "ok");
+  if (!d?.viejo || !leido) return null;
+  return (
+    <p className="hk-aviso hk-aviso--viejo" role="status" data-aviso-git="">
+      Git (remoto del equipo): sin leer desde {hora(d.observado_en)}{d.valor === "ok" ? "" : ` (${d.valor})`}.
+    </p>
+  );
+}
+
 function iniciales(p) {
   const base = (p.nombre || p.persona || "?").replace(/[^\p{L}\p{N}]/gu, "");
   return (base.slice(0, 2) || "?").toUpperCase();

@@ -34,7 +34,7 @@ daría su Calculo con `fusion_estructural: sí`), con lo mismo que G1–G6 más 
 afectan» de cada persona, de proyeccion.linea_colision (en Europe/Madrid).
 
 Uso (desde hkos/web-src): uv run --no-project scripts/vistas_ejemplo.py   → test/vistas/*.json, test/vistas/m10/*.json y
-test/vistas/m11/G15.json
+test/vistas/m11/G15.json (y, con scripts/vistas_viejo.py, test/vistas/viejo/viejo.json)
 """
 import json
 import os
@@ -58,6 +58,7 @@ from fixture import estado_5x20  # noqa: E402
 import g12  # noqa: E402
 import g13_g14  # noqa: E402
 from igualdad import SondeoFijo, WipFijo  # noqa: E402
+import vistas_viejo  # noqa: E402
 from simula import carga, conflictos_de, contratos_de, montar  # noqa: E402
 
 SALIDA = os.path.join(WEB, "test", "vistas")
@@ -283,6 +284,7 @@ def main():
         guarda("casos-G14", casos_g14(tmp), SALIDA_M10)
         os.makedirs(SALIDA_M11, exist_ok=True)
         guarda("G15", [dict(c, md=md_colisiones(c["vista"])) for c in casos_guion("G15", tmp)], SALIDA_M11)
+        vistas_viejo.main()                    # restos de la 0.6.0, punto 1: test/vistas/viejo/viejo.json
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

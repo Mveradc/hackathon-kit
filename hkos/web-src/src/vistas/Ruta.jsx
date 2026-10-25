@@ -1,6 +1,6 @@
 import { Cadena, Panel, ProvenanceTag, StatusPulse, TaskCard } from "../componentes/componentes.jsx";
 import { arroba, canal, diaHm, duracion, fechaHm, hace, hm, minutosZona, ms, tarjetas, textoZona, zonaRuta } from "../formato.js";
-import { Vacio } from "./comun.jsx";
+import { LineaDelMd, Vacio } from "./comun.jsx";
 
 // Ruta crítica (pantallas/ruta-critica.dc.html; R-36, ADR-0013, api.md §11.4). Todo sale del bloque `ruta` de la
 // vista, que calcula proyeccion.py (hkos/ruta.py): el veredicto, el rango, el margen, la base, los hechos, la cadena y
@@ -300,7 +300,7 @@ export function Ruta({ respuesta }) {
             <span className="hk-texto-sec">Primero los hechos (plazo pasado en rojo; parada o sin cerrar en ámbar; sin señales en gris). Después, ESTIMACIÓN: cada tarea abierta cuyo fin tarde pasa de la entrega, esté o no en la cadena. Es una previsión: nunca en rojo, y solo con su fin tarde.</span>
           </Panel>
           <Panel title="Lo que ve el agente" meta="estado-equipo.md">
-            <span className="hk-mono hk-dato" data-resumen-ruta="">{r.resumen}</span>
+            <LineaDelMd vista={vista} clave="ruta" />
             <span className="hk-texto-sec">La línea de «## Jurado y ruta». El detalle sale del mismo bloque y es el que da el MCP (ruta).</span>
           </Panel>
         </div>
