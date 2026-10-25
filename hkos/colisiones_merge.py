@@ -27,6 +27,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+import threading
 import time
 from datetime import datetime, timezone
 
@@ -357,6 +358,22 @@ MERGIRAF_MIN = (0, 20, 0)
 MODOS_2B = ("100644", "100755")
 
 
+def buscar_mergiraf(path=None):
+    """El `mergiraf` del PATH sin mirar el directorio actual (#88): solo entradas absolutas (una vacía, «.» o relativa
+    sería el cwd, que en el relay es la copia del coordinador). En Windows, shutil.which mira el cwd primero aunque se
+    le pase `path` (salvo con NoDefaultCurrentDirectoryInExePath), así que se pregunta por cada directorio con la ruta
+    entera, y solo vale un `mergiraf.exe`: un .bat o .cmd pasaría la ruta del fichero por cmd.exe."""
+    dirs = [d.strip('"') for d in (os.environ.get("PATH", os.defpath) if path is None else path).split(os.pathsep)]
+    dirs = [d for d in dirs if d and os.path.isabs(d)]
+    if os.name != "nt":
+        return shutil.which("mergiraf", path=os.pathsep.join(dirs)) if dirs else None
+    for d in dirs:
+        programa = shutil.which(os.path.join(d, "mergiraf.exe"))
+        if programa and os.path.normcase(programa).endswith(".exe"):
+            return programa
+    return None
+
+
 def version_mergiraf(programa, timeout=5):
     """(mayor, menor, parche) de `mergiraf --version`, o None si no responde (ADR-0014: plazo de 5 s)."""
     try:
@@ -391,6 +408,8 @@ class Calculo:
         self.conflictos, self._cache, self._desde = [], {}, {}
         self.mergiraf = None                      # ruta del programa si el nivel 2b está activo
         self._cache_2b, self._desde_2b = {}, {}
+        # Los hijos y temporales del nivel 2b en curso, para que `cerrar` los limpie al parar el relay (#88).
+        self._vivos, self._temporales, self._cerrado, self._lock_vivos = set(), set(), False, threading.Lock()
         if self.activo and fusion_estructural:
             self.mergiraf = self._detectar_mergiraf()
 
@@ -399,9 +418,9 @@ class Calculo:
         return self.mergiraf is not None
 
     def _detectar_mergiraf(self):
-        """Una vez, al arrancar: shutil.which y `mergiraf --version` (≥ 0.20.0). Avisa una vez en cualquier caso."""
+        """Una vez, al arrancar: buscar_mergiraf y `mergiraf --version` (≥ 0.20.0). Avisa una vez en cualquier caso."""
         minima = ".".join(map(str, MERGIRAF_MIN))
-        programa = shutil.which("mergiraf")
+        programa = buscar_mergiraf()
         if not programa:
             motivo = "mergiraf no está en el PATH"
         else:
@@ -453,7 +472,7 @@ class Calculo:
                     self._desde.pop((a, b), None)
         if len(self._cache) > 500:
             self._cache = {k: v for k, v in list(self._cache.items())[-100:]}
-        if len(self._cache_2b) > 500:
+        if len(self._cache_2b) > 500:                # LRU: _resuelve pone al final lo que consulta (#88)
             self._cache_2b = {k: v for k, v in list(self._cache_2b.items())[-100:]}
         cambio = nuevos != self.conflictos
         self.conflictos = nuevos
@@ -515,6 +534,7 @@ class Calculo:
             return False
         clave = (etapas["1"][1], etapas["2"][1], etapas["3"][1], ruta)
         if clave in self._cache_2b:
+            self._cache_2b[clave] = self._cache_2b.pop(clave)      # la usada, al final: el recorte la conserva
             return self._cache_2b[clave]
         if self._inicio_2b is None:
             self._inicio_2b = self.reloj()
@@ -529,10 +549,19 @@ class Calculo:
         return resultado is True
 
     def _mergiraf(self, ruta, blobs, plazo):
-        """True (rc 0), False (otro rc), «plazo» (lo mata el relay) o None (no se pudo lanzar o leer un blob). Los
-        blobs van a un directorio temporal fuera del clon, con XDG_DATA_HOME y APPDATA allí (las copias de Mergiraf,
-        P12 y P17), que se borra siempre. La salida no se lee."""
-        tmp = tempfile.mkdtemp(prefix="hk-2b-")
+        """True (rc 0), False (otro rc), «plazo» (lo mata el relay) o None (no se pudo crear el temporal, lanzarlo o leer
+        un blob; o el relay está parando). Los blobs van a un directorio temporal fuera del clon, con XDG_DATA_HOME y
+        APPDATA allí (las copias de Mergiraf, P12 y P17), que se borra siempre. Mergiraf corre con ese directorio de cwd
+        y con `--allow-parse-errors=false`: así ningún atributo de git (`.gitattributes`, `.git/info/attributes`,
+        `core.attributesFile`) cambia el resultado (#88). La salida no se lee."""
+        with self._lock_vivos:
+            if self._cerrado:
+                return None
+            try:
+                tmp = tempfile.mkdtemp(prefix="hk-2b-")
+            except OSError:
+                return None                       # sin temporal, rojo y sin caché; el ciclo sigue (constitución VIII)
+            self._temporales.add(tmp)
         try:
             nombres = []
             for n, blob in zip("123", blobs):
@@ -541,25 +570,63 @@ class Calculo:
                     return None
                 nombres.append(nombre)
             env = dict(os.environ, XDG_DATA_HOME=tmp, APPDATA=tmp)
-            try:
-                r = subprocess.run([self.mergiraf, "merge", *nombres, "-p", ruta, "-t", str(self.PLAZO_FICHERO_MS),
-                                    "-o", os.path.join(tmp, "salida")], stdin=subprocess.DEVNULL,
-                                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, env=env, timeout=plazo)
-            except subprocess.TimeoutExpired:
-                return "plazo"
-            except (OSError, subprocess.SubprocessError):
-                return None
-            return r.returncode == 0
+            rc = self._proceso([self.mergiraf, "merge", *nombres, f"--path-name={ruta}", "--allow-parse-errors=false",
+                                "-t", str(self.PLAZO_FICHERO_MS), "-o", os.path.join(tmp, "salida")], plazo,
+                               stdout=subprocess.DEVNULL, cwd=tmp, env=env)
+            return rc if rc in (None, "plazo") else rc == 0
         finally:
             shutil.rmtree(tmp, ignore_errors=True)
+            with self._lock_vivos:
+                self._temporales.discard(tmp)
 
     def _blob(self, blob, destino):
         """`git cat-file blob` a un fichero, en bytes."""
         env = dict(os.environ, **ENTORNO)
         try:
             with open(destino, "wb") as f:
-                r = subprocess.run(["git", *SIN_CREDENCIALES, "-C", self.repo, "cat-file", "blob", blob], stdout=f,
-                                   stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL, env=env, timeout=60)
-        except (OSError, subprocess.SubprocessError):
+                rc = self._proceso(["git", *SIN_CREDENCIALES, "-C", self.repo, "cat-file", "blob", blob], 60, stdout=f,
+                                   env=env)
+        except OSError:
             return False
-        return r.returncode == 0
+        return rc == 0
+
+    def _proceso(self, args, plazo, **kw):
+        """Un hijo del nivel 2b, apuntado mientras vive para que `cerrar` lo mate: su rc, «plazo» (lo mata) o None (no
+        se pudo lanzar, o el relay está parando)."""
+        with self._lock_vivos:
+            if self._cerrado:
+                return None
+            try:
+                p = subprocess.Popen(args, stdin=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **kw)
+            except (OSError, ValueError, subprocess.SubprocessError):
+                return None
+            self._vivos.add(p)
+        try:
+            rc = p.wait(timeout=plazo)
+        except subprocess.TimeoutExpired:
+            p.kill()
+            p.wait()
+            rc = "plazo"
+        finally:
+            with self._lock_vivos:
+                self._vivos.discard(p)
+        return None if self._cerrado else rc
+
+    def cerrar(self):
+        """Al parar el relay (#88): mata los hijos del nivel 2b que sigan vivos y borra sus temporales (ADR-0014: «se
+        borra después, pase lo que pase»). Después no se lanza ninguno más."""
+        with self._lock_vivos:
+            self._cerrado = True
+            vivos, temporales = list(self._vivos), list(self._temporales)
+        for p in vivos:
+            try:
+                p.kill()
+            except OSError:
+                pass
+        for p in vivos:
+            try:
+                p.wait(5)
+            except subprocess.TimeoutExpired:
+                pass
+        for tmp in temporales:
+            shutil.rmtree(tmp, ignore_errors=True)

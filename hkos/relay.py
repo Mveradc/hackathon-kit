@@ -22,6 +22,7 @@ import json
 import os
 import re
 import secrets
+import signal
 import socket
 import subprocess
 import sys
@@ -1048,6 +1049,38 @@ def nivel2(repo, os_md, personas, aviso):
     return wip if wip.activo else None
 
 
+def senales_de_parada():
+    """M11 (#88): SIGTERM y SIGHUP (SIGBREAK en Windows) paran el relay como Ctrl+C, para que el nivel 2b limpie sus
+    hijos y temporales. Solo las que siguen con su acción por defecto (no las que ignora `nohup`) y solo desde el hilo
+    principal. Devuelve la lista donde queda la señal recibida; las siguientes se ignoran mientras se para."""
+    recibida = []
+    if threading.current_thread() is not threading.main_thread():
+        return recibida
+
+    def manejador(numero, _marco):
+        if not recibida:
+            recibida.append(numero)
+            raise KeyboardInterrupt
+
+    for nombre in ("SIGTERM", "SIGHUP", "SIGBREAK"):
+        numero = getattr(signal, nombre, None)
+        if numero is not None and signal.getsignal(numero) == signal.SIG_DFL:
+            signal.signal(numero, manejador)
+    return recibida
+
+
+def parar_nivel2(wip, hilo, recibida):
+    """M11 (#88): al parar el relay con el nivel 2b, mata el Mergiraf en marcha y borra su temporal, deja que el hilo
+    acabe su `finally` (como mucho 2 s) y, si lo paró una señal, sale con ella, como sin el manejador."""
+    wip.cerrar()
+    hilo.join(2)
+    if recibida and os.name != "nt":
+        signal.signal(recibida[0], signal.SIG_DFL)
+        os.kill(os.getpid(), recibida[0])
+    elif recibida:
+        raise SystemExit(128 + recibida[0])
+
+
 def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=True):
     if not ip_permitida(ip):
         raise SystemExit(f"hk-os relay: {ip} no es 127.0.0.1, una IP privada de LAN ni una de Tailscale; "
@@ -1084,7 +1117,8 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
     if novedades:
         threading.Thread(target=relay.bucle_novedades, args=(parar,), daemon=True).start()
     if wip:
-        threading.Thread(target=relay.bucle_wip, args=(parar,), daemon=True).start()
+        hilo_wip = threading.Thread(target=relay.bucle_wip, args=(parar,), daemon=True)
+        hilo_wip.start()
         aviso(f"Nivel 2 (publicar_wip): merge-tree de refs/hackathon/wip/* cada {colisiones_merge.Calculo.CADA_S} s.")
     url = f"http://{ip}:{servidor.server_address[1]}"
     aviso(f"Relay del Hackathon OS en {url} ({len(personas)} personas en coordinacion.md, "
@@ -1092,6 +1126,8 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
     aviso(f"Token: {relay.token}")
     aviso(f"Cada persona, en su clon: {orden_unir(url, relay.token)}")
     aviso(f"Web (solo lectura, desde un navegador de la misma red): {url}/#t={relay.token}")
+    con_2b = bool(wip and wip.fusion_estructural)    # con el interruptor apagado, la parada de la 0.5.0
+    recibida = senales_de_parada() if con_2b else []
     try:
         servidor.serve_forever(poll_interval=0.5)
     except KeyboardInterrupt:
@@ -1100,6 +1136,8 @@ def servir(carpeta, equipo_md, ip, puerto, aviso=print, os_md=None, con_github=T
         parar.set()
         relay.push_visto.set()
         servidor.server_close()
+        if con_2b:
+            parar_nivel2(wip, hilo_wip, recibida)
 
 
 def main(argv=None):
