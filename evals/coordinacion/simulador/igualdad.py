@@ -23,6 +23,10 @@ Desde M11 (K-112, criterio 3; ADR-0014), G15: el nivel 2b, con los `conflictos` 
 verdad (como los daría su Calculo con `fusion_estructural: sí`). La colisión `2b` sale igual en la vista del relay, en
 la del demonio y en el MCP, y en estado-equipo.md como «- AMARILLO · nivel 2b · fusión estructural sin conflictos · …».
 En G1–G6 y G12–G14, ninguna `2b`.
+Restos de la 0.6.0, punto 1 (PR #79; issue #77, A7): la hora de cada línea de «Jurado y ruta» es la que pinta la web
+(horaDeLinea de comun.jsx: la del cálculo y, si el bloque es viejo, `fuentes.git` en el jurado y `dato_mas_viejo` en la
+ruta), y la línea «> Git (remoto del equipo): …» del md, la que pinta la web (AvisoGit), o ninguna. Y «#77, A7», G13 y
+G14 con git sin leer desde hace 2 h: los dos bloques viejos, con su aviso.
 
 Uso: uv run --no-project evals/coordinacion/simulador/igualdad.py   (0 OK · 1 falla)
 """
@@ -148,11 +152,45 @@ def servicios_esperados(web, persona):
     return no_cuadra + sin + fuera
 
 
+def hora_de_linea(web, k):
+    """La hora que pinta la web en la línea de un bloque (horaDeLinea de comun.jsx): la del cálculo y, si el bloque es
+    viejo, la del último dato bueno: `fuentes.git` en el jurado y `dato_mas_viejo` en la ruta (issue #77, A7)."""
+    b = web[k]
+    if not b["viejo"]:
+        return b["observado_en"]
+    git = web["fuentes"].get("git", {}).get("observado_en") if k == "jurado" else None
+    return git or b.get("dato_mas_viejo") or b["observado_en"]
+
+
 def lineas_jr(web):
     """Lo que la sección «Jurado y ruta» del md tiene que decir, sacado de los bloques de la web (api.md §6, M10): el
-    `resumen` de cada bloque, con su hora, su fuente y «viejo»."""
-    return [f"- {b['resumen']} ({hhmm(b['observado_en'])} · {b['fuente']}" + (" · viejo" if b["viejo"] else "") + ")"
-            for b in (web.get("jurado"), web.get("ruta")) if b]
+    `resumen` de cada bloque, con la hora que pinta la web, su fuente y «viejo»."""
+    return [f"- {web[k]['resumen']} ({hhmm(hora_de_linea(web, k))} · {web[k]['fuente']}"
+            + (" · viejo" if web[k]["viejo"] else "") + ")" for k in ("jurado", "ruta") if web.get(k)]
+
+
+def aviso_git(web):
+    """La línea «> Git (remoto del equipo): …» que pinta la web (AvisoGit de comun.jsx), o ninguna: con fuentes.git
+    viejo y la vista con jurado o ruta, o con servicios y git distinto de «ok» (issue #77, A7)."""
+    d = web["fuentes"].get("git")
+    leido = bool(web.get("jurado") or web.get("ruta")) or (bool(web.get("servicios")) and d and d["valor"] != "ok")
+    if not d or not d["viejo"] or not leido:
+        return []
+    return [f"> Git (remoto del equipo): sin leer desde {hhmm(d['observado_en'])}"
+            + ("" if d["valor"] == "ok" else f" ({d['valor']})") + "."]
+
+
+def git_sin_leer(r):
+    """Issue #77, A7: el estado del relay con fuentes.git «sin leer jurado y ruta» desde hace 2 h, servido tal cual."""
+    with r.lock:
+        e = json.loads(json.dumps(r.estado))
+        ahora = datetime.fromisoformat(e["generado_en"].replace("Z", "+00:00"))
+        e["fuentes"]["git"] = {"valor": "sin leer jurado y ruta", "fuente": "git",
+                               "observado_en": iso_utc(ahora - timedelta(hours=2))}
+        r.estado, r.version = e, r.version + 1
+        r.vista = proyeccion.vista(e, umbral_viejo_s=r.umbral_viejo_s, umbral_parada_s=r.umbral_parada_s)
+        r.texto = json.dumps(e, ensure_ascii=False).encode("utf-8")
+    return r
 
 
 def rango_como_en_la_web(nombre, ruta):
@@ -285,6 +323,9 @@ def comparar(nombre, url, token, repo, personas, estado=None):
             md = f.read()
         sec = secciones(md)
         jr, cabecera = lineas_jr(web), md.splitlines()[0]
+        avisos = [l for l in md.splitlines() if l.startswith("> Git (remoto del equipo)")]
+        comprueba(f"{nombre}, md de @{persona}: la línea «> Git» del md, la de la web ({len(aviso_git(web))})",
+                  avisos == aviso_git(web), f"{avisos} / {aviso_git(web)}")
         if jr:                                         # M10 (K-105): una línea por bloque, el `resumen`
             firmas = proyeccion.firmas(web, persona)
             comprueba(f"{nombre}, md de @{persona}: «Jurado y ruta» = el resumen de cada bloque de la web ({len(jr)}), "
@@ -420,6 +461,15 @@ def main():
             plan = [f["plan.md"] for _, f in versiones if "plan.md" in f][-1]
             r = m10.relay(tmp, g14, versiones, mo["ahora"], tareas=m10.tareas_del_plan(g14, plan))
             servir_y_comparar(f"G14 ({mo['nombre']})", r, repo, [p["persona"] for p in r.personas])
+        # Restos de la 0.6.0, punto 1 (issue #77, A7): G13 y G14 con git sin leer desde hace 2 h.
+        for g, r in (("G13", m10.relay(tmp, g13, m10.versiones_g13(g13, h13, h13["momentos"][-1]["ahora"]),
+                                       h13["momentos"][-1]["ahora"])),
+                     ("G14", r)):
+            git_sin_leer(r)
+            k = "jurado" if g == "G13" else "ruta"
+            comprueba(f"#77, A7 ({g}): el bloque {k} viejo, con una hora distinta de la del cálculo",
+                      r.vista[k]["viejo"] and hora_de_linea(r.vista, k) != r.vista[k]["observado_en"])
+            servir_y_comparar(f"#77, A7 ({g}, git sin leer)", r, repo, [p["persona"] for p in r.personas])
         # Issue #77, A3 (G15 hasta M11): el rango sin anchura, con dos instantes distintos del mismo minuto.
         e = estado_a3()
         err = Esquema("estado.schema.json").error(e)

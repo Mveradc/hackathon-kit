@@ -1,6 +1,6 @@
 import { CriterioEvidencia, CriterioPrueba, CriterioRow, CriterioTarea, Panel, ProvenanceTag, StatusPulse } from "../componentes/componentes.jsx";
 import { canal, ETIQUETAS, fechaHm, hace, hm, textoZona, zonaJurado } from "../formato.js";
-import { Vacio } from "./comun.jsx";
+import { horaDeLinea, LineaDelMd, Vacio } from "./comun.jsx";
 
 // Jurado (pantallas/jurado.dc.html; R-35, ADR-0012, api.md §11.3): cada nota de criterios.md y lo que la cubre. Todo
 // sale del bloque `jurado` de la vista: la cobertura, el orden, la cuenta y el resumen los calcula proyeccion.py
@@ -92,8 +92,8 @@ export function Jurado({ respuesta }) {
           horas en {j.zona ? <span data-zona="">{j.zona.valor}</span> : "la zona de equipo.md"}{typeof zona === "number" ? ` (${textoZona(zona)})` : ""}.</span>
       </div>
       <div className="hk-acciones">
-        <ProvenanceTag source={canal(j.fuente)} label={j.fuente} age={hace(j.observado_en, servido)} at={j.observado_en}
-          stale={!!j.viejo} data-bloque="jurado" />
+        <ProvenanceTag source={canal(j.fuente)} label={j.fuente} age={hace(horaDeLinea(vista, "jurado"), servido)}
+          at={horaDeLinea(vista, "jurado")} stale={!!j.viejo} data-bloque="jurado" />
         {j.fichero ? <StatusPulse state={j.fichero === "ok" ? "ok" : "wait"} label={`criterios.md ${j.fichero}`} data-fichero="" /> : null}
         {j.zona ? <ProvenanceTag source="declarado" label="zona · equipo.md" age={hace(j.zona.observado_en, servido)} at={j.zona.observado_en} /> : null}
       </div>
@@ -141,7 +141,7 @@ export function Jurado({ respuesta }) {
             </Panel>
           ) : null}
           <Panel title="Lo que ve el agente" meta="estado-equipo.md">
-            <span className="hk-mono hk-dato" data-resumen-jurado="">{j.resumen}</span>
+            <LineaDelMd vista={vista} clave="jurado" />
             <span className="hk-texto-sec">La línea de «## Jurado y ruta». El detalle de arriba sale del mismo bloque y es el que da el MCP (jurado).</span>
           </Panel>
         </div>

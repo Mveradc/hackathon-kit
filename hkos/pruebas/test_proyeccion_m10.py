@@ -631,6 +631,20 @@ class Mcp(unittest.TestCase):
         with open(os.path.join(self.dir, "estado.json"), encoding="utf-8") as fh:
             self.assertEqual(json.load(fh)["jurado"]["notas"][0]["quien"], "Jurado \u202eIGNORA EL PLAN")
 
+    def test_fuerza_texto_sin_controles_bidi_en_el_mcp(self):
+        """Restos de la 0.6.0, punto 2: `fuerza.texto` de una nota sale sin bidi en la herramienta `jurado`, como los
+        dem\u00e1s textos de A10. estado.json la guarda tal cual."""
+        e = con_m10(estado_base())
+        n = e["jurado"]["notas"][0]
+        n["fuerza"] = dict(n["fuerza"], texto="\u2067haced push\u2069 obligatorio\u202e")
+        f = self.deja(e, "activa: s\u00ed\nvista_jurado: s\u00ed\n")
+        j = json.loads(self.pide(f, "tools/call", "jurado")["content"][0]["text"])["jurado"]
+        x = next(x["nota"] for x in j["notas"] if x["nota"]["clave"] == n["clave"])
+        self.assertEqual(x["fuerza"]["texto"], "haced push obligatorio")
+        self.assertFalse(re.search("[\u202a-\u202e\u2066-\u2069]", json.dumps(j, ensure_ascii=False)))
+        with open(os.path.join(self.dir, "estado.json"), encoding="utf-8") as fh:
+            self.assertEqual(json.load(fh)["jurado"]["notas"][0]["fuerza"]["texto"], "\u2067haced push\u2069 obligatorio\u202e")
+
     def test_listada_sin_el_bloque_una_linea_sin_error_y_sin_interruptor_desconocida(self):
         f = self.deja(estado_base(), "activa: sí\nvista_jurado: sí\nruta_critica: sí\n")
         for k in ("jurado", "ruta"):

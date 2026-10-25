@@ -117,12 +117,15 @@ def _evidencias(t, conexiones, viejas, ahora, umbral):
 
 def _nota(n):
     """Una copia de la nota con sus textos libres sin controles bidi (issue #77, A10: como sinBidi en la web), sin
-    recortarlos: `dijo` sigue hasta 500. Lo que casa (cita, quien) se compara antes, con la nota de estado.json."""
+    recortarlos: `dijo` sigue hasta 500. Lo que casa (cita, quien) se compara antes, con la nota de estado.json.
+    También `fuerza.texto` (restos de la 0.6.0, punto 2), que llega así a `cuenta.sin_cubrir_por_fuerza`."""
     from ruta import sin_bidi
     x = copy.deepcopy(n)
     for k in TEXTOS:
         if isinstance(x.get(k), str):
             x[k] = sin_bidi(x[k])
+    if isinstance((x.get("fuerza") or {}).get("texto"), str):
+        x["fuerza"]["texto"] = sin_bidi(x["fuerza"]["texto"])
     return x
 
 
