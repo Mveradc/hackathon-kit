@@ -357,6 +357,11 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Decisión del usuario:** se publica sin ensayo con un equipo real, como la 0.4.0 y la 0.5.0, y con Windows y macOS probados solo en runners de GitHub Actions; así lo dicen el README y `docs/limitaciones.md`.
 - **Siguiente:** el ensayo con un equipo (revisa el criterio 3 de M10, los umbrales del veredicto, el criterio 4 de M8h y cuánto baja a amarillo el nivel 2b en un reto real), y lo de «Después del M8» en `hitos.md`.
 
+## v0.6.1 — Arreglos del nivel 2b (2026-10-25)
+- **Qué sale:** los arreglos del issue #88 (revisión independiente de M11): el nivel 2b sin atributos de git, sin congelarse sin temporal, con caché LRU, solo `mergiraf.exe` del `PATH` en Windows, rutas que empiezan por `-` y parada limpia del relay (PR #91); el monitor, que solo olvida una roja que pasa a 2b y no abre turno por una roja con menos ficheros (PR #90); y los restos de la 0.6.0 en las vistas: lo viejo en la web como en el md, `fuerza.texto` sin bidi y las líneas de colisión en 160 (PR #89). El `.txt` con solo fin de línea en conflicto que baja a 2b queda documentado en `docs/limitaciones.md`.
+- **Decisión del usuario:** sale como versión de arreglos sobre la 0.6.0, sin ensayo con un equipo real; se recomienda actualizar a quien use `fusion_estructural: sí`.
+- **Siguiente:** lo mismo que tras la v0.6.0: el ensayo con un equipo y lo de «Después del M8» en `hitos.md`.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.
