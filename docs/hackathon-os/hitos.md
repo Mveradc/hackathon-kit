@@ -2,7 +2,7 @@
 
 Cada hito construye solo lo que exige su validación (regla del kit). Un hito se cierra cuando se cumplen sus criterios, se anota el resultado en `evals/coordinacion/prueba.md` (sección «M8x») y el detalle en `docs/historial.md`. Entre paréntesis, los requisitos que cubre.
 
-Dependencias: `M8.0 → M8a → M8b → (M8c ∥ M8d) → M8e → M8f → M8g → M8h (fase 1) → M9a → M8h (fases 2 y 3)` (M9a se adelanta al ensayo por decisión del usuario, 2026-10-17; el ensayo, la fase 2 de M8h, queda aplazado sin fecha por decisión del usuario, 2026-10-18). M10 (0.5.0, abierto el 2026-10-19) va detrás de M9a y no espera al ensayo. M11 (nivel 2b, ADR-0014 aceptado el 2026-10-22) va detrás de M10; cuándo se abre lo decide el usuario. M8c y M8d se pueden hacer en paralelo una vez congelados los contratos.
+Dependencias: `M8.0 → M8a → M8b → (M8c ∥ M8d) → M8e → M8f → M8g → M8h (fase 1) → M9a → M8h (fases 2 y 3)` (M9a se adelanta al ensayo por decisión del usuario, 2026-10-17; el ensayo, la fase 2 de M8h, queda aplazado sin fecha por decisión del usuario, 2026-10-18). M10 (0.5.0, abierto el 2026-10-19) va detrás de M9a y no espera al ensayo. M11 (nivel 2b, ADR-0014 aceptado el 2026-10-22) va detrás de M10; cuándo se abre lo decide el usuario. M12 (el resultado de la Prueba desde CI, ADR-0015 propuesto el 2026-10-25) va detrás de M11; cuándo se abre lo decide el usuario. M8c y M8d se pueden hacer en paralelo una vez congelados los contratos.
 
 Corte para una versión reducida: con M8a–M8f hay OS (estado común sin colisiones). M8g es el diferencial. M8h es obligatorio antes de usarlo con un equipo real.
 
@@ -316,11 +316,50 @@ Especificado el 2026-10-21 y decidido el 2026-10-22: el usuario aceptó las siet
 
 ---
 
+## M12 · El resultado de la Prueba desde CI (R-37; ADR-0015)
+Especificado el 2026-10-25, con ADR-0015 en estado **Propuesto**: el usuario decide su tabla «Por decidir» (diez decisiones, con una recomendada cada una) antes de K-116. Cuándo se abre lo decide el usuario; empieza por K-115. Amplía ADR-0011, que no cambia: **el OS sigue sin ejecutar nada**, y la Prueba la corre el CI del equipo con un flujo que escribe el equipo. Paso 0 hecho en parte con `gh api` de solo lectura sobre el repo del kit (P18–P21 en `preguntas-abiertas.md`); P22–P24 quedan para K-115, en el sandbox. Mismo método que M10 y M11: Paso 0, ADR y contratos, servidor y datos, vistas, validación en vivo.
+
+**Alcance (con las recomendaciones de ADR-0015; cambia si el usuario elige otra cosa)**
+- Un interruptor en el `os.md` del relay, `prueba_ci:`, apagado por defecto: `no` o la lista de ficheros de flujo (3 como mucho). Solo cuenta con `web_nueva: sí` y `github: sí`.
+- El relay, con el `gh` de quien coordina y en el hilo del sondeo de GitHub, lee cada 60 s (con ETag) las ejecuciones terminadas de esos flujos en `main` y los jobs de las nuevas. Un job con `hk-prueba:<comando_sha>` en el nombre da el resultado de la Prueba con esa huella: `pasa` o `falla`, con su sha, `detras` (commits de `origin/main` después de él) y su hora. Solo cuenta si el sha se alcanza desde `origin/main`, el evento es `push`, `workflow_dispatch` o `schedule` en `main`, no viene de un fork, lo lanza alguien del equipo y el flujo de ese sha contiene la Prueba literal.
+- Sale como `resultado_ci` (fuente `ci`) **aparte** del `resultado` de la sesión (fuente `hook`), en `estado.json`, `/v1/vista`, `estado-equipo.md` (la línea «la prueba falla en CI»), el MCP (`estado` y las evidencias de `jurado`), la web de trabajo y las evidencias de la vista de jurado. Ninguno de los dos gana.
+- Fuera: ejecutar o lanzar nada (tampoco `workflow_dispatch`); resultados de `pull_request`; otros CI (GitLab, Jenkins) y el modo sin GitHub; artefactos, check-runs sueltos, *statuses* y ficheros de resultados; generar flujos en `.github/` desde el kit; que el CI confirme filas o cubra notas; una herramienta MCP nueva.
+
+**Criterios de validación**
+1. **Apagado sin coste** (constitución I). Con `prueba_ci:` ausente o en `no`, con `github: no` o con `web_nueva: no`, el relay no hace **ni una** petición a una ruta `/actions/` (se comprueba con un GitHub falso, `HKOS_GITHUB_API`, que anota las rutas pedidas) ni crea `relay/ci.json`, y `estado.json`, la vista, `estado-equipo.md`, `tools/list` del MCP y la web salen byte a byte como en la 0.6.1 con los mismos datos. `hkos/pruebas`, `prueba_hooks.py`, `igualdad.py` (G1–G6 y G12–G15), `robustez.py`, `colisiones_vivo.py` y `colisiones_2b_vivo.py` en verde, y en el CI web `comprueba_compilado.mjs` y `pestanas_chrome.mjs`. Con `prueba_ci:` puesto y `github: no` o `web_nueva: no`, el relay lo dice **una vez** al arrancar.
+2. **Tabla de casos sin red** (`hkos/pruebas/test_ci.py`, con respuestas de la API grabadas o escritas a mano):
+   - la etiqueta en el nombre del job, al principio, en medio y dos veces; mayúsculas y 11 o 13 hex: no casa;
+   - cada `conclusion` con su resultado (`success`, `failure`, `timed_out`, `cancelled`, `skipped`, `neutral`, `action_required`, `stale`, `startup_failure`, en curso); una matriz con una pata que falla; un *re-run* con `run_attempt` 2;
+   - cada filtro por separado: flujo no listado, `pull_request`, `pull_request_target`, `workflow_run`, `head_branch` distinto de `main`, una etiqueta llamada `main` con un sha fuera de `origin/main`, un fork, un `triggering_actor` de fuera del equipo, un sha que aún no está en el clon (se vuelve a mirar después);
+   - la comprobación literal: `run: <Prueba>`, `- run: <Prueba>`, con comillas, dentro de un `run: |`, con espacios de más; la Prueba con un carácter distinto o solo en un comentario no casa (`prueba_ci_no_verificada`);
+   - una etiqueta sin conexión (`prueba_ci_sin_conexion`); una Prueba cambiada en `servicios.md`: el resultado viejo no pasa a la nueva;
+   - cuál es el último: un sha más nuevo gana a un *re-run* tardío de uno viejo; con el mismo sha, el `completed_at` más reciente;
+   - `detras` = 0 en la punta, N tras N commits sin ejecución nueva, y `null` si `rev-list` falla;
+   - ETag: un `304` no pide jobs; como mucho 10 ejecuciones nuevas por vuelta y 3 flujos; un `403`/`429` usa `github.Limitado`, `fuentes.ci` = `limitado`, y con el relay reiniciado lo leído vuelve de `relay/ci.json`;
+   - el nombre del job nunca sale en lo que produce, con un nombre con texto imperativo y controles bidi.
+3. **Convivencia y proyección** (ADR-0009): guion nuevo **G16** del simulador con una conexión que pasa en la sesión y falla en CI, otra que falla en CI y después pasa, un resultado de CI que se queda 3 commits por detrás, uno de una rama que no cuenta y `fuentes.ci` limitado. Para cada paso: `resultado` y `resultado_ci` de cada conexión, los desajustes (un `prueba_falla` por fuente), `detras` y `viejo` coinciden con lo esperado. `igualdad.py` coincide en G1–G6 y G12–G16: la vista del demonio y el MCP (bloque `jurado` con la evidencia de CI) y la línea `- no cuadra · … la prueba falla en CI (<sha7>, N commits por detrás) (HH:MM · ci)` de `estado-equipo.md`. Vitest pinta G16 y cada campo sale en el DOM con el mismo texto. Ninguna URL externa en `hkos/web/nueva/`; el CI recompila y el diff sale vacío.
+4. **Honestidad:** un resultado de CI nunca sale sin su sha y su `detras`; nunca sustituye al de la sesión ni lo tapa; un `cancelled` o `skipped` no da `pasa` ni `falla`; un resultado de CI no confirma ninguna fila ni hace `cubierta` ninguna nota (G13 sigue igual con evidencias de CI).
+5. **Silencio y presupuesto** (R-24, R-25, R-25b, X): una ejecución nueva con el mismo resultado sobre otro sha no cambia la firma `servicios:` ni inyecta nada; pasar de `pasa` a `falla` en CI da un delta de ≤ 600 caracteres; 30 minutos con ejecuciones nuevas y el mismo resultado no inyectan nada; con 5 personas, 20 tareas y 6 conexiones, el bloque de inicio no pasa de 2.500 caracteres.
+6. **Autenticidad, en el sandbox** (`Mveradc/hk-sandbox`, con Actions; P22): ninguno de estos da resultado: un flujo en una rama que crea por la API un check-run y un *status* con la etiqueta sobre el sha de `main`; una etiqueta `main` que apunta a un commit fuera de `main`; un `pull_request` desde una rama; un flujo no listado con la etiqueta. Y sí lo da el flujo listado en un `push` a `main`.
+7. **En vivo, sin modelo** (`evals/coordinacion/prueba_ci_vivo.py`, nuevo; el sandbox con Actions, dos clones y el relay): un flujo con dos jobs etiquetados (uno pasa, otro falla) y un `push` a `main`: la web de las dos personas enseña los dos resultados con su sha en ≤ 120 s desde el `completed_at` (o lo que mida P24), y el md de cada una, la línea del que falla; otro `push` sin ejecución (fuera de `paths`): `detras` = 1; el resultado de la sesión (con `prueba.sh`, alimentado con una entrada grabada de `evals/coordinacion/entradas/m9a-bash/`) sale al lado, sin taparse; con GitHub limitado (el falso), `viejo` en ≤ `umbral_viejo_s` + 60 s; con `github: no`, nada de CI y el aviso. Ninguna escritura en GitHub desde el OS (lo cuenta el falso y, en el sandbox, el registro de auditoría del repo). Resultados en `evals/coordinacion/prueba.md` («M12»).
+8. **Cadena y documentación:** `os.md` de `/hack-scaffold` trae `prueba_ci: no` con su comentario; la documentación tiene el flujo de ejemplo (decisión 9) y dice qué cuenta y qué no (los filtros), que la etiqueta cambia con la Prueba y que «pasa en CI» es de ese sha; `docs/limitaciones.md`, los riesgos aceptados de ADR-0015. `comprobar.py` sin regresiones con un reto, sin coordinación.
+
+**Orden de recorte si va con retraso:**
+1. Primero, la web propia: el resultado de CI sale como texto en la fila de la conexión que ya existe («CI: falla · a1b2c3d»), sin la etiqueta para copiar (la dice la documentación).
+2. Después, `detras`: solo el sha, con «puede no ser la punta de main».
+3. Después, la evidencia de CI en la vista de jurado (`evidencias[]` sigue solo con la de la sesión).
+
+**No se recortan:** el apagado sin coste, que el OS no ejecute ni lance nada, los filtros de autenticidad (sobre todo el sha alcanzable desde `origin/main`), la comprobación literal, los dos resultados por separado (ninguno tapa al otro), la procedencia y el sha de cada resultado, la constitución V para el nombre del job y la igualdad de ADR-0009.
+
+*Estado: **especificado** (2026-10-25), pendiente de que el usuario decida ADR-0015.*
+
+---
+
 ## Después del M8 (Pendiente)
 - **Web de trabajo (nivel A).** La primera parte es M9a (arriba): React + Vite, cuatro vistas, `servicios.md`, Anotar y Reclamar. Queda para después:
   - **Botones para las operaciones de terminal que se rompen** (commit y push de `.hackathon/`, `hk-os unir`, confirmar). Cada botón ejecuta un comando ya comprobado; nada de comandos libres.
   - **Confirmar desde la web** (lo que hoy es `hk confirmo` o pasar una fila de Propuestas en `servicios.md`), con las reglas de seguridad de ADR-0010.
-  - **El resultado de la Prueba desde CI** (ADR-0011: en M9a solo se ve lo que corre una sesión de Claude Code).
+  - **El resultado de la Prueba desde CI** (ADR-0011: en M9a solo se ve lo que corre una sesión de Claude Code). En M12 (arriba; ADR-0015, propuesto).
   - **Que Reclamar pase la tarea al orquestador** si está activo (en M9a, el turno lo abre el monitor de la sesión).
   - **Nivel B, solo como idea (fuera de alcance por ahora):** la web como cabina, con el demonio lanzando sesiones en segundo plano (`claude -p` o el Agent SDK) por tarea y worktree; permisos, preguntas, gasto y fallos, en la web. Es lo que hace Vibe Kanban; el kit se diferencia por la sincronización del equipo. Se replantea cuando el nivel A esté probado.
   - **Orden:** después del ensayo y de la 0.4.0. Qué botones van primero lo decide lo que mida el ensayo (sección 7 de `evals/coordinacion/ensayo/hoja.md`, idas a la terminal), que se hace ya con la web de M9a.

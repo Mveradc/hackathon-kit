@@ -452,3 +452,75 @@ Depende de: todo lo anterior · Puedes tocar: `evals/coordinacion/` (incluido un
 Hecho cuando: criterios 1 (la parte con el relay vivo), 5, 6 y 7 de M11, con los resultados en `evals/coordinacion/prueba.md` («M11»). Sin modelo: el nivel 2b no depende de ninguna sesión de Claude Code. El cierre se anota en `hitos.md` y en `docs/historial.md`; la versión que lo lleve la decide el usuario.
 
 **Hecha (2026-10-24, PR #86):** `evals/coordinacion/colisiones_2b_vivo.py` con los criterios 1 (relay vivo), 5 y 6 en Linux y en runners de Windows y macOS con el binario oficial, y el 7 con `comprobar.py` idéntico al de la v0.5.0 (con una carpeta montada, no con un reto generado). Arreglado `escucha.sh` para el criterio 4: de 2b a rojo con el mismo texto vuelve a abrir turno (`test_escucha_m11.py`). Resultados en `evals/coordinacion/prueba.md` («M11, K-114»). Sale en la 0.6.0 (decisión del usuario, 2026-10-25).
+
+## M12 · El resultado de la Prueba desde CI
+
+Especificado el 2026-10-25; ADR-0015 **Propuesto** (sección M12 de `hitos.md`). Las tareas siguen las recomendaciones de ADR-0015: si el usuario elige otra cosa en «Por decidir», se ajustan en K-116 antes de seguir. Cuándo se empieza lo decide el usuario. Todo lo de M12 corre solo en el relay y solo con `prueba_ci:` puesto, `web_nueva: sí` y `github: sí`; el OS no ejecuta ni lanza nada. Reparto en terminales: K-115 y K-116 seguidas; después **K-117 ∥ K-118 ∥ K-121** (primera tanda) y **K-119 ∥ K-120** (segunda; K-120 puede empezar en la primera con la vista de ejemplo de K-116); al final, K-122. En cada tanda las rutas no se pisan y cada tarea tiene su propio fichero de prueba nuevo. La interfaz entre K-117 y K-118 es la de ADR-0015 y la fija K-116 en `api.md` §3: `ci.Sondeo(cliente, flujos, equipo, reloj)` con `sondear()` → hubo cambios, `ejecuciones()` → `[{flujo, ejecucion, intento, sha, evento, rama, repo_cabeza, lanzado_por, terminada_en, jobs: [{comando_sha, resultado}]}]` (ya filtradas por todo lo que no necesita git), `fuente()` → el `dato` de `fuentes.ci`, `a_disco()`/`de_disco()`; y la función pura `ci.contiene_prueba(texto_del_flujo, prueba)`. Lo que necesita git (alcanzable, `detras`, `git show <sha>:<flujo>`) lo hace el relay (K-118).
+
+### K-115 · Paso 0 de M12
+Cubre: R-37 · Puedes tocar: scratchpad (fuera del repo del kit), el repo sandbox (`Mveradc/hk-sandbox`, con Actions; nunca el del kit), `evals/coordinacion/prueba.md` (solo «M12, Paso 0»), `docs/coordinacion.md` (las filas de P18–P24), `docs/hackathon-os/preguntas-abiertas.md` (P18–P24)
+Hecho cuando: «M12, Paso 0» de `evals/coordinacion/prueba.md` tiene, además de lo de P18–P21 (2026-10-25, solo lectura sobre el repo del kit):
+- P22: en el sandbox, un flujo de una rama que crea por la API un check-run y un *status* con la etiqueta sobre el sha de `main`: si salen en `GET /actions/runs/<id>/jobs` de una ejecución de `main` (se espera que no) y cómo salen en `commits/<sha>/check-runs` (`app`, `check_suite`); una etiqueta llamada `main` que apunta fuera de `main`: qué `head_branch` y `event` da su ejecución;
+- P23: la `conclusion` del job y del paso con `continue-on-error`, una matriz con una pata que falla, `timeout-minutes` vencido, un job cancelado, un `if:` que lo salta y un *re-run* (`run_attempt` 2, con y sin `filter=latest`);
+- P24: segundos entre `completed_at` y el primer sondeo que la ve como `completed` (20 ejecuciones), y si el ETag de la lista cambia al terminar;
+- P19: con un token *fine-grained* con y sin «Actions: read», y, si hay una organización con SSO a mano, sin autorizar: qué responde la API;
+- el flujo de ejemplo de la decisión 9, probado en el sandbox con dos Pruebas.
+Sin modelo. Nada se escribe en el repo del kit ni en otros que no sean el sandbox. Lo que cambie una decisión de ADR-0015 se anota para K-116.
+
+### K-116 · ADR y contratos
+Cubre: R-37 · Depende de: K-115 y la decisión del usuario sobre «Por decidir» de ADR-0015 · Puedes tocar: `docs/hackathon-os/adr/0015-*.md`, `docs/hackathon-os/adr/0011-*.md` y `0012-*.md` (solo la línea «ver ADR-0015»), `docs/hackathon-os/contratos/api.md`, `docs/hackathon-os/contratos/estado.schema.json`, `docs/hackathon-os/requisitos.md` (R-37, si cambia)
+Contratos que aplican: ADR-0009, ADR-0010, ADR-0011, ADR-0012, ADR-0015
+Hecho cuando:
+- ADR-0015 aceptado, con cada decisión y su porqué en «Decididas» y lo que cambie con K-115 como ajuste fechado;
+- `api.md` con lo de «Qué cambiaría en los contratos» de ADR-0015, todo marcado «tras congelar, M12»: §0 (`prueba_ci:`), §3 (el sondeo del CI, con la interfaz de K-117 y K-118), §6 (la línea y la firma), §7 (`relay/ci.json`), §10 (la etiqueta) y §11.3 (la evidencia de CI); una vista de ejemplo con `resultado_ci` para que K-120 empiece;
+- `estado.schema.json` con la fuente `ci`, `fuentes.ci`, `resultado_ci`, los dos desajustes nuevos y `sha`/`detras` en las evidencias, todo opcional; la vista de ejemplo valida;
+- G16 se describe en `simulador.md` en K-119;
+- `hkos/pruebas`, `igualdad.py` y `prueba_hooks.py` en verde.
+
+Lo revisa el usuario antes de K-117.
+
+### K-117 · Lector del CI [P]
+Cubre: R-37 · Depende de: K-116 · Puedes tocar: `hkos/ci.py` (nuevo), `hkos/pruebas/test_ci.py`, `hkos/pruebas/github_falso.py` (nuevo: un GitHub falso que sirve ejecuciones y jobs grabados, con ETag, `304`, `403`/`429` y el registro de rutas pedidas)
+Contratos que aplican: ADR-0015 (identificación, conclusiones, filtros sin git, cadencia, topes, instantánea), `api.md` §3
+Hecho cuando: `hkos/ci.py` implementa la interfaz de K-116 con `github.Cliente` (sin tocar `github.py`) y pasa las viñetas del criterio 2 de M12 que no necesitan git: la etiqueta, las conclusiones, la matriz, el *re-run*, los filtros de flujo, evento, rama, fork y equipo, `contiene_prueba` con todas sus formas, ETag y topes (3 flujos, 10 ejecuciones por vuelta), `Limitado` y la instantánea; el nombre del job no sale en nada de lo que devuelve. Sin red real: solo `github_falso.py`.
+
+### K-118 · Relay y servicios [P]
+Cubre: R-01, R-30, R-37 · Depende de: K-116 · Puedes tocar: `hkos/relay.py` (el hilo del CI junto al sondeo de GitHub, `relay/ci.json`, el aviso de una vez), `hkos/red.py` (lectura de `prueba_ci:`), `hkos/servicios.py` (`resultado_ci`, `prueba_falla` por fuente, `prueba_ci_no_verificada`, `prueba_ci_sin_conexion`), `hkos/pruebas/test_relay_m12.py`
+Contratos que aplican: ADR-0011, ADR-0015, `api.md` §0, §3, §7 y §10, `estado.schema.json`
+Hecho cuando:
+- el relay lee `prueba_ci:` de su `os.md` y, solo con `web_nueva: sí` y `github: sí`, arranca el lector (K-117; mientras no esté, con un doble que cumple la interfaz);
+- con lo que da el lector: el sha alcanzable desde `origin/main` (y uno que aún no está en el clon se vuelve a mirar), la comprobación literal con `git show <sha>:<flujo>`, cuál es el último por conexión y `detras`, todo sin objetos de reemplazo;
+- `estado.json` lleva `resultado_ci`, `fuentes.ci` y los desajustes nuevos, y valida contra el esquema; `resultado` (fuente `hook`) no cambia;
+- las viñetas del criterio 2 de M12 que necesitan git (la etiqueta `main` fuera de `origin/main`, `detras`, la Prueba cambiada);
+- criterio 1 de M12 sin relay vivo: apagado, ninguna ruta `/actions/` en el registro del falso y `estado.json` byte a byte como en la 0.6.1 (`test_relay.py`, `test_relay_m9a.py`, `test_relay_m10.py` y `carga.py` sin cambios).
+
+### K-119 · Proyección, jurado y guion G16 [P]
+Cubre: R-24, R-25, R-28, R-35, R-37 · Depende de: K-116 (para empezar, con `estado.json` escritos a mano) y K-118 (para cerrar) · Puedes tocar: `hkos/proyeccion.py` (`viejo` de `resultado_ci`, la línea y la firma de `## Servicios`), `hkos/jurado.py` (la evidencia de CI), `evals/coordinacion/simulador/` (G16, `simula.py`, `igualdad.py`, `fixture.py`), `docs/hackathon-os/simulador.md` (G16), `hkos/pruebas/test_proyeccion_m12.py`
+Contratos que aplican: ADR-0009, ADR-0012, ADR-0015, `api.md` §6 y §11.3
+Hecho cuando:
+- la vista lleva `resultado_ci` con `viejo`; `estado-equipo.md`, la línea «la prueba falla en CI (<sha7>, N commits por detrás)» con fuente `ci`, y la firma `servicios:` sin sha, `detras` ni hora;
+- `jurado` lleva la evidencia de CI con `sha` y `detras`, sin cambiar la cobertura (G13 igual);
+- criterios 3 (la parte de datos: G16 e `igualdad.py` en G1–G6 y G12–G16), 4 y 5 de M12, con `delta.sh`, `sesion.sh` y `escucha.sh` tal como están (no se tocan);
+- sin `resultado_ci` en `estado.json`, la vista y el md byte a byte como en la 0.6.1 (criterio 1, la parte de la proyección).
+
+### K-120 · Web [P]
+Cubre: R-26, R-37 · Depende de: K-116 (para empezar, con la vista de ejemplo) y K-119 (para cerrar, con las vistas de G16) · Puedes tocar: `hkos/web-src/` (incluido `scripts/vistas_ejemplo.py`), `hkos/web/nueva/`, `.github/workflows/web-m9a.yml` (solo el paso de las vistas de ejemplo, si G16 lo necesita)
+Contratos que aplican: ADR-0009, ADR-0015, `api.md` §4 y §10
+Hecho cuando:
+- la conexión enseña «sesión: …» y «CI: … · <sha7> · N commits por detrás» con su hora y su fuente, y la etiqueta `hk-prueba:<comando_sha>` para copiar; sin enlace a GitHub ni el nombre del job;
+- la web no calcula nada (ni `detras`, ni `viejo`, ni qué resultado es el último; ADR-0009);
+- Vitest pinta G16 y cada campo sale en el DOM con el mismo texto que el md (la parte de la web del criterio 3);
+- sigue el criterio 2 de M9a: sin URL externa y compilado igual al fuente; sin `resultado_ci` en la vista, la web es la de la 0.6.1.
+
+### K-121 · Cadena y documentación [P]
+Cubre: R-01, R-37 · Depende de: K-116 · Puedes tocar: `skills/hack-scaffold/templates/os.md`, `docs/limitaciones.md`, `README.md` (la línea de M12), `docs/hackathon-os/prueba-ci.md` (nuevo: el flujo de ejemplo de la decisión 9 y qué cuenta)
+Contratos que aplican: ADR-0015 (decisiones 1, 3, 7 y 9)
+Hecho cuando:
+- `os.md` de `/hack-scaffold` trae `prueba_ci: no` con un comentario que dice que se pone la lista de flujos y que hace falta `web_nueva: sí` y `github: sí`;
+- `prueba-ci.md` tiene el flujo de ejemplo (probado en K-115): un job por Prueba, con `hk-prueba:<comando_sha>` en el `name` y la Prueba tal cual en un `run:`, en `push` a `main`; qué cuenta y qué no (los filtros), que la etiqueta cambia con la Prueba y que «pasa en CI» es de ese sha;
+- `docs/limitaciones.md`, los riesgos aceptados de ADR-0015; el kit no escribe nada en `.github/` de ningún equipo;
+- `comprobar.py` sin regresiones con un reto, sin coordinación (criterio 8).
+
+### K-122 · Validación en vivo
+Depende de: todo lo anterior · Puedes tocar: `evals/coordinacion/` (incluido un `prueba_ci_vivo.py` nuevo), `docs/limitaciones.md`, el repo sandbox, carpetas de prueba en `../`
+Hecho cuando: criterios 1 (la parte con el relay vivo), 6, 7 y 8 de M12, con los resultados en `evals/coordinacion/prueba.md` («M12»). Sin modelo: el resultado de la sesión se alimenta con entradas grabadas de `prueba.sh`. Nada se escribe en el repo del kit. El cierre se anota en `hitos.md` y en `docs/historial.md`; la versión que lo lleve la decide el usuario.
