@@ -90,30 +90,64 @@ fin_backoff() {
 # Hackathon OS (M8g, K-73): una colisión ROJA nueva para esta persona abre un turno (una línea) una sola vez. Las
 # amarillas no: llegan en el siguiente delta (delta.sh). Mira estado-equipo.md, que escribe el demonio, solo con
 # builtins; sin .hackathon/os.md activo no lee nada. Al arrancar da por vistas las rojas que ya hay (van en el bloque
-# de inicio de sesion.sh). Solo recuerda las rojas que siguen en el md (M11, K-114): una que se va o baja a amarilla
-# (nivel 2b) se olvida, y si vuelve a rojo con el mismo texto es una roja nueva (criterio 4 de M11).
+# de inicio de sesion.sh). Con el nivel 2b (M11, issue #88, decisiones del usuario del 2026-10-25), dos reglas:
+# 1. Una roja vista solo se olvida si ya no está y su par sale en una línea `nivel 2b` (bajó a 2b): si vuelve a rojo,
+#    es una roja nueva (criterio 4 de M11). Cualquier otra desaparición (el relay que se reinicia, un ref WIP borrado
+#    un momento) no la olvida, como en la 0.5.0.
+# 2. Una roja de nivel 2 con un subconjunto de los ficheros de una roja vista del mismo par (un fichero bajó a 2b o se
+#    resolvió) no es nueva: es una buena noticia y no abre turno.
 . "$(dirname "$0")/../os/comun.sh"
 declare -A rojas_vistas=()
 rojas_listas=0
+# Partes de la clave de una línea de nivel 2 sin hora: «- ROJO · nivel 2 · <rutas> · <personas>». Deja los ficheros en
+# OS_RUTAS (separados por «, ») y las personas en OS_PAR; falla si no es de nivel 2.
+os_partes_2() {
+  local resto=${1#"- ROJO · nivel 2 · "}
+  [[ $resto != "$1" && $resto == *' · '* ]] || return 1
+  OS_PAR=${resto##* · } OS_RUTAS=${resto% · *}
+}
+# ¿Las rutas $1 están todas en las rutas $2? (listas separadas por «, »)
+os_subconjunto() {
+  local resto="$1, " r todas=", $2, "
+  while [[ -n $resto ]]; do
+    r=${resto%%, *} resto=${resto#*, }
+    [[ $todas == *", $r, "* ]] || return 1
+  done
+}
 os_rojas() {
   os_activo || return 0
-  local md=$OS_COMUN/hackathon/os/estado-equipo.md l sec= clave nuevas=() ver con_seccion=0
-  local -A siguen=()
+  local md=$OS_COMUN/hackathon/os/estado-equipo.md l sec= clave nuevas=() ver vista rutas par
+  local -A siguen=() en_2b=()
   [[ -f $md ]] || return 0
   while IFS= read -r l || [[ -n $l ]]; do
     l=${l%$'\r'}
-    if [[ $l == '## '* ]]; then sec=$l; [[ $l == '## Colisiones que te afectan' ]] && con_seccion=1; continue; fi
-    [[ $sec == '## Colisiones que te afectan' && $l == '- ROJO'* ]] || continue
+    if [[ $l == '## '* ]]; then sec=$l; continue; fi
+    [[ $sec == '## Colisiones que te afectan' ]] || continue
+    if [[ $l == '- '*' · nivel 2b · '* ]]; then   # regla 1: este par está (al menos en parte) en 2b
+      clave=$l
+      while [[ $clave =~ \ \([0-9][0-9]:[0-9][0-9]( · [^\)]*)?\) ]]; do clave=${clave/"${BASH_REMATCH[0]}"/}; done
+      en_2b[${clave##* · }]=1
+      continue
+    fi
+    [[ $l == '- ROJO'* ]] || continue
     clave=$l   # sin horas, como en delta.sh: la misma colisión con otra hora no es nueva
     while [[ $clave =~ \ \([0-9][0-9]:[0-9][0-9]( · [^\)]*)?\) ]]; do clave=${clave/"${BASH_REMATCH[0]}"/}; done
     siguen[$clave]=1
     [[ -n ${rojas_vistas[$clave]} ]] && continue
     rojas_vistas[$clave]=1
-    (( rojas_listas )) && nuevas+=("${l#- ROJO · }")
+    (( rojas_listas )) || continue
+    if os_partes_2 "$clave"; then                    # regla 2: ¿la misma roja con menos ficheros?
+      rutas=$OS_RUTAS par=$OS_PAR
+      for vista in "${!rojas_vistas[@]}"; do
+        [[ $vista != "$clave" ]] && os_partes_2 "$vista" && [[ $OS_PAR == "$par" ]] \
+          && os_subconjunto "$rutas" "$OS_RUTAS" && continue 2
+      done
+    fi
+    nuevas+=("${l#- ROJO · }")
   done < "$md"
-  if (( con_seccion )); then   # un md sin la sección (no lo escribe el demonio) no hace olvidar nada
+  if (( ${#en_2b[@]} )); then   # regla 1: solo olvida las de nivel 2 que se han ido de un par que ahora está en 2b
     for clave in "${!rojas_vistas[@]}"; do
-      [[ -n ${siguen[$clave]} ]] || unset 'rojas_vistas[$clave]'
+      [[ -z ${siguen[$clave]} ]] && os_partes_2 "$clave" && [[ -n ${en_2b[$OS_PAR]} ]] && unset 'rojas_vistas[$clave]'
     done
   fi
   rojas_listas=1

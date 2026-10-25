@@ -592,6 +592,7 @@ M10 (tras congelar, 2026-10-19, M10; ADR-0012, decisión 7B; ADR-0013, decisión
 M11 (tras congelar, 2026-10-22, M11; ADR-0014, decisión 7). Solo con `fusion_estructural: sí` en el relay y una colisión `2b` en la vista; si no, el md es el de M10:
 - **La línea `2b`** en «Colisiones que te afectan»: `- AMARILLO · nivel 2b · fusión estructural sin conflictos · <rutas> · <personas> (HH:MM)`, con la hora de `observado_en` (`desde_2b`). La web dice el mismo texto. Empieza por `- AMARILLO`: el monitor (`escucha.sh`) no abre turno y `delta.sh` no la cuenta como roja (R-25b), así que pasados los 6.000 caracteres no se inyecta.
 - **Firma:** la de colisiones no cambia de forma (ya lleva nivel y gravedad): bajar de `2` a `2b` abre un delta (≤ 600 caracteres) sin línea del monitor; volver de `2b` a `2` es una roja nueva, con delta y línea del monitor, como hoy.
+- **El monitor con 2b** (tras congelar, 2026-10-25; issue #88, decisiones del usuario; `escucha.sh`): (1) una roja vista solo se olvida cuando ya no está en el md y sale una línea `nivel 2b` de las mismas personas; si se va por otra cosa (el relay que se reinicia, un ref WIP borrado un momento), al volver no abre turno, como en la 0.5.0. (2) Una roja de nivel 2 cuyos ficheros son un subconjunto de los de una roja ya vista del mismo par (un fichero bajó a 2b o se resolvió) no abre turno.
 - Ni sección nueva ni firma nueva en la cabecera.
 
 Inyección (scripts/os/delta.sh):
