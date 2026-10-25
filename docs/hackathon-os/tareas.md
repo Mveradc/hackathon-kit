@@ -450,3 +450,5 @@ Hecho cuando:
 ### K-114 · Validación en vivo
 Depende de: todo lo anterior · Puedes tocar: `evals/coordinacion/` (incluido un `colisiones_2b_vivo.py` nuevo), `docs/limitaciones.md`, carpetas de prueba en `../`
 Hecho cuando: criterios 1 (la parte con el relay vivo), 5, 6 y 7 de M11, con los resultados en `evals/coordinacion/prueba.md` («M11»). Sin modelo: el nivel 2b no depende de ninguna sesión de Claude Code. El cierre se anota en `hitos.md` y en `docs/historial.md`; la versión que lo lleve la decide el usuario.
+
+**Hecha (2026-10-24, PR #86):** `evals/coordinacion/colisiones_2b_vivo.py` con los criterios 1 (relay vivo), 5 y 6 en Linux y en runners de Windows y macOS con el binario oficial, y el 7 con `comprobar.py` idéntico al de la v0.5.0 (con una carpeta montada, no con un reto generado). Arreglado `escucha.sh` para el criterio 4: de 2b a rojo con el mismo texto vuelve a abrir turno (`test_escucha_m11.py`). Resultados en `evals/coordinacion/prueba.md` («M11, K-114»). Sale en la 0.6.0 (decisión del usuario, 2026-10-25).

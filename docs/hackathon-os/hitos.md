@@ -312,6 +312,8 @@ Especificado el 2026-10-21 y decidido el 2026-10-22: el usuario aceptó las siet
 - **Criterio 4:** `test_proyeccion_m11.py` (K-112) y, para volver de 2b a rojo con el mismo texto, el arreglo de `escucha.sh` de K-114 (`test_escucha_m11.py`).
 - **Criterios 1, 5, 6 y 7:** en K-114 (`evals/coordinacion/prueba.md`, «M11, K-114»): `colisiones_2b_vivo.py` en Linux, Windows y macOS (estos dos, runners de GitHub Actions con el binario oficial), y `comprobar.py` idéntico al de la v0.5.0 con una carpeta montada con los ejemplos del reto 03 (no con un reto generado: hace falta el modelo).
 
+*Nota (M11, decisión del usuario, 2026-10-25, tras cerrar M11):* **la 0.6.0 sale sin ensayo**, como la 0.4.0 y la 0.5.0: README, CHANGELOG y `plugin.json` en 0.6.0; lo que no se ha probado con datos reales ni en un portátil real con Windows o macOS está en `docs/limitaciones.md`.
+
 ---
 
 ## Después del M8 (Pendiente)
