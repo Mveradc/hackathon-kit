@@ -316,6 +316,17 @@ class Proyeccion(unittest.TestCase):
         self.assertEqual(p.linea_colision(dict(c, id="2:persona-a+persona-b", nivel="2", gravedad="rojo"), MADRID),
                          "- ROJO · nivel 2 · src/app.py · @persona-a, @persona-b (18:41)")
 
+    def test_la_linea_entera_con_el_guion_no_pasa_de_160(self):
+        """Restos de la 0.6.0, punto 3 (PR #84, preexistente): el recorte era del texto, a 160, y después iba «- »: con
+        rutas muy largas, 162. api.md §6 dice 160 para la línea entera. Con rutas cortas, la línea no cambia."""
+        largas = ["src/" + "muy_largo_" * 6 + f"{i}.py" for i in range(3)]
+        for nivel, gravedad in (("2", "rojo"), ("2b", "amarillo"), ("1", "amarillo")):
+            with self.subTest(nivel=nivel):
+                c = colision(f"{nivel}:persona-a+persona-b", nivel, gravedad, largas, "2026-11-20T16:41:00Z")
+                linea = p.linea_colision(c, MADRID)
+                self.assertEqual(len(linea), p.LINEA_MAX)
+                self.assertTrue(linea.startswith("- ") and linea.endswith("…"), linea)
+
     def test_md_vista_y_firma_al_bajar_y_al_subir(self):
         roja = colision("2:persona-a+persona-b", "2", "rojo", ["src/app.py"], "2026-11-20T10:20:00Z")
         baja = dict(roja, id="2b:persona-a+persona-b", nivel="2b", gravedad="amarillo", observado_en="2026-11-20T10:25:00Z")

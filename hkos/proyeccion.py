@@ -351,8 +351,10 @@ def linea_colision(c, tz):
         que = " · fusión estructural sin conflictos"
     rutas = ", ".join(c["rutas"][:3]) + (f" (+{len(c['rutas']) - 3})" if len(c["rutas"]) > 3 else "")
     personas = ", ".join("@" + p for p in c["personas"])
-    return "- " + _linea(f"{c['gravedad'].upper()} · nivel {c['nivel']}{que} · {rutas} · {personas} "
-                         f"({_hora(c['observado_en'], tz)})")
+    # La línea entera, con «- », cabe en LINEA_MAX (api.md §6; restos de la 0.6.0, punto 3): antes se cortaba el texto a
+    # 160 y la línea llegaba a 162. Solo cambia con rutas muy largas.
+    texto = f"{c['gravedad'].upper()} · nivel {c['nivel']}{que} · {rutas} · {personas} ({_hora(c['observado_en'], tz)})"
+    return "- " + corta(" ".join(texto.split()), LINEA_MAX - 2)
 
 
 def linea_reserva(r, tz):

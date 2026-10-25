@@ -3,7 +3,7 @@ import { accion, textoAnotar, textoReclamar } from "./datos/acciones.js";
 import { useDemonio } from "./datos/demonio.js";
 import { horaLocal } from "./formato.js";
 import { Cabina } from "./vistas/Cabina.jsx";
-import { Fuentes } from "./vistas/comun.jsx";
+import { AvisoGit, Fuentes } from "./vistas/comun.jsx";
 import { Jurado } from "./vistas/Jurado.jsx";
 import { Red } from "./vistas/Red.jsx";
 import { Ruta } from "./vistas/Ruta.jsx";
@@ -115,6 +115,7 @@ export function App({ token, fetchImpl, pestanas = null }) {
           </div>
         </header>
         {banda}
+        <AvisoGit vista={d.respuesta.vista} />
         <div className="hk-app__contenido">
           <Vista {...props} />
         </div>
