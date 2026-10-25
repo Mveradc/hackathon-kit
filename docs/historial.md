@@ -352,6 +352,11 @@ Primer código Python del kit, en `hkos/` (no `os/`, para no confundirlo con el 
 - **Resultados** en `evals/coordinacion/prueba.md` («M11, Paso 0» y «M11, K-114»).
 - **Siguiente:** la versión que lo lleve, que la decide el usuario.
 
+## v0.6.0 — Nivel 2b de colisiones con Mergiraf (2026-10-25)
+- **Qué sale:** M11 (nivel 2b, R-34), opcional y experimental, detrás de `fusion_estructural:` en el `os.md` del relay, con `publicar_wip: sí` y Mergiraf ≥ 0.20.0 instalado a mano en el portátil de quien coordina. También los arreglos del issue #77 (PR #79 y #80) y el de `escucha.sh` (de 2b a rojo vuelve a avisar).
+- **Decisión del usuario:** se publica sin ensayo con un equipo real, como la 0.4.0 y la 0.5.0, y con Windows y macOS probados solo en runners de GitHub Actions; así lo dicen el README y `docs/limitaciones.md`.
+- **Siguiente:** el ensayo con un equipo (revisa el criterio 3 de M10, los umbrales del veredicto, el criterio 4 de M8h y cuánto baja a amarillo el nivel 2b en un reto real), y lo de «Después del M8» en `hitos.md`.
+
 ## Aprendizajes transversales
 - En headless desde Git Bash con `MSYS_NO_PATHCONV=1`, `--plugin-dir` tiene que ir como `C:/…`. Con `/c/…` el plugin no carga y el modelo hace el comando «a mano» sin avisar.
 - Añadir reglas a un prompt para un tipo de fallo lo desplaza a otra forma (de «(ambigüedad N)» a «(decisión)» y a «(inferido)» convertido en hecho) en lugar de eliminarlo.
