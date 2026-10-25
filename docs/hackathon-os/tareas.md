@@ -420,6 +420,8 @@ Hecho cuando: la clase `Calculo` (o una pieza nueva en el mismo módulo, llamada
 - pasa los casos del criterio 2 de M11 (con el falso y, si está, con el real);
 - con `fusion_estructural=False` (o sin el parámetro), `conflictos` y las llamadas a git son las de la 0.5.0: `test_colisiones_merge.py` sin cambios y en verde.
 
+**Hecha (2026-10-24, PR #83):** `Calculo(..., fusion_estructural=...)` en `colisiones_merge.py`, con `test_colisiones_2b.py` (los casos del criterio 2 de M11, con el falso y con Mergiraf 0.20.0) y `mergiraf_falso.py`; `desde` es `None` en un par solo 2b y `desde_2b`, en uno solo rojo. Apagado, como en la 0.5.0. Lo de fuera de sus rutas (pasar el interruptor desde `relay.py`, `colisiones.py`, el docstring de `modelo.py`) lo hizo K-112.
+
 ### K-112 · Modelo, relay, proyección, MCP y guion G15 [P]
 Cubre: R-24, R-25, R-28, R-34 · Depende de: K-110 · Puedes tocar: `hkos/colisiones.py`, `hkos/relay.py` (pasar el interruptor a `Calculo`), `hkos/red.py` (lectura de `fusion_estructural:`), `hkos/proyeccion.py` (`linea_colision`), `hkos/mcp.py` (la descripción de `colisiones`), `evals/coordinacion/simulador/` (G15, `simula.py`, `igualdad.py`, `fixture.py`), `docs/hackathon-os/simulador.md` (G15), `hkos/pruebas/test_proyeccion_m11.py`
 Contratos que aplican: ADR-0009, ADR-0014, `api.md` §0, §3, §5 y §6, `estado.schema.json`
@@ -431,6 +433,8 @@ Hecho cuando:
 - criterios 3 (la parte de datos: G15 e `igualdad.py` en G1–G6 y G12–G15) y 4 de M11 (delta y monitor con `delta.sh` y `escucha.sh` tal como están, que no se tocan);
 - con el interruptor apagado, `estado.json`, la vista y `estado-equipo.md` byte a byte como en la 0.5.0 (criterio 1 de M11, la parte sin relay vivo).
 
+**Hecha (2026-10-24, PR #84):** `colisiones.py`, `modelo.py` (la forma de K-111 con `desde` o `desde_2b` a `None`), `red.fusion_estructural`, `relay.nivel2`, `linea_colision` y la frase del MCP; guion G15 en `simula.py`, `prueba_simulador.py` e `igualdad.py` (el caso del issue #77 que se llamaba «G15» pasa a «#77, A3»); `test_proyeccion_m11.py` con los criterios 1 (sin relay vivo), 3 (datos) y 4. La frase del MCP sale solo con `fusion_estructural: sí` en el `os.md` de la copia principal: decisión del usuario del 2026-10-24, anotada en `api.md` §0 y §5 y en ADR-0014 («Ajuste del 2026-10-24»). Queda para K-114: `escucha.sh` recuerda para siempre las rojas vistas, así que una roja que baja a 2b y vuelve a rojo con el mismo texto no abre turno (el delta sí la trae); y, preexistente, `linea_colision` corta a 160 y después añade `- ` (162 caracteres; §6 dice 160).
+
 ### K-113 · Web, cadena y documentación [P]
 Cubre: R-01, R-26, R-34 · Depende de: K-110 · Puedes tocar: `hkos/web-src/` (solo pruebas de Vitest y el texto de la alerta, decisión 7), `hkos/web/nueva/`, `hkos/web/index.html` (solo el texto de la decisión 7), `skills/hack-scaffold/templates/os.md`, `README.md` (la línea de Mergiraf), `docs/limitaciones.md`
 Contratos que aplican: ADR-0009, ADR-0014 (decisiones 1, 2, 3 y 7)
@@ -440,6 +444,8 @@ Hecho cuando:
 - `os.md` de `/hack-scaffold` trae `fusion_estructural: no` con un comentario que dice que hace falta Mergiraf solo en el portátil del relay;
 - el README y `docs/limitaciones.md` dicen cómo se instala Mergiraf en el portátil del coordinador (decisión 3: binario oficial en Windows y Linux, `brew install mergiraf` en macOS y `cargo install --locked mergiraf` como alternativa, según lo que confirme P17), que el kit no lo instala ni lo pide, qué lenguajes baja y que «amarillo» no quiere decir que la fusión funcione;
 - `comprobar.py` sin regresiones con un reto, sin coordinación.
+
+**Hecha (2026-10-24, PR #82):** el texto de la decisión 7 en `CollisionAlert` y en la web clásica, `hkos/web/nueva/` recompilado, `fusion_estructural: no` en la plantilla `os.md`, la instalación de Mergiraf en los README y en `docs/limitaciones.md`, y `comprobar.py` con la misma salida antes y después (con una carpeta sintética, no con un reto generado de verdad). La vista a mano de `m11.test.jsx` se cambió el 2026-10-24 por las de G15 (`test/vistas/m11/G15.json`, de `vistas_ejemplo.py` y en el paso del CI de `web-m9a.yml`, con el `md` de `proyeccion.linea_colision`). `proyeccion.py` no expone el texto de la decisión 7 como constante, así que no va en `tablas.json`: Vitest lo compara con las líneas del `md`. Queda para K-114: `comprobar.py` con un reto generado de verdad.
 
 ### K-114 · Validación en vivo
 Depende de: todo lo anterior · Puedes tocar: `evals/coordinacion/` (incluido un `colisiones_2b_vivo.py` nuevo), `docs/limitaciones.md`, carpetas de prueba en `../`
